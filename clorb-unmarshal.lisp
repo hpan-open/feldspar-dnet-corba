@@ -146,9 +146,6 @@
              (*indirection-record*
               (list* start typecode *indirection-record*)))
         (cond
-         ((eq t params)
-          (setf (typecode-params typecode)
-            (unmarshal-osequence buffer)))
          ((eq 'complex (car params))
           (with-encapsulation buffer
             (let ((vals (unmarshal-multiple (cdr params) buffer)))
@@ -185,18 +182,13 @@
                    default-used
                  i))))
          (tc (third (aref members index))))
-    (corba:union :union-discriminator discriminant
+    (corba:union :id (tcp-id params)
+                 :union-discriminator discriminant
                  :union-value (unmarshal tc buffer))))
 
 (defun unmarshal-tagged-component (buffer)
   (cons (unmarshal-ulong buffer)
 	(unmarshal-osequence buffer)))
-
-(defstruct iiop-profile
-  (version '(1 . 0))
-  (host    nil)
-  (port    0    :type fixnum)
-  (key     nil))
 
 (defun unmarshal-iiop-profile-body (buffer)
   (make-iiop-profile
@@ -289,6 +281,8 @@
        (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
       ((:tk_struct)
+       (struct-in type #'unmarshal buffer)
+       #+(or)
        (make-struct-internal
         (first params) 
         (map 'list (lambda (nt-pair)

@@ -194,7 +194,7 @@
 
 
 
-(defun marshal-write-union (union params buffer)
+(defun marshal-union (union params buffer)
   (let* ((discriminant (union-discriminator union))
          (value (union-value union))
          (discriminant-type (third params))
@@ -204,7 +204,7 @@
     (when (and (null member)
                (>= default-used 0))
       (setq member (aref members default-used)))
-    (assert (not (null member)))
+    (assert (not (null member)))  ; FIXME: raise MARSHAL ?
     (marshal discriminant discriminant-type buffer)
     (marshal value (third member) buffer)))
 
@@ -288,7 +288,7 @@
        (doseq (el (tcp-members params))
 	      (marshal (struct-get arg (first el)) (second el) buffer)))
       ((:tk_union)
-       (marshal-write-union arg params buffer))
+       (marshal-union arg params buffer))
       ((anon-struct)
        (marshal-multiple arg params buffer))
       (t
