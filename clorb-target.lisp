@@ -94,10 +94,12 @@
 
 (defun make-progn (l)
   (cons 'progn
-        (loop for x in l
-            append (if (and (consp x) (eq 'progn (car x)))
-                     (cdr x)
-                     (list x)))))
+        (loop for (x . more) on (loop for x in l
+                                      append (if (and (consp x) (eq 'progn (car x)))
+                                               (cdr x)
+                                               (list x)))
+              when (or x (not more))
+              collect x )))
 
 (defun make-progn* (&rest l)
   (make-progn l))
@@ -314,7 +316,8 @@
         collect (param-symbol p)))
 
 
-(defmethod target-code ((opdef CORBA:OperationDef) (target static-stub-target))
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef)
+                                   (target static-stub-target))
   (let* ((params (coerce (op:params opdef) 'list))
          (in-params (loop for p in params unless (eq :param_out (op:mode p)) collect p))
          (out-params (loop for p in params unless (eq :param_in (op:mode p)) collect p)))
@@ -341,15 +344,22 @@
 
 
 
-(defmethod target-code ((op CORBA:OperationDef) (target stub-target))
+;; In some cases code depends on the container.
+;; I.e. an operatin in a ValueType is different from an operatin in a Interface
+
+(defgeneric target-code-contained (container def target))
+
+(defmethod target-code-contained ((c t) (op t) (target stub-target))
   nil)
 
+(defmethod target-code ((op CORBA:OperationDef) (target stub-target)) 
+  (target-code-contained (op:defined_in op) op target))
 
 (defmethod target-code ((op CORBA:AttributeDef) (target stub-target))
-  nil)
+  (target-code-contained (op:defined_in op) op target))
 
 
-(defmethod target-code ((attr CORBA:AttributeDef) (target static-stub-target))
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) (target static-stub-target))
   (let* ((att-name (op:name attr))
          (lisp-name (string-upcase att-name))
          (type-def (op:type_def attr))
@@ -442,6 +452,62 @@
        :name ,(op:name def)
        :discriminator-type ,(target-typecode (op:discriminator_type_def def) target)
        :members ,(nreverse collected-members))))
+
+
+(defmethod target-code ((def CORBA:ValueDef) (target stub-target))
+  (flet ((scoped-symbol (obj)
+           (scoped-target-symbol target obj)))
+    (make-progn*
+     `(define-value ,(scoped-symbol def)
+        :id ,(op:id def)
+        :name ,(op:name def)
+        ,@(let ((base (op:base_value def)))
+            (if base
+              `(:base_value ,(scoped-symbol base))))
+        :is_abstract ,(op:is_abstract def)
+        :is_custom ,(op:is_custom def)
+        :is_truncatable ,(op:is_truncatable def)
+        :supported_interfaces ,(mapcar #'scoped-symbol (op:supported_interfaces def))
+        :abstract_base_values ,(mapcar #'scoped-symbol (op:abstract_base_values def))
+        ,@(if (not (op:is_abstract def))
+            `(:members
+              ,(loop for statedef in (contents def)
+                     when (eq :dk_valuemember (op:def_kind statedef))
+                     collect `(,(op:name statedef) 
+                               ,(target-typecode (op:type_def statedef) target)
+                               ,(op:access statedef))))))    
+     (call-next-method))))
+
+
+(defmethod target-code ((def corba:valuememberdef) (target stub-target))
+  nil)
+
+(defmethod target-code ((def corba:valueboxdef) (target stub-target))
+  (let ((original-type (op:original_type_def def)))
+    (let ((lisp-type (target-type original-type target)))
+      `(define-value-box ,(scoped-target-symbol target def)
+         :id ,(op:id def)
+         :name ,(op:name def)
+         :version ,(op:version def)
+         :original_type ,(target-typecode original-type target)
+         ,@(unless (subtypep lisp-type '(or number character))
+             `(:type ,lisp-type))))))
+
+
+(defmethod target-code ((def corba:abstractinterfacedef) (target stub-target))
+  (make-progn*
+    (let ((bases (op:base_interfaces def))
+          (class-symbol (scoped-target-symbol target def))
+          (proxy-symbol (target-proxy-class-symbol target def)))
+      `(define-abstract-interface ,class-symbol
+         ,(target-base-list target bases #'scoped-target-symbol 'corba:abstractbase)
+         :proxy ,(list* proxy-symbol (target-base-list target bases #'target-proxy-class-symbol 
+                                                       'CORBA:Proxy))
+         :mixin ,(target-class-symbol target def "-MIXIN")
+         :id ,(op:id def)
+         :name ,(op:name def)))
+    (call-next-method)))
+
 
 ;;;; Marshalling
 
@@ -722,13 +788,13 @@
   (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                       define-union define-enum define-alias
                                       define-value define-operation define-attribute
-                                      static-call))
+                                      static-call define-value-box))
                        #'pprint-def-and-keys)
   
   (set-pprint-dispatch '(cons (satisfies struct-name-p))
                        #'pprint-apply-keys)
   
-  (set-pprint-dispatch '(cons (member define-interface))
+  (set-pprint-dispatch '(cons (member define-interface define-abstract-interface))
                        #'pprint-def2-and-keys))
 
 

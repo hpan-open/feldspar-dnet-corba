@@ -53,8 +53,77 @@
                                        (:members :required (("a" CORBA:tc_long)))
                                        (:version :optional "1.0")
                                        (:defined_in :required nil))))))
-  
-  
-  
-)
-        
+
+  (define-test "Interface"
+    (let* ((a-string (op:get_primitive repository :pk_string))
+           (intf (op:create_interface repository "IDL:if1:1.0" "if1""1.0" nil))
+           (op1  (op:create_operation intf "IDL:if1/op1:1.0" "op1" "1.0"
+                                      a-string :op_normal
+                                      nil nil nil))
+           (at1  (op:create_attribute intf "IDL:if1/at1:1.0" "at1" "1.0"
+                                      a-string :attr_normal))
+           (stub-target (make-instance 'stub-target))
+           (static (make-instance 'static-stub-target)))
+      (ensure-pattern
+       (target-code intf stub-target)
+       (sexp-pattern 
+        '(progn
+           (define-interface omg.org/root::if1 (CORBA:Object) &key
+             (:id :required "IDL:if1:1.0")
+             (:name :required "if1")
+             (:version :optional "1.0")
+             (:proxy :required (omg.org/root::if1-proxy omg.org/root::if1 corba:PROXY)))
+           &any-rest)))
+      (ensure-pattern
+       (target-code op1 static)
+       (sexp-pattern 
+        `(define-method "OP1" ((&any omg.org/root::if1-proxy)) &any-rest)))
+      (ensure-pattern
+       (target-code at1 static)
+       (sexp-pattern 
+        `(progn (define-method "AT1" ((&any omg.org/root::if1-proxy)) &any-rest)
+                (define-method (SETF "AT1") (&any (&any OMG.ORG/ROOT::IF1-PROXY)) &any-rest))))))
+
+
+  (define-test "Value"
+    (let* ((abv (op:create_value repository
+                                               "IDL:abv:1.0" "abv" "1.0"
+                                               nil t  nil nil  nil nil nil))
+           (v (op:create_value repository
+                                             "IDL:v:1.0" "v" "1.0"
+                                             nil nil  nil nil  (list abv) nil nil))
+           (target (make-instance 'stub-target)))
+    (op:create_value_member v
+                                          "IDL:v/a:1.0" "a" "1.0"
+                                          v corba:public_member)
+      (ensure-pattern
+       (target-code abv target)
+       (sexp-pattern 
+        '(progn (define-value omg.org/root::abv &key
+                  (:id :required "IDL:abv:1.0")
+                  (:name :required "abv")
+                  (:base_value :optional nil)
+                  (:is_abstract :required t)
+                  (:is_custom :optional nil)
+                  (:is_truncatable :optional nil)
+                  (:supported_interfaces :optional nil)
+                  (:abstract_base_values :optional nil)
+                  (:members :optional nil)))))
+      (ensure-pattern
+       (target-code v target)
+       (sexp-pattern
+        `(progn (define-value omg.org/root::v &key
+                  (:id :required "IDL:v:1.0")
+                  (:name :required "v")
+                  (:base_value :optional nil)
+                  (:is_abstract :optional nil)
+                  (:is_custom :optional nil)
+                  (:is_truncatable :optional nil)
+                  (:supported_interfaces :optional nil)
+                  (:abstract_base_values :required (omg.org/root::abv))
+                  (:members :optional (("a" (symbol-typecode 'omg.org/root::v) ,corba:public_member))))
+                &rest nil)))))
+
+
+
+#| end test suite |#)
