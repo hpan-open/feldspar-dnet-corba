@@ -17,7 +17,10 @@
    (host    :initarg :host    :accessor orb-host)
    (port    :initarg :port    :accessor orb-port)
    (initial-references :initform '()
-                       :accessor orb-initial-references)))
+                       :accessor orb-initial-references)
+   (default-initial-reference
+    :initform nil
+    :accessor orb-default-initial-reference)))
 
 ;; initial ref:
 ;;  ( name  .  ( string . object  ))
@@ -69,13 +72,20 @@
 
     (loop while args do
       (let ((option (pop args)))
-        (cond ((equal option "-ORBInitialReference")
+        (cond ((equal option "-ORBInitRef")
                (process-opt-initial-reference orb (pop args)))
+              ((equal option "-ORBDefaultInitRef")
+               (setf (orb-default-initial-reference orb) (pop args)))
               ((string-starts-with option "-ORB")
                (pop args))
               (t (push option new-args)))))
 
     (nreverse new-args)))
+
+#|
+(CORBA:ORB_init '("-ORBDefaultInitRef" "corbaloc::555objs.com"))
+(CORBA:ORB_init '("-ORBInitRef" "NameService=corbaloc::1.2@localhost:2001/NameService"))
+|#
 
 (defun process-opt-initial-reference (orb arg)
   (let ((eq-pos (position #\= arg)))
@@ -122,6 +132,12 @@ Can be set to true globally for singel-process / development.")
   (let ((ref-entry
          (assoc name (orb-initial-references orb)
                 :test #'string=)))
+    (unless ref-entry
+      (when (orb-default-initial-reference orb)
+        (setq ref-entry (list name (format nil "~A/~A" 
+                                           (orb-default-initial-reference orb)
+                                           name)))
+        (push ref-entry (orb-initial-references orb))))
     (unless ref-entry
       (error 'ORB/InvalidName))
     (let ((obj (cddr ref-entry)))
@@ -215,7 +231,8 @@ Can be set to true globally for singel-process / development.")
          (let ((ior-string
                 (with-open-file (fs filename :direction :input)
                   (read-line fs))))
-           (string-to-object orb ior-string))))
+           (string-to-object orb (string-trim #.(vector #\Space #\Linefeed #\Return)
+                                              ior-string)))))
       (t
        (error "Unrecognized URL method: ~A" method)))))
 
