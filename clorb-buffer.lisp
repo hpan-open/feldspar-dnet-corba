@@ -156,7 +156,8 @@ In body:
                                                                   (logand (the buffer-index (buffer-rel-pos buffer))
                                                                           (- ,n 1))))
                                                           (- ,n 1))))))))))
-             (prog1 (progn ,@body)
+             (multiple-value-prog1
+               (progn ,@body)
                (when (and chunking-p *chunk-end*
                           (>= (buffer-in-pos buffer) *chunk-end*))
                  (assert (= *chunk-end* pos))
