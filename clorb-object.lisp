@@ -67,7 +67,7 @@
 (defgeneric object-id (object))
 
 
-(define-operation "_THIS"
+(define-feature "_THIS"
   :documentation "Used for implicit activation during marshalling.")
 
 (define-method "_THIS" ((object t))

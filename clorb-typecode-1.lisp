@@ -102,35 +102,35 @@
   (typecode-kind tc))
 
 
-(define-operation id)
+(define-feature id)
 
-(define-operation name)
+(define-feature name)
 
-(define-operation member_count)
+(define-feature member_count)
 
-(define-operation member_name)
+(define-feature member_name)
 
-(define-operation member_type)
+(define-feature member_type)
 
-(define-operation member_label)
+(define-feature member_label)
 
-(define-operation member_visibility)
+(define-feature member_visibility)
 
-(define-operation discriminator_type)
+(define-feature discriminator_type)
 
-(define-operation default_index)
+(define-feature default_index)
 
-(define-operation length)
+(define-feature length)
 
-(define-operation content_type)
+(define-feature content_type)
 
-(define-operation fixed_digits)
+(define-feature fixed_digits)
 
-(define-operation fixed_scale)
+(define-feature fixed_scale)
 
-(define-operation type_modifier)
+(define-feature type_modifier)
 
-(define-operation concrete_base_type)
+(define-feature concrete_base_type)
 
 
 
