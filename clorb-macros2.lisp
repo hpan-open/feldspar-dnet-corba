@@ -217,6 +217,14 @@
   `(funcall (the function (load-time-value (compute-static-call ',sym)))
             ,obj ,@args))
 
+(defmacro %jit-get (sym obj)
+  `(funcall (the function (load-time-value (compute-static-get ',sym)))
+            ,obj))
+
+(defmacro %jit-set (sym obj value)
+  `(funcall (the function (load-time-value (compute-static-set ',sym)))
+            ,obj ,value))
+
 
       
 ;;;; Interface

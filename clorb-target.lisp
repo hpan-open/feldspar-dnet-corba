@@ -378,19 +378,15 @@
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) (target static-stub-target))
   (let* ((att-name (op:name attr))
          (lisp-name (string-upcase att-name))
-         (type-def (op:type_def attr))
-         (class (target-proxy-class-symbol target (op:defined_in attr))))
+         (class (target-proxy-class-symbol target (op:defined_in attr)))
+         (symbol (scoped-target-symbol target attr)))
     (make-progn*
      (call-next-method)
      (if (eq (op:mode attr) :attr_normal)
        `(define-method (setf ,lisp-name) (newval (obj ,class))
-          (static-call (,(setter-name att-name) obj)
-                       :output ((buffer)
-                                ,(target-marshal type-def target 'newval 'buffer)))))
+          (%jit-set ,symbol obj newval)))
      `(define-method ,lisp-name ((obj ,class))
-        (static-call (,(getter-name att-name) obj)
-                     :input ((buffer)
-                             ,(target-unmarshal type-def target 'buffer)))))))
+        (%jit-get ,symbol obj)))))
 
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef) (target static-stub-target))
@@ -795,8 +791,8 @@
 
   (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                       define-union define-enum define-alias
-                                      define-value define-operation define-attribute
-                                      static-call define-value-box))
+                                      define-value define-operation define-attribute 
+                                      define-value-box))
                        #'pprint-def-and-keys)
 
   (set-pprint-dispatch '(cons (satisfies struct-name-p))
