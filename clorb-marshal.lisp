@@ -242,6 +242,13 @@
   (marshal-osequence (cdr component) buffer))
 
 
+(define-operation "_THIS"
+  :documentation "Used for implicit activation during marshalling.")
+
+(define-method "_THIS" ((object t))
+  (error 'CORBA:MARSHAL :minor 4))
+
+
 (defparameter *nil-objref*
   (make-instance 'CORBA:Proxy :id "" :raw-profiles '()))
 
