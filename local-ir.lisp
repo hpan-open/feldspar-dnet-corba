@@ -61,7 +61,7 @@
   (:documentation
    "Compute the TypeCode for an IDLType from the attributes other than type."))
 
-(define-method op:type ((def IDLType))
+(define-method type ((def IDLType))
   (unless (slot-boundp def 'type)
     (setf (slot-value def 'type)
       (idltype-tc def)))
