@@ -1,5 +1,5 @@
 ;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: local-ir.lisp,v 1.17 2002/09/25 07:31:44 lenst Exp $
+;; $Id: local-ir.lisp,v 1.18 2002/10/05 11:18:09 lenst Exp $
 
 (in-package :clorb)
 
@@ -38,7 +38,7 @@
                     ,id)))))
 
 
-(define-ir-class IRObject (CORBA:IRObject auto-servant)
+(define-ir-class IRObject (CORBA:IRObject)
   :id "IDL:omg.org/CORBA/IRObject:1.0"
   :attributes ()
   :defaults ())
@@ -784,21 +784,18 @@
 
 (defmethod idltype-tc ((obj union-def))
   (flet ((default-label-p (label)
-             (and (eql :tk_octet (op:kind (any-typecode label)))
-                  (= 0 (any-value label)))))
-    (let* ((default-index -1)
-           (mfields
-            (loop for i from 0
-                for m in (op:members obj)
-                do (when (default-label-p (op:label m))
-                     (setq default-index i))
-                collect (list (if (default-label-p (op:label m))
-                                  (arbritary-value (op:discriminator_type obj))
-                                (op:label m))
-                              (op:name m)
-                              (op:type m))) ))
-      (make-typecode :tk_union (op:id obj) (op:name obj)
-                     (op:discriminator_type obj) default-index mfields))))
+           (and (not (symbolp label))
+                (eql :tk_octet (op:kind (any-typecode label)))
+                                (= 0 (any-value label)))))
+    (create-union-tc (op:id obj) (op:name obj)
+                     (op:discriminator_type obj)  
+                     (map 'list (lambda (m)
+                                  (list (if (default-label-p (op:label m))
+                                          'default
+                                          (op:label m))
+                                        (op:name m)
+                                        (op:type m)))
+                          (op:members obj)))))
 
 
 ;;;; EnumDef
@@ -861,14 +858,6 @@
   :def_kind :dk_Primitive
   :slots ((type :initarg :type)) ; add initarg
   :defaults ())
-
-
-(deftype PrimitiveKind ()
-  '(member
-    :pk_null :pk_void :pk_short :pk_long :pk_ushort :pk_ulong
-    :pk_float :pk_double :pk_boolean :pk_char :pk_octet
-    :pk_any :pk_TypeCode :pk_Principal :pk_string :pk_objref
-    :pk_longlong :pk_ulonglong :pk_longdouble :pk_wchar :pk_wstring))
 
 (defmethod print-object ((obj primitive-def) stream)
   (print-unreadable-object (obj stream :type t :identity t)
