@@ -53,8 +53,8 @@
     "clorb-struct"
     "clorb-union"
     "clorb-exceptions"
-    "clorb-iop"
     "clorb-object"
+    "clorb-iop"
     "clorb-value"
     "clorb-io"
     "clorb-ifr-base"
@@ -143,16 +143,15 @@
                    (make-pathname :name name :type "lisp"
                                   :directory (if dir (cons :relative dir)))
                    *source-pathname-defaults*))
-              (cf (apply #'compile-file-pathname
-                         sf
-                         (if *binary-folder*
-                             (list :output-file
-                                   (merge-pathnames
-                                    (make-pathname
-                                     :name nil :type nil
-                                     :directory (list* :relative
-                                                       *binary-folder* dir))
-                                    *source-pathname-defaults*)) ))))
+              (cf-tail (if *binary-folder*
+                           (list :output-file
+                                 (merge-pathnames
+                                  (make-pathname
+                                   :name nil :type nil
+                                   :directory (list* :relative
+                                                     *binary-folder* dir))
+                                  *source-pathname-defaults*)) ))
+              (cf (apply #'compile-file-pathname sf cf-tail)))
          (when (or (not (probe-file cf))
                    (let ((dcf (file-write-date cf))
                          (dsf (file-write-date sf)))
@@ -166,7 +165,7 @@
                          (> defs-date dcf))))
            (format t "~&;;;; Compiling ~A ~%" sf )
            (ensure-directories-exist cf)
-           (compile-file sf :output-file cf))
+           (apply #'compile-file sf cf-tail))
          (let ((dcf (file-write-date cf))
                (last (gethash base *load-dates*)))
            (when defs
