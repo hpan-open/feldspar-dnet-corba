@@ -2,8 +2,10 @@
 #define __ORB_IDL__
 
 #include "TypeCode.idl"
-#include "interface_repository.idl"
+#include "interface-repository.idl"
 #include "corba-misc.idl"
+
+#define GIOP_1_1
 
 #pragma prefix "omg.org"
 
