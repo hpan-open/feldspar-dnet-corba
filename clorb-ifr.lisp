@@ -44,6 +44,11 @@ of contained."))
   :attributes ()
   :defaults ())
 
+
+(define-method op:destroy ((obj IRObject))
+  nil)
+
+
 (defclass IRTypeCode-Mixin ()
   ((type)))
 
@@ -151,6 +156,14 @@ of contained."))
     (raise-system-exception 'CORBA:BAD_PARAM 4))
   (moveto to-container obj new-name new-version))
 
+(define-method op:destroy ((obj contained))
+  (remhash (subject-id obj) (idmap (op:containing_repository obj)))
+  (let ((container (op:defined_in obj)))
+    (when container
+      (setf (contents container)
+            (delete obj (contents container))))))
+
+
 
 ;;;; Container
 
@@ -254,6 +267,17 @@ of contained."))
       (values (subseq str 0 method-end)
               (subseq str (+ method-end 2)))
       str )))
+
+
+(define-method op:describe_contents ((self container) limit-type exclude-inherited max-return-objects)
+  (when (eql max-return-objects -1)
+    (setq max-return-objects most-positive-fixnum))
+  (loop for c in (op:contents self limit-type exclude-inherited)
+        repeat max-return-objects
+        collect (CORBA:Container/Description 
+                 :contained_object c
+                 :kind (op:def_kind c)
+                 :value (describe-contained c))))
 
 
 ;;;  ModuleDef create_module (
@@ -443,6 +467,11 @@ of contained."))
                 :initializers initializers)))
 
 
+(define-method op:destroy ((obj container))
+  (dolist (x (contents obj))
+    (op:destroy x))
+  (call-next-method))
+
 		
 
 ;;;; Repository
@@ -565,6 +594,12 @@ of contained."))
   (make-instance 'fixed-def
     :digits digits
     :scale scale))
+
+
+(define-method op:destroy ((obj repository))
+  (raise-system-exception 'omg.org/corba:bad_inv_order
+                          2 :completed_yes))
+
 
 
 ;;;; ModuleDef
@@ -845,6 +880,16 @@ of contained."))
 (defmethod idltype-tc ((def alias-def))
   (create-alias-tc (op:id def) (op:name def)
                    (op:type (op:original_type_def def))))
+
+(define-method op:destroy ((obj alias-def))
+  (let ((orig (op:original_type_def obj)))
+    (when (and (typep orig 'CORBA:IDLtype)
+               (typep orig 'CORBA:Contained))
+      (op:destroy orig)))
+  (call-next-method))
+
+
+
 
 ;;;; interface StructDef : TypedefDef
 ;; attribute StructMemberSeq members;
@@ -994,6 +1039,9 @@ of contained."))
   (print-unreadable-object (obj stream :type t :identity t)
     (format stream "~A" (slot-value obj 'kind))))
 
+(define-method op:destroy ((obj primitive-def))
+  (raise-system-exception 'omg.org/corba:bad_inv_order
+                          2 :completed_yes))
 
 
 ;;;; interface StringDef : IDLType
