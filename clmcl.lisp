@@ -1,8 +1,8 @@
 (in-package :cl-user)
 
-(load "Mac Home:clorb:clorb.system")
-(load "Mac Home:clorb:clorb-pkgdcl")
-(load "Mac Home:clorb:mcl-patches")
+(load "clorb:clorb.system")
+(load "clorb:clorb-pkgdcl")
+(load "clorb:mcl-patches")
 
 (make:oos :clorb :load)
 
