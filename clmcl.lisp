@@ -2,6 +2,7 @@
 
 (pushnew :use-acl-socket *features*)
 (pushnew :use-my-idlparser *features*)
+(pushnew :clorb-dev *features*)
 
 
 #+:use-acl-socket (require 'acl-socket)
@@ -9,9 +10,11 @@
 #+:use-my-idlparser
 (net.cddr.packer:require-package "NET.CDDR.REDPAS")
 
-(load "CLORB:SRC;CLORB-PKGDCL")
+(defun clean-fasl ()
+  (mapc #'delete-file (directory "clorb:*.cfsl")))
+
 (load "CLORB:SRC;CLORB-FILES")
-(clorb:reload)
+(net.cddr.clorb.system:reload)
 
 (setq clorb:*port*  4711)
 
@@ -69,12 +72,16 @@
 (use-pentax-ns)
 
 
+
 (defun run ()
   (persistent-naming:setup-pns)
+  ;; Exporting the name service as a corbaloc boot object
+  (setf (gethash "NameService" clorb::*boot-objects*)
+        (clorb::get-ns))
   (op:run *orb*))
 
-;; 
 
+;; 
 
 (defun vsns-get (name &key stringified)
   (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
@@ -132,9 +139,6 @@
 
 (corba:idl "clorb:idl;orb.idl" :eval nil :print t :skeleton nil)
 
-
-(setf (gethash "NameService" clorb::*boot-objects*)
-      (clorb::get-ns))
 
 (op:string_to_object *orb* "corbaloc::10.0.1.2:4711/NameService")
 

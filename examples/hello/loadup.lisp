@@ -2,7 +2,7 @@
 ;;; Load the hello world example
 ;;;
 
-(defvar *hello-defaults* 
+(defvar *hello-defaults*
   (make-pathname :name nil :type nil :defaults *load-pathname*))
 
 

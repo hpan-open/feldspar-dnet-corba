@@ -2,20 +2,21 @@
 (in-package :cl-user)
 
 (pushnew :no-idlcomp *features*)
+(pushnew :clorb-dev *features*)
 (pushnew :use-my-idlparser *features*)
 (net.cddr.packer:require-package :net.cddr.redpas)
 
 (setf (logical-pathname-translations "clorb")
-  '(("src;**;*.*"  "~/src/clorb/**/*.*")
+  '(("src;**;*.fasl"  "~/src/clorb/fasl/**/*.*")
+    ("src;**;*.*"  "~/src/clorb/**/*.*")
     ("**;*.*"      "~/src/clorb/**/*.*" )))
 
 (setf (logical-pathname-translations "phome")
       '(("**;*.*"  "~/**/*.*")))
 
-(load "clorb:src;clorb-pkgdcl")
+
 (load "clorb:src;clorb-files")
-(clorb:reload)
-;;(clorb::load-ir)
+(net.cddr.clorb.system:reload)
 
 (setq clorb:*host* "localhost")
 (setq clorb:*port* 5111)
