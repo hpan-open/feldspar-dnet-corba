@@ -171,31 +171,24 @@
   (make-instance 'CORBA:Proxy :id "" :raw-profiles '() :key nil))
 
 (defun marshal-ior (objref buffer)
-  (declare (optimize speed))
-  (cond
-    ((null objref) (setq objref *nil-objref*))
-    ((not (typep objref 'CORBA:Proxy))
-     ;; Implicit activation is implemented by this
-     (setq objref (op:_this objref))))
+  (cond ((null objref) (setq objref *nil-objref*))
+        ((not (typep objref 'CORBA:Proxy))
+         ;; Implicit activation is implemented by this
+         (setq objref (op:_this objref))))
   (unless (object-raw-profiles objref)
-    ;; FIXME: this is not quite right.
-    ;;  - when there are IIOP profiles in profiles, make encapsulations of these
-    ;;  - if no iiop profiles, but objkey, make iiop profile
-    ;; (or let POA create profiles)
-    (when (object-key objref)
-      (setf (object-raw-profiles objref)
-        (vector 
-         (cons 0
-               (marshal-make-encapsulation
-                (lambda (buffer)
-                  (mess 1 "in closure, objref: ~S" objref)
-                  (marshal-octet 1 buffer) ;Version
-                  (marshal-octet 0 buffer)
-                  ;; FIXME: should use the ORB values for host/port
-                  ;; how to get ORB reference?
-                  (marshal-string (or (object-host objref) *host*) buffer)
-                  (marshal-ushort (or (object-port objref) *port*) buffer)
-                  (marshal-osequence (object-key objref) buffer))))))))
+    (setf (object-raw-profiles objref)
+          (map 'list
+               (lambda (p)
+                 (cons iop:tag_internet_iop
+                       (marshal-make-encapsulation
+                        (lambda (buffer)
+                          (let ((version (iiop-profile-version p)))
+                            (marshal-octet (car version) buffer)
+                            (marshal-octet (cdr version) buffer))
+                          (marshal-string (iiop-profile-host p) buffer)
+                          (marshal-ushort (iiop-profile-port p) buffer)
+                          (marshal-osequence (iiop-profile-key p) buffer)))))
+               (object-profiles objref))))
   (marshal-string (object-id objref) buffer)
   (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
 
