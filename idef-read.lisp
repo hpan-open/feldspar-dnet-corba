@@ -76,6 +76,7 @@
               collect (CORBA:ParameterDescription
                        :name (string (second p))
                        :mode (first p)
+                       :type CORBA:tc_void
                        :type_def type-def)))
         (setf (op:result_def op)
           (parse-type-in container (or result-type 'void)))
@@ -182,17 +183,19 @@
     (lookup-name-in container type-sexp))
    ((and (consp type-sexp) (eq (car type-sexp) 'sequence))
     (destructuring-bind (member-type &optional (bound 0))
-        (cdr type-sexp)
+                        (cdr type-sexp)
       (make-instance 'sequence-def
         :bound (or bound 0)
         :element_type_def (parse-type-in container member-type))))
    ((and (consp type-sexp) (member (car type-sexp) '(string wstring)))
     (destructuring-bind (string-type &optional (bound 0))
-        (cdr type-sexp)
-      (make-instance (if (eq string-type 'string)
-                      'string-def
-                      'wstring-def)
-        :bound bound)))
+                        (cdr type-sexp)
+      (if (zerop bound)
+        (get-primitive string-type)
+        (make-instance (if (eq string-type 'string)
+                         'string-def
+                         'wstring-def)
+          :bound bound))))
    (t
     (error "Illegal type spec: ~S" type-sexp))))
 
