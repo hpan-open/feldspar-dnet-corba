@@ -103,7 +103,12 @@
 
 
 (defun marshal-service-context (ctx buffer)
-  (marshal-sequence ctx #'marshal-tagged-component buffer))
+  (marshal-sequence ctx 
+                    (lambda (service-context buffer)
+                      ;;(struct-write service-context 'IOP:SERVICECONTEXT buffer)
+                      (marshal-ulong (op:context_id service-context) buffer)
+                      (marshal-osequence (op:context_data service-context) buffer))
+                    buffer))
 
 (defun unmarshal-service-context (buffer)
   (unmarshal-sequence-m (buffer) 
@@ -143,7 +148,8 @@
 (defclass Connection ()
   ((read-buffer :initarg :read-buffer :accessor connection-read-buffer)
    (read-callback :initarg :read-callback :accessor connection-read-callback)
-   (write-buffer :initarg :write-buffer :accessor connection-write-buffer)
+   (write-buffer :initarg :write-buffer :accessor connection-write-buffer
+                 :initform nil)
    (write-callback :initarg :write-callback :accessor connection-write-callback)
    (io-descriptor :initarg :io-descriptor :initform nil :accessor connection-io-descriptor)
    (trace :initarg :trace :initform *default-trace-connection* :accessor connection-trace)
@@ -255,31 +261,33 @@
         (marshal-giop-header :locaterequest buffer)    ; LocateRequest
         (marshal-ulong (request-req-id req) buffer)
         (marshal-osequence (object-key object) buffer)
-        (request-send-buffer req buffer nil))
+        (send-request req))
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
              (setf (object-forward obj) (unmarshal-object (request-buffer req))))
             (t 
              (return (request-status req)))))))
 
-(defun request-marshal-head (req no-response)
+(defun request-marshal-head (req)
   (multiple-value-bind (object buffer)
                        (request-prepare req (request-target req))
     (marshal-giop-header :request buffer)
-    (marshal-service-context *service-context* buffer)
+    (marshal-service-context (service-context-list req) buffer)
     (marshal-ulong (request-req-id req) buffer)
-    (marshal-octet (if no-response 0 1) buffer)
+    (marshal-octet (if (response-expected req) 1 0) buffer)
     (marshal-osequence (object-key object) buffer)
     (marshal-string (request-operation req) buffer)
     (marshal-osequence *principal* buffer)
     buffer))
 
-(defun request-send-buffer (req buffer no-response)
-  (marshal-giop-set-message-length buffer)
-  (setf (request-buffer req) nil)
-  (setf (request-status req) nil)
-  (connection-send-buffer (request-connection req) buffer)
-  (unless no-response
+(defun send-request (req)
+  (let ((buffer (request-buffer req)))
+    (marshal-giop-set-message-length buffer)
+    (about-to-send-request req)
+    (setf (request-buffer req) nil)
+    (setf (request-status req) nil)
+    (connection-send-buffer (request-connection req) buffer))
+  (when (response-expected req)
     (push req *corba-waiting-requests*)))
 
 
@@ -358,7 +366,7 @@
                             buffer)))
     (setup-outgoing-connection conn)
     (when req
-      (setf (request-service-context req) service-context)
+      (setf (reply-service-context-list req) service-context)
       (setf (request-status req) status)
       (setf (request-buffer req) buffer))))
 
@@ -500,26 +508,34 @@ Where host is a string and port an integer.")
 ;;;; Support for static stubs
 
 (defun start-request (operation object &optional no-response)
-  (let ((req (make-instance 'request :target object :operation operation)))
-    (values req (request-marshal-head req no-response))))
+  (let ((req (make-instance 'client-request :target object :operation operation
+                            :response-expected (not no-response))))
+    (values req (request-marshal-head req))))
 
 (defun invoke-request (req)
-  (request-send-buffer req (request-buffer req) nil)
-  (request-wait-response req)
-  (let* ((status (request-status req))
-         (buffer (request-buffer req)))
-    (case status
-      (:location_forward
-       (setf (object-forward (request-target req))
-             (unmarshal-object buffer))
-       (values status))
-      (:system_exception
-       (let ((condition (unmarshal-systemexception buffer)))
-         (if (typep condition 'omg.org/corba:transient)
-           (values status)
-           (error condition))))
-      (otherwise
-       (values status buffer)))))
+  (send-request req)
+  (cond ((response-expected req)
+         (request-wait-response req)
+         (let* ((status (request-status req))
+                (buffer (request-buffer req)))
+           (case status
+             (:location_forward
+              (setf (object-forward (request-target req))
+                    (unmarshal-object buffer))
+              (values status))
+             (:system_exception
+              (let ((condition (unmarshal-systemexception buffer)))
+                (setf (request-exception req) condition)
+                (about-to-receive-exception req)
+                (setq condition (request-exception req))
+                (if (typep condition 'omg.org/corba:transient)
+                  (values status)
+                  (error condition))))
+             (otherwise
+              (about-to-receive-reply req)
+              (values status buffer)))))
+        (t
+         :no_exception)))
                  
 (defun process-exception (buffer legal-exceptions)
   (let ((id (unmarshal-string buffer)))
@@ -531,21 +547,21 @@ Where host is a string and port an integer.")
 
 ;;;; CORBA:Request - deferred operations
 
-(define-method send_oneway ((req request))
-  (request-send req :no-response))
+(define-method send_oneway ((req client-request))
+  (setf (response-expected req) nil)  
+  (request-marshal req)
+  (send-request req))
 
-(define-method send_deferred ((req request))
-  (request-send req))
+(define-method send_deferred ((req client-request))
+  (request-marshal req)
+  (send-request req))
 
-(defun request-send (req &optional no-response)
-  (let ((buffer (request-marshal-head req no-response)))
-    (request-marshal-arguments req buffer)
-    (request-send-buffer req buffer no-response)))
 
-(defun request-marshal-arguments (req buffer)
-  (loop for nv in (request-paramlist req)
-        when (/= 0 (logand ARG_IN (op:arg_modes nv)))
-        do (marshal-any-value (op:argument nv) buffer)))
+(defun request-marshal (req)
+  (let ((buffer (request-marshal-head req)))
+    (loop for nv in (request-paramlist req)
+          when (/= 0 (logand ARG_IN (op:arg_modes nv)))
+          do (marshal-any-value (op:argument nv) buffer))))
 
 (defun request-unmarshal-result (req buffer)
   (loop for nv in (request-paramlist req)
@@ -569,7 +585,7 @@ Where host is a string and port an integer.")
     (setf (any-value retval) (unmarshal-systemexception buffer)
           (any-typecode retval) nil)))
 
-(define-method get_response ((req request))
+(define-method get_response ((req client-request))
   (loop 
     (request-wait-response req)
     (let ((buffer (request-buffer req)))
@@ -579,17 +595,24 @@ Where host is a string and port an integer.")
           (:location_forward
            (setf (object-forward (request-target req))
                  (unmarshal-object buffer))
-           (request-send req))
+           (request-marshal req)
+           (send-request req))
           (otherwise
            (ecase status
-             (:no_exception (request-unmarshal-result req buffer))
-             (:user_exception (request-unmarshal-userexception req buffer))
-             (:system_exception (request-unmarshal-systemexception req buffer)))
+             (:no_exception 
+              (request-unmarshal-result req buffer)
+              (about-to-receive-reply req))
+             (:user_exception 
+              (request-unmarshal-userexception req buffer)
+              (about-to-receive-exception req))
+             (:system_exception
+              (request-unmarshal-systemexception req buffer)
+              (about-to-receive-exception req)))
            (setf (request-buffer req) nil)
            (return))))))
     (values))
 
-(define-method poll_response ((req request))
+(define-method poll_response ((req client-request))
   ;; FIXME: possibly (orb-wait ...) if without timeout
   (not (null (request-status req))))
 

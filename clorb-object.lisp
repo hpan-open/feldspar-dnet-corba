@@ -142,24 +142,26 @@
   (let ((p (selected-profile object)))
     (and p (iiop-profile-key p))))
 
+(defmethod raw-profiles ((objref CORBA:Proxy))
+  (or (object-raw-profiles objref)
+      (setf (object-raw-profiles objref)
+            (map 'list
+                 (lambda (p)
+                   (cons iop:tag_internet_iop
+                         (marshal-make-encapsulation
+                          (lambda (buffer)
+                            (let ((version (iiop-profile-version p)))
+                              (marshal-octet (car version) buffer)
+                              (marshal-octet (cdr version) buffer))
+                            (marshal-string (iiop-profile-host p) buffer)
+                            (marshal-ushort (iiop-profile-port p) buffer)
+                            (marshal-osequence (iiop-profile-key p) buffer)))))
+                 (object-profiles objref)))))
+
 
 (defmethod marshal-object ((objref CORBA:Proxy) buffer)
-  (unless (object-raw-profiles objref)
-    (setf (object-raw-profiles objref)
-          (map 'list
-               (lambda (p)
-                 (cons iop:tag_internet_iop
-                       (marshal-make-encapsulation
-                        (lambda (buffer)
-                          (let ((version (iiop-profile-version p)))
-                            (marshal-octet (car version) buffer)
-                            (marshal-octet (cdr version) buffer))
-                          (marshal-string (iiop-profile-host p) buffer)
-                          (marshal-ushort (iiop-profile-port p) buffer)
-                          (marshal-osequence (iiop-profile-key p) buffer)))))
-               (object-profiles objref))))
   (marshal-string (proxy-id objref) buffer)
-  (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
+  (marshal-sequence (raw-profiles objref) #'marshal-tagged-component buffer))
 
 
 
@@ -222,7 +224,7 @@
                                    :argument (CORBA:Any))))
   (values
    result
-   (make-instance 'request
+   (make-instance 'client-request
      :target obj
      :operation operation
      :paramlist (cons result (copy-seq arg_list))
@@ -257,37 +259,45 @@
 
 ;;;; CORBA:Request
 
-(define-corba-class CORBA:Request ()
-  :attributes 
-  ((target    nil :readonly  :reader request-target)
-   (operation nil :readonly  :reader request-operation)
-   ;;(arguments nil :readonly  :virtual)
-   ;;(result    nil :readonly  :virtual)
-   (ctx       nil))
-  ;; env  contexts 
-  :slots 
-  ((paramlist :initform nil :initarg :paramlist
+(defclass CORBA:Request ()
+  ())
+
+(defclass client-request (CORBA:Request PortableInterceptor:ClientRequestInfo)
+  ((target    :initarg :target     :reader request-target)
+   (operation :initarg :operation  :reader request-operation)
+   (paramlist :initform nil :initarg :paramlist
               :accessor request-paramlist) ;result + arguments
    (req-id :initform nil :accessor request-req-id)
    (connection :initform nil :accessor request-connection)
-   ;;(reply :initform nil  :accessor request-reply)
+   (service-context-list :initform nil :accessor service-context-list)
+   (reply-service-context-list :initform nil :accessor reply-service-context-list)
+   (client-request-interceptors :initform nil :accessor client-request-interceptors)
+   (response-expected :initform t :initarg :response-expected :accessor response-expected)
    (forward :initform nil :accessor request-forward)
    (status :initform nil :accessor request-status)
    (buffer :initform nil :accessor request-buffer)
-   (service-context :initform nil :accessor request-service-context)
    (exceptions :initform nil :initarg :exceptions :accessor request-exceptions)))
 
 
-(define-method result ((r request))
+(define-method target ((r client-request))
+  (request-target r))
+
+(define-method operation ((r client-request))
+  (request-operation r))
+
+(define-method ctx ((r client-request))
+  (error 'omg.org/corba:no_implement))
+
+(define-method result ((r client-request))
   (first (request-paramlist r)))
 
-(define-method set_return_type ((r request) tc)
+(define-method set_return_type ((r client-request) tc)
   (setf (any-typecode (op:argument (first (request-paramlist r)))) tc))
 
-(define-method return_value ((r request))
+(define-method return_value ((r client-request))
   (op:argument (first (request-paramlist r))))
 
-(define-method arguments ((r request))
+(define-method arguments ((r client-request))
   (cdr (request-paramlist r)))
 
 
@@ -304,49 +314,49 @@
                     :arg_modes mode))))
     arg))
 
-(define-method add_in_arg ((req request))
+(define-method add_in_arg ((req client-request))
   (add-arg req nil ARG_IN))
 
-(define-method add_named_in_arg ((req request) name)
+(define-method add_named_in_arg ((req client-request) name)
   (add-arg req name ARG_IN))
 
-(define-method add_inout_arg ((req request))
+(define-method add_inout_arg ((req client-request))
   (add-arg req nil ARG_INOUT))
 
-(define-method add_named_inout_arg ((req request) name)
+(define-method add_named_inout_arg ((req client-request) name)
   (add-arg req name ARG_INOUT))
 
-(define-method add_out_arg ((req request) &optional (name ""))
+(define-method add_out_arg ((req client-request) &optional (name ""))
   (add-arg req name ARG_OUT))
 
-(define-method add_named_out_arg ((req request) name)
+(define-method add_named_out_arg ((req client-request) name)
   (add-arg req name ARG_OUT))
 
-(defun add-exception (request typecode)
-  (push typecode (request-exceptions  request)))
+(defun add-exception (req typecode)
+  (push typecode (request-exceptions  req)))
 
 
 ;;; void send_oneway ()
-(define-deferred send_oneway ((req request)))
+(define-deferred send_oneway ((req client-request)))
 
 ;;; void send_deferred ()
-(define-deferred send_deferred ((req request)))
+(define-deferred send_deferred ((req client-request)))
 
 ;;; void get_response ()
-(define-deferred get_response ((req request)))
+(define-deferred get_response ((req client-request)))
 
 ;;; boolean poll_response ()
-(define-deferred poll_response ((req request)))
+(define-deferred poll_response ((req client-request)))
 
 ;;; void invoke ()
-(define-method invoke ((req request))
+(define-method invoke ((req client-request))
   (op:send_deferred req)
   (op:get_response req))
 
 
 ;; Used in stubs, shorter code then op:_create_request
 (defun request-create (obj operation result-type )
-  (make-instance 'request
+  (make-instance 'client-request
     :target obj
     :operation operation
     :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
