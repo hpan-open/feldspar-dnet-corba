@@ -105,7 +105,7 @@
 (defgeneric compute-unmarshal-function (tc))
 
 
-(defmacro with-cache-slot ((object slot &key (dont-cache-types nil) (cache-types t))
+(defmacro old-with-cache-slot ((object slot &key (dont-cache-types nil) (cache-types t))
                            &body body)
   (let ((objvar (gensym)))
     `(let ((,objvar ,object))
