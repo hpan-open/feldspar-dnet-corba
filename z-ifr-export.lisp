@@ -208,3 +208,12 @@
 (rebind (make-remote *z-serv* *z-rep*) "zrep")
 
 ;;(idef-read (idef-write *idef-repository*) *z-rep*)
+
+(define-method _this ((obj IRObject))
+  (make-remote *z-serv* obj))
+
+#|
+
+(make-remote *z-serv* *internal-interface-repository*)
+
+|#

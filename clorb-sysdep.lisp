@@ -524,6 +524,8 @@ Returns select result to be used in getting status for streams."
 
 
 (defun write-octets (seq start end stream)
+  (declare (type octets seq)
+           (type index start end))
   (loop for i from start below end
         do (write-byte (aref seq i) stream))
   (force-output stream))

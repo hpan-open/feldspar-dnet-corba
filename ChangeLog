@@ -1,7 +1,51 @@
+2003-09-25  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (repository-facade): Creating a
+	repository-facade class, that can aggregate several interface
+	repositories. Currently this only implements the op:lookup_id
+	method. 
+	(*internal-interface-repository*): containing an instance of
+	repository-facade. This should provide a way to search various
+	local interface repositories, like the idef repository and those
+	created by loading idl files.
+	(get-ns): cache the narrowing, and try narrowing to CosNamingExt
+	first.
+
+	* clorb-poa.lisp (_get_interface): use new
+	*internal-interface-repository*
+
+	* clorb-pkgdcl.lisp ("NET.CDDR.CLORB"): changed name, keeping old
+	name as nickname. New use list, with some conditional on clorb-dev.
+
+	* clorb-options.lisp (*clorb-pathname-defaults*): added.
+	Previously was in clorb-files.lisp, but that file is now in
+	another package.
+
+	* clorb-object.lisp (object-narrow): optionally allow narrowing
+	to fail silently, returning nil.
+
+	* clorb-iiop.lisp (+message-types+): changed from constant to
+	defparameter. (the reader will create a new object every time. so
+	it cant be constant :)
+
+	* clorb-idl.lisp (corba:idl): add repository to
+	*internal-interface-repository*.
+
+	* clorb-files.lisp: Put file in separate package net.cddr.clorb.system
+	Split out test related files, allowing loading LUNA (test framwork)
+	package before declaring main clorb package.
+
+	* clacl.lisp, clmcl.lisp, clopenmcl.lisp, clsbcl.lisp, test-util.lisp, examples/combat-account/account.lisp, examples/hello/loadup.lisp, luna/package.lisp:
+	*** empty log message ***
+
+	* clive.lisp, examples/dsi/clive.lisp: moved file
+
 2003-09-23  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-marshal.lisp (marshal-float, marshal-double,
-	marshal-longdouble): new funcs 
+	marshal-longdouble): new funcs
+
+	* clorb-sysdep.lisp, clsbcl.lisp: support sbcl on mac os x
 
 2003-08-13  Lennart Staflin  <lenst@lysator.liu.se>
 
