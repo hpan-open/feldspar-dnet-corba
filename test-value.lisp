@@ -73,11 +73,27 @@
           tc))
    (buffer (get-work-buffer *the-orb*)))
 
+  (define-test "marshal value typecodes"
+    (marshal-typecode (symbol-typecode 'test-abint-1) buffer)
+    (marshal-typecode tc1 buffer)
+    (marshal-typecode tc2 buffer)
+    (ensure-pattern*
+     buffer
+     'unmarshal-typecode (pattern 'identity (isa 'abstract_interface-typecode)
+                                  'op:id "IDL:test/abint1:1.0"
+                                  'op:name "abint1")
+     'unmarshal-typecode (pattern 'op:id (op:id tc1)
+                                  'op:type_modifier corba:vm_none
+                                  'op:concrete_base_type corba:tc_null )
+     'unmarshal-typecode (pattern 'op:id (op:id tc2)
+                                  'op:concrete_base_type (pattern 'op:id (op:id tc1)))))
+
   (define-test "simple"
     (marshal v1 (symbol-typecode 'test-value-1) buffer)
     (ensure-pattern* (unmarshal (symbol-typecode 'test-value-1) buffer) 
                      'identity (isa 'test-value-1)
                      'op:name (op:name v1)))
+
   (define-test "derived"
     ;; marshalling a derived valuetype for a base type
     (marshal v2 tc1 buffer)
@@ -86,6 +102,7 @@
                      'op:name (op:name v2)
                      'op:left (isa 'test-value-1)
                      'op:right (isa 'null)))
+
   (define-test "Indirection unmarshal"
     (let (ifr-pos v-pos)
       (with-out-buffer (buffer)

@@ -131,7 +131,7 @@
                        'op:id id 'op:name name
                        'op:member_count 2
                        'op:type_modifier 0
-                       'op:concrete_base_type nil)
+                       'op:concrete_base_type corba:tc_null)
       (ensure-equalp (op:member_name tc 0) "foo")
       (ensure-equalp (op:member_name tc 1) "bar")
       (ensure-equalp (op:member_visibility tc 0) 1)
@@ -236,7 +236,7 @@
       (ensure-pattern* (op:get_compact_typecode tc)
                        'op:id "xx" 'op:name ""
                        'op:type_modifier CORBA:VM_NONE
-                       'op:concrete_base_type nil
+                       'op:concrete_base_type corba:tc_null
                        'op:member_count 0)))
 
 
