@@ -44,6 +44,8 @@
     "idef-read"
     "idef-write"
     ("idef-macros" t)
+    "internalize"
+    "code-gen"
     ;; Services
     "cosnaming-idl"
     "cosnaming-stub"
