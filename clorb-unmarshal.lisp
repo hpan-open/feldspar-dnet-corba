@@ -234,6 +234,18 @@
   (let ((index (unmarshal-ulong buffer)))
     (elt (tcp-member-symbols params) index)))
 
+;;; Exception
+
+(defun unmarshal-exception (params buffer)
+  (let* ((class (id-exception-class (tcp-id params)))
+         (initargs (loop for m in (tcp-members params)
+                for s in (tcp-member-symbols params)
+                nconc (list s (unmarshal (second m) buffer)) )))
+    (if class
+      (apply #'make-condition class initargs)
+      (make-condition 'unknown-users-exception
+                      :id (tcp-id params) :values initargs))))
+
 
 ;;; Main entry
 
@@ -242,20 +254,20 @@
   (multiple-value-bind (kind params) 
       (type-expand type)
     (case kind
-      ((octet :tk_octet) (unmarshal-octet buffer))
-      ((:tk_char char) (unmarshal-char buffer))
-      ((bool :tk_boolean) (unmarshal-bool buffer))
-      ((ushort :tk_ushort) (unmarshal-ushort buffer))
-      ((short :tk_short) (unmarshal-short buffer))
-      ((ulong :tk_ulong) (unmarshal-ulong buffer))
+      ((:tk_octet) (unmarshal-octet buffer))
+      ((:tk_char) (unmarshal-char buffer))
+      ((:tk_boolean) (unmarshal-bool buffer))
+      ((:tk_ushort) (unmarshal-ushort buffer))
+      ((:tk_short) (unmarshal-short buffer))
+      ((:tk_ulong) (unmarshal-ulong buffer))
       ((:tk_enum) (unmarshal-enum params buffer))
-      ((long :tk_long) (unmarshal-long buffer))
+      ((:tk_long) (unmarshal-long buffer))
       ((:tk_longlong) (unmarshal-number 8 t buffer))
       ((:tk_ulonglong) (unmarshal-number 8 nil buffer))
       ((:tk_float) (ieee-integer-to-float (unmarshal-ulong buffer) 0s0 31 8 23 127))
       ((:tk_double) (ieee-integer-to-float (unmarshal-number 8 nil buffer) 0d0 63 11 52 1023))
       ((:tk_longdouble) (ieee-integer-to-float (unmarshal-number 16 nil buffer) 0d0 127 15 112 16383))
-      ((string :tk_string) (unmarshal-string buffer))
+      ((:tk_string) (unmarshal-string buffer))
       ((:tk_any) (unmarshal-any buffer))
       ((:tk_sequence sequence)
        (let ((eltype (car params)))
@@ -281,13 +293,7 @@
                      (cons (lispy-name (first nt-pair))
                            (unmarshal (second nt-pair) buffer)))
              (third params))))
-      ((:tk_except)
-       (make-condition 'corba:userexception
-	 :id (first params)
-	 :values (map 'list
-		   (lambda (nt-pair) 
-		     (unmarshal (second nt-pair) buffer))
-		   (third params))))
+      ((:tk_except) (unmarshal-exception params buffer))
       ((object :tk_objref) (unmarshal-ior buffer (first params)))
       ((anon-struct)
        (loop for type in params
