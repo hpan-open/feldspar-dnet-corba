@@ -240,8 +240,13 @@
        :typecode ,(target-typecode (op:original_type_def x) target) )))
 
 (defmethod target-code ((const CORBA:ConstantDef) target)
-  `(defconstant ,(scoped-target-symbol target const)
-     ',(op:value const)))
+  (unless (and (eq :tk_enum (op:kind (op:type const)))
+               (eq (op:defined_in const)
+                   (op:defined_in (op:type_def const)))
+               (string-equal (any-value (op:value const))
+                             (op:name const)))
+    `(defconstant ,(scoped-target-symbol target const)
+       ',(any-value (op:value const)))))
 
 (defmethod target-code ((idef CORBA:InterfaceDef) target)
   (make-progn
@@ -791,4 +796,4 @@
 (target-servant (lookup-name "CORBA::SequenceDef") *target*)
 ||#
 
-;;;; clorb-target.lisp ends here
+;;; clorb-target.lisp ends here
