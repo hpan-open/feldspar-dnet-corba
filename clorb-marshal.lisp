@@ -2,80 +2,95 @@
 
 (in-package :clorb)
 
+
+;;; should be in buffer:
+
+(defmacro with-out-buffer ((buffer &key (resize 400)) &body body)
+  "Open upp buffer.
+In body: 
+- buffer     the buffer,
+- octets     the octet vector,
+- start-pos  start pos in octets for this work,
+- pos        current pos in octets (setf-able),
+- (align n)  align output to n octets (n must be litteral),
+- (put-octet n)  output octet n. "
+  `(let* ((buffer ,buffer)
+          (start-pos (buffer-start-pos buffer))
+          (octets (buffer-octets buffer)))
+     (declare (ignorable start-pos octets)
+              (type buffer-index start-pos))
+     (macrolet ((put-octet (n)
+                  `(vector-push-extend ,n octets ,',resize))
+                (align (n) 
+                  `(let ((skip (- ,n (logand (the buffer-index (- (fill-pointer octets) start-pos))
+                                             (- ,n 1)))))
+                     (declare (fixnum skip))
+                     (when (< skip ,n)
+                       (dotimes (x skip)
+                         (declare (fixnum x))
+                         (vector-push-extend 0 octets ,',resize))))))
+       (symbol-macrolet ((pos (fill-pointer octets)))
+         ,@body))))
+
+(defun buffer-pos (buffer)
+  (fill-pointer (buffer-octets buffer)))
+
+
+
 (defun marshal-octet (n buffer)
   (declare (type buffer buffer)
            (optimize (speed 3) (debug 0)))
-  (vector-push-extend n (buffer-octets buffer) 400))
+  (with-out-buffer (buffer) (put-octet n)))
 
 (defun marshal-bool (s buffer)
   (marshal-octet (if s 1 0) buffer))
 
-(defun marshal-align (n buffer)
-  (declare (type buffer buffer)
-           (type (integer 0 8) n)
-           (optimize (speed 3) (safety 1) (debug 0)))
-  (let* ((octets (buffer-octets buffer))
-         (start-pos (buffer-start-pos buffer))
-         (skip (- n (logand (- (the buffer-index (fill-pointer octets))
-                               start-pos) 
-                            (- n 1)))))
-    (when (< skip n)
-      (dotimes (x skip)
-        (declare (type (integer 0 8) x))
-        (vector-push-extend 0 octets) ))))
 
-#-clisp
-(defun marshal-number (n size buffer &optional (align size))
-  (declare (fixnum size)
-           (integer n)
-           (optimize (speed 3) (debug 0) (safety 1)))
-  (marshal-align align buffer)
-  (loop for p from 0 by 8
-	for c fixnum below size
-	do (marshal-octet (ldb (byte 8 p) n) buffer)))
+(defmacro %marshal-number (n size buffer &optional (align size))
+  (let ((nvar '#:nvar)
+        (nnvar '#:nnvar))
+    `(with-out-buffer (,buffer)
+       (let* (,@(if (> size 3) 
+                  `((,nnvar ,n) 
+                    (,nvar (logand ,nnvar #xFFFFFF)))
+                  `((,nvar ,n))))
+         (declare (type (integer #x-FFFFFF #xFFFFFF) ,nvar))
+         (align ,align)
+         (put-octet (logand #xFF ,nvar))
+         ,@(loop for p from 8 by 8
+                 for c from 1 below size
+                 collect `(put-octet (ldb (byte 8 ,p) 
+                                          ,(if (>= c 3) nnvar nvar))))))))
 
-;;
-(#-clisp define-compiler-macro #+clisp defmacro
-         marshal-number (&whole form n size buffer &optional (align size))
-  (if (numberp size)
-      (let ((nvar '#:nvar)
-            (nnvar '#:nnvar)
-            (bvar '#:bvar))
-        `(let* (,@(if (> size 3) 
-                      `((,nnvar ,n) 
-                        (,nvar (logand ,nnvar #16rffffff)))
-                      `((,nvar ,n)))
-                (,bvar ,buffer))
-          ,@(if (> size 3)
-                `((declare (type (integer 0 #16rFFFFFF) ,nvar))))
-          (marshal-align ,align ,bvar)
-          (marshal-octet (logand #16rff ,nvar) ,bvar)
-          ,@(loop for p from 8 by 8
-                  for c from 1 below size
-                  collect `(marshal-octet (ldb (byte 8 ,p) 
-                                           ,(if (>= c 3) nnvar nvar)) 
-                            ,bvar))))
-      form))
 
 (defun marshal-short (n buffer)
-  (declare (type (or CORBA:ushort CORBA:short) n)
+  (declare (type CORBA:short n)
            (optimize speed))
-  (marshal-number n 2 buffer))
+  (%marshal-number n 2 buffer))
 
 (defun marshal-ushort (n buffer)
   (declare (type (or CORBA:ushort CORBA:short) n)
            (optimize speed))
-  (marshal-number n 2 buffer))
+  (%marshal-number n 2 buffer))
 
 (defun marshal-ulong (n buffer)
   (declare (type CORBA:ulong n)
            (optimize speed))
-  (marshal-number n 4 buffer))
+  (%marshal-number n 4 buffer))
 
 (defun marshal-long (n buffer)
   (declare (type CORBA:long n)
            (optimize speed))
-  (marshal-number n 4 buffer))
+  (%marshal-number n 4 buffer))
+
+(defun marshal-longlong (arg buffer)
+  (%marshal-number arg 8 buffer))
+
+(defun marshal-ulonglong (arg buffer)
+  (%marshal-number arg 8 buffer))
+
+(defun marshal-char (char buffer)
+  (marshal-octet (char-code char) buffer))
 
 (defun float-as-ieee-integer (number sign-bit fraction-bits bias)
   (multiple-value-bind (frac expn sign)
@@ -97,12 +112,12 @@
                  buffer))
 
 (defun marshal-double (arg buffer)
-  (marshal-number (float-as-ieee-integer (coerce arg 'corba:double)
+  (%marshal-number (float-as-ieee-integer (coerce arg 'corba:double)
                                          63 52 1023)
                   8 buffer))
 
 (defun marshal-longdouble (arg buffer)
-  (marshal-number (float-as-ieee-integer (coerce arg 'corba:longdouble)
+  (%marshal-number (float-as-ieee-integer (coerce arg 'corba:longdouble)
                                          127 112 16383)
                   16 buffer 8))
 
@@ -153,15 +168,23 @@
 
 (defun marshal-string (s buffer)
   (marshal-ulong (1+ (length s)) buffer)
-  (loop for c across s
-        do (marshal-octet (char-code c) buffer))
-  (marshal-octet 0 buffer))
+  (with-out-buffer (buffer)
+    (loop for c across s
+          do (put-octet (char-code c)))
+    (put-octet 0)))
+
 
 (defun marshal-osequence (s buffer)
   (marshal-ulong (length s) buffer)
-  (if (stringp s)
-      (doseq (c s) (marshal-octet (char-code c) buffer))
-      (doseq (c s) (marshal-octet c buffer))))
+  (with-out-buffer (buffer)
+    (etypecase s
+      (string
+       (loop for c across s do (put-octet (char-code c))))
+      (vector
+       (loop for c across s do (put-octet c)))
+      (cons
+       (loop for c in s do (put-octet c))))))
+
 
 (defun marshal-sequence (s el-cdr buffer)
   (marshal-ulong (length s) buffer)
@@ -174,25 +197,25 @@
    (buffer-contents buffer)))
 
 (defun marshal-add-encapsulation (closure buffer)
-  (declare (optimize speed))
-  (marshal-align 4 buffer)
-  (let* ((octets (buffer-octets buffer))
-         (len-pos (fill-pointer octets))
-         (old-start-pos (buffer-start-pos buffer)))
-    (cond ((< (array-total-size octets)
-             (+ len-pos 50))
-           (adjust-array octets (+ len-pos 200)
-                         :fill-pointer (+ len-pos 4)))
-          (t
-           (incf (fill-pointer octets) 4)))
-    (setf (buffer-start-pos buffer) (fill-pointer octets))
-    (marshal-octet 1 buffer)            ;byte order
-    (funcall closure buffer)
-    (let ((pos (fill-pointer octets)))
-      (setf (fill-pointer octets) len-pos)
-      (marshal-ulong (- pos (buffer-start-pos buffer)) buffer)
-      (setf (fill-pointer octets) pos))
-    (setf (buffer-start-pos buffer) old-start-pos)))
+  ;;(declare (optimize speed))
+  (with-out-buffer (buffer)
+    (align 4)
+    (let ((len-pos pos)
+          (old-start-pos start-pos))
+      (cond ((< (array-total-size octets)
+                (+ len-pos 50))
+             (adjust-array octets (+ len-pos 200)
+                           :fill-pointer (+ len-pos 4)))
+            (t
+             (incf pos 4)))
+      (setf (buffer-start-pos buffer) pos)
+      (put-octet 1)            ;byte order
+      (funcall closure buffer)
+      (let ((save-pos pos))
+        (setf pos len-pos)
+        (marshal-ulong (- save-pos (buffer-start-pos buffer)) buffer)
+        (setf pos save-pos))
+      (setf (buffer-start-pos buffer) old-start-pos))))
 
 
 (defvar *marshal-typecode-record* nil)
@@ -201,20 +224,15 @@
 
 (defun marshal-typecode (tc buffer)
   (let ((recursive-typecode-pos
-         (loop for (rtc octets pos) on *marshal-typecode-record* by #'cdddr
-             thereis (and (eq tc rtc)
-                          (eq (buffer-octets buffer) octets)
-                          pos))))
+         (cdr (assoc tc *marshal-typecode-record*))))
     (cond
      (recursive-typecode-pos
-      (marshal-ulong #16rFFFFFFFF buffer)
-      (marshal-long (- recursive-typecode-pos
-                       (fill-pointer (buffer-octets buffer)))
+      (marshal-ulong #xFFFFFFFF buffer)
+      (marshal-long (- recursive-typecode-pos (buffer-pos buffer))
                     buffer))
      (t
       (let ((*marshal-typecode-record*
-             (list* tc (buffer-octets buffer)
-                    (fill-pointer (buffer-octets buffer))
+             (acons tc (buffer-pos buffer)
                     *marshal-typecode-record*))
             (kind (typecode-kind tc))
             (*typecode-params* (typecode-params tc)))
@@ -272,18 +290,7 @@
     (marshal-typecode tc buffer)
     (marshal (any-value arg) tc buffer)))
 
-(defun marshal-enum (arg enum-tc buffer)
-  (declare (optimize speed))
-  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
-  (let ((symbols (tc-keywords enum-tc)))
-    (marshal-ulong 
-     (if (integerp arg)
-         arg
-       (or (position arg symbols)
-           (error 'type-error 
-                  :datum arg 
-                  :expected-type (concatenate 'list '(member) symbols))))
-     buffer))) 
+ 
 
 
 
@@ -291,38 +298,26 @@
 (defgeneric marshal (arg tc buffer))
 
 (defmethod marshal (arg (type CORBA:TypeCode) buffer)
-  (let ((kind (typecode-kind type))
-        (params (typecode-params type)))
+  (let ((kind (typecode-kind type)))
     (ecase kind
       ((:tk_any) (marshal-any arg buffer))
       ((:tk_octet) (marshal-octet arg buffer))
-      ((:tk_char) (marshal-octet (char-code arg) buffer))
+      ((:tk_char) (marshal-char arg buffer))
       ((:tk_boolean) (marshal-bool arg buffer))
-      ((:tk_ushort :tk_short) (marshal-ushort arg buffer))
+      ((:tk_ushort) (marshal-ushort arg buffer))
+      ((:tk_short) (marshal-short arg buffer))
       ((:tk_ulong) (marshal-ulong arg buffer))
       ((:tk_long) (marshal-long arg buffer))
-      ((:tk_enum) (marshal-enum arg type buffer))
-      ((:tk_longlong :tk_ulonglong) (marshal-number arg 8 buffer))
+      ((:tk_longlong) (marshal-longlong arg buffer))
+      ((:tk_ulonglong) (marshal-ulonglong arg buffer))
       ((:tk_float) (marshal-float arg buffer))
       ((:tk_double) (marshal-double arg buffer))
       ((:tk_longdouble) (marshal-longdouble arg buffer))
       ((:tk_string) (marshal-string arg buffer))
-      ((:tk_objref object) (marshal-object arg buffer))
-      ((:tk_alias) (marshal arg (third params) buffer))
+      ((:tk_objref) (marshal-object arg buffer))
       ((:tk_typecode) (marshal-typecode arg buffer))
-      ((:tk_null))
-      ((:tk_sequence)
-       (let ((el_type (first params)))
-         (marshal-sequence
-          arg 
-          (lambda (arg buffer) (marshal arg el_type buffer)) 
-          buffer)))
-      ((:tk_array)
-       (let ((tc (first params))
-             (len (second params)))
-         (unless (= len (length arg))
-           (error 'CORBA:MARSHAL))
-         (doseq (el arg) (marshal el tc buffer)))))))
+      ((:tk_null)))))
+
 
 (defun marshal-multiple (values types buffer)
   (loop for val in values
@@ -333,10 +328,11 @@
 ;;;; GIOP extras
 
 (defun marshal-giop-set-message-length (buffer)
-  (let ((len (fill-pointer (buffer-octets buffer))))
-    (setf (fill-pointer (buffer-octets buffer)) 8)
-    (marshal-ulong (- len 12) buffer)
-    (setf (fill-pointer (buffer-octets buffer)) len)))
+  (with-out-buffer (buffer)
+    (let ((len pos))
+      (setf pos 8)
+      (marshal-ulong (- len 12) buffer)
+      (setf pos len))))
 
 
 (defun marshal-service-context (ctx buffer)
