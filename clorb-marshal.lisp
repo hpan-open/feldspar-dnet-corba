@@ -133,6 +133,7 @@
 
 
 (defun marshal-string (s buffer)
+  (check-type s string)
   (marshal-ulong (1+ (length s)) buffer)
   (with-out-buffer (buffer)
     (loop for c across s
@@ -203,7 +204,7 @@
                     *marshal-typecode-record*))
             (kind (typecode-kind tc))
             (*typecode-params* (typecode-params tc)))
-        (marshal-ulong (position kind TCKind) buffer)
+        (marshal-ulong (position kind (the vector TCKind)) buffer)
         (marshal-spec *typecode-params* (get kind 'tk-params) buffer))))))
 
 

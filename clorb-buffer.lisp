@@ -12,6 +12,7 @@
 
 
 (defvar *chunking-level* 0)
+(declaim (type fixnum *chunking-level*))
 
 (defvar *chunk-end* nil
   "Where current chunk is ending in the buffer. If nil, not in a chunk.")
@@ -147,7 +148,7 @@ In body:
                 `(progn
                    (when (and chunking-p
                               (or (null *chunk-end*)
-                                  (>= (buffer-in-pos buffer) *chunk-end*)))
+                                  (>= (buffer-in-pos buffer) (the fixnum *chunk-end*))))
                      (start-in-chunk buffer))
                    ,(unless (zerop n)
                       `(setf pos
@@ -159,8 +160,8 @@ In body:
              (multiple-value-prog1
                (progn ,@body)
                (when (and chunking-p *chunk-end*
-                          (>= (buffer-in-pos buffer) *chunk-end*))
-                 (assert (= *chunk-end* pos))
+                          (>= (buffer-in-pos buffer) (the fixnum *chunk-end*)))
+                 (assert (eql *chunk-end* pos))
                  (setq *chunk-end* nil)))))))))
 
 

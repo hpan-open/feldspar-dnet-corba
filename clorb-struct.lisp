@@ -162,6 +162,7 @@ of fields can be defaulted (numbers and strings)."
             (unmarshallers
              (loop for i from 0 below (op:member_count tc)
                    collect (unmarshal-function (op:member_type tc i)))))
+        (declare (simple-vector keys))
         (case (length keys)
           (2 (let ((k1 (elt keys 0))
                    (k2 (elt keys 1))

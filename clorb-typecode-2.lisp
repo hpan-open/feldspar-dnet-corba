@@ -323,6 +323,7 @@
   (declare (optimize speed))
   ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
   (let ((symbols (tc-keywords enum-tc)))
+    (declare (simple-vector symbols))
     (marshal-ulong 
      (if (integerp arg)
          arg
@@ -334,7 +335,7 @@
 
 (defmethod unmarshal ((tc enum-typecode) buffer)
   (let ((index (unmarshal-ulong buffer)))
-    (elt (tc-keywords tc) index)))
+    (svref (tc-keywords tc) index)))
 
 
 (defmethod compute-marshal-function ((tc enum-typecode))
