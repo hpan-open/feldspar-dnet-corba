@@ -58,12 +58,16 @@
 
 
 (defmacro define-user-exception (name &key id slots)
-  `(define-condition ,name (CORBA:UserException)
-    (,@slots
-     #+clisp (id :initform ,id))
-    #-clisp
-    (:default-initargs
-        :id ,id )))
+  `(progn
+     (define-condition ,name (CORBA:UserException)
+                       (,@slots
+                        #+clisp (id :initform ,id))
+       #-clisp
+       (:default-initargs
+         :id ,id ))
+     (defmethod userexception-values ((ex ,name))
+       (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
+                       slots)))) )
 
 (defun report-systemexception (exc stream)
   (format stream
