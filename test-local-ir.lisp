@@ -229,6 +229,9 @@
       (ensure (op:is_a obj "IDL:omg.org/CORBA/Object:1.0") "isa Object")
       (ensure (not (op:is_a obj id2)) "not yet isa base")
       (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
+      (ensure-exception 
+       (op:create_operation obj "IDL:my/a:1.0" "a" "1.0" a-string :op_normal nil nil nil)
+       corba:bad_param 'op:minor 3)
       (setf (op:base_interfaces obj) (list obj2))
       (ensure (op:is_a obj id2) "isa base")
       (ensure-pattern* 
@@ -250,7 +253,7 @@
       (op:create_attribute obj2 "IDL:my2/a:1.0" "a" "1.0" a-string :attr_normal)
       (ensure-exception 
        (setf (op:base_interfaces obj) (list obj2))
-       omg.org/corba:bad_param)))
+       corba:bad_param 'op:minor 5)))
   
 
 
@@ -339,4 +342,63 @@
 
     )
     
+
+
+  (define-test "ValueDef"
+    (let* ((name "val") (ver "1.0") (id "IDL:my/val:1.0")
+           (name2 "val2") (id2 "IDL:my/val2:1.0")
+           (init (list (CORBA:Initializer 
+                        :name "make-val"
+                        :members (list (CORBA:StructMember :name "name" :type_def a-string)
+                                       (CORBA:StructMember :name "size" :type_def a-ulong)))))
+           (val (op:create_value repository id name ver nil nil nil nil nil nil init))
+           (val2 (op:create_value repository id2 name2 ver nil nil val nil nil nil nil))
+           (vm1 (op:create_value_member val "IDL:my/val/a:1.0" "a" "1.0" a-ulong omg.org/corba:private_member))
+           (vm2 (op:create_value_member val2 "IDL:my/val/b:1.0" "b" "1.0" a-string omg.org/corba:public_member))
+           (a1  (op:create_attribute val "IDL:my/val/at:1.0" "at" ver a-string :attr_readonly))
+           (op1 (op:create_operation val "IDL:my/val/op1:1.0" "op1" ver a-ulong :op_normal nil nil nil)))
+      (ensure-repository 
+       "val" (def-pattern :dk_value  'identity val
+               'op:id id 'op:name name 'op:version ver
+               'op:is_abstract nil 'op:is_custom nil 'op:is_truncatable nil
+               'op:supported_interfaces (sequence-pattern)
+               'op:initializers (sequence-pattern (struct-pattern 'op:name "make-val"
+                                                                  'op:members (sequence-pattern
+                                                                               (struct-pattern 'op:name "name")
+                                                                               (struct-pattern 'op:name "size"))))
+               'op:base_value nil
+               'op:abstract_base_values (sequence-pattern)
+               'op:describe_value (struct-pattern
+                                   'struct-class-name 'CORBA:ValueDef/FullValueDescription
+                                   'op:id id 'op:name name 'op:version ver
+                                   'op:is_abstract nil 'op:is_custom nil 'op:is_truncatable nil
+                                   'op:operations (sequence-pattern
+                                                   (struct-pattern 'op:name "op1"))
+                                   'op:initializers (sequence-pattern (car init)))
+               'op:describe (pattern
+                             'op:value (struct-pattern
+                                        'struct-class-name 'CORBA:ValueDescription
+                                        'op:id id 'op:name name 'op:version ver
+                                        'op:is_abstract nil 'op:is_custom nil 'op:is_truncatable nil )))
+       
+       "val2" (def-pattern :dk_value 'identity val2
+                'op:supported_interfaces (sequence-pattern)
+                'op:base_value val))
+      (ensure-pattern
+       (op:contents val :dk_attribute nil)
+       (sequence-pattern a1))
+      (ensure-pattern
+       (op:contents val :dk_valuemember nil)
+       (sequence-pattern vm1))
+      (ensure-pattern
+       (op:contents val2 :dk_valuemember t)
+       (sequence-pattern vm2))
+      (ensure-pattern
+       (op:contents val2 :dk_valuemember nil)
+       (sequence-pattern vm1 vm2))
+      (ensure-pattern
+       (op:contents val2 :dk_operation nil)
+       (sequence-pattern op1))))
+
+
 )
