@@ -205,7 +205,7 @@
 
 ;;;; Run the system cpp command
 
-;; FIXME: add support for include directories and defines
+;; FIXME: add support for defines
 
 (defun cpp-command-string (file include-directories)
   (format nil "cpp~{ -I'~A'~} '~A'"
