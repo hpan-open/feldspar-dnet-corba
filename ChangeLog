@@ -1,3 +1,10 @@
+2004-09-17  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-poa.lisp: use new object-map class for Active Object Map
+	in POA. Updated all uses.
+
+	* clorb-files.lisp (*server-files*): new file: clorb-aom
+
 2004-09-16  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-objkey.lisp (to-object-id): new method for general sequence
