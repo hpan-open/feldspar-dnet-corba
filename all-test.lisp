@@ -3,10 +3,9 @@
 (let ((*test-suite-result* (make-instance 'test-result
                              :parent nil
                              :suite "All Tests"))) 
-  (loop for pn in (directory (or #+(or allegro clisp openmcl cmu sbcl) "test-*.lisp"
-                                 "CLORB:SRC;test-*.lisp"))
+  (loop for pn in (directory (merge-pathnames "test-*.lisp" *load-pathname*))
         unless (string= "test-suite" (pathname-name pn))
-        do (format t "~&;;;; ~A~%" (pathname-name pn))
+        do (format t "~&;;;;<< ~A~%" (namestring pn))
         (load pn))
   (format t "~&;;; ==================================================~%" )
   (print-result *test-suite-result*))
