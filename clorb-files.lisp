@@ -1,4 +1,10 @@
-(in-package :clorb)
+;;;-*- Mode: Lisp; Package: (NET.CDDR.CLORB.SYSTEM) -*-
+
+(defpackage "NET.CDDR.CLORB.SYSTEM"
+  (:use "COMMON-LISP")
+  (:export "RELOAD"))
+
+(in-package "NET.CDDR.CLORB.SYSTEM")
 
 (defparameter *base-files*
   '(("clorb-pkgdcl")
@@ -40,14 +46,16 @@
     "clorb-poa"
     "clorb-srv"))
 
-
-(defparameter *x-files*
+(defparameter *dev-pre-files*
   '("luna;package"
     "luna;testsuite"
-    "luna;pattern"
-    "setup-test"
-    "support-test"
-    ;; Experimental
+    "luna;pattern"))
+
+(defparameter *dev-post-files*
+  '("support-test"))
+
+(defparameter *x-files*
+  '(;; Experimental
     "internalize"
     "idef-read"
     "idef-write"
@@ -70,10 +78,11 @@
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
-(defvar *clorb-pathname-defaults* *load-pathname*)
+(defvar *source-pathname-defaults* *load-pathname*)
 
 
 (defun dir-split (base)
+  (declare (string base))
   (let ((dir-pos (position #\; base)))
     (if dir-pos
       (cons (subseq base 0 dir-pos)
@@ -90,7 +99,7 @@
               (dir (nbutlast names))
               (sf (make-pathname :name name :type "lisp"
                                  :directory (if dir (cons :relative dir))
-                                 :defaults *clorb-pathname-defaults*))
+                                 :defaults *source-pathname-defaults*))
               (cf (compile-file-pathname sf)))
          
          (when (or (not (probe-file cf))
@@ -118,9 +127,11 @@
 
 
 (defun reload ()
-  (compile-changed (append *base-files*
+  (compile-changed (append #+clorb-dev *dev-pre-files*
+                           *base-files*
                            *server-files*
                            *x-files*
+                           #+clorb-dev *dev-post-files*
                            #-no-idlcomp *idlcomp*
                            #+use-my-idlparser *my-idlparser* )))
 
