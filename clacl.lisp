@@ -1,6 +1,10 @@
 
 (in-package :cl-user)
 
+(setf (logical-pathname-translations "clorb")
+  '(("SRC;*.*"  "/home/lenst/src/clorb/*.*")
+    ("*.*"      "CLORB:SRC;*.*" )))
+
 (load "clorb-pkgdcl")
 
 (import '(setup-pns hello-client setup-hello run-hello run)
