@@ -22,13 +22,13 @@
 (defconstant iop:transactionservice (quote 0))
 
 (DEFINE-ALIAS IOP:SERVICECONTEXTLIST
- :id "IDL:IOP/ServiceContextList:1.0"
+ :id "IDL:omg.org/IOP/ServiceContextList:1.0"
  :name "ServiceContextList"
  :type SEQUENCE
  :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:SERVICECONTEXT)))
 
 (DEFINE-STRUCT IOP:SERVICECONTEXT
- :id "IDL:IOP/ServiceContext:1.0"
+ :id "IDL:omg.org/IOP/ServiceContext:1.0"
  :name "ServiceContext"
  :members (("context_id" (SYMBOL-TYPECODE 'IOP:SERVICEID) CONTEXT_ID)
            ("context_data" (create-sequence-tc 0 CORBA:TC_OCTET)
@@ -42,7 +42,7 @@
          (MARSHAL-OSEQUENCE (op:CONTEXT_DATA OBJ) BUFFER)))
 
 (DEFINE-ALIAS IOP:SERVICEID
- :id "IDL:IOP/ServiceId:1.0"
+ :id "IDL:omg.org/IOP/ServiceId:1.0"
  :name "ServiceId"
  :type CORBA:ULONG
  :typecode CORBA:TC_ULONG)
@@ -92,74 +92,72 @@
 (defconstant iop:tag_orb_type (quote 0))
 
 (DEFINE-ALIAS IOP:MULTIPLECOMPONENTPROFILE
- :id "IDL:IOP/MultipleComponentProfile:1.0"
+ :id "IDL:omg.org/IOP/MultipleComponentProfile:1.0"
  :name "MultipleComponentProfile"
  :type SEQUENCE
  :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDCOMPONENT)))
 
 (DEFINE-STRUCT IOP:TAGGEDCOMPONENT
- :id "IDL:IOP/TaggedComponent:1.0"
+ :ID "IDL:omg.org/IOP/TaggedComponent:1.0"
  :name "TaggedComponent"
- :members (("tag" (SYMBOL-TYPECODE 'IOP:COMPONENTID) TAG)
-           ("component_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
-            COMPONENT_DATA))
- :read ((BUFFER)
-        (IOP:TAGGEDCOMPONENT
-          :tag (UNMARSHAL-ULONG BUFFER)
-          :component_data (UNMARSHAL-OSEQUENCE BUFFER)))
- :write ((OBJ BUFFER)
-         (MARSHAL-ULONG (OMG.ORG/FEATURES:TAG OBJ) BUFFER)
-         (MARSHAL-OSEQUENCE (OMG.ORG/FEATURES:COMPONENT_DATA OBJ) BUFFER)))
+ :members (("tag" (SYMBOL-TYPECODE 'IOP:COMPONENTID))
+           ("component_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))))
 
 (DEFINE-ALIAS IOP:COMPONENTID
- :id "IDL:IOP/ComponentId:1.0"
+ :id "IDL:omg.org/IOP/ComponentId:1.0"
  :name "ComponentId"
  :type OMG.ORG/CORBA:ULONG
  :typecode OMG.ORG/CORBA:TC_ULONG)
 
+
+(DEFCONSTANT OMG.ORG/IOP:TAG_ORB_TYPE (QUOTE 0))
+(DEFCONSTANT OMG.ORG/IOP:TAG_CODE_SETS (QUOTE 1))
+(DEFCONSTANT OMG.ORG/IOP:TAG_POLICIES (QUOTE 2))
+(DEFCONSTANT OMG.ORG/IOP:TAG_ALTERNATE_IIOP_ADDRESS (QUOTE 3))
+(DEFCONSTANT OMG.ORG/IOP:TAG_ASSOCIATION_OPTIONS (QUOTE 13))
+(DEFCONSTANT OMG.ORG/IOP:TAG_SEC_NAME (QUOTE 14))
+(DEFCONSTANT OMG.ORG/IOP:TAG_SPKM_1_SEC_MECH (QUOTE 15))
+(DEFCONSTANT OMG.ORG/IOP:TAG_SPKM_2_SEC_MECH (QUOTE 16))
+(DEFCONSTANT OMG.ORG/IOP:TAG_KERBEROSV5_SEC_MECH (QUOTE 17))
+(DEFCONSTANT OMG.ORG/IOP:TAG_CSI_ECMA_SECRET_SEC_MECH (QUOTE 18))
+(DEFCONSTANT OMG.ORG/IOP:TAG_CSI_ECMA_HYBRID_SEC_MECH (QUOTE 19))
+(DEFCONSTANT OMG.ORG/IOP:TAG_SSL_SEC_TRANS (QUOTE 20))
+(DEFCONSTANT OMG.ORG/IOP:TAG_CSI_ECMA_PUBLIC_SEC_MECH (QUOTE 21))
+(DEFCONSTANT OMG.ORG/IOP:TAG_GENERIC_SEC_MECH (QUOTE 22))
+(DEFCONSTANT OMG.ORG/IOP:TAG_JAVA_CODEBASE (QUOTE 25))
+(DEFCONSTANT OMG.ORG/IOP:TAG_COMPLETE_OBJECT_KEY (QUOTE 5))
+(DEFCONSTANT OMG.ORG/IOP:TAG_ENDPOINT_ID_POSITION (QUOTE 6))
+(DEFCONSTANT OMG.ORG/IOP:TAG_LOCATION_POLICY (QUOTE 12))
+(DEFCONSTANT OMG.ORG/IOP:TAG_DCE_STRING_BINDING (QUOTE 100))
+(DEFCONSTANT OMG.ORG/IOP:TAG_DCE_BINDING_NAME (QUOTE 101))
+(DEFCONSTANT OMG.ORG/IOP:TAG_DCE_NO_PIPES (QUOTE 102))
+(DEFCONSTANT OMG.ORG/IOP:TAG_DCE_SEC_MECH (QUOTE 103))
+(DEFCONSTANT OMG.ORG/IOP:TAG_FT_GROUP (QUOTE 27))
+
+
 (DEFINE-STRUCT IOP:IOR
- :id "IDL:IOP/IOR:1.0"
+ :id "IDL:omg.org/IOP/IOR:1.0"
  :name "IOR"
- :members (("type_id" OMG.ORG/CORBA:TC_STRING TYPE_ID)
+ :members (("type_id" OMG.ORG/CORBA:TC_STRING)
            ("profiles"
-            (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDPROFILE))
-            PROFILES))
- :read ((BUFFER)
-        (IOP:IOR 
-         :type_id (UNMARSHAL-STRING BUFFER)
-         :profiles (UNMARSHAL-SEQUENCE
-                    (lambda (buffer) (STRUCT-READ 'IOP:TAGGEDPROFILE BUFFER))
-                    BUFFER)))
- :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:TYPE_ID OBJ) BUFFER)
-         (MARSHAL-SEQUENCE
-           (OMG.ORG/FEATURES:PROFILES OBJ)
-           (lambda (obj buffer) (STRUCT-WRITE OBJ 'IOP:TAGGEDPROFILE BUFFER))
-           BUFFER)))
+            (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDPROFILE)))))
 
 (DEFINE-STRUCT IOP:TAGGEDPROFILE
- :id "IDL:IOP/TaggedProfile:1.0"
+ :id "IDL:omg.org/IOP/TaggedProfile:1.0"
  :name "TaggedProfile"
- :members (("tag" (SYMBOL-TYPECODE 'IOP:PROFILEID) TAG)
-           ("profile_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
-            PROFILE_DATA))
- :read ((BUFFER)
-        (IOP:TAGGEDPROFILE
-          :tag (UNMARSHAL-ULONG BUFFER)
-          :profile_data (UNMARSHAL-OSEQUENCE BUFFER)))
- :write ((OBJ BUFFER) (MARSHAL-ULONG (OMG.ORG/FEATURES:TAG OBJ) BUFFER)
-         (MARSHAL-OSEQUENCE (OMG.ORG/FEATURES:PROFILE_DATA OBJ) BUFFER)))
+ :members (("tag" (SYMBOL-TYPECODE 'IOP:PROFILEID))
+           ("profile_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))))
 
-(defconstant iop:tag_multiple_components (quote 1))
 
 (defconstant iop:tag_internet_iop (quote 0))
+(defconstant iop:tag_multiple_components (quote 1))
+
 
 (DEFINE-ALIAS IOP:PROFILEID
- :id "IDL:IOP/ProfileId:1.0"
+ :id "IDL:omg.org/IOP/ProfileId:1.0"
  :name "ProfileId"
  :type OMG.ORG/CORBA:ULONG
  :typecode OMG.ORG/CORBA:TC_ULONG)
-
-
 
 
 (DEFINE-ALIAS IOP:ENCODINGFORMAT
