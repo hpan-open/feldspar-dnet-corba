@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.14 2005/02/07 18:38:35 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.15 2005/02/15 21:11:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -480,6 +480,17 @@
                       (lambda (req buffer) (declare (ignore req buffer)))
                       nil))))
 
+
+;;;; Object stubs
+
+
+(define-method _non_existent ((obj CORBA:Proxy))
+  (%jit-call CORBA::Object/_non_existent obj))
+
+
+(define-method _is_a ((obj CORBA:Proxy) interface-id)
+  (or (object-is-a obj interface-id)
+      (%jit-call CORBA::Object/_is_a obj interface-id)))
 
 
 ;;; clorb-request.lisp ends here
