@@ -5,7 +5,7 @@
 (defun marshal-octet (n buffer)
   (declare (type buffer buffer)
            (optimize (speed 3) (debug 0)))
-  (vector-push-extend n (buffer-octets buffer) 200))
+  (vector-push-extend n (buffer-octets buffer) 400))
 
 (defun marshal-bool (s buffer)
   (marshal-octet (if s 1 0) buffer))
@@ -24,6 +24,7 @@
         (declare (type (integer 0 8) x))
         (vector-push-extend 0 octets) ))))
 
+#-clisp
 (defun marshal-number (n size buffer)
   (declare (fixnum size)
            (integer n)
@@ -33,8 +34,9 @@
 	for c fixnum below size
 	do (marshal-octet (ldb (byte 8 p) n) buffer)))
 
-;;#-clisp
-(define-compiler-macro marshal-number (&whole form n size buffer)
+;;
+(#-clisp define-compiler-macro #+clisp defmacro
+         marshal-number (&whole form n size buffer)
   (if (numberp size)
       (let ((nvar '#:nvar)
             (nnvar '#:nnvar)
@@ -72,7 +74,8 @@
 
 (defun marshal-string (s buffer)
   (marshal-ulong (1+ (length s)) buffer)
-  (doseq (c s) (marshal-octet (char-code c) buffer))
+  (loop for c across s
+        do (marshal-octet (char-code c) buffer))
   (marshal-octet 0 buffer))
 
 (defun marshal-osequence (s buffer)
@@ -151,7 +154,16 @@
   (marshal-osequence (cdr component) buffer))
 
 
-(defmethod marshal-ior ((objref object) buffer)
+(defparameter *nil-objref*
+  (make-instance 'CORBA:Proxy :id "" :profiles '() :key nil))
+
+(defun marshal-ior (objref buffer)
+  (declare (optimize speed))
+  (cond
+    ((null objref) (setq objref *nil-objref*))
+    ((not (typep objref 'CORBA:Proxy))
+     ;; Implicit activation is implemented by this
+     (setq objref (op:_this objref))))
   (unless (object-profiles objref)
     (when (object-key objref)
       (setf (object-profiles objref)
@@ -162,6 +174,8 @@
                   (mess 1 "in closure, objref: ~S" objref)
                   (marshal-octet 1 buffer) ;Version
                   (marshal-octet 0 buffer)
+                  ;; FIXME: should use the ORB values for host/port
+                  ;; how to get ORB reference?
                   (marshal-string (or (object-host objref) *host*) buffer)
                   (marshal-ushort (or (object-port objref) *port*) buffer)
                   (marshal-osequence (object-key objref) buffer))))))))
@@ -169,9 +183,7 @@
   (marshal-sequence (object-profiles objref)
                     #'marshal-tagged-component buffer))
 
-(defmethod marshal-ior ((objref null) buffer)
-  (marshal-string "" buffer)
-  (marshal-ulong 0 buffer))
+
 
 (defun marshal-write-union (union params buffer)
   (let* ((discriminant (union-discriminator union))
