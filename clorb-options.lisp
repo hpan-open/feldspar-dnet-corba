@@ -8,6 +8,13 @@ If nil, use default.")
   "The port to listen to.
 If nil, let implementation choose a port.")
 
+(defvar *clorb-pathname-defaults*
+  (make-pathname :name nil :type nil :version nil
+                 :defaults (or *compile-file-pathname*
+                               *load-pathname*
+                               #+(and MCL (not OpenMCL)) (pathname (ccl:front-window)))))
+
+
 (defvar *default-include-directories*
   (list (make-pathname :directory '(:relative "idl")
                        :name nil :type nil
