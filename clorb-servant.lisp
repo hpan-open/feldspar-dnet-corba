@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.17 2004/06/09 21:14:44 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.18 2004/12/19 23:33:10 lenst Exp $
 
 (in-package :clorb)
 
@@ -57,6 +57,8 @@
 ;; - :wait  -- not yet started executing servant code
 ;; - :exec  -- executing
 ;; - :finished -- response sent (if any)
+;; - :canceled -- request canceled, before it started executing
+;; FIXME: should there be something between :exec and :finished ?
 
 
 (defmethod create-server-request ((orb clorb-orb) &rest initargs)
