@@ -16,24 +16,23 @@
 (load "CLORB:SRC;CLORB-FILES")
 (net.cddr.clorb.system:reload)
 
-(setq clorb:*port*  4711)
 
 (ignore-errors
  (setq clorb:*host*
-       (ccl::tcp-addr-to-str (ccl::local-interface-ip-address))))
+       (let ((local-ip (ccl::local-interface-ip-address)))
+         (if (zerop local-ip)
+           "localhost"
+           (ccl::tcp-addr-to-str local-ip)))))
 
 (setq net.cddr.clorb.persistent-naming:*naming-base-path*
   (make-pathname :directory '(:relative "naming")
                  :name "foo"
                  :type "obj"))
 
-(setq net.cddr.clorb.persistent-naming:*naming-ior-file*
-      #P"ccl:NameService")
-
-(setq clorb::*name-service*
-      (clorb:pathname-url net.cddr.clorb.persistent-naming:*naming-ior-file*))
+(setq net.cddr.clorb.persistent-naming:*naming-ior-file* nil)
 
 (ensure-directories-exist persistent-naming:*naming-base-path* :verbose t)
+
 
 #|
 (unless (find-class 'log-window nil)
@@ -43,7 +42,13 @@
         (make-instance 'log-window :window-title "Log")))
 |#
 
-(defvar *orb* (CORBA:ORB_init))
+(defvar *orb*
+  (CORBA:ORB_init
+   (list "-ORBPort" "4711"
+         "-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         #| "-ORBInitRef" "InterfaceRepository=" |#)))
+
+
 (format t "~&;;; Activating the POA~%")
 (progn 'ignore-errors
  (op:activate (op:the_poamanager (clorb::root-poa))))
@@ -51,25 +56,15 @@
 (net.cddr.clorb.persistent-naming:setup-pns)
 
 
-(defun pentax-get (name)
-  (clorb::http-get-ior "pentax.cddr.net" 80 name ))
+
 
 (defun use-pentax-ifr ()
-  (let ((ior (pentax-get "InterfaceRepository")))
-    (when ior
-      (setq clorb::*interface-repository* ior)
-      (clorb::set-initial-reference *orb* "InterfaceRepository" ior))))
+  (clorb::set-initial-reference *orb* "InterfaceRepository" 
+                                "http://10.0.1.251/InterfaceRepository"))
 
 (defun use-pentax-ns ()
-  (let ((ior (pentax-get "NameService")))
-    (when ior 
-      (clorb::set-initial-reference *orb* "NameService" ior))))
-
-#+pentax-has-ifr
-(use-pentax-ifr)
-
-#+pentax-has-ifr
-(use-pentax-ns)
+  (clorb::set-initial-reference *orb* "NameService" 
+                                "http://10.0.1.251/NameService"))
 
 
 
@@ -77,32 +72,10 @@
   (persistent-naming:setup-pns)
   ;; Exporting the name service as a corbaloc boot object
   (setf (gethash "NameService" clorb::*boot-objects*)
-        (clorb::get-ns))
+        net.cddr.clorb.persistent-naming::*root-context*)
   (op:run *orb*))
 
 
-;; 
-
-(defun vsns-get (name &key stringified)
-  (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
-    (ccl::telnet-write-line s name)
-    (let ((ior (read-line s)))
-      (clorb::mess 2 "vsns IOR: ~A" ior)
-      (when (and (stringp ior)
-                 (clorb::string-starts-with ior "IOR:"))
-        (setq ior (string-trim #.(vector #\Linefeed #\Return #\Space) ior))
-        (if stringified
-          ior
-          (op:string_to_object *orb* ior))))))
-
-#+t2-has-ifr
-(let ((ior (vsns-get "InterfaceRepository" :stringified t)))
-  (when ior
-    (setq clorb::*interface-repository* ior)
-    (clorb::set-initial-reference *orb* "InterfaceRepository" ior) ))
-
-(export 'vsns-get)
-(import 'vsns-get "CLORB")
 
 (setq clorb::*log-level* 3)
 

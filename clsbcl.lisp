@@ -6,22 +6,28 @@
 
 (pushnew :clorb-dev *features*)
 
-(let ((clorb-home #p"home:src;clorb;")
-      (clorb-fasl #p"home:src;clorb;fasl;"))
+(let* ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname)))
+       (clorb-fasl (merge-pathnames "fasl/" clorb-home)))
   (ensure-directories-exist clorb-fasl)
   (setf (logical-pathname-translations "CLORB")
-        `(("SRC;**;*.fasl" ,(merge-pathnames ";**;*.*" clorb-fasl))
-          ("SRC;**;*.*"  ,(merge-pathnames ";**;*.*" clorb-home))
-          ("**;*.*"      "CLORB:SRC;**;*.*" ))))
+        `(("SRC;**;*.fasl" ,(merge-pathnames "**/*.fasl" clorb-fasl))
+          ("SRC;**;*.*"    ,(merge-pathnames "**/*.*" clorb-home))
+          ("**;*.*"        "CLORB:SRC;**;*.*" ))))
+
 
 (load "clorb:src;clorb-files")
+;;(setq net.cddr.clorb.system:*source-pathname-defaults* (pathname "clorb:src;"))
 (net.cddr.clorb.system:reload)
 
 ;;(clorb::load-ir)
 
 (load "clorb:src;examples;hello;auto")
 
-(defvar *orb* (CORBA:ORB_init))
+(defvar *orb* 
+  (CORBA:ORB_init
+   (list ;;"-ORBPort" "4712"
+         "-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         #| "-ORBInitRef" "InterfaceRepository=" |#)))
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
 (format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port clorb::*the-orb*))
