@@ -16,7 +16,9 @@
   (if (find-package "EXT")
       (pushnew :clisp-ext *features*))
   #+clisp
-  (pushnew :clisp-new-socket-status *features*))
+  (pushnew :clisp-new-socket-status *features*)
+  #+openmcl
+  (pushnew :use-acl-socket *features*))
 
 
 ;;; The :sockets (db-sockets) library can be used in CMUCL or SBCL:
@@ -40,10 +42,10 @@
 
 ;;;; TCP/IP sockets implementation glue
 
-#+mcl 
+#+(and mcl (not openmcl))
 (require "OPENTRANSPORT")
 
-#+mcl
+#+(and mcl (not openmcl))
 (defclass mcl-listner-socket ()
   ((port :initarg :port :accessor mcl-listener-port)
    (stream :initform nil :accessor listener-stream)))
@@ -471,7 +473,7 @@ Returns select result to be used in getting status for streams."
      (force-output stream)
      count)
 
-   #+mcl
+   #+(and mcl (not openmcl))
    (progn
      (loop for i from start below end
          do (write-byte (aref seq i) stream))
