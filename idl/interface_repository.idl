@@ -4,11 +4,11 @@
 
 module CORBA {
 
-	
+
   typedef string Identifier;
   typedef string ScopedName;
   typedef string RepositoryId;
-	
+
   enum DefinitionKind {
     dk_none, dk_all, dk_Attribute, dk_Constant, dk_Exception,
     dk_Interface, dk_Module, dk_Operation, dk_Typedef, dk_Alias,
@@ -17,39 +17,39 @@ module CORBA {
     dk_Value, dk_ValueBox, dk_ValueMember,
     dk_Native, dk_AbstractInterface, dk_LocalInterface
   };
-	
+
   interface IRObject {
     // read interface
     readonly attribute DefinitionKind def_kind;
-		
+
     // write interface
     void destroy ();
   };
-	
+
   typedef string VersionSpec;
-	
+
   interface Contained;
   interface Repository;
   interface Container;
-	
+
   interface Contained : IRObject {
     // read/write interface
     attribute RepositoryId id;
     attribute Identifier name;
     attribute VersionSpec version;
-		
+
     // read interface
     readonly attribute Container defined_in;
     readonly attribute ScopedName absolute_name;
     readonly attribute Repository containing_repository;
-		
+
     struct Description {
       DefinitionKind kind;
       any value;
     };
-		
+
     Description describe ();
-		
+
     // write interface
     void move(
               in Container new_container,
@@ -57,7 +57,7 @@ module CORBA {
               in VersionSpec new_version
               );
   };
-	
+
   interface ModuleDef;
   interface ConstantDef;
   interface IDLType;
@@ -68,46 +68,46 @@ module CORBA {
   interface InterfaceDef;
   interface ExceptionDef;
   interface NativeDef;
-	
+
   typedef sequence <InterfaceDef> InterfaceDefSeq;
-	
+
   interface ValueDef;
   typedef sequence <ValueDef> ValueDefSeq;
-	
+
   interface ValueBoxDef;
   interface AbstractInterfaceDef;
   typedef sequence <AbstractInterfaceDef> AbstractInterfaceDefSeq;
-	
+
   interface LocalInterfaceDef;
   typedef sequence <LocalInterfaceDef> LocalInterfaceDefSeq;
-	
+
   typedef sequence <Contained> ContainedSeq;
-	
+
   struct StructMember {
     Identifier name;
     TypeCode type;
     IDLType type_def;
   };
-	
+
   typedef sequence <StructMember> StructMemberSeq;
-	
+
   struct Initializer {
     StructMemberSeq members;
     Identifier name;
   };
-	
+
   typedef sequence <Initializer> InitializerSeq;
-	
+
   struct UnionMember {
     Identifier name;
     any label;
     TypeCode type;
     IDLType type_def;
   };
-	
+
   typedef sequence <UnionMember> UnionMemberSeq;
   typedef sequence <Identifier> EnumMemberSeq;
-	
+
   interface Container : IRObject {
     // read interface
     Contained lookup(in ScopedName search_name);
@@ -121,28 +121,28 @@ module CORBA {
                              in DefinitionKind limit_type,
                              in boolean exclude_inherited
                              );
-		
+
     struct Description {
       Contained contained_object;
       DefinitionKind kind;
       any value;
     };
-		
+
     typedef sequence<Description> DescriptionSeq;
-		
+
     DescriptionSeq describe_contents(
                                      in DefinitionKind limit_type,
                                      in boolean exclude_inherited,
                                      in long max_returned_objs
                                      );
-		
+
     // write interface
     ModuleDef create_module(
                             in RepositoryId id,
                             in Identifier name,
                             in VersionSpec version
                             );
-		
+
     ConstantDef create_constant(
                                 in RepositoryId id,
                                 in Identifier name,
@@ -150,14 +150,14 @@ module CORBA {
                                 in IDLType type,
                                 in any value
                                 );
-		
+
     StructDef create_struct(
                             in RepositoryId id,
                             in Identifier name,
                             in VersionSpec version,
                             in StructMemberSeq members
                             );
-		
+
     UnionDef create_union(
                           in RepositoryId id,
                           in Identifier name,
@@ -165,28 +165,28 @@ module CORBA {
                           in IDLType discriminator_type,
                           in UnionMemberSeq members
                           );
-		
+
     EnumDef create_enum(
 			in RepositoryId id,
 			in Identifier name,
 			in VersionSpec version,
 			in EnumMemberSeq members
                         );
-		
+
     AliasDef create_alias(
                           in RepositoryId id,
                           in Identifier name,
                           in VersionSpec version,
                           in IDLType original_type
                           );
-		
+
     InterfaceDef create_interface(
                                   in RepositoryId id,
                                   in Identifier name,
                                   in VersionSpec version,
                                   in InterfaceDefSeq base_interfaces
                                   );
-		
+
     ValueDef create_value(
                           in RepositoryId id,
                           in Identifier name,
@@ -199,34 +199,34 @@ module CORBA {
                           in InterfaceDefSeq supported_interfaces,
                           in InitializerSeq initializers
                           );
-		
+
     ValueBoxDef create_value_box(
                                  in RepositoryId id,
                                  in Identifier name,
                                  in VersionSpec version,
                                  in IDLType original_type_def
                                  );
-		
+
     ExceptionDef create_exception(
                                   in RepositoryId id,
                                   in Identifier name,
                                   in VersionSpec version,
                                   in StructMemberSeq members
                                   );
-		
+
     NativeDef create_native(
                             in RepositoryId id,
                             in Identifier name,
                             in VersionSpec version
                             );
-		
+
     AbstractInterfaceDef create_abstract_interface(
                                                    in RepositoryId id,
                                                    in Identifier name,
                                                    in VersionSpec version,
                                                    in AbstractInterfaceDefSeq base_interfaces
                                                    );
-		
+
     LocalInterfaceDef create_local_interface(
                                              in RepositoryId id,
                                              in Identifier name,
@@ -234,32 +234,32 @@ module CORBA {
                                              in InterfaceDefSeq base_interfaces
                                              );
   };
-	
+
   interface IDLType : IRObject {
     readonly attribute TypeCode type;
   };
-	
+
   interface PrimitiveDef;
   interface StringDef;
   interface SequenceDef;
   interface ArrayDef;
   interface WstringDef;
   interface FixedDef;
-	
+
   enum PrimitiveKind {
     pk_null, pk_void, pk_short, pk_long, pk_ushort, pk_ulong, pk_float,
     pk_double, pk_boolean, pk_char, pk_octet, pk_any, pk_TypeCode,
     pk_Principal, pk_string, pk_objref, pk_longlong, pk_ulonglong,
     pk_longdouble, pk_wchar, pk_wstring, pk_value_base
   };
-	
+
   interface Repository : Container {
-		
+
     // read interface
     Contained lookup_id(in RepositoryId search_id);
     TypeCode get_canonical_typecode(in TypeCode tc);
     PrimitiveDef get_primitive (in PrimitiveKind kind);
-		
+
     // write interface
     StringDef create_string (in unsigned long bound);
     WstringDef create_wstring (in unsigned long bound);
@@ -271,27 +271,27 @@ module CORBA {
                           in unsigned long length,
                           in IDLType element_type
                           );
-		
+
     FixedDef create_fixed(
                           in unsigned short digits,
                           in short scale);
   };
-	
+
   interface ModuleDef : Container, Contained { };
-	
+
   struct ModuleDescription {
     Identifier name;
     RepositoryId id;
     RepositoryId defined_in;
     VersionSpec version;
   };
-	
+
   interface ConstantDef : Contained {
     readonly attribute TypeCode type;
     attribute IDLType type_def;
     attribute any value;
   };
-	
+
   struct ConstantDescription {
     Identifier name;
     RepositoryId id;
@@ -300,9 +300,9 @@ module CORBA {
     TypeCode type;
     any value;
   };
-	
+
   interface TypedefDef : Contained, IDLType { };
-	
+
   struct TypeDescription {
     Identifier name;
     RepositoryId id;
@@ -310,61 +310,61 @@ module CORBA {
     VersionSpec version;
     TypeCode type;
   };
-	
+
   interface StructDef : TypedefDef, Container {
     attribute StructMemberSeq members;
   };
-	
+
   interface UnionDef : TypedefDef, Container {
     readonly attribute TypeCode discriminator_type;
     attribute IDLType discriminator_type_def;
     attribute UnionMemberSeq members;
   };
-	
+
   interface EnumDef : TypedefDef {
     attribute EnumMemberSeq members;
   };
-	
+
   interface AliasDef : TypedefDef {
     attribute IDLType original_type_def;
   };
-	
+
   interface NativeDef : TypedefDef { };
-	
+
   interface PrimitiveDef: IDLType {
     readonly attribute PrimitiveKind kind;
   };
-	
+
   interface StringDef : IDLType {
     attribute unsigned long bound;
   };
-	
+
   interface WstringDef : IDLType {
     attribute unsigned long bound;
   };
-	
+
   interface FixedDef : IDLType {
     attribute unsigned short digits;
     attribute short scale;
   };
-	
+
   interface SequenceDef : IDLType {
     attribute unsigned long bound;
     readonly attribute TypeCode element_type;
     attribute IDLType element_type_def;
   };
-	
+
   interface ArrayDef : IDLType {
     attribute unsigned long length;
     readonly attribute TypeCode element_type;
     attribute IDLType element_type_def;
   };
-	
+
   interface ExceptionDef : Contained, Container {
     readonly attribute TypeCode type;
     attribute StructMemberSeq members;
   };
-	
+
   struct ExceptionDescription {
     Identifier name;
     RepositoryId id;
@@ -372,18 +372,18 @@ module CORBA {
     VersionSpec version;
     TypeCode type;
   };
-	
+
   enum AttributeMode {
     ATTR_NORMAL,
     ATTR_READONLY
   };
-	
+
   interface AttributeDef : Contained {
     readonly attribute TypeCode type;
     attribute IDLType type_def;
     attribute AttributeMode mode;
   };
-	
+
   struct AttributeDescription {
     Identifier name;
     RepositoryId id;
@@ -392,31 +392,31 @@ module CORBA {
     TypeCode type;
     AttributeMode mode;
   };
-	
+
   enum OperationMode {
     OP_NORMAL,
     OP_ONEWAY
   };
-	
+
   enum ParameterMode {
     PARAM_IN,
     PARAM_OUT,
     PARAM_INOUT
   };
-	
+
   struct ParameterDescription {
     Identifier name;
     TypeCode type;
     IDLType type_def;
     ParameterMode mode;
   };
-	
+
   typedef sequence <ParameterDescription> ParDescriptionSeq;
   typedef Identifier ContextIdentifier;
   typedef sequence <ContextIdentifier> ContextIdSeq;
   typedef sequence <ExceptionDef> ExceptionDefSeq;
   typedef sequence <ExceptionDescription> ExcDescriptionSeq;
-	
+
   interface OperationDef : Contained {
     readonly attribute TypeCode result;
     attribute IDLType result_def;
@@ -425,7 +425,7 @@ module CORBA {
     attribute ContextIdSeq contexts;
     attribute ExceptionDefSeq exceptions;
   };
-	
+
   struct OperationDescription {
     Identifier name;
     RepositoryId id;
@@ -437,17 +437,17 @@ module CORBA {
     ParDescriptionSeq parameters;
     ExcDescriptionSeq exceptions;
   };
-	
+
   typedef sequence <RepositoryId> RepositoryIdSeq;
   typedef sequence <OperationDescription> OpDescriptionSeq;
   typedef sequence <AttributeDescription> AttrDescriptionSeq;
   interface InterfaceDef : Container, Contained, IDLType {
     // read/write interface
     attribute InterfaceDefSeq base_interfaces;
-		
+
     // read interface
     boolean is_a (in RepositoryId interface_id);
-		
+
     struct FullInterfaceDescription {
       Identifier name;
       RepositoryId id;
@@ -459,7 +459,7 @@ module CORBA {
       TypeCode type;
     };
     FullInterfaceDescription describe_interface();
-		
+
     // write interface
     AttributeDef create_attribute (
                                    in RepositoryId id,
@@ -468,7 +468,7 @@ module CORBA {
                                    in IDLType type,
                                    in AttributeMode mode
                                    );
-		
+
     OperationDef create_operation(
                                   in RepositoryId id,
                                   in Identifier name,
@@ -480,7 +480,7 @@ module CORBA {
                                   in ContextIdSeq contexts
                                   );
   };
-	
+
   struct InterfaceDescription {
     Identifier name;
     RepositoryId id;
@@ -488,11 +488,11 @@ module CORBA {
     VersionSpec version;
     RepositoryIdSeq base_interfaces;
   };
-	
+
   typedef short Visibility;
   const Visibility PRIVATE_MEMBER = 0;
   const Visibility PUBLIC_MEMBER = 1;
-	
+
   struct ValueMember {
     Identifier name;
     RepositoryId id;
@@ -502,14 +502,14 @@ module CORBA {
     IDLType type_def;
     Visibility access;
   };
-	
+
   typedef sequence <ValueMember> ValueMemberSeq;
   interface ValueMemberDef : Contained {
     readonly attribute TypeCode type;
     attribute IDLType type_def;
     attribute Visibility access;
   };
-	
+
   interface ValueDef : Container, Contained, IDLType {
     // read/write interface
     attribute InterfaceDefSeq supported_interfaces;
@@ -519,7 +519,7 @@ module CORBA {
     attribute boolean is_abstract;
     attribute boolean is_custom;
     attribute boolean is_truncatable;
-		
+
     // read interface
     boolean is_a(in RepositoryId id);
     struct FullValueDescription {
@@ -539,7 +539,7 @@ module CORBA {
       RepositoryId base_value;
       TypeCode type;
     };
-		
+
     FullValueDescription describe_value();
     ValueMemberDef create_value_member(
                                        in RepositoryId id,
@@ -548,7 +548,7 @@ module CORBA {
                                        in IDLType type,
                                        in Visibility access
                                        );
-		
+
     AttributeDef create_attribute(
                                   in RepositoryId id,
                                   in Identifier name,
@@ -556,7 +556,7 @@ module CORBA {
                                   in IDLType type,
                                   in AttributeMode mode
                                   );
-		
+
     OperationDef create_operation(
                                   in RepositoryId id,
                                   in Identifier name,
@@ -568,7 +568,7 @@ module CORBA {
                                   in ContextIdSeq contexts
                                   );
   };
-	
+
   struct ValueDescription {
     Identifier name;
     RepositoryId id;
@@ -581,12 +581,12 @@ module CORBA {
     boolean is_truncatable;
     RepositoryId base_value;
   };
-	
+
   interface ValueBoxDef : TypedefDef {
     attribute IDLType original_type_def;
   };
-	
+
   interface AbstractInterfaceDef : InterfaceDef { };
-	
+
   interface LocalInterfaceDef : InterfaceDef { };
 };
