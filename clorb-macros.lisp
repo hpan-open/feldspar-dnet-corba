@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.3 2001/02/13 22:21:57 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.4 2001/06/03 23:40:31 lenst Exp $
 
 (in-package :clorb)
 
@@ -9,7 +9,7 @@
 (defmacro doseq ((var seq) &body forms)
   `(map nil (lambda (,var) ,@forms) ,seq))
 #+clisp
-(import 'lisp:doseq)
+(import 'user::doseq)
 
 #+clisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -36,6 +36,8 @@
 (require "ANSI-MAKE-LOAD-FORM")
 
 (defmacro define-slot-dumper (class)
+  #+clisp (declare (ignore class))
+  #-clisp
   `(defmethod make-load-form ((obj ,class) &optional env)
      (make-load-form-saving-slots obj :environment env)))
 
