@@ -390,20 +390,16 @@
 
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef) (target static-stub-target))
-  (let* ((params (coerce (op:params opdef) 'list))
-         (in-params (loop for p in params unless (eq :param_out (op:mode p)) collect p))
-         (out-params (loop for p in params unless (eq :param_in (op:mode p)) collect p)))
-    (unless (eq :tk_void (op:kind (op:result opdef)))
-      (push (corba:parameterdescription
-             :type_def (op:result_def opdef))
-            out-params))
+  (let ((name-string (string-upcase (op:name opdef)) )
+        (in-params (loop for p in (coerce (op:params opdef) 'list) 
+                         unless (eq :param_out (op:mode p)) 
+                         collect (param-symbol p)))        
+        (class-name (target-proxy-class-symbol target c))
+        (op-name    (scoped-target-symbol target opdef)))
     (make-progn*
      (call-next-method)
-     `(define-method ,(string-upcase (op:name opdef))
-                     ((obj ,(target-proxy-class-symbol target (op:defined_in opdef)))
-                      ,@(mapcar #'param-symbol in-params))
-        (%jit-call ,(scoped-target-symbol target opdef) obj
-                   ,@(mapcar #'param-symbol in-params))))))
+     `(define-method ,name-string ((obj ,class-name) ,@in-params)
+        (%jit-call ,op-name obj ,@in-params)))))
 
 
 (defmethod target-code ((sdef CORBA:StructDef) (target stub-target))
@@ -631,6 +627,9 @@
 
 
 (defmethod target-code ((op CORBA:OperationDef) (target servant-target))
+    (target-code-contained (op:defined_in op) op target))
+
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef) (target servant-target))
   (let ((class (target-servant-class-symbol target (op:defined_in op)))
         (feature (feature (op:name op))))
     (make-progn* 
