@@ -200,28 +200,28 @@
 
 #|
 
-(defvar *z-rep* (make-instance 'repository))
-(defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
-                  (op:create_poa rootpoa "IFWRAP"
-                                 nil
-                                 '(:use_default_servant
-                                   :user_id
-                                   :transient))))
-(defvar *z-serv* (make-instance 'servant-wrapper
-                      :orb *the-orb*
-                      :poa *z-poa*))
+ (defvar *z-rep* (make-instance 'repository))
+ (defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
+                   (op:create_poa rootpoa "IFWRAP"
+                                  nil
+                                  '(:use_default_servant
+                                    :user_id
+                                    :transient))))
+ (defvar *z-serv* (make-instance 'servant-wrapper
+                       :orb *the-orb*
+                       :poa *z-poa*))
 
-(op:set_servant *z-poa* *z-serv*)
-(op:activate (op:the_poamanager *z-poa*))
+ (op:set_servant *z-poa* *z-serv*)
+ (op:activate (op:the_poamanager *z-poa*))
 
-;;(idef-read (idef-write *idef-repository*) *z-rep*)
+ ;;(idef-read (idef-write *idef-repository*) *z-rep*)
 
-(define-method _this ((obj IRObject))
-  (make-remote *z-serv* obj))
+ (define-method _this ((obj IRObject))
+   (make-remote *z-serv* obj))
 
-;;(rebind (make-remote *z-serv* *z-rep*) "zrep")
+ ;;(rebind (make-remote *z-serv* *z-rep*) "zrep")
 
-(make-remote *z-serv* *internal-interface-repository*)
+ (make-remote *z-serv* *internal-interface-repository*)
 
 |#
 
