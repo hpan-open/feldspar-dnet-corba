@@ -67,7 +67,7 @@ of contained."))
            (cond ((eq t tc)
                   ;; Beeing computed, make a placeholder typecode.
                   ;; This typecode will be filled when the computation is done.
-                  (setf (slot-value def 'type) (make-typecode t)))
+                  (setf (slot-value def 'type) (make-typecode :recursive)))
                  (t
                   tc))))
         (t
@@ -1219,12 +1219,13 @@ of contained."))
                (is_truncatable)))
 
 (defmethod idltype-tc ((self Value-Def))
-  (create-value-tc (op:id self) (op:name self) 
+  (create-value-tc (op:id self) (op:name self)
                    (cond ((op:is_abstract self) corba:vm_abstract)
                          ((op:is_custom self) corba:vm_custom)
                          ((op:is_truncatable self) corba:vm_truncatable)
                          (t corba:vm_none))
-                   (op:base_value self)
+                   (let ((base (op:base_value self)))
+                     (and base (op:type base)))
                    (simple-value-members
                     (op:contents self :dk_valuemember t))))
 
