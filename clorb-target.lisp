@@ -292,7 +292,7 @@
   ())
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef) (target ifr-info-target))
-  (let ((desc (op:value (op:describe op))))
+  (let ((desc (any-value (op:value (op:describe op)))))
     (assert (typep desc 'corba:operationdescription))
     (make-progn* 
      (call-next-method)

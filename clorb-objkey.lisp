@@ -84,21 +84,18 @@ types will be converterd by this GF."))
 
 
 (defmethod to-object-id ((objid integer))
-  ;; FIXME: if this is actually useful it should handle
-  ;;  more than ulong compatible integers?
-  (let ((buf (get-work-buffer)))
-    (marshal-ulong objid buf)
-    (buffer-contents buf)))
+  (string-to-oid (princ-to-string objid)))
+
 
 (defun object-id-to-integer (objid)
   (let ((buf (make-buffer :octets objid)))
     (unmarshal-ulong buf)))
 
-(defun make-object-key (type poaid oid
+(defun make-object-key (type poaid oid orb
                         &key (uniq *instance-id*) poa-name)
   ;; If poa-name use persistance v2
   (declare (optimize debug))
-  (let* ((buffer (get-work-buffer))
+  (let* ((buffer (get-work-buffer orb))
          (octets (buffer-octets buffer)))
     (setq oid (to-object-id oid))
     (ecase type

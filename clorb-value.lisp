@@ -228,6 +228,12 @@
         collect (slot-value value feature)))
 
 
+(defun marshal-multiple (values types buffer)
+  (loop for val in values
+     for tc in types
+     do (marshal val tc buffer)))
+
+
 (defun marshal-value-state (chunking values types buffer)
   (cond (chunking
          (let ((*chunking-level* (1+ *chunking-level*))

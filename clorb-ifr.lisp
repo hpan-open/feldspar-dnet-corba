@@ -8,10 +8,6 @@
 (defun register-ir-class (def-kind class)
   (setf (get def-kind 'ir-class) class))
 
-#+unused-functions
-(defun get-ir-class (def-kind)
-  (or (get def-kind 'ir-class)
-      (error "No class defined for definition kind ~A" def-kind)))
 
 
 ;;;; Generics

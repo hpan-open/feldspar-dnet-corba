@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.29 2004/12/28 00:05:16 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.30 2005/02/07 22:49:06 lenst Exp $	
 
 (in-package :clorb)
 
@@ -74,6 +74,8 @@
 (defun poa-message-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (multiple-value-bind (msgtype) (unmarshal-giop-header buffer)
+      ;; FIXME: If the version is larger than we handel, send a error message
+      ;; and close connection.
       (let ((decode-fun
              (ecase msgtype
                ((:request)         #'poa-request-handler)

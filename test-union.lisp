@@ -84,7 +84,7 @@
                               ( 3 corba:tc_short :name "a" )
                               ( 1 corba:tc_string :name "b" :default t)))))
       (eval expr)
-      (let ((buffer (get-work-buffer))
+      (let ((buffer (get-work-buffer *the-orb*))
             (u1 (funcall type-sym :union-value 12 :union-discriminator 0))
             (u2 (funcall type-sym)))
         (setf (op:default u2) "hello")

@@ -70,7 +70,7 @@
   (let ((desc (connection-io-descriptor conn)))
     (let* ((buffer (if continue-p
                      (connection-read-buffer conn)
-                     (get-work-buffer)))
+                     (get-work-buffer (the-orb conn))))
            (octets (buffer-octets buffer))
            (start (fill-pointer octets)))
       (unless continue-p

@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.37 2005/02/06 22:34:10 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.38 2005/02/07 22:49:06 lenst Exp $
 
 
 (in-package :clorb)
@@ -104,7 +104,6 @@
 (defun marshal-service-context (ctx buffer)
   (marshal-sequence ctx 
                     (lambda (service-context buffer)
-                      ;;(struct-write service-context 'IOP:SERVICECONTEXT buffer)
                       (marshal-ulong (op:context_id service-context) buffer)
                       (marshal-osequence (op:context_data service-context) buffer))
                     buffer))

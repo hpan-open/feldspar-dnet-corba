@@ -35,37 +35,6 @@
 
 ;;;; Struct Macrology
 
-#+unused-macros
-(defmacro define-corba-struct (name &key members)
-  (loop
-      for member in members
-      for slot = (car member)
-      for field = (key (symbol-name slot))
-      collect field into names
-      collect slot into slots
-      collect (list* slot :initarg field :initform (second member)
-                     (cddr member))
-      into slot-defs
-      collect `(define-method ,slot ((s ,name)) (slot-value s ',slot))
-      into getters2
-      collect `(define-method (setf ,slot) (val (s ,name))
-                 (setf (slot-value s ',slot) val))
-      into setters
-      finally
-        (return
-          `(progn
-             (defclass ,NAME (corba:struct) ,slot-defs)
-             (defun ,name (&key ,@slots)
-               ,(format nil "Construct CORBA struct ~A.~%Slots: ~S" name names)
-               (make-instance ',name 
-                 ,@(loop for key in names as val in slots
-                         collect key collect val )))
-             ,@getters2 ,@setters
-             (defmethod fields ((s ,name))
-               (loop for f in ',names
-                   for n in ',slots
-                   when (slot-boundp s n)
-                   collect (cons f (slot-value s n))))))))
 
 (defmacro define-struct (symbol &key id (name "") members read write)
   "Define a CORBA structure with class, constructor, typecode etc.

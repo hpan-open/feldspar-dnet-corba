@@ -154,11 +154,6 @@
   (setf (object-connection proxy) nil))
 
 
-#+unused-functions
-(defun object-key (object)
-  (let ((p (selected-profile object)))
-    (and p (iiop-profile-key p))))
-
 (defgeneric raw-profiles (proxy))
 
 (defmethod marshal-object ((objref CORBA:Proxy) buffer)

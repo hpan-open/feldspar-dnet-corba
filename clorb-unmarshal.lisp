@@ -278,34 +278,4 @@
 
 
 
-;;; Main entry
-
-(defmethod compute-unmarshal-function ((type CORBA:TypeCode))
-  (break " compute-unmarshal-function ~S" type)
-  (lambda (buffer)
-    (declare (optimize (speed 2)))
-    (check-type buffer buffer "a buffer")
-    (let ((kind (typecode-kind type)))
-      (ecase kind
-        ((:tk_octet) (unmarshal-octet buffer))
-        ((:tk_char) (unmarshal-char buffer))
-        ((:tk_boolean) (unmarshal-bool buffer))
-        ((:tk_ushort) (unmarshal-ushort buffer))
-        ((:tk_short) (unmarshal-short buffer))
-        ((:tk_ulong) (unmarshal-ulong buffer))
-        ((:tk_long) (unmarshal-long buffer))
-        ((:tk_longlong) (unmarshal-longlong buffer))
-        ((:tk_ulonglong) (unmarshal-ulonglong buffer))
-        ((:tk_float) (unmarshal-float buffer))
-        ((:tk_double) (unmarshal-double buffer))
-        ((:tk_longdouble) (unmarshal-longdouble buffer))
-        ((:tk_string) (unmarshal-string buffer))
-        ((:tk_null :tk_void) nil)
-        ((:tk_typecode) (unmarshal-typecode buffer))))))
-
-
-(defun unmarshal-multiple (typecodes buffer)
-  (declare (optimize speed))
-  (mapcar #'(lambda (tc) (unmarshal tc buffer))
-          typecodes))
-
+;;; clorb-unmarshal.lisp ends here

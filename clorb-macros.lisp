@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.20 2004/12/28 00:03:36 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.21 2005/02/07 22:49:06 lenst Exp $
 
 (in-package :clorb)
 
@@ -49,6 +49,19 @@
   `(let ((.val. ,form))
      (format t "~&~S~% = ~S~%" ',form .val.)
      .val.))
+
+
+(defmacro debug-macro (form &environment env)
+  (let ((expansion (macroexpand-1 form env)))
+    ;; Do the expansion first and then bind *print-pretty* in case
+    ;; the expansion is sensitive to the binding of that variable.
+    (let ((*print-pretty* t))
+      (format t "~S~%==> ~S" form expansion))
+    ;; Return the original form, not the expansion, in case the caller
+    ;; is himself calling MACROEXPAND-1 and wants to have some special
+    ;; action based on partial expansions (as happens with SETF, for
+    ;; some cases).
+    form))
 
 
 ;;;; Operations

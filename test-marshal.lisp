@@ -2,7 +2,7 @@
 
 (define-test-suite "Marshal test"
   (macrolet ((marshal-res (res &rest body)
-               `(let ((buffer (get-work-buffer)))
+               `(let ((buffer (get-work-buffer *the-orb*)))
                   ,@body
                   (ensure-equalp (buffer-octets buffer) ,res))))
     
@@ -36,7 +36,7 @@
 
     (define-test "Float 2"
       (let ((test-data '(1.25 12.5 1.1 -1.125 -1.1 #.pi 0.0 ))
-            (buffer (get-work-buffer)))
+            (buffer (get-work-buffer *the-orb*)))
         (flet ((test-roundtrip (float type typecode)
                  (with-sub-test (type)
                    (setf (fill-pointer (buffer-octets buffer)) 0)
@@ -56,7 +56,7 @@
       (let ((f10-2-tc (create-fixed-tc 10 2))
             (f3--4-tc (create-fixed-tc 3 -4)))
         (labels ((test-value (value tc)
-                   (let ((buffer (get-work-buffer)))
+                   (let ((buffer (get-work-buffer *the-orb*)))
                      (marshal value tc buffer)
                      (ensure-equalp (unmarshal tc buffer) value)))
                  (test-value-list (list tc)
@@ -104,7 +104,7 @@
                   (list (list "name" CORBA:tc_string)
                         (list "id" corba:tc_long))))
              (obj (make-struct tc :name "hello" :id 1234)))
-        (let ((buffer (get-work-buffer)))
+        (let ((buffer (get-work-buffer *the-orb*)))
           (marshal obj tc buffer)
           (let ((new (unmarshal tc buffer)))
             (ensure-equalp (struct-get new :name) "hello")
@@ -113,14 +113,14 @@
       (let* ((tc (symbol-typecode 'iop:servicecontext))
              (obj (iop:servicecontext :context_id 345
                                       :context_data #(0 1 2))))
-        (let ((buffer (get-work-buffer)))
+        (let ((buffer (get-work-buffer *the-orb*)))
           (marshal obj tc buffer)
           (let ((new (unmarshal tc buffer)))
             (ensure-typep new 'iop:servicecontext)
             (ensure-equalp (op:context_id new) 345)))))
 
     (define-test "Typecodes"
-      (let* ((buffer (get-work-buffer))
+      (let* ((buffer (get-work-buffer *the-orb*))
              (tc (symbol-typecode 'CORBA:ParameterDescription)))
         (marshal-typecode tc buffer)
         (ensure-equalp (unmarshal-ulong buffer) 15)
@@ -135,7 +135,7 @@
           (ensure-typecode new-tc tc))))
     
     (define-test "Typecode Union"
-      (let* ((buffer (get-work-buffer))
+      (let* ((buffer (get-work-buffer *the-orb*))
              (members (list (list t "on" corba:tc_long)
                             (list nil "off" corba:tc_string)))
              (tc (create-union-tc "IDL:Two:1.0" "Two" corba:tc_boolean members)))
@@ -175,15 +175,15 @@
                          0 0 0 0)
                        (marshal-object obj1 buffer)))
         (with-sub-test ("Nil object unmarshal")
-          (let ((buffer (get-work-buffer)))
+          (let ((buffer (get-work-buffer *the-orb*)))
             (marshal-object obj1 buffer)
             (let ((obj (unmarshal-object buffer)))
               (ensure-equalp obj nil))))
         (with-sub-test ("Object unmarshal")
-          (let ((buffer (get-work-buffer)))
+          (let ((buffer (get-work-buffer *the-orb*)))
             (marshal-object obj2 buffer)
             (let ((obj (unmarshal-object buffer)))
-              (ensure (omg.org/features:_is_equivalent obj obj2)))))))
+              (ensure (op:_is_equivalent obj obj2)))))))
 
 t))
 

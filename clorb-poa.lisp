@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.35 2005/02/06 22:34:10 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.36 2005/02/07 22:49:06 lenst Exp $
 
 (in-package :clorb)
 
@@ -525,7 +525,7 @@ POA destruction does not occur.
 (defun generate-id (poa)
   (check-policy poa :system_id)
   (if (poa-has-policy poa :persistent)
-      (to-object-id (princ-to-string (get-internal-real-time))) 
+      (to-object-id (get-internal-real-time)) 
     (to-object-id (incf (POA-auto-id poa)))))
 
 (define-method activate_object ((poa PortableServer:POA) servant)
@@ -582,7 +582,7 @@ POA destruction does not occur.
                :key (make-object-key (if (poa-has-policy poa :persistent)
                                        :persistent
                                        :transient)
-                                     (poa-poaid poa) oid
+                                     (poa-poaid poa) oid (the-orb poa)
                                      :poa-name (poa-name poa))))))
 
 

@@ -71,7 +71,7 @@
    (tc3 (let ((tc (symbol-typecode 'test-value-3)))
           (setf (gethash (op:id tc) *ifr-id-symbol*) 'test-value-3)
           tc))
-   (buffer (get-work-buffer)))
+   (buffer (get-work-buffer *the-orb*)))
 
   (define-test "simple"
     (marshal v1 (symbol-typecode 'test-value-1) buffer)

@@ -258,8 +258,5 @@
   (marshal-object (op:_this object) buffer))
 
 
-(defun marshal-multiple (values types buffer)
-  (loop for val in values
-     for tc in types
-     do (marshal val tc buffer)))
-
+
+;;; clorb-marshal.lisp ends here
