@@ -3,7 +3,7 @@
 (let ((*test-suite-result* (make-instance 'test-result
                              :parent nil
                              :suite "All Tests"))) 
-  (loop for pn in (directory "clorb:src;test-*.lisp")
+  (loop for pn in (directory "CLORB:SRC;test-*.lisp")
         unless (string= "test-suite" (pathname-name pn))
         do (format t "~&;;;; ~A~%" (pathname-name pn))
         (load pn))
