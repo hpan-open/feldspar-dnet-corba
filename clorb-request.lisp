@@ -64,17 +64,18 @@
      ;; FIXME: this is stupid!
      ;; it is when reading the response that the exception will be
      ;; detected! Move the following to the reply handling.
-      (corba:systemexception (exc)
-        (setq object (request-target req))
-        (cond ((and (object-forward object)
-                    (member (exception-id exc)
-                            '("IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
-                              "IDL:omg.org/CORBA/COMM_FAILURE:1.0")
-                            :test #'equal))
-               (setf (object-forward object) nil)
-               (request-send-to req object flags))
-              (t
-               (error exc)))))))
+     ;; [lenst/2001-06-01 01:34:26] COMM_FAILURE could happen here.
+     (corba:systemexception (exc)
+       (setq object (request-target req))
+       (cond ((and (object-forward object)
+                   (member (exception-id exc)
+                           '("IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
+                             "IDL:omg.org/CORBA/COMM_FAILURE:1.0")
+                           :test #'equal))
+              (setf (object-forward object) nil)
+              (request-send-to req object flags))
+             (t
+              (error exc)))))))
 
 
 (defun request-send-to (req object &optional flags)
