@@ -264,6 +264,32 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
      new)))
 
 
+;;; Socket status
+#|
+OpenTransport states
+ :closed 
+ :uninit   - reset ?
+ :unbnd    - closed ?
+ :idle 
+ :outcon   - syn-sent
+ :incon    - listen
+ :dataxfer - established
+ :outrel   - closing
+ :inrel    - closing
+|#
+
+(defun socket-stream-closed-p (stream)
+  (%SYSDEP
+   "check if the stream has been closed (by other side presumably)"
+
+   #+digitool
+   (let ((state (ccl::opentransport-stream-connection-state stream)))
+     (not (member state '(:outcon :incon :dataxfer))))
+
+   ;; Default, assume it is not closed
+   nil))
+
+
 ;; Check if input is directly available on (socket) stream
 ;; if this returns false positives and wait-for-input-on-streams
 ;; returns :cant the server functionallity is severly reduced :()

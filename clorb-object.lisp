@@ -131,6 +131,11 @@
         (format stream "--" )))))
 
 
+(defmethod (setf object-forward) :before (val (proxy CORBA:Proxy))
+  (declare (ignore val))
+  ;; Forget old connection when forwarding
+  (setf (object-connection proxy) nil))
+
 
 (defstruct IIOP-PROFILE
   (version '(1 . 0))
@@ -273,7 +278,7 @@
    (service-context-list :initform nil :accessor service-context-list)
    (reply-service-context :initform nil :accessor reply-service-context)
    (response-expected :initform t :initarg :response-expected :accessor response-expected)
-   (forward :initform nil :accessor request-forward)
+   ;;(forward :initform nil :accessor request-forward)
    (status :initform nil :accessor request-status)
    (buffer :initform nil :accessor request-buffer)
    (exception  :initform nil :initarg :exception  :accessor request-exception

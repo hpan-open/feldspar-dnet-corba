@@ -109,6 +109,9 @@
   (mess 3 "connect to ~A:~A = ~A" host port (io-descriptor-stream desc))
   (setf (io-descriptor-status desc) :connected))            
 
+(defun io-descriptor-working-p (desc)
+  (and (not (eql (io-descriptor-status desc) :broken))
+       (not (socket-stream-closed-p (io-descriptor-stream desc)))))
 
 (defun io-desc-read (desc)
   (handler-case
@@ -218,7 +221,10 @@
       (process-wait-with-timeout "waiting for event" 120
                                  (lambda (streams) 
                                    (or (not (null *io-event-queue*))
-                                       (some #'listen streams)))
+                                       (some (lambda (s)
+                                               (or (listen s)
+                                                   #+ccl (ccl:stream-eofp s)))
+                                             streams)))
                                  ready-streams))
     (setq *io-ready-for-read*
          (delete-if (lambda (desc)

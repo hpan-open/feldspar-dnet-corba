@@ -177,7 +177,7 @@
       (progn (io-descriptor-connect desc host port)
              (make-associated-connection orb desc))
       (error (err)
-             (mess 4 "(connect ~S ~S): ~A" err)
+             (mess 4 "(connect ~S ~S): ~A" host port err)
              (setf (io-descriptor-error desc) err)
              (setf (io-descriptor-status desc) :broken)
              (io-descriptor-destroy desc)
@@ -187,7 +187,8 @@
 (defun connection-working-p (conn)
   (let ((desc (connection-io-descriptor conn)))
     (or (null desc)
-        (not (eq :broken (io-descriptor-status desc))))))
+        (io-descriptor-working-p desc))))
+
 
 (defun connection-init-read (conn continue-p n callback)
   (setf (connection-read-callback conn) callback)
@@ -268,13 +269,14 @@
 ;;;; IIOP - Sending request
 
 (defun request-prepare (req object)
-  (let* ((forward (or (object-forward object) object))
-         (conn (get-object-connection forward)))
+  (let* ((conn (get-object-connection object)))
+    (unless conn
+      (raise-system-exception 'omg.org/corba:comm_failure))
     (setf (request-connection req) conn)    
     (setf (request-status req) nil)
     (setf (request-req-id req) (incf *request-id-seq*))
     (values
-     (setf (request-forward req) forward)
+     (or (object-forward object) object)
      (setf (request-buffer req) (get-work-buffer (the-orb req)))
      conn)))
 
@@ -517,15 +519,20 @@ Where host is a string and port an integer.")
 
 (defun connect-object (proxy)
   ;; select a profile and create a connection for that profile
-  (dolist (profile (object-profiles proxy))
-    (let* ((host (iiop-profile-host profile))
-           (port (iiop-profile-port profile))
-           (conn (get-connection (the-orb proxy) host port)))
-      (when (and conn
-                 (connection-working-p conn))
-        (setf (object-connection proxy) conn)
-        (setf (selected-profile proxy) profile)
-        (return conn)))))
+  (or
+   (let ((forward (object-forward proxy)))
+     (if forward
+       (or (setf (object-connection proxy) (connect-object forward))
+           (setf (object-forward proxy) nil))))
+   (dolist (profile (object-profiles proxy))
+     (let* ((host (iiop-profile-host profile))
+            (port (iiop-profile-port profile))
+            (conn (get-connection (the-orb proxy) host port)))
+       (when (and conn
+                  (connection-working-p conn))
+         (setf (object-connection proxy) conn)
+         (setf (selected-profile proxy) profile)
+         (return conn))))))
 
 
 
