@@ -19,7 +19,8 @@
 #+Allegro (setq net.cddr.clorb.system::*binary-folder* "fasl-acl")
 (net.cddr.clorb.system:set-load-opts
  :server t  :idlcomp nil  :my-idlparser t
- :portable-interceptor nil  :support-test t)
+ :portable-interceptor nil  :support-test t
+ :hello-world t)
 (net.cddr.clorb.system:reload)
 
 
@@ -48,12 +49,12 @@
 
 
 ;;; Examples
-
-(load (merge-pathnames
-       (make-pathname :name "auto" :type "lisp"
-                      :directory '(:relative "examples" "hello"))
-       clorb::*clorb-pathname-defaults*))
-
+;;
+;;(load (merge-pathnames
+;;       (make-pathname :name "auto" :type "lisp"
+;;                      :directory '(:relative "examples" "hello"))
+;;       clorb::*clorb-pathname-defaults*))
+;;
 ;; run hello world with (hh)
 ;; or (hhn) using the name service
 

@@ -32,7 +32,8 @@
   (:idlcomp nil "Load the old IDL parser")
   (:my-idlparser t "Load the new IDL parser")
   (:portable-interceptor nil "Load support for Portable Interceptors")
-  (:support-test t "Load support code for test suite"))
+  (:support-test t "Load support code for test suite")
+  (:hello-world nil "Load hello world example"))
 
 
 ;;; Files
@@ -121,6 +122,12 @@
   '("clorb-idllexer"
     "clorb-idlparser"))
 
+(defparameter *hello-world*
+  '("examples;hello;idl"
+    "examples;hello;hello-server"
+    "examples;hello;hello-client"
+    "examples;hello;hello"))
+
 
 (defvar *load-dates* (make-hash-table :test #'equal))
 (defvar *source-pathname-defaults*
@@ -205,7 +212,8 @@
            (if (load-opt :portable-interceptor) *portable-interceptor-files*)
            (if (load-opt :idlcomp) *idlcomp*)
            (if (load-opt :my-idlparser) *my-idlparser*)
-           (if (load-opt :support-test) *dev-post-files*) ))
+           (if (load-opt :support-test) *dev-post-files*)
+           (if (load-opt :hello-world) *hello-world*)))
   (let ((clorb (find-package "NET.CDDR.CLORB")))
     (import 'reload clorb)
     (export 'reload clorb)))

@@ -93,8 +93,7 @@
     (corba:idl "clorb:idl;interface-repository.idl" :repository *export-ifr* :eval nil))
   (with-open-file (out "SaturnX:private:tmp:InterfaceRepository"
                        :direction :output :if-exists :supersede)
-    (princ (op:object_to_string *the-orb* *export-ifr*) out))
-)
+    (princ (op:object_to_string *the-orb* *export-ifr*) out)))
 
 (defun home-volume-pathname ()
     (let ((home (user-homedir-pathname)))
