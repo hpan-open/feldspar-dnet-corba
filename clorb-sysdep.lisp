@@ -179,7 +179,7 @@
       :format (if binary :binary :text))
      
      #+mcl
-     (ccl::open-tcp-stream host port :element-type type))))
+     (ccl::open-tcp-stream host port :element-type type :connect-timeout 30))))
 
 
 (defun accept-connection-on-socket (socket &optional (blocking nil))
@@ -486,13 +486,6 @@ Returns select result to be used in getting status for streams."
   (declare (optimize speed)
            (type octets seq)
            (type index start end))
-  #+(and mcl (not xxuse-acl-socket))
-  (let ((read-pos start))
-    (declare (type index read-pos))
-    (loop while (< read-pos end)
-          do (setf (aref seq read-pos) (read-byte stream t))
-          (incf read-pos)))
-  #-(and mcl (not xxuse-acl-socket))
   (let ((n (read-sequence seq stream :start start :end end)))
     (when (< n (- end start))
       (error 'end-of-file :stream stream))))
@@ -526,8 +519,7 @@ Returns select result to be used in getting status for streams."
 (defun write-octets (seq start end stream)
   (declare (type octets seq)
            (type index start end))
-  (loop for i from start below end
-        do (write-byte (aref seq i) stream))
+  (write-sequence seq stream :start start :end end)
   (force-output stream))
 
 (defun write-octets-no-hang (seq start end stream)
