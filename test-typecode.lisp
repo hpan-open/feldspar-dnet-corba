@@ -4,6 +4,11 @@
   (variables
    )
 
+  (define-test "constants"
+    (ensure (op:name CORBA:tc_objref))
+    (ensure (op:id CORBA:tc_objref))
+    (ensure-equalp (op:length CORBA:tc_string) 0))
+
   (define-test "Enum"
     (let* ((id "IDL:enum:1.0")
            (name "enumen")

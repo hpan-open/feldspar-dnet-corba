@@ -65,10 +65,18 @@
               (format t "~&;;; In test case ~A~%;;;! ~A~%" 
                       tc-current
                       (apply #'cl:format nil msg args)))
+            (ensure-eql (is shouldbe)
+              (unless (eql is shouldbe)
+                (tc-report "~S~_ should be~_ ~S"
+                           is shouldbe)))
             (ensure-equalp (is shouldbe)
               (unless (equalp is shouldbe)
                 (tc-report "~S~_ should be~_ ~S"
                            is shouldbe)))
+            (ensure-typep (obj type)
+              (unless (typep obj type)
+                (tc-report "~S shoubd be of type ~S, but is ~S"
+                           obj type (type-of obj))))
             (ensure (bool &optional description)
               (unless bool
                 (tc-report "~A fail"
