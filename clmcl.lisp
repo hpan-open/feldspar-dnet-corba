@@ -5,6 +5,12 @@
 
 (load "clorb:src;devel")
 
+(net.cddr.clorb.system:set-load-opts
+ :server t  :idlcomp nil  :my-idlparser t
+ :portable-interceptor t  :support-test t)
+(clorb:reload)
+
+
 #+(or)
 (ignore-errors
  (setq clorb:*host*
@@ -17,16 +23,14 @@
 (ensure-directories-exist persistent-naming:*naming-base-path* :verbose t)
 
 ;;(clorb::io-system-switch 'clorb::io-system-multiprocess)
-;;(persistent-naming:setup-pns :export t)
+(persistent-naming:setup-pns :export t)
 
 
 (defun use-pentax-ifr ()
-  (clorb::set-initial-reference *the-orb* "InterfaceRepository" 
-                                "http://10.0.1.251/InterfaceRepository"))
+  (CORBA:ORB_init '("-ORBInitRef InterfaceRepository=http://10.0.1.251/InterfaceRepository")))
 
 (defun use-pentax-ns ()
-  (clorb::set-initial-reference *the-orb* "NameService" 
-                                "http://10.0.1.251/NameService"))
+  (CORBA:ORB_init '("-ORBInitRef NameService=http://10.0.1.251/NameService")))
 
 (defun use-mcl-ns ()
   (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::127.0.0.1:4711/NameService")))

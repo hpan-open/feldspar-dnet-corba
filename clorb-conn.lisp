@@ -135,12 +135,13 @@ Can be set to true globally for singel-process / development.")
   (declare (optimize (debug 3)))
   (multiple-value-bind (event desc) (io-driver)
     (when event
-      (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
+      (mess 1 "io-event: ~S ~A" event (io-descriptor-stream desc)))
     (let ((conn (gethash desc *desc-conn*)))
       (case event
         (:read-ready
          ;;(io-descriptor-set-read desc nil 0 0)
-         (connection-read-ready conn))
+         (when conn
+           (connection-read-ready conn)))
         (:write-ready
          (io-descriptor-set-write desc nil 0 0)
          (connection-write-ready conn))

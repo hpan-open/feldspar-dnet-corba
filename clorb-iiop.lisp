@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.31 2004/01/21 17:43:05 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.32 2004/01/29 19:49:41 lenst Exp $
 
 
 (in-package :clorb)
@@ -294,10 +294,10 @@
 (defun get-response-locate-reply (conn &aux (buffer (connection-read-buffer conn)))
   (setup-outgoing-connection conn)
   (let* ((request-id (unmarshal-ulong buffer))
-         (status (unmarshal (symbol-typecode 'giop:locatestatustype) buffer))
+         (status (unmarshal (%symbol-typecode giop:locatestatustype) buffer))
          (req (find-waiting-request conn request-id)))
     (when req
-      (request-locate-repy req status buffer))))
+      (request-locate-reply req status buffer))))
 
 
 (defun comm-failure-handler (conn)
@@ -354,52 +354,6 @@ Where host is a string and port an integer.")
 
 
 
-
-;;;; Support for static stubs
-
-(defun start-request (operation object &optional no-response)
-  (let ((req (create-client-request 
-              (the-orb object)
-              :target object :operation operation
-              :response-expected (not no-response))))
-    (values req (request-marshal-head req))))
-
-(defun invoke-request (req)
-  (send-request req)
-  (cond ((response-expected req)
-         (request-wait-response req)
-         (let* ((status (request-status req))
-                (buffer (request-buffer req)))
-           (case status
-             (:location_forward
-              (setf (object-forward (request-target req))
-                    (unmarshal-object buffer))
-              (values status))
-             (:error                    ; comm error
-              (has-received-exception (the-orb req) req)
-              (error (request-exception req)))
-             (:system_exception
-              (let ((condition (unmarshal-systemexception buffer)))
-                (setf (request-exception req) condition)
-                (has-received-exception (the-orb req) req)
-                (setq condition (request-exception req))
-                (if (typep condition 'corba:transient)
-                  (values status)
-                  (error condition))))
-             (otherwise
-              (has-received-reply (the-orb req) req)
-              (values status buffer)))))
-        (t
-         :no_exception)))
-                 
-(defun process-exception (buffer legal-exceptions)
-  (let ((id (unmarshal-string buffer)))
-    (loop for exc in legal-exceptions
-          when (string= id (symbol-ifr-id exc))
-          do (error (exception-read exc buffer)))
-    (raise-system-exception 'corba:unknown 1 :completed_yes)))
-
-
 ;;;; Locate
 
 (defun locate (obj)
@@ -408,10 +362,11 @@ Where host is a string and port an integer.")
     (loop
       (let* ((conn (request-start-request req))
              (req-id (next-request-id conn)))
+        (setf (request-status req) nil)
         (setf (request-id req) req-id)
-        (connection-start-locate-request conn req-id
-                                         (request-effective-profile req)))
-      (send-request req)
+        (let ((buffer (connection-start-locate-request conn req-id
+                                                       (request-effective-profile req))))
+          (connection-send-request conn buffer req)))
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
              (setf (object-forward obj) (unmarshal-object (request-buffer req))))
