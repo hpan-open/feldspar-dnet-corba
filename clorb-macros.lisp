@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.1 2000/11/14 22:50:10 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.2 2001/02/13 14:50:56 lenst Exp $
 
 (in-package :clorb)
 
@@ -42,7 +42,7 @@
       (assert (eq (first name) 'setf))
       (setq setf-form t)
       (setq name (second name)))
-    (when (and body (stringp (car body)))
+    (when (and body (cdr body) (stringp (car body)))
       (setq doc-string (list (pop body))))
     (let ((opsym (intern (string name) opkg)))
       `(progn
