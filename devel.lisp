@@ -3,11 +3,6 @@
 (format t ";;; Loading CLORB~%")
 
 
-;;; Compile and load with development settings
-
-(pushnew :clorb-dev *features*)
-
-
 ;;; MCL 5.0 - needs the BSD package
 
 #+digitool
