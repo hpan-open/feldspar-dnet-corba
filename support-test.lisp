@@ -80,6 +80,10 @@
 (defun isa (type)
   (make-instance 'isa-pattern :args type))
 
+(defmethod print-object ((p isa-pattern) stream)
+  (print-unreadable-object (p stream :type t)
+    (prin1 (pattern-args p) stream)))
+
 (defmethod match ((pattern isa-pattern) object)
   (boolean-match pattern object (typep object (pattern-args pattern))))
 
