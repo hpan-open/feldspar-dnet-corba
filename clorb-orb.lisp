@@ -17,6 +17,8 @@
   :slots 
   ((adaptor :initform nil :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
+   (host    :initarg :host    :accessor orb-host)
+   (port    :initarg :port    :accessor orb-port)
    (initial-references :initarg :initial-references
                        :accessor orb-initial-references)))
 
@@ -24,20 +26,14 @@
 (define-user-exception CORBA:ORB/InvalidName
     :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
 
-;;; (Object) Adaptor interface
-(defgeneric listner-sockets (adaptor))
-(defgeneric handle-socket (adaptor socket &optional blocking))
-(defgeneric client-streams (adaptor))
-(defgeneric handle-stream (adaptor stream))
-(defgeneric listner-host (adaptor))
-(defgeneric listner-port (adaptor))
-
 
 (defun ORB_init (&optional args (orbid ""))
   (declare (ignore args orbid))
   (unless *the-orb*
     (setq *the-orb* (make-instance 'CORBA:ORB
                      :active t
+                     :host *host*
+                     :port *port*
                      :initial-references *default-initial-references*)))
   (setf (orb-active *the-orb*) t)
   *the-orb*)
@@ -46,56 +42,12 @@
 (define-method shutdown ((orb orb) wait_for_completion)
   (setf (orb-active orb) nil))
 
-(defvar *running-orb* nil
+(defvar *running-orb* t
   "Will be set to true in the process that is running the ORB server part.
 If this is true, orb-wait will check server streams also.
 Can be set to true globally for singel-process / development.")
 
 
-(defun orb-wait (orb &optional streams)
-  "Wait till input available on any of the STREAMS.
-STREAMS can be a list of streams or a single stream. The functions will 
-also check if anything is to be done on server side.
-Returns 
- nil, if nothing available (yet)
- a stream, if input available from that stream (member of STREAMS)
- :cant, if implementation can't determine if input is available.
-"
-  (let ((client-streams '())
-        (source-streams '())
-        (server-sockets '())
-        (adaptor (adaptor orb)))
-    (when (and *running-orb* adaptor)
-      (setq source-streams (setq client-streams (client-streams adaptor)))
-      (setq server-sockets (listner-sockets adaptor)))
-    (if (listp streams)
-        (setq source-streams (append streams source-streams))
-        (push streams source-streams))
-    (multiple-value-bind (type stream)
-        (wait-for-input-on-streams server-sockets source-streams)
-      (ecase type
-        (:stream
-         (if (member stream client-streams)
-             (progn
-               (handle-stream adaptor stream)
-               nil)
-             stream))
-        (:server
-         (handle-socket adaptor stream)
-         nil)
-        (:cant 
-         (when (and *running-orb* adaptor (null streams))
-           ;; Should do server things, but don't know if there is
-           ;; anything to do : (
-           (let ((anything nil))
-             (dolist (stream client-streams)
-               (mess 1 "Poll ~S" stream)
-               (when (handle-stream adaptor stream)
-                 (setq anything t)))
-             (dolist (socket server-sockets)
-               (handle-socket adaptor socket (not anything)))))
-         :cant)
-        ((nil) nil)))))
 
 ;;;    Object string_to_object (in string str);
 (define-method string_to_object ((orb orb) str) 
@@ -164,19 +116,15 @@ Returns
 ;;;    void perform_work( );
 (define-method perform_work ((orb orb))
   (let ((*running-orb* t))
-    (orb-wait orb nil)))
+    (orb-wait)))
 
 ;;;    void run();
 (define-method run ((orb orb))
   (let ((*running-orb* t))
     (loop while (orb-active orb)
-        do (orb-wait orb nil))))
+        do (orb-wait))))
 
-(defun orb-host (orb)
-  (listner-host (adaptor orb)))
 
-(defun orb-port (orb)
-  (listner-port (adaptor orb)))
 
 ;;;    Status create_list ( in long    count,	 
 ;;;                         out NVList new_list );
