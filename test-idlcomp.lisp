@@ -160,7 +160,7 @@ typedef string aa[2][9];
      const octet C = 1; 
      const string S = \"wibbel\";
      const boolean D = TRUE;
-     typedef fixed<10,2> FT; const FT F = 12.45D; "
+     const fixed F = 12.45D;"
     "A" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_long)
           'op:value (pattern 'any-typecode CORBA:tc_long
@@ -190,22 +190,39 @@ typedef string aa[2][9];
                              'any-value t))
     
     "F" (def-pattern :dk_constant
-          'op:type_def (def-pattern :dk_alias 'op:type 
-                         (pattern 'op:content_type (create-fixed-tc 10 2)))
+          'op:type_def (def-pattern :dk_fixed 
+                         'op:digits 4
+                         'op:scale 2
+                         'op:type (create-fixed-tc 4 2))
           'op:value (pattern 'any-value 1245/100)))
     
+
+  (define-test "fixed arith"
+    (let ((n1 (make-idl-fixed 4 2 1234/100))
+          (n2 (make-idl-fixed 2 -1 560)))
+      (multiple-value-bind (d s m) (idl-fixed-values (add n1 n2))
+        (ensure-eql m 57234/100)
+        (ensure-eql s 2)
+        (ensure-eql d (+ 4 1 1)))
+      (ensure-equalp (sub n1 n2)
+                     (make-idl-fixed 6 2 (- 1234/100 560)))))
+  
   
   (define-idl-test "constant expressions"
     "
 const long x = 123+4*9;
 const long y = 1 << 8;
 typedef long a[y];
+const fixed u = 12.3D + 5.01D;
 "
     "x" (pattern 'op:value (pattern 'any-value (+ 123 (* 4 9)))
                  'op:type CORBA:tc_long )
     "y" (pattern 'op:value (pattern 'any-value 256))
     "a" (pattern 'op:original_type_def 
-                 (def-pattern :dk_array 'op:length 256)))
+                 (def-pattern :dk_array 'op:length 256))
+    "u" (pattern 'op:type_def (pattern 'op:digits 5 'op:scale 2)
+                 'op:value (pattern 'any-value 1731/100)))
+
   
   (define-idl-test "native"
     "native servant;"
