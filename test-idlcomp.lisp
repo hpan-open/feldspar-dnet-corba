@@ -313,6 +313,7 @@ typedef long a[y];
   ;; TODO:
   ;; forward struct, union,..
   ;; preprocessing ifdef..
+  ;; identifiers starting with _
 
 
   (define-idl-test "Prefix Pragma"
