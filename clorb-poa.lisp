@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.25 2003/12/19 13:03:27 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.26 2004/01/21 17:31:40 lenst Exp $
 
 (in-package :clorb)
 
@@ -493,8 +493,10 @@ POA destruction does not occur.
 ;;	raises (WrongPolicy);
 
 (define-method create_reference_with_id ((poa PortableServer:POA) oid intf)
-  (make-instance (find-proxy-class intf)
-   :id intf
+  (check-type intf string)
+  (create-objref
+   (the-orb poa)
+   :ior-id intf 
    :profiles (list
               (make-iiop-profile
                :version '(1 . 0)
