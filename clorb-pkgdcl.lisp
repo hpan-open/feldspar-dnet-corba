@@ -198,11 +198,13 @@
            ;; sysdep
            shell-to-string-or-stream external-namestring))
 
-(defpackage :clorb
-  (:nicknames "NET.CDDR.CLORB")
+(defpackage "NET.CDDR.CLORB"
+  (:nicknames "CLORB")
   (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS"
-        #+:use-my-idlparser :net.cddr.redpas
-        #+cmu MOP #-(or sbcl cmu mcl) CLOS)
+        #+:use-my-idlparser "NET.CDDR.REDPAS"
+        #+clorb-dev "NET.CDDR.CLORB.SYSTEM"
+        #+clorb-dev "NET.CDDR.LUNA"
+        #+cmu "MOP" #-(or sbcl cmu mcl) "CLOS")
   #+cmu
   (:shadowing-import-from "MOP"
               "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
@@ -210,7 +212,7 @@
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
            ;; Development tools
-           "RELOAD"
+           #+clorb-dev "RELOAD"
            ;; Useful internals
            "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
            "*HOST*" "*PORT*" )
@@ -238,5 +240,6 @@
   (:export "*NAMING-IOR-FILE*" "*NAMING-BASE-PATH*" "*NAMING-POA*"
            "SETUP-PNS" "SETUP-NAMING-POA"))
 
-(defpackage "CLORB.IDLCOMP"
+(defpackage "NET.CDDR.CLORB.IDLCOMP"
+  (:nicknames "CLORB.IDLCOMP")
   (:use "COMMON-LISP" "NET.CDDR.CLORB" "NET.CDDR.CLORB.INTERNALS"))
