@@ -139,6 +139,15 @@
   (setf (connection-client-requests conn) nil))
 
 
+(defun connection-close (conn)
+  ;; Called on recipt of a connection close message
+  (connection-destroy conn)
+  (dolist (req (connection-client-requests conn))
+    (setf (request-exception req) (system-exception 'CORBA:TRANSIENT 3 :completed_no))
+    (setf (request-status req) :error))
+  (setf (connection-client-requests conn) nil))
+
+
 (defun connection-read-ready (conn)
   (funcall (connection-read-callback conn) conn))
 
@@ -175,11 +184,13 @@ Can be set to true globally for singel-process / development.")
     (apply #'process-wait "orb-wait" wait-func wait-args)))
 
 
+(defun orb-run-queue (orb)
+  (loop while (work-queue orb)
+     do (funcall (pop (work-queue orb)))))
 
 (defun orb-work (orb run-queue poll)
   (when run-queue
-    (loop while (work-queue orb)
-          do (funcall (pop (work-queue orb)))))
+    (orb-run-queue orb))
   (let ((event-processed nil))
     (loop for event = (io-get-event)
           while event
