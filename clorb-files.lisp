@@ -96,9 +96,10 @@
     do (let* ((names (dir-split base))
               (name (car (last names)))
               (dir (nbutlast names))
-              (sf (make-pathname :name name :type "lisp"
-                                 :directory (if dir (cons :relative dir))
-                                 :defaults *source-pathname-defaults*))
+              (sf (merge-pathnames
+                   (make-pathname :name name :type "lisp"
+                                  :directory (if dir (cons :relative dir)))
+                   *source-pathname-defaults*))
               (cf (compile-file-pathname sf)))
          
          (when (or (not (probe-file cf))
