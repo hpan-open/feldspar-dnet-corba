@@ -32,7 +32,7 @@
 
 (defvar *current-cpp*)
 
-(defun using-idllex (file thunk include-directories)
+(defun using-idllex (file thunk include-directories &optional defines)
   (check-type file (or string pathname))
   (using-cpp-stream
    file
@@ -43,7 +43,8 @@
        (let ((*lexer* (make-instance 'idllex :lexer lexer)))
          (next-token *lexer*)
          (funcall thunk))))
-   :include-directories include-directories))
+   :include-directories include-directories
+   :defines defines))
 
 
 (defmethod next-token ((lexer idllex))
