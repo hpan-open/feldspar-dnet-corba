@@ -81,8 +81,8 @@
 
 (put ':tk_alias 'tk-params '(complex :tk_string :tk_string :tk_TypeCode))
 
-(put ':tk_except 'tk-params '(complex string string
-                              (sequence (anon-struct string :tk_TypeCode))))
+(put ':tk_except 'tk-params '(complex :tk_string :tk_string
+                              (sequence (anon-struct :tk_string :tk_TypeCode))))
 
 
 (put ':tk_value 'tk-params 

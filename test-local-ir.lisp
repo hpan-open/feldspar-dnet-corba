@@ -29,7 +29,8 @@
              (obj (op:create_enum module "IDL:mod/foo:1.0" name "1.0" '("fie" "fum"))))
         (ensure (eq (op:defined_in obj) module))
         (ensure (eq (op:containing_repository obj) repository))
-        (ensure-equalp (omg.org/features:absolute_name obj) 
+        (ensure (eq (op:lookup_id repository (op:id obj)) obj))
+        (ensure-equalp (omg.org/features:absolute_name obj)
                        (concatenate 'string (omg.org/features:absolute_name module) "::" name)))))
 
   (define-test "EnumDef"
