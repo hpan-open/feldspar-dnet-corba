@@ -83,7 +83,8 @@
 
 (define-test-suite "POA Test"
   (variables 
-   (orb *the-orb*)
+   (orb (make-instance 'clorb-orb :host "localhost" :port 9999 :active t :adaptor t))
+   (*log-level* 4)
    (*last-poaid* 0)
    (*poa-map* (make-hash-table :test #'eql))
    (root-poa (create-POA nil "root" nil nil orb)))
@@ -231,6 +232,7 @@
         (let ((ior-string (op:object_to_string orb obj)))
           (let ((obj2 (op:string_to_object orb ior-string)))
             (ensure (op:_is_equivalent obj obj2))
+            ;;(break "obj: ~S ~S" obj obj2)
             (ensure-equalp (proxy-id obj2) id)))
         (ensure-equalp (op:reference_to_id user-poa obj) oid ))))
 
