@@ -17,10 +17,16 @@
    (read-callback   :initarg :read-callback                :accessor connection-read-callback)
    (write-buffer    :initarg :write-buffer   :initform nil :accessor connection-write-buffer)
    ;;(write-callback  :initarg :write-callback               :accessor connection-write-callback)
-   (error-callback  :initarg :error-callback               :accessor connection-error-callback)
+   ;;(error-callback  :initarg :error-callback               :accessor connection-error-callback)
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
    (server-requests                          :initform nil :accessor connection-server-requests)))
+
+
+(defmethod print-object ((conn connection) stream)
+  (print-unreadable-object (conn stream :identity t :type t)
+    (let ((desc (connection-io-descriptor conn)))
+      (when desc (write-string (io-describe-descriptor desc) stream)))))
 
 
 
@@ -84,6 +90,22 @@
     (io-descriptor-set-write desc octets 0 (length octets))))
 
 
+(defun connection-add-client-request (conn request)
+  (push request (connection-client-requests conn)))
+
+(defun connection-remove-client-request (conn request)
+  (setf (connection-client-requests conn)
+        (delete request (connection-client-requests conn))))
+
+(defun find-waiting-client-request (conn request-id)
+  (let ((req-list (connection-client-requests conn)))
+    (let ((req (find request-id req-list :key #'request-id)))
+      (if req
+        (setf (connection-client-requests conn) (delete req req-list))
+        (mess 4 "Unexpected response with request id ~d" request-id))
+      req)))
+
+
 (defun connection-add-server-request (conn request)
   (push request (connection-server-requests conn)))
 
@@ -98,7 +120,12 @@
 
 (defun connection-error (conn)
   ;; Called when there is IO error
-  (funcall (connection-error-callback conn) conn))
+  (let ((requests (connection-client-requests conn)))
+    (dolist (req requests)
+      (setf (request-exception req) 
+            (system-exception 'CORBA:COMM_FAILURE))
+      (setf (request-status req) :error )))
+  (setf (connection-client-requests conn) nil))
 
 
 (defun connection-read-ready (conn)

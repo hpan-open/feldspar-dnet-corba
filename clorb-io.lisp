@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.26 2004/06/09 21:09:59 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.27 2004/12/28 00:02:07 lenst Exp $
 
 
 ;; io-reset ()
@@ -14,6 +14,7 @@
 ;; io-descriptor-error (desc) => condition or nil
 ;; io-descriptor-read-buffer (desc) => buffer
 ;; io-driver () => event, desc
+;; io-describe-descriptor (desc)
 
 ;; io-descriptor-shortcut-connect (desc)
 ;; io-fix-broken ()
@@ -207,6 +208,16 @@
     (close (io-descriptor-stream desc)))
   (setf (io-descriptor-connection desc) nil)
   (setq *io-descriptions* (delete desc *io-descriptions*)))
+
+
+(defun io-describe-descriptor (desc)
+  (let ((stream (io-descriptor-stream desc)))
+    (typecase stream
+      (function "loopback")
+      (t (multiple-value-bind (host port)
+                              (socket-peer stream)
+           (format nil "~A:~A" host port))))))
+
 
 
 

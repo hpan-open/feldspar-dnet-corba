@@ -239,6 +239,30 @@
                            :connect-timeout *connect-timeout*))))
 
 
+(defun socket-peer (conn)
+  "Returns: host port"
+  (declare (ignorable conn))
+  (%SYSDEP
+   "Get host port for peer"
+    #+(or allegro use-acl-socket)
+    (values
+     (or (ignore-errors (acl-socket:ipaddr-to-hostname (acl-socket:remote-host conn)))
+         (acl-socket:ipaddr-to-dotted (acl-socket:remote-host conn)))
+     (acl-socket:remote-port conn))
+    #+openmcl
+    (values (let ((host (openmcl-socket:remote-host conn)))
+              (or (ignore-errors
+                   (openmcl-socket:ipaddr-to-hostname host))
+                  (openmcl-socket:ipaddr-to-dotted host)))
+            (openmcl-socket:remote-port conn))
+    #+Digitool
+    (values (let ((host (ccl::stream-remote-host conn)))
+              (ccl::inet-host-name host))
+            (ccl::stream-remote-port conn))
+   
+   ;; Default
+   nil ))
+
 (defun accept-connection-on-socket (socket &optional (blocking nil))
   "Accept a connection on SOCKET and return the stream associated
 with the new connection.  Do not block unless BLOCKING is non-NIL"
@@ -309,14 +333,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+openmcl
    (let ((conn (openmcl-socket:accept-connection socket :wait blocking)))
      (when conn
-       (mess 4 "Accepting connection ~S" conn)
-       #+(or)
-       (mess 4 "Accepting connection from ~A:~D"
-             (let ((host (openmcl-socket:remote-host conn)))
-               (or (ignore-errors
-                     (openmcl-socket:ipaddr-to-hostname host))
-                   (openmcl-socket:ipaddr-to-dotted host)))
-             (openmcl-socket:remote-port conn)))
+       (mess 4 "Accepting connection ~S" conn))
      conn)
 
    #+digitool

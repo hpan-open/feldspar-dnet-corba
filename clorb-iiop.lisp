@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.35 2004/09/16 19:49:53 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.36 2004/12/28 00:03:11 lenst Exp $
 
 
 (in-package :clorb)
@@ -202,17 +202,13 @@
   (marshal-giop-set-message-length buffer)
   (connection-send-buffer conn buffer)
   (when req
-    (push req (connection-client-requests conn))))
+    (connection-add-client-request conn req)))
 
-
-(defun find-waiting-request (conn request-id)
-  (let ((req-list (connection-client-requests conn)))
-    (let ((req (find request-id req-list :key #'request-id)))
-      (if req
-        (setf (connection-client-requests conn) (delete req req-list))
-        (mess 4 "Unexpected response with request id ~d" request-id))
-      req)))
-
+(defun connection-send-reply (conn buffer req)
+  (marshal-giop-set-message-length buffer)
+  (connection-send-buffer conn buffer)
+  (when req
+    (connection-remove-server-request conn req)))
 
 
 ;;;; IIOP - Response handling
@@ -284,27 +280,21 @@
          (request-id (let ((id (unmarshal-ulong buffer)))
                        ;;(break "id=~d" id)
                        id ))
-         (req (find-waiting-request conn request-id))
+         (req (find-waiting-client-request conn request-id))
          (status (%jit-unmarshal (symbol-typecode 'GIOP:ReplyStatusType) buffer)))
     (setup-outgoing-connection conn)
     (when req
       (request-reply req status buffer service-context))))
 
+
 (defun get-response-locate-reply (conn &aux (buffer (connection-read-buffer conn)))
   (setup-outgoing-connection conn)
   (let* ((request-id (unmarshal-ulong buffer))
          (status (%jit-unmarshal (symbol-typecode 'giop:locatestatustype) buffer))
-         (req (find-waiting-request conn request-id)))
+         (req (find-waiting-client-request conn request-id)))
     (when req
       (request-locate-reply req status buffer))))
 
-
-(defun comm-failure-handler (conn)
-  (let ((requests (connection-client-requests conn)))
-    (dolist (req requests)
-      (setf (request-exception req) (make-condition 'CORBA:COMM_FAILURE))
-      (setf (request-status req) :error )))
-  (setf (connection-client-requests conn) nil))
 
 
 ;;;; IIOP - Manage outgoing connections
@@ -317,7 +307,6 @@ Where host is a string and port an integer.")
 
 
 (defun setup-outgoing-connection (conn)
-  (setf (connection-error-callback conn) #'comm-failure-handler)
   (connection-init-read conn nil +iiop-header-size+ #'get-response-0))
 
 
