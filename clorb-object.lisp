@@ -310,7 +310,11 @@
   (setf (any-typecode (op:argument (first (request-paramlist r)))) tc))
 
 (define-method return_value ((r client-request))
-  (op:argument (first (request-paramlist r))))
+  (let ((params (request-paramlist r)))
+    (unless params
+      (setf params (list (CORBA:NamedValue :argument (CORBA:Any) :arg_modes ARG_OUT)))
+      (setf (request-paramlist r) params))
+    (op:argument (first params))))
 
 (define-method arguments ((r client-request))
   (cdr (request-paramlist r)))
