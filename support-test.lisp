@@ -90,15 +90,6 @@
 
 ;;;; Additional ensure operators
 
-(defmacro ensure-exception (code exception &rest pattern)
-  `(handler-case
-     (progn ,code
-            (net.cddr.luna::tc-report "~S should raise exception" ',code))
-     (,exception (exc)
-                 (ensure-pattern* exc ,@pattern))
-     (t (exc)
-        (net.cddr.luna::tc-report "Should raise ~A. Got: ~A" ',exception exc))))
-
 (defun std-minor (minor)
   (logior omg.org/corba::omgvmcid minor))
 
