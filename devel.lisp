@@ -18,7 +18,7 @@
 (load (merge-pathnames "clorb-files.lisp" *load-pathname*))
 (net.cddr.clorb.system:set-load-opts
  :server t  :idlcomp nil  :my-idlparser t
- :portable-interceptor nil )
+ :portable-interceptor nil  :support-test t)
 (net.cddr.clorb.system:reload)
 
 
