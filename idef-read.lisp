@@ -33,7 +33,7 @@
       (unless module
         (setq module (make-instance-in container 'module-def
                                        :name name
-                                       :version (or version "1.0")
+                                       :version version
                                        :id id)))
       (idef-read-contents forms module)
       nil)))
@@ -43,7 +43,7 @@
                            sexp container)
   (destructuring-bind (name (&key bases id version) &rest forms) sexp
     (setq name (string name))
-    (let ((idef (make-instance-in container 'interface-def 
+    (let ((idef (make-instance-in container 'interface-def
                                   :name name :version version :id id)))
       (idef-read-contents forms idef)
       (lambda ()
@@ -67,11 +67,11 @@
   (destructuring-bind (name params &key result-type exceptions version id)
       sexp
     (setq name (string name))
-    (let ((op (make-instance-in container 'operation-def 
+    (let ((op (make-instance-in container 'operation-def
                                 :name name :version version :id id)))
       (lambda ()
         (setf (op:params op)
-          (loop for p in params 
+          (loop for p in params
               for type-def = (parse-type-in container (third p))
               collect (CORBA:ParameterDescription
                        :name (string (second p))
@@ -88,7 +88,7 @@
 (defmethod idef-read-part ((op (eql 'define-enum)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (make-instance-in container 'enum-def 
+    (make-instance-in container 'enum-def
                       :name name :members members
                       :version version :id id)
     nil))
@@ -96,7 +96,7 @@
 (defmethod idef-read-part ((op (eql 'define-struct)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'struct-def 
+    (let ((def (make-instance-in container 'struct-def
                                  :name name :version version :id id)))
       (lambda ()
         (setf (member-list def)
@@ -109,13 +109,13 @@
 (defmethod idef-read-part ((op (eql 'define-exception)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'exception-def 
+    (let ((def (make-instance-in container 'exception-def
                                  :name name :version version :id id)))
       (lambda ()
         (setf (op:members def)
           (mapcar (lambda (x)
                     (let ((type (parse-type-in container (second x))))
-                      (make-struct 
+                      (make-struct
                        "IDL:omg.org/CORBA/StructMember:1.0"
                        :name (first x)
                        :type_def type
@@ -126,8 +126,8 @@
 (defmethod idef-read-part ((op (eql 'define-attribute)) sexp container)
   (destructuring-bind (name type &key readonly) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'attribute-def 
-                                 :name name :mode (if readonly 
+    (let ((def (make-instance-in container 'attribute-def
+                                 :name name :mode (if readonly
                                                       :ATTR_READONLY
                                                     :ATTR_NORMAL))))
       (lambda ()
@@ -153,7 +153,7 @@
   (setq id (or id
                (apply #'concatenate 'string
                       "IDL:"
-                      `(,@(if *idef-current-prefix* 
+                      `(,@(if *idef-current-prefix*
                               (list *idef-current-prefix* "/"))
                           ,@(nreverse (repo-path container))
                           ,name ":" ,version))) )
@@ -199,7 +199,7 @@
 (define-method defined_in ((r repository))
   nil)
 
-(defun lookup-name-in (container qname 
+(defun lookup-name-in (container qname
                        &optional (default nil no-error-p))
   "Find an object given its qualified name"
   (let ((parts (parse-name qname))
@@ -209,7 +209,7 @@
             parts (cdr parts))
       (unless parts (error "Illegal name: ~A" qname)))
     (let ((object
-           (loop 
+           (loop
                for container = start-container then (op::defined_in container)
                while container
                thereis (op::lookup container (car parts)))))
@@ -217,7 +217,7 @@
       ;; the CORBA module?
       (loop while object
           do (setq parts (cdr parts))
-          while parts 
+          while parts
           do (setq object (op::lookup object (car parts))))
       (if object
           object
@@ -240,7 +240,7 @@
                    (subseq name 0 cp)) parts)
            (loop while (eql #\: (elt name cp)) do (incf cp))
            (setq name (subseq name cp)))
-      finally (return 
+      finally (return
                 (nreverse (cons name parts)))))
 
 (defun get-primitive (name)
