@@ -10,6 +10,7 @@
     :dk_Repository
     :dk_Wstring :dk_Fixed))
 
+
 ;;;; Registry of Ir class for DefinitionKind
 
 (defun register-ir-class (def-kind class)
@@ -23,7 +24,7 @@
 
 (defgeneric addto (container contained)
   (:documentation "Add a contained to a container")
-  (:method ((c null) x) (declare (ignore x))))
+  (:method ((c null) x) x))
 
 
 ;;;; Base Clases
@@ -87,7 +88,8 @@ attributes other than type."))
 
 (defmethod addto :after (r (c contained))
   (setf (slot-value c 'containing_repository) 
-        (op:containing_repository r)))
+    (op:containing_repository r))
+  c)
 
 
 (define-method absolute_name ((obj contained))
@@ -138,7 +140,8 @@ attributes other than type."))
                        (or (equalp (op::name old) (op::name object))
                            (equal (op::id old) (op::id object))))
                      (contents c))))
-  (setf (slot-value object 'defined_in) c))
+  (setf (slot-value object 'defined_in) c)
+  object)
 
 (define-method op::contents ((obj container) limit-type exclude-inherit)
   (declare (ignore exclude-inherit))
@@ -166,19 +169,22 @@ attributes other than type."))
 ;;;                           in VersionSpec version
 
 (define-method create_module ((self container) id name version)
-  (let ((m (make-instance 'module-def
-             :id id
-             :name name
-             :version version)))
-    (addto self m)
-    m))
+  (addto self (make-instance 'module-def
+                :id id :name name :version version)))
+
 
 ;;;  ConstantDef create_constant (
 ;;;                               in RepositoryId id,
 ;;;                               in Identifier name,
 ;;;                               in VersionSpec version,
 ;;;                               in IDLType type,
-;;;                               in any value
+;;;                               in any value                  )
+
+(define-method create_constant ((self container)
+                                id name version type value)
+  (addto self (make-instance 'constant-def
+                :id id :name name :version version
+                :type_def type :value value)))
 
 ;;;  StructDef create_struct (
 ;;;                           in RepositoryId id,
@@ -191,8 +197,7 @@ attributes other than type."))
   (let ((obj (make-instance 'struct-def
                :id id :name name :version version)))
     (setf (op:members obj) members)
-    (addto self obj)
-    obj))
+    (addto self obj)))
 
 
 ;;;  /* This operation is missing in the CORBA2 spec! */
@@ -202,35 +207,70 @@ attributes other than type."))
 ;;;                                 in VersionSpec version,
 ;;;                                 in StructMemberSeq members
 ;;;                                 );
-;;;  
+
+(define-method create_exception ((self container)
+                                 id name version members)
+  (addto self (make-instance 'exception-def
+                :id id
+                :name name
+                :version version
+                :members members)))
+
+
+
 ;;;  UnionDef create_union (
 ;;;                         in RepositoryId id,
 ;;;                         in Identifier name,
 ;;;                         in VersionSpec version,
 ;;;                         in IDLType discriminator_type,
-;;;                         in UnionMemberSeq members
-;;;                         );
-;;;  
+;;;                         in UnionMemberSeq members           );
+
+(define-method create_union ((self container)
+                             id name version discriminator_type members)
+  (addto self (make-instance 'union-def
+                :id id :name name :version version
+                :discriminator_type_def discriminator_type
+                :members members)))
+
+
 ;;;  EnumDef create_enum (
 ;;;                       in RepositoryId id,
 ;;;                       in Identifier name,
 ;;;                       in VersionSpec version,
 ;;;                       in EnumMemberSeq members
 ;;;                       );
-;;;  
+
+(define-method create_enum ((self container)
+                            id name version members)
+  (addto self (make-instance 'enum-def
+                :id id :name name :version version
+                :members members)))
+
+
 ;;;  AliasDef create_alias (
 ;;;                         in RepositoryId id,
 ;;;                         in Identifier name,
 ;;;                         in VersionSpec version,
-;;;                         in IDLType original_type
-;;;                         );
-;;;  
+;;;                         in IDLType original_type    );
+
+(define-method create_alias ((self container)
+                             id name version original_type)
+  (addto (make-instance 'alias-def
+                :id id :name name :version version
+                :original_type_def original_type)))
+
+
 ;;;  InterfaceDef create_interface (
-;;;                                 in RepositoryId id,
-;;;                                 in Identifier name,
-;;;                                 in VersionSpec version,
-;;;                                 in InterfaceDefSeq base_interfaces
-;;;                                 );
+;;;            in RepositoryId id,
+;;;            in Identifier name,
+;;;            in VersionSpec version,
+;;;            in InterfaceDefSeq base_interfaces );
+
+(define-method create_interface ((self container)
+                                 id name version base_interfaces)
+  (addto self (make-instance 'interface-def
+                :id id :name name :version version
+                :base_interfaces base_interfaces)))
 
 
 ;;;; Repository
@@ -356,6 +396,16 @@ attributes other than type."))
                :id (op::id module)
                :defined_in (or (op::defined_in module) "")
                :version (op::version module)))
+
+;;; interface ConstantDef : Contained {
+;;;   readonly attribute TypeCode type;
+;;;   attribute IDLType type_def;
+;;;   attribute any value; };
+
+(define-corba-class constant-def (contained)
+  :attributes ((type_def)
+               (value))
+  :slots ((type)))
 
 
 ;;;; InterfaceDef
@@ -399,7 +449,7 @@ attributes other than type."))
 
 (defmethod find-opdef ((interface interface-def) operation)
   "Find in INTERFACE the OPERATION and return the operation-def object."
-  ;; Compatibility with clorb-iir for unse in auto-servants.
+  ;; Compatibility with clorb-iir for use in auto-servants.
   (multiple-value-bind (name type)
       (analyze-operation-name operation)
     (let ((def (op:lookup interface name)))
@@ -413,6 +463,30 @@ attributes other than type."))
         (otherwise
          (assert (eq (op:def_kind def) :dk_Operation))
          def)))))
+
+
+(defmethod find-opinfo ((interface interface-def) operation)
+  (multiple-value-bind (name type)
+      (analyze-operation-name operation)
+    (let ((def (op:lookup interface name))
+          (sym (intern (string-upcase name) :op)))
+      (case type
+        (:setter 
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (values (fdefinition (list 'setf sym))
+                 (list (op:type def))
+                 nil))
+        (:getter 
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (values sym
+                 nil
+                 (list (op:type def))))
+        (otherwise
+         (assert (eq (op:def_kind def) :dk_Operation))
+         (values sym
+                 (opdef-inparam-typecodes def)
+                 (opdef-outparam-typecodes def)))))))
+
 
 (defun analyze-operation-name (name)
   (cond 
@@ -432,6 +506,39 @@ attributes other than type."))
   (make-opdef
    :name name
    :params (make-param "" :param_in (op:type attdef))))
+
+;;;  AttributeDef create_attribute (
+;;;                                 in RepositoryId id,
+;;;                                 in Identifier name,
+;;;                                 in VersionSpec version,
+;;;                                 in IDLType type,
+;;;                                 in AttributeMode mode       );
+
+(define-method create_attribute ((self interface-def)
+                                 id name version type mode)
+  (addto self (make-instance 'attribute-def
+                :id id :name name :version version
+                :type_def type :mode mode)))
+
+
+;;;  OperationDef create_operation (
+;;;                                 in RepositoryId id,
+;;;                                 in Identifier name,
+;;;                                 in VersionSpec version,
+;;;                                 in IDLType result,
+;;;                                 in OperationMode mode, 
+;;;                                 in ParDescriptionSeq params,
+;;;                                 in ExceptionDefSeq exceptions,
+;;;                                 in ContextIdSeq contexts            );
+
+(define-method create_operation ((self interface-def)
+                                 id name version
+                                 result mode params exceptions contexts)
+  (addto self (make-instance 'operation-def
+                :id id :name name :version version
+                :result_def result :mode mode
+                :params params :exceptions exceptions
+                :contexts contexts)))
 
 
 ;;;; AttributeDef
@@ -739,6 +846,19 @@ attributes other than type."))
   (make-sequence-typecode (op:element_type obj)
                           (op:bound obj)))
 
+
+
+;;;; Export IR
+
+(defvar *ifr-servant* nil)
+
+(defun setup-ifr ()
+  (unless *ifr-servant*
+    (setq *ifr-servant* (make-instance 'repository)))
+  (with-open-file (out "/tmp/InterfaceRepository"
+                   :direction :output 
+                   :if-exists :supersede)
+    (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 
 
 ;;; local-ir.lisp ends here
