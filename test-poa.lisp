@@ -31,6 +31,34 @@
 (defclass null-servant (portableserver:servant) ())
 (defmethod interface-name ((self null-servant)) 'CORBA:Object)
 
+
+;; ==========================================================================
+
+(defclass mock-activator (PORTABLESERVER:SERVANTACTIVATOR)
+  ((adapter  :initarg :adapter)
+   (expected-oid  :initarg :expected-oid)
+   (created-servant)
+   (etheralize-verifier :initarg :etheralize-verifier  :initform nil)
+   (etheralize-called   :initform 0)))
+
+(define-method incarnate ((s mock-activator) oid adapter)
+  ;; Raises ForwardRequest
+  (ensure (slot-boundp s 'expected-oid) "unexpected incarnate")
+  (ensure-eql adapter (slot-value s 'adapter))
+  (ensure-equalp oid (slot-value s 'expected-oid))
+  (setf (slot-value s 'created-servant) (make-instance 'null-servant)))
+
+(define-method etherealize ((s mock-activator) oid adapter servant cleanup-in-progress reamining-activations)
+  (incf (slot-value s 'etheralize-called))
+  (ensure-pattern
+   (list oid adapter servant cleanup-in-progress reamining-activations)
+   (slot-value s 'etheralize-verifier)))
+
+
+
+;; ==========================================================================
+
+
 (define-test-suite "POA Test"
   (variables 
    (orb *the-orb*)
@@ -93,7 +121,10 @@
       (let ((poa0 (op:find_POA root-poa name nil)))
         (ensure-eql poa0 poa))
       
-      (handler-case 
+      (ensure (member poa (managed-poas (op:the_poamanager poa)))
+              "Registered with the manger")
+
+      (handler-case
         (progn (op:create_poa root-poa name nil nil)
                (ensure nil))
         (OMG.ORG/PORTABLESERVER:POA/ADAPTERALREADYEXISTS ()))
@@ -115,6 +146,8 @@
         (OMG.ORG/PORTABLESERVER:POA/ADAPTERNONEXISTENT ()))
       (ensure-eql (gethash id1 *poa-map*) nil)
       (ensure-eql (gethash id2 *poa-map*) nil)
+      (ensure (not (member poa1 (managed-poas (op:the_poamanager poa1))))
+              "UnRegistered with the manger")
       (ensure-exception
        (op:create_POA poa1 "p9" nil nil)
        CORBA:BAD_INV_ORDER 'op:minor (std-minor 17))))
@@ -133,10 +166,8 @@
   
   
   (define-test "set_servant_manager"
-     (handler-case 
-       (progn (op:set_servant_manager root-poa nil)
-              (ensure nil))
-       (omg.org/portableserver:poa/wrongpolicy () nil))
+     (ensure-exception (op:set_servant_manager root-poa nil)
+       portableserver:poa/wrongpolicy  )
      (let ((poa (op:create_POA root-poa "p" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
                                      (op:create_servant_retention_policy root-poa :retain)))))
@@ -175,5 +206,24 @@
             (ensure (op:_is_equivalent obj obj2))
             (ensure-equalp (proxy-id obj2) id)))
         (ensure-equalp (op:reference_to_id user-poa obj) oid ))))
+
+
+  (define-test "Adapter Activator"
+    (let* ((poa (op:create_POA root-poa "p" nil
+                               (list (op:create_request_processing_policy root-poa :use_servant_manager)
+                                     (op:create_servant_retention_policy root-poa :retain))))
+           (my-oid '(18))
+           (activator (make-instance 'mock-activator
+                        :adapter poa
+                        :expected-oid my-oid )))
+      (op:set_servant_manager poa activator)
+      (op:activate (omg.org/features:the_poamanager poa))
+      (test-poa-invoke poa :operation "_non_existent" :oid my-oid :args '())
+      ;; pattern for etheralize arguments
+      (setf (slot-value activator 'etheralize-verifier)
+            (sexp-pattern
+             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
+      (op:deactivate (omg.org/features:the_poamanager poa) t t)
+      (ensure-eql (slot-value activator 'etheralize-called) 1)))
 
 #| end suite |# )
