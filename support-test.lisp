@@ -1,4 +1,4 @@
-;;;; pattern.lisp -- pattern matcher for testing 
+;;;; support-test.lisp -- support code for testing CLORB
 
 (in-package :clorb)
 
@@ -71,3 +71,17 @@
 (defun struct-class-name (struct)
   (class-name (class-of struct)))
 
+
+;;;; Additional ensure operators
+
+(defmacro ensure-exception (code exception &rest pattern)
+  `(handler-case
+     (progn ,code
+            (ensure nil "should raise exception"))
+     (,exception (exc)
+                 (ensure-pattern* exc ,@pattern))
+     (t (exc)
+        (ensure nil "Should raise ~A. Got: ~A" ',exception exc))))
+
+(defmacro ensure-repository (&rest args)
+  `(ensure-pattern repository (repository-pattern ,@args)))
