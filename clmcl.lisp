@@ -3,6 +3,7 @@
 (pushnew :use-acl-socket *features*)
 (require 'acl-socket)
 (net.cddr.packer:require-package "BSD")
+(net.cddr.packer:require-package "NET.CDDR.REDPAS")
 
 (load "CLORB:SRC;CLORB-PKGDCL")
 (load "CLORB:SRC;CLORB-FILES")

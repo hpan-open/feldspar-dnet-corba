@@ -1,5 +1,13 @@
 (in-package :clorb)
 
+(defmacro test-idef-read (idef &rest pattern)
+  `(ensure-pattern
+    (let ((repository (make-instance 'repository)))
+      (idef-read ',idef repository)
+      repository)
+    (repository-pattern ,@pattern)))
+
+
 (define-test-suite "IDEF Read Test"
   (variables 
     (r (make-instance 'repository)))
@@ -98,6 +106,18 @@
       (ensure-equalp (any-value (op:value o)) #\X)
       (ensure-typecode (op:type o) :tk_char)
       (ensure-typecode (any-typecode (op:value o)) :tk_char)))
+
+
+  (define-test "Read Constant Expr"
+    (test-idef-read
+     ((define-constant "a" long (+ 10 5))
+      (define-constant "b" long (+ "a" 1))
+      (define-type "c" (array short (* 2 "a"))))
+     "a" (def-pattern :dk_constant 'op:value (pattern 'any-value 15))
+     "b" (def-pattern :dk_constant 'op:value (pattern 'any-value 16))      
+     "c" (def-pattern :dk_alias 'op:original_type_def
+           (def-pattern :dk_array 'op:length 30))))
+
 
   (define-test "Read Struct"
     (idef-read '((define-struct "S"

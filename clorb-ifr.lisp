@@ -280,6 +280,12 @@
 
 (define-method create_union ((self container)
                              id name version discriminator_type members)
+  (check-type discriminator_type CORBA:IDLType)
+  (assert (and (typep members 'sequence)
+               (every (lambda (x) (typep x 'CORBA:UnionMember))
+                      members))
+          (members)
+          'type-error :datum 'members :expected-type 'omg.org/corba:unionmemberseq)
   (addto self (make-instance 'union-def
                 :id id :name name :version version
                 :discriminator_type_def discriminator_type

@@ -6,6 +6,7 @@
 (defun idef-read (sexps repository)
   (let ((*idef-read-agenda* nil))
     (idef-read-contents sexps repository)
+    (setq *idef-read-agenda* (nreverse *idef-read-agenda*))
     (loop while *idef-read-agenda*
         do (funcall (pop *idef-read-agenda*)))))
 
@@ -127,7 +128,7 @@
                                  (CORBA:Any :any-typecode CORBA:tc_octet
                                             :any-value 0))
                                 (CORBA:Any :any-typecode (op:discriminator_type def)
-                                           :any-value label))
+                                           :any-value (eval-expr-in container label)))
                        :type_def (parse-type-in container type))))
                   members))))))
 
@@ -163,12 +164,11 @@
 (defmethod idef-read-part ((op (eql 'define-constant)) sexp container)
   (destructuring-bind (name type value &key id version) sexp
     (let ((def (create-contained container 'constant-def 
-                                 :name name :value value
-                                 :id id :version version)))
+                                 :name name :id id :version version)))
       (lambda ()
         (let ((type (parse-type-in container type)))
           (setf (op:type_def def) type)
-          (setf (op:value def) (corba:any :any-value value
+          (setf (op:value def) (corba:any :any-value (eval-expr-in container value)
                                           :any-typecode (op:type type))))))))
 
 
@@ -240,6 +240,8 @@
                                      (parse-type-in container member-type))))
               ((array)
                (destructuring-bind (member-type &optional (length 0)) (cdr type-sexp)
+                 (when length
+                   (setq length (eval-expr-in container length)))
                  (op:create_array repository (or length 0)
                                   (parse-type-in container member-type))))
               ((string wstring)
@@ -267,6 +269,30 @@
       (if no-error-p
         default
         (error "Name '~A' not found" qname)))))  
+
+(defun eval-expr-in (container expr)
+  (cond ((stringp expr) 
+         (let ((obj (lookup-name-in container expr)))
+           (assert (eq (omg.org/features:def_kind obj) :dk_constant))
+           (any-value (op:value obj))))
+        ((and (consp expr)
+              (eq 'string (car expr)))
+         (cadr expr))
+        ((consp expr)
+         (apply (car expr)
+                (mapcar #'(lambda (x)
+                            (eval-expr-in container x))
+                        (cdr expr))))
+        (t
+         expr)))
+
+
+(defun << (int n)
+  (ash int n))
+
+(defun >> (int n)
+  (ash (logand int #xFFFFFFFF) (- n)))
+
 
 (defun parse-name (name)
   (loop with parts = '()

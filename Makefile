@@ -19,19 +19,3 @@ scanner-support.lisp:
 idl-scanner-parser.lisp:
 	ln -s idlcomp/idl-scanner-parser.lisp idl-scanner-parser.lisp
 
-
-tomcl:
-	mv CVS MCVS
-	tomcl $(msources)
-
-frommac:
-	mv MCVS CVS
-	frommac $(msources)
-
-shadow:
-	mkdir shadow
-	(cd shadow; ln -s ../MCVS CVS)
-	cp $(sources) shadow
-	(cd shadow; frommac $(msources))
-	sleep 1
-	touch shadow/before-cvs

@@ -2,6 +2,30 @@
 
 (in-package :clorb)
 
+(defvar *temporary-directory*
+  (let ((base (truename "ccl:")))
+    (make-pathname
+     :directory (list :absolute (second (pathname-directory base)) "tmp")
+     :defaults base)))
+
+(defun repository-from-string (string)
+  (let ((repository (make-instance 'repository))
+        (temp-file (merge-pathnames "working.idl" *temporary-directory*)))
+    (with-open-file (out temp-file :direction :output :if-exists :supersede)
+      (princ string out)
+      (terpri out))
+    (load-repository *default-idl-compiler* repository temp-file)
+    repository))
+
+(defmacro define-idl-test (name idl &rest pattern)
+  `(define-test ,name 
+     (let ((repository (repository-from-string ,idl)))
+       (handler-case 
+         (match (make-instance 'repository-pattern :args (list ,@pattern))
+                repository)
+         (match-fail (c) (tc-report "~A" (match-fail-message c)))))))
+
+
 (define-test-suite "idlcomp"
   
   ;; ---------------------------------
@@ -22,14 +46,14 @@
     "ul" (def-pattern :dk_alias 
            'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_ulong)))
   
-
+  
   (define-idl-test "long long"
     "typedef unsigned long long ull; typedef long long ll; "
     "ll" (def-pattern :dk_alias
            'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_longlong))
     "ull" (def-pattern :dk_alias
             'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_ulonglong)))
-
+  
   
   (define-idl-test "string"
     "typedef string s0; typedef string<10> s10;
@@ -39,11 +63,11 @@
     "s10" (def-pattern :dk_alias
             'op:original_type_def (def-pattern :dk_string 'op:bound 10))
     "ws0" (def-pattern :dk_alias
-           'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_wstring))
+            'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_wstring))
     "ws10" (def-pattern :dk_alias
-            'op:original_type_def (def-pattern :dk_wstring 'op:bound 10)))
-
-
+             'op:original_type_def (def-pattern :dk_wstring 'op:bound 10)))
+  
+  
   (define-idl-test "misc types"
     "	typedef octet o;
 	typedef char c;
@@ -59,14 +83,14 @@
     "b" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_boolean))
     "i" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_objref))
     "a" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_any)))
-
-
+  
+  
   (define-idl-test "fixed point"
     "typedef fixed<10,2> fp;"
     "fp" (pattern 'op:original_type_def 
                   (def-pattern :dk_fixed 'op:digits 10 'op:scale 2)))
-
-
+  
+  
   (define-idl-test "float types"
     "
 typedef float f;
@@ -76,8 +100,8 @@ typedef long double ld;
     "f" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_float))
     "d" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_double))
     "ld" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_longdouble)))
-
-
+  
+  
   (define-idl-test "sequence"
     "typedef sequence<string> ubss;
   typedef sequence<string,20> bss;
@@ -100,10 +124,10 @@ typedef long double ld;
                                         'op:bound 20))
               'op:bound 0)))
   
-
+  
   (define-idl-test "arrays"
     "
-typedef long a[11];
+typedef long a[10+1];
 typedef string aa[2][9];
 "
     "a" (pattern 'op:original_type_def
@@ -114,8 +138,8 @@ typedef string aa[2][9];
                     'op:element_type_def 
                     (def-pattern :dk_array 'op:length 9
                       'op:element_type_def (def-pattern :dk_primitive 'op:kind :pk_string)))))
-
-
+  
+  
   (define-idl-test "const"
     "const long A = 1;
      const char B = 'C';
@@ -152,14 +176,17 @@ typedef string aa[2][9];
     "
 const long x = 123+4*9;
 const long y = 1 << 8;
+typedef long a[y];
 "
     "x" (pattern 'op:value (pattern 'any-value (+ 123 (* 4 9)))
                  'op:type CORBA:tc_long )
-    "y" (pattern 'op:value (pattern 'any-value 256)))
-
-
+    "y" (pattern 'op:value (pattern 'any-value 256))
+    "a" (pattern 'op:original_type_def 
+                 (def-pattern :dk_array 'op:length 256)))
+  
+  
   (define-idl-test "struct 1"
-    "module Bar { struct foo { long x; long y; }; };"
+    "module Bar { struct foo { long x, y; string s; }; };"
     "Bar" (def-pattern :dk_module)
     "Bar::foo" (def-pattern :dk_struct
                  'op:name "foo"
@@ -172,9 +199,12 @@ const long y = 1 << 8;
                                                              'op:kind :pk_long))
                               (struct-pattern 'struct-class-name 'omg.org/corba:structmember
                                               'op:name "y"
-                                              'op:type CORBA:tc_long))))
-
-
+                                              'op:type CORBA:tc_long)
+                              (struct-pattern 'struct-class-name 'omg.org/corba:structmember
+                                              'op:name "s"
+                                              'op:type CORBA:tc_string))))
+  
+  
   (define-idl-test "union 1"
     "union u switch(boolean) {
    case TRUE: long x;
@@ -188,7 +218,7 @@ const long y = 1 << 8;
                                        'op:label (pattern 'any-value nil)
                                        'op:type CORBA:tc_ulong))))
   
-
+  
   (define-idl-test "union 2"
     "const long y_tag = 1;
    union u switch(long) {
@@ -209,8 +239,18 @@ const long y = 1 << 8;
                                        'op:label (pattern 'any-typecode CORBA:tc_octet
                                                           'any-value 0)
                                        'op:type omg.org/corba:tc_boolean))))
+  
 
+  (define-idl-test "enum"
+    "enum E { NISSE, OLLE };
+	const E x = NISSE; " 
+    "E" (def-pattern :dk_enum
+          'op:members (seq-pattern "NISSE" "OLLE"))
+    "x" (def-pattern :dk_constant
+          'op:type_def (def-pattern :dk_enum)
+          'op:value (pattern 'any-value :NISSE)))
 
+  
   (define-idl-test "exception def"
     "exception exc { string msg; };"
     "exc" (def-pattern :dk_exception
@@ -224,6 +264,7 @@ const long y = 1 << 8;
                           'struct-class-name 'omg.org/corba:structmember
                           'op:name "msg"
                           'op:type CORBA:tc_string))))
+  
 
   (define-idl-test "interface"
     "interface foo {
@@ -247,6 +288,26 @@ const long y = 1 << 8;
     "foo::check" (def-pattern :dk_operation 
                    'op:exceptions (seq-pattern (def-pattern :dk_exception 'op:name "ex")))
     "foo::note" (def-pattern :dk_operation 'op:mode :op_oneway))
+  
 
-)
+  (define-idl-test "Interface 2"
+    "interface c;
+   interface a { attribute long n; };
+   interface b : a { attribute c peer; };
+   interface c : a { exception e {}; };"
+    ;; 
+    "a" (def-pattern :dk_interface)
+    "a::n" (def-pattern :dk_attribute)
+    "b" (def-pattern :dk_interface
+          'op:base_interfaces (seq-pattern (def-pattern :dk_interface 'op:name "a")))
+    "b::peer" (def-pattern :dk_attribute 
+                'op:type_def (def-pattern :dk_interface 'op:name "c")
+                'op:type_def (repository-pattern "e" (def-pattern :dk_exception)))
+    "c" (def-pattern :dk_interface))
+
+  
+  ;; TODO:
+  ;; forward struct, union,..
+  
+  )
 

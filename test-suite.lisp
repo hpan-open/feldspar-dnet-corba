@@ -83,7 +83,10 @@
               (unless bool
                 (tc-report "~A fail"
                            (or description "ensure"))))
-            
+            (ensure-pattern (obj pattern)
+              (handler-case 
+                (match pattern obj)
+                (match-fail (c) (tc-report "~A" (match-fail-message c)))))
             (ensure-typecode (obj type)
               (unless (typep obj 'CORBA:TypeCode)
                 (tc-report "~S should be a TypeCode" obj))

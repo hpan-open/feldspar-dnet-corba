@@ -1,22 +1,8 @@
-;;;; test-idlcomp.lisp
+;;;; pattern.lisp -- pattern matcher for testing 
 
 (in-package :clorb)
 
-(defvar *temporary-directory*
-  (let ((base (truename "ccl:")))
-    (make-pathname
-     :directory (list :absolute (second (pathname-directory base)) "tmp")
-     :defaults base)))
-
-(defun repository-from-string (string)
-  (let ((repository (make-instance 'repository))
-        (temp-file (merge-pathnames "working.idl" *temporary-directory*)))
-    (with-open-file (out temp-file :direction :output :if-exists :supersede)
-      (princ string out)
-      (terpri out))
-    (load-repository *default-idl-compiler* repository temp-file)
-    repository))
-
+;;;; match-fail condition
 
 (define-condition match-fail (warning)
                   ((object :initarg :object :reader match-fail-object)
@@ -36,6 +22,7 @@
            :message (apply #'cl:format nil format args)))
 
 
+;;;; Basic pattern
 
 (defgeneric match (pattern object))
 
@@ -65,6 +52,8 @@
                            (fail-match object "~S ~A" key (match-fail-message condition)))))))
 
 
+;;;; IR Definition Pattern
+
 (defclass def-pattern (pattern)
   ((kind :initarg :kind :accessor def-kind)))
 
@@ -72,14 +61,21 @@
   (make-instance 'def-pattern :kind kind :args args))
 
 (defmethod match ((pattern def-pattern) def)
+  (unless def
+    (fail-match def "Missing"))
   (unless (eq (def-kind pattern)
               (omg.org/features:def_kind def))
     (fail-match def "Wrong definition kind"))
   (call-next-method))
 
 
+;;;; IR Repository Pattern 
+
 (defclass repository-pattern (pattern)
   ())
+
+(defun repository-pattern (&rest args)
+  (make-instance 'repository-pattern :args args))
 
 (defmethod match ((pattern repository-pattern) object)
   (loop for (name pattern) on (pattern-args pattern) by #'cddr
@@ -91,6 +87,8 @@
                       (match-fail (condition)
                                   (fail-match object "~S ~A" name (match-fail-message condition)))))))))
 
+
+;;;; Sequence Pattern
 
 (defclass sequence-pattern (pattern)
   ())
@@ -143,16 +141,6 @@
        *def*)
 
 |#
-
-
-
-(defmacro define-idl-test (name idl &rest pattern)
-  `(define-test ,name 
-     (let ((repository (repository-from-string ,idl)))
-       (handler-case 
-         (match (make-instance 'repository-pattern :args (list ,@pattern))
-                repository)
-         (match-fail (c) (tc-report "~A" (match-fail-message c)))))))
 
 
 #|
