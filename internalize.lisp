@@ -1,11 +1,8 @@
 (in-package :clorb)
 
 (defclass irepository (repository)
-  ((idmap :initform (make-hash-table :test #'equal)
-          :reader idmap)))
+  ())
 
-(define-method lookup_id ((rep irepository) id)
-  (gethash id (idmap rep)))
 
 
 (defmethod internalize ((r irepository) obj &optional (content t))
