@@ -189,7 +189,7 @@
         (defmethod exception-name ((exc ,symbol)) ',symbol)
         (set-ifr-info ',symbol
                       :id ,id
-                      :typecode (create-exception-tc ,id ,name (list ,@tc-members))
+                      :typecode (create-exception-tc ,id ,name (vector ,@tc-members))
                       :version ,version
                       :defined_in ',defined_in)))))
 
@@ -197,7 +197,7 @@
 
 ;;;; Stub generation
 
-(defmacro static-call ((op obj) &key output input exceptions)
+(defmacro static-call ((op obj) &key output input exceptions no-response)
   (let ((req '#:REQ) 
         (status '#:status)
         (output-buf (or (caar output) '#:output-buf))
@@ -207,7 +207,7 @@
          (let (,output-buf)
            ,@(if (and output-buf (null (cdr output)))
                `((declare (ignorable ,output-buf))))
-           (multiple-value-setq (,req ,output-buf) (start-request ,op ,obj ,(null input)))
+           (multiple-value-setq (,req ,output-buf) (start-request ,op ,obj ,no-response))
            ,@(cdr output))
          (multiple-value-bind (,status ,input-buf) (invoke-request ,req)
            (case ,status

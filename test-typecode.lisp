@@ -69,18 +69,33 @@
                     tc))))
 
   (define-test "Fixed"
-    (let ((tc (create-fixed-tc 10 2)))
-      (ensure-equalp (op:fixed_digits tc) 10)
-      (ensure-equalp (op:fixed_scale tc) 2)))
+    (ensure-pattern*
+     (create-fixed-tc 10 2)
+     'op:kind :tk_fixed
+     'op:fixed_digits 10 'op:fixed_scale 2))
+
+  (define-test "Exception"
+    (let* ((members (list (list "foo" CORBA:tc_string)
+                          (list "bar" CORBA:tc_ulong))))
+      (ensure-pattern*
+       (create-exception-tc "IDL:exc:1.0" "exc" members)
+       'op:kind :tk_except
+       'op:id "IDL:exc:1.0" 'op:name "exc"
+       'tc-members (apply #'vector members)
+       'op:member_count (length members)
+       '(op:member_name * 0) "foo"
+       '(op:member_type * 0) CORBA:tc_string
+       '(op:member_name * 1) "bar"
+       '(op:member_type * 1) CORBA:tc_ulong)))
 
   (define-test "Value Box"
-      (let* ((id "IDL:Foo/Box:1.0")
-             (tc (create-value-box-tc id "Box" corba:tc_string)))
-        (ensure-typep tc 'corba:typecode)
-        (ensure-pattern* tc
-                         'op:kind :tk_value_box
-                         'op:id id 'op:name "Box"
-                         'op:content_type corba:tc_string) ))
+    (let* ((id "IDL:Foo/Box:1.0"))
+      (ensure-pattern* 
+       (create-value-box-tc id "Box" corba:tc_string)
+       'identity (isa 'corba:typecode)  'op:kind :tk_value_box 
+       'op:id id 'op:name "Box"
+       'op:content_type corba:tc_string) ))
+
   (define-test "Native"
     (let* ((id "IDL:CORBA/nat:1.0")
            (tc (create-native-tc id "nat")))

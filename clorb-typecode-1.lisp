@@ -35,7 +35,7 @@
     (print-unreadable-object (tc stream :type t :identity t)
       (let ((params (slot-value tc 'params)))
         (when (stringp (ignore-errors (cadr params)))
-          (prin1 (cadr params))))))))
+          (prin1 (cadr params) stream)))))))
   
 
 

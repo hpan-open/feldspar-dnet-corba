@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.20 2003/11/12 07:20:07 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.21 2003/11/15 17:23:21 lenst Exp $
 
 (in-package :clorb)
 
@@ -185,7 +185,7 @@
     ;;(check-not-processing-request )
     (when *poa-current*
       ;; FIXME: check same ORB 
-      (error 'omg.org/corba:bad_inv_order :minor 3)))
+      (error 'corba:bad_inv_order :minor 3)))
   (POAManager-new-state pm :holding))
 
 
@@ -194,7 +194,7 @@
 (define-method discard_requests ((pm PortableServer:POAManager) wait_for_completion)
   (when wait_for_completion
     (when *poa-current*
-      (error 'omg.org/corba:bad_inv_order :minor 3)))
+      (error 'corba:bad_inv_order :minor 3)))
   (POAManager-new-state pm :discarding))
 
 
@@ -275,9 +275,9 @@
   (setq policies (canonical-policy-list policies))
   (when (and poa (find name (op:the_children poa)
                        :key #'op:the_name :test #'equal))
-    (error 'PortableServer:poa/adapteralreadyexists))
+    (error 'PortableServer:POA/AdapterAlreadyExists))
   (let ((newpoa
-         (make-instance 'PortableServer:poa
+         (make-instance 'PortableServer:POA
            :the_name name
            :the_parent poa
            :the_poamanager (or manager (make-instance 'PortableServer:poamanager))
@@ -298,7 +298,7 @@
 (define-method create_POA ((poa PortableServer:POA) adapter-name poamanager policies)
   (when (poa-state poa)
     ;; Currently only have state when destroying
-    (error 'omg.org/corba:bad_inv_order :minor 17))
+    (error 'CORBA:BAD_INV_ORDER :minor 17))
   (create-POA poa adapter-name poamanager policies (the-orb poa)))
 
 (defun find-requested-poa (poa name activate-it check-poa-status)
@@ -639,6 +639,8 @@ POA destruction does not occur.
                (cond ((poa-has-policy poa :retain)
                       (setq servant
                             (op:incarnate (POA-servant-manager poa) oid poa))
+                      (mess 2 "~A incarnated ~A for '~/clorb:stroid/'"
+                            poa servant oid)
                       (op:activate_object_with_id poa oid servant))
                      (t
                       (multiple-value-setq (servant cookie)
@@ -660,7 +662,7 @@ POA destruction does not occur.
                  (servant-invoke servant operation buffer handler)))))
       (PortableServer:ForwardRequest
        (fwd)
-       (mess 3 "forwarding")
+       (mess 3 "forwarding to ~A" (op:forward_reference fwd))
        (let ((buffer (funcall handler :location_forward)))
          (marshal-object (op:forward_reference fwd) buffer)
          buffer)))))

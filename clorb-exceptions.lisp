@@ -6,7 +6,7 @@
 (defun create-exception-tc (id name members)
   "Create Exception TypeCode for interface repository ID and NAME, with MEMEBERS.
 Members on form: (name TypeCode)"
-  (make-typecode :tk_except id name members))
+  (make-typecode :tk_except id name (coerce members 'vector)))
 
 
 (defgeneric exception-name (exception)

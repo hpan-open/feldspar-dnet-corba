@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.15 2003/07/03 08:47:44 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.16 2003/11/15 17:23:39 lenst Exp $	
 
 (in-package :clorb)
 
@@ -112,13 +112,15 @@
                  (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no))))
         (systemexception
          (exception)
+         (mess 2 "#~D Exception from servant: ~A" req-id exception)
          (setq buffer (funcall handler :system_exception))
          (marshal-string (exception-id exception) buffer)
          (marshal-ulong  (system-exception-minor exception) buffer)
          (marshal (system-exception-completed exception) OMG.ORG/CORBA::TC_completion_status buffer)))
-      
+
       ;; Send the response
       (unless (zerop response)
+        (mess 3 "#~D Sending response" req-id )
         (marshal-giop-set-message-length buffer)
         (connection-send-buffer conn buffer)))))
 
