@@ -227,13 +227,6 @@
            (:tk_typecode (unmarshal-typecode buffer))))))
 
 
-(defun unmarshal-any (buffer)
-  (let ((tc (unmarshal-typecode buffer)))
-    (if *explicit-any*
-        (corba:any :any-typecode tc :any-value (unmarshal tc buffer))
-      (unmarshal tc buffer))))
-
-
 (defun unmarshal-tagged-component (buffer)
   (cons (unmarshal-ulong buffer)
 	(unmarshal-osequence buffer)))
@@ -292,7 +285,6 @@
       ((:tk_double) (unmarshal-double buffer))
       ((:tk_longdouble) (unmarshal-longdouble buffer))
       ((:tk_string) (unmarshal-string buffer))
-      ((:tk_any) (unmarshal-any buffer))
       ((:tk_null :tk_void) nil)
       ((:tk_typecode) (unmarshal-typecode buffer)))))
 

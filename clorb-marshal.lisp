@@ -156,8 +156,8 @@
   (marshal-ulong (length s) buffer)
   (doseq (e s) (funcall el-cdr e buffer)))
 
-(defun marshal-make-encapsulation (closure)
-  (let ((buffer (get-work-buffer)))
+(defun marshal-make-encapsulation (closure orb)
+  (let ((buffer (get-work-buffer orb)))
    (marshal-octet 1 buffer)			;byte order
    (funcall closure buffer)
    (buffer-contents buffer)))
@@ -249,18 +249,12 @@
 (defmethod marshal-object ((object t) buffer)
   (marshal-object (op:_this object) buffer))
 
-(defun marshal-any (arg buffer)
-  (let ((tc (any-typecode arg)))
-    (marshal-typecode tc buffer)
-    (marshal (any-value arg) tc buffer)))
-
 
 (defgeneric marshal (arg tc buffer))
 
 (defmethod marshal (arg (type CORBA:TypeCode) buffer)
   (let ((kind (typecode-kind type)))
     (ecase kind
-      ((:tk_any) (marshal-any arg buffer))
       ((:tk_octet) (marshal-octet arg buffer))
       ((:tk_char) (marshal-char arg buffer))
       ((:tk_boolean) (marshal-bool arg buffer))

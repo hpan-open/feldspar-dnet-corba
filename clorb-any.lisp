@@ -108,3 +108,33 @@
 (defmethod any-value ((obj t))
   (raise-system-exception 'CORBA:BAD_PARAM))
 
+
+
+;;;; Marshal/Unmarshal
+
+
+(defun marshal-any (arg buffer)
+  (let ((tc (any-typecode arg)))
+    (marshal-typecode tc buffer)
+    (marshal (any-value arg) tc buffer)))
+
+
+(defmethod marshal (any (tc any-typecode) buffer)
+  (marshal-any any buffer))
+
+
+(defun unmarshal-any (buffer)
+  (let ((tc (unmarshal-typecode buffer)))
+    (if *explicit-any*
+        (corba:any :any-typecode tc :any-value (unmarshal tc buffer))
+      (unmarshal tc buffer))))
+
+
+(defmethod unmarshal ((tc any-typecode) buffer)
+  (unmarshal-any buffer))
+
+
+(defun marshal-any-value (any buffer)
+  (marshal (any-value any)
+           (any-typecode any)
+           buffer))
