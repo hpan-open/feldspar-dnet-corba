@@ -81,3 +81,23 @@
 (op:string_to_object *the-orb* "corbaloc::10.0.1.2:4711/NameService")
 
 |#
+
+(defvar *export-ifr* nil)
+
+(defun export-iors ()
+  (with-open-file (out "SaturnX:private:tmp:NameService" 
+                       :direction :output :if-exists :supersede)
+    (princ (op:object_to_string *the-orb* (clorb::get-ns)) out))
+  (unless *export-ifr*
+    (setq *export-ifr* (corba:idl "clorb:idl;CosNaming.idl" :eval nil))
+    (corba:idl "clorb:idl;interface-repository.idl" :repository *export-ifr* :eval nil))
+  (with-open-file (out "SaturnX:private:tmp:InterfaceRepository"
+                       :direction :output :if-exists :supersede)
+    (princ (op:object_to_string *the-orb* *export-ifr*) out))
+)
+
+(defun home-volume-pathname ()
+    (let ((home (user-homedir-pathname)))
+      (make-pathname :host (pathname-host home)
+                     :directory (subseq (pathname-directory home) 0 2)
+                     :device (pathname-device home))))

@@ -1,3 +1,8 @@
+2004-11-26  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idl.lisp (corba:idl): added new keyword parameter
+	REPOSITORY, allows caller to populate existing repository.
+
 2004-09-17  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-poa.lisp: use new object-map class for Active Object Map
