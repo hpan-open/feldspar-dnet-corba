@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.33 2004/02/03 17:04:19 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.34 2004/06/09 21:09:20 lenst Exp $
 
 
 (in-package :clorb)
@@ -359,13 +359,13 @@ Where host is a string and port an integer.")
   (let ((req (create-client-request (the-orb obj)
                                     :target obj :operation 'locate)))
     (loop
-      (let* ((conn (request-start-request req))
-             (req-id (next-request-id conn)))
-        (setf (request-status req) nil)
-        (setf (request-id req) req-id)
-        (let ((buffer (connection-start-locate-request conn req-id
-                                                       (request-effective-profile req))))
-          (connection-send-request conn buffer req)))
+      (request-start-request 
+       req
+       (lambda (conn req-id)
+         (setf (request-id req) req-id)
+         (let ((buffer (connection-start-locate-request conn req-id
+                                                        (request-effective-profile req))))
+           (connection-send-request conn buffer req))))
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
              (setf (object-forward obj) (unmarshal-object (request-buffer req))))
