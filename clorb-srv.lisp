@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.25 2004/02/03 17:17:08 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.26 2004/06/09 21:22:03 lenst Exp $	
 
 (in-package :clorb)
 
@@ -109,6 +109,7 @@
                      :request-id req-id :operation operation
                      :service-context service-context :input buffer
                      :state :wait :response-flags response)))
+      (push request (connection-server-requests conn))
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
       (loop
@@ -151,30 +152,41 @@
     buffer))
 
 (defun send-response (request)
-  (when (response-expected request)
-    (let ((conn (request-connection request))
-          (buffer (reply-buffer request))
-          (req-id (request-id request)))
-      (mess 3 "#~D Sending response (~S)" req-id (reply-status request) )
-      (marshal-giop-set-message-length buffer)
-      (connection-send-buffer conn buffer))))
+  (let ((conn (request-connection request)))
+    (when (response-expected request)
+      (let ((buffer (reply-buffer request))
+            (req-id (request-id request)))
+        (mess 3 "#~D Sending response (~S)" req-id (reply-status request) )
+        (marshal-giop-set-message-length buffer)
+        (connection-send-buffer conn buffer)))
+    (setf (request-state request) :finished)
+    (setf (connection-server-requests conn)
+          (delete request (connection-server-requests conn)))))
 
 
 (defun poa-cancelrequest-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
     (let* ((req-id (unmarshal-ulong buffer)))
-      (mess 3 "#~D cancel" req-id))))
+      (mess 3 "#~D cancel" req-id)
+      (loop for req in (connection-server-requests conn)
+            when (eql req-id (request-id req))
+            ;; FIXME if still in :wait it could be thrown away?
+            do (return (setf (response-flags req) 0))))))
+
 
 
 (defun poa-locaterequest-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
-    (let* (;(orb (the-orb conn))
+    (let* ((orb (the-orb conn))
            (req-id (unmarshal-ulong buffer))
            (object-key (unmarshal-osequence buffer))
            (operation "_locate")
-           (request nil)
+           (request 
+            (create-server-request
+             orb :operation operation :request-id req-id
+             :connection conn))
            (status :UNKNOWN_OBJECT))
       (setq buffer nil)
       ;; FIXME: what if decode-object-key-poa raises an exception?
@@ -183,18 +195,37 @@
           (handler-case
             (setq buffer (poa-invoke poa oid operation buffer request)
                   status :object_here)
-            (CORBA:TRANSIENT () (setq status :object_here))
             (SystemException () nil))))
-      (setq buffer (get-work-buffer))
-      (marshal-giop-header :locatereply buffer)
-      (marshal-ulong req-id buffer)
-      (marshal-ulong (ecase status
-                       (:unknown_object 0)
-                       (:object_here 1)
-                       ((:object_forward :location_forward) 2))
-                     buffer))
+      ;; FIXME: forwarding ??
+      (send-locate-reply conn req-id status))))
+
+
+(defun send-reply (conn request-id status service-context result-marshal result-data)
+  (let* ((orb (the-orb conn))
+         (buffer (get-work-buffer orb)))
+    (marshal-giop-header :reply buffer)
+    (marshal-service-context service-context buffer) 
+    (marshal-ulong request-id buffer)
+    (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
+    (funcall result-marshal result-data buffer)
     (marshal-giop-set-message-length buffer)
     (connection-send-buffer conn buffer)))
+
+(defun send-locate-reply (conn req-id status &optional forward-marshal forward-object)
+  (let* ((orb (the-orb conn))
+         (buffer (get-work-buffer orb)))
+    (marshal-giop-header :locatereply buffer)
+    (marshal-ulong req-id buffer)
+    (marshal-ulong (ecase status
+                     (:unknown_object 0)
+                     (:object_here 1)
+                     ((:object_forward :location_forward) 2))
+                   buffer)
+    (when forward-marshal
+      (funcall forward-marshal forward-object buffer))
+    (marshal-giop-set-message-length buffer)
+    (connection-send-buffer conn buffer)))
+
 
 
 (defun poa-closeconnection-handler (conn)
