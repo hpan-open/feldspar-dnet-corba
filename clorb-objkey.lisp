@@ -32,34 +32,39 @@ be no need to store the actual path to the POA in the object key.
 
 (defun decode-object-key-from-buffer (buffer)
   "Returns: type poa-spec object-id"
-  (let* ((magic (unmarshal-ushort buffer)))
+  (let* ((magic (if (>= (buffer-length buffer) 2)
+                  (unmarshal-ushort buffer)
+                  0)))
     (cond
-      ((eql magic +transient-ior-magic+)
-       (let* ((poaid (unmarshal-ushort buffer))
-              (uniq (unmarshal-ulong buffer)))
-         (if (= uniq *instance-id*)
-             (values :transient
-                     poaid
-                     (subseq (buffer-octets buffer)
-                             (buffer-in-pos buffer)))
-           (progn
-             (mess 2 "Illegal unique id, IOR from other instance")
-             nil))))
-      ((eql magic +persistent-ior-magic1+)
-       (values :persistent
-               (unmarshal-ushort buffer)
-               (subseq (buffer-octets buffer)
-                       (buffer-in-pos buffer))))
-      ((eql magic +persistent-ior-magic2+)
-       (values :persistent
-               (loop repeat (unmarshal-ushort buffer)
-                   collect (unmarshal-string buffer))
-               (subseq (buffer-octets buffer)
-                       (buffer-in-pos buffer))))
-      (t
-       ;;(warn "illegal magic=~S" magic)
-       ;; default poa for boot objects
-       (values :transient 0 (buffer-octets buffer))))))
+     ((and (eql magic +transient-ior-magic+)
+           (>= (buffer-length buffer) 8))
+      (let* ((poaid (unmarshal-ushort buffer))
+             (uniq (unmarshal-ulong buffer)))
+        (if (= uniq *instance-id*)
+          (values :transient
+                  poaid
+                  (subseq (buffer-octets buffer)
+                          (buffer-in-pos buffer)))
+          (progn
+            (mess 2 "Illegal unique id, IOR from other instance")
+            nil))))
+     ((and (eql magic +persistent-ior-magic1+)
+           (>= (buffer-length buffer) 4))
+      (values :persistent
+              (unmarshal-ushort buffer)
+              (subseq (buffer-octets buffer)
+                      (buffer-in-pos buffer))))
+     ((and (eql magic +persistent-ior-magic2+)
+           (>= (buffer-length buffer) 4))
+      (values :persistent
+              (loop repeat (unmarshal-ushort buffer)
+                    collect (unmarshal-string buffer))
+              (subseq (buffer-octets buffer)
+                      (buffer-in-pos buffer))))
+     (t
+      ;;(warn "illegal magic=~S" magic)
+      ;; default poa for boot objects
+      (values :transient 0 (buffer-octets buffer))))))
 
 (defun decode-object-key (octets)
   "Returns: type poa-spec object-id"
@@ -91,8 +96,8 @@ types will be converterd by this GF."))
   (let ((buf (make-buffer :octets objid)))
     (unmarshal-ulong buf)))
 
-(defun make-object-key (type poaid oid orb
-                        &key (uniq *instance-id*) poa-name)
+(defun make-object-key (type poaid oid orb poa-name
+                        &key (uniq *instance-id*) )
   ;; If poa-name use persistance v2
   (declare (optimize debug))
   (let* ((buffer (get-work-buffer orb))
