@@ -325,9 +325,8 @@
 
 
 (defmethod io-system-driver ((system io-system-select))
-  (loop until *io-event-queue*
-       repeat 500
-       do (io-poll-select) )
+  (loop repeat 500 until *io-event-queue*
+        do (io-poll-select) )
   (values-list (or (pop *io-event-queue*) '(nil))) )
 
 
