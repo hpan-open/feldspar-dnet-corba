@@ -8,8 +8,8 @@
     ("clorb-macros" t)
     "clorb-sysdep"
     "clorb-basetypes"
+    ("clorb-typecode")
     ("clorb-exceptions" t)
-    ("clorb-typecode" t)
     ("clorb-struct" t)
     "clorb-union"
     "clorb-any"
@@ -19,10 +19,10 @@
     "clorb-marshal"
     ("clorb-unmarshal" )
     "clorb-ifr-base"
-    ("clorb-opdef" t)
     "clorb-io"
     "clorb-iiop"
     "clorb-orb"
+    ("clorb-opdef" t)
     ("clorb-iir" t)
     "clorb-util"
     "dumpir"))
@@ -33,7 +33,7 @@
     "clorb-servant"
     "clorb-trie"
     "clorb-poamgr"
-    ("clorb-poa" t)
+    "clorb-poa"
     "clorb-srv"))
 
 
@@ -61,11 +61,11 @@
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
-
+(defvar *clorb-pathname-defaults* *load-pathname*)
 
 (defun compile-changed (files)
   (loop
-    with *default-pathname-defaults* = (make-pathname :host "clorb")
+    with *default-pathname-defaults* = *clorb-pathname-defaults*
     with defs-date = 0
     for x in files
     for (base defs) = (if (consp x) x (list x nil))

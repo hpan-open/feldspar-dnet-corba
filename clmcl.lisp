@@ -122,5 +122,5 @@
 (import 'vsns-get "CLORB")
 
 #|
-(setq *log-level* 3)
+(setq clorb::*log-level* 3)
 |#
