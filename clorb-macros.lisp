@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.7 2002/05/24 10:05:47 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.8 2002/10/05 11:10:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -72,8 +72,11 @@
                ,@doc-string ,@body)
              `(defmethod ,opsym (,(first args) &rest -args-)
                ,@doc-string
-               (destructuring-bind ,(rest args) -args- 
-                 ,@body)))))))
+               ,@(if (rest args) 
+                  `((destructuring-bind ,(rest args) -args- 
+                     ,@body))
+                  `((declare (ignore -args-))
+                    ,@body))))))))
 
 
 #||

@@ -189,7 +189,9 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    (let ((conn (socket:accept-connection socket :wait blocking)))
      (when conn
        (mess 4 "Accepting connection from ~A:~D"
-             (socket:ipaddr-to-hostname (socket:remote-host conn))
+             (or (ignore-errors
+                  (socket:ipaddr-to-hostname (socket:remote-host conn)))
+                 (acl-socket:ipaddr-to-dotted (socket:remote-host conn)))
              (socket:remote-port conn)))
      conn)
    #+mcl

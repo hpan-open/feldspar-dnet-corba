@@ -110,7 +110,7 @@ Members: (name typecode)*"
     for slot = (intern (symbol-name initarg))  ; FIXME: or make-symbol ??
     collect (list slot :initarg initarg)
     into slot-defs
-    collect `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
+    collect `(define-method ,initarg ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
     into getters
     collect `(list ,slot-name ,(second member)) 
     into tc-members

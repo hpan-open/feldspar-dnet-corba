@@ -119,5 +119,8 @@
 (import 'vsns-get "CLORB")
 
 #|
-(setq clorb::*log-level* 3)
 |#
+(setq clorb::*log-level* 3)
+
+(defun clorb::xir ()
+  (map 'list #'op:name (op:contents (clorb::get-ir) :dk_all t)))
