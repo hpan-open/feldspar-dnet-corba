@@ -46,6 +46,7 @@
       do (setf (get (elt tckind i) 'tk-value) i)))
 
 
+;;;; Internal interface to TypeCode
 
 (defun make-typecode (kind &rest params)
   (let ((class (if (eq kind :recursive)
@@ -64,6 +65,9 @@
 (defun (setf typecode-params) (params tc)
   (setf (slot-value tc 'params) params))
 
+(defgeneric compact-params (tc)
+  (:method ((tc CORBA:TypeCode)) (typecode-params tc)))
+
 (defun typecode-smash (tc new-tc)
   (setf (slot-value tc 'kind) (slot-value new-tc 'kind)
         (slot-value tc 'params) (slot-value new-tc 'params))
@@ -81,12 +85,10 @@
       (apply #'make-typecode (typecode-kind tc)
              (mapcar #'transform params)))))
 
-(defun feature (name)
-  (intern (string-upcase name) :op))
 
-(defun key (string)
-  (check-type string string)
-  (intern (string-upcase string) :keyword))
+(defgeneric tc-members (tc))
+
+
 
 
 ;;;; PIDL interface to TypeCode
@@ -147,6 +149,68 @@
 (define-feature type_modifier)
 
 (define-feature concrete_base_type)
+
+
+
+;;;; Defining typecode classes
+
+(defun make-compact-params (class-name params member-params)
+  (let ((member-name-p (and (consp member-params) (find 'member_name member-params))))
+    (when (or (find 'name params) member-name-p)
+      `(defmethod compact-params ((tc ,class-name))
+         (let ((params (typecode-params tc)))
+           (list
+            ,@(loop for p in params and i from 0 collect
+                    (cond ((eql p 'name) "")
+                          ((and member-name-p (eql p :members))
+                           `(map 'vector
+                                 (lambda (member)
+                                   (list
+                                    ,@(loop for mp in member-params and j from 0
+                                            collect (cond ((eql mp 'member_name) "")
+                                                          (t `(elt member ,j))))))
+                                 (elt params ,i)))
+                          (t `(elt params ,i))))))))))
+
+
+(defmacro tcp-elt (x i)
+  (case i
+    (0 `(first (typecode-params ,x)))
+    (1 `(second (typecode-params ,x)))
+    (2 `(third (typecode-params ,x)))
+    (3 `(fourth (typecode-params ,x)))
+    (4 `(fifth (typecode-params ,x)))
+    (otherwise `(elt (typecode-params ,x) ,i))))
+
+
+(defmacro define-typecode (class-name &key kind cdr-syntax params member-params constant )
+  `(progn
+     (defclass ,class-name (CORBA:TypeCode)
+       ())
+     (setf (get ',kind 'tk-params) ',cdr-syntax)
+     (setf (get ',kind 'tk-class) ',class-name)
+     ,@(loop for param in params
+             for i from 0
+             collect (if (eq param :members)
+                       `(defmethod tc-members ((tc ,class-name))
+                          (tcp-elt tc ,i))
+                       `(define-method ,param ((tc ,class-name))
+                          (tcp-elt tc ,i))))
+     ,@(cond ((consp member-params)
+              (loop for mp in member-params 
+                    for i from 0
+                    collect `(define-method ,mp ((tc ,class-name) index)
+                               (elt (elt (tc-members tc) index) ,i))))
+             ((null member-params) nil)
+             ((symbolp member-params)
+              `((define-method ,member-params ((tc ,class-name) index)
+                 (elt (tc-members tc) index)))))
+     ,(make-compact-params class-name params member-params)
+     ,@(if constant
+         `((defparameter ,(if (consp constant) (car constant) constant)
+             (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
+                                                      (cdr constant)))))))))
+
 
 
 
