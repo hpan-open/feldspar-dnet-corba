@@ -214,7 +214,7 @@
 
 
 (defmacro %jit-call (sym obj &rest args)
-  `(funcall (load-time-value (compute-static-call ',sym))
+  `(funcall (the function (load-time-value (compute-static-call ',sym)))
             ,obj ,@args))
 
 
