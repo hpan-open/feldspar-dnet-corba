@@ -178,6 +178,8 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
              state nil))
      (when (member state '(nil :uninit :closed))
        (mess 3 "New listner replacing ~S" s)
+       (or (mcl-listner-port socket)
+           (error "MCL OpenTransport needs explicit port number for listner socket"))
        (setf (listner-stream socket)
              (ccl::open-tcp-stream nil (mcl-listner-port socket) 
                                    :element-type '(unsigned-byte 8)

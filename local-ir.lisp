@@ -868,8 +868,8 @@
 (defun setup-ifr ()
   (unless *ifr-servant*
     (setq *ifr-servant* (make-instance 'repository)))
-  (with-open-file (out "/tmp/InterfaceRepository"
-                   :direction :output
+  (with-open-file (out *interface-repository*
+                   :direction :output 
                    :if-exists :supersede)
     (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 
