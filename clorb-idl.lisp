@@ -36,25 +36,13 @@
           (when eval
             (eval x)))
         (when print (terpri)))
+      (add-idl-repository *internal-interface-repository*
+                          (truename file)
+                          repository)
       repository)))
 
 (defun mklist (x)
   (if (consp x) x (list x)))
 
 
-#|
-(mapcar (lambda (name)
-          (target-code (lookup name) target))
-        (mklist only))
-
-(map-of 'list (target-code (:of (map-of 'list (lookup (:of (mklist only)))))
-                           target))
-
-(mapcar-of (target-code (:of (mapcar-of (lookup (:of (mklist only))))) target))
-
-(mapcar-of (target-code (:of (lookup (:of (mklist only)))) target))
-(mapcar-of (target-code (lookup (:of (mklist only))) target))
-
-(target-code @(lookup @(mklist only)) target)
-
-|#
+;;; clorb-idl.lisp ends here
