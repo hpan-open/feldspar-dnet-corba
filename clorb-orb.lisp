@@ -142,15 +142,12 @@
 
 ;;;    string object_to_string (in Object obj);
 (define-method object_to_string ((orb orb) obj)
-  (object-to-string obj))
-
-(defun object-to-string (objref)
   (format nil
 	  "IOR:~{~2,'0X~}"
 	  (map 'list #'identity (marshal-make-encapsulation
 				 (lambda (buffer)
-                                   (marshal-object objref buffer))
-                                 (the-orb objref)))))
+                                   (marshal-object obj buffer))
+                                 orb))))
 
 ;;;    ObjectIdList list_initial_services ();
 (define-method list_initial_references ((orb orb))

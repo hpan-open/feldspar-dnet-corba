@@ -103,8 +103,8 @@
 (defun match-sexp (pattern object)
   (if (consp pattern)
     (progn
-      (unless (consp object)
-        (fail-match object "not a cons (pattern ~S)" pattern))
+      (unless (listp object)
+        (fail-match object "not a list (pattern ~S)" pattern))
       (handler-case
         (case (car pattern)
           (&key (match-keys (cdr pattern) object))
