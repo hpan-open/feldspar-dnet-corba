@@ -4,12 +4,24 @@
 
 
 (define-condition corba:exception (serious-condition)
-  ((id :initform "IDL:omg.org/CORBA/Exception:1.0"
-       :initarg :id
-       :reader exception-id)))
+  ())
+
+(defgeneric exception-name (exception)
+  (:documentation "The scoped symbol for the exception type"))
+
+(defun exception-id (exception)
+  (symbol-ifr-id (exception-name exception)))
+
 
 (deftype CORBA::completion_status ()
   '(member :COMPLETED_YES :COMPLETED_NO :COMPLETED_MAYBE))
+
+(set-symbol-typecode 'CORBA:completion_status
+                     (make-typecode :tk_enum
+                                    "IDL:omg.org/CORBA/completion_status:1.0"
+                                    "completion_status"
+                                    '#("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE")))
+
 
 ;; Map from id to class
 (defvar *system-execption-classes* 
@@ -24,13 +36,20 @@
 	      :initarg :completed
               :type CORBA::completion_status
 	      :reader system-exception-completed))
-  (:report report-systemexception)
-  #-clisp
-  (:default-initargs
-      :id "IDL:omg.org/CORBA/SystemException:1.0"))
+  (:report report-systemexception))
 
+(define-method minor ((obj systemexception))
+  (system-exception-minor obj))
 
+(define-method completed ((obj systemexception))
+  (system-exception-completed obj))
 
+(defun report-systemexception (exc stream)
+  (format stream
+          "Exception ~S (~A) ~A"
+	  (exception-name exc)
+          (system-exception-minor exc)
+          (system-exception-completed exc)))
 
 
 (macrolet
@@ -41,12 +60,9 @@
                            (id (format nil "IDL:omg.org/CORBA/~A:1.0" namestr))
                            (sym (intern namestr :CORBA)))
                       `(progn
-                         (define-condition ,sym (corba:systemexception)
-                                           (#+clisp
-                                            (id :initform ,id))
-                           #-clisp
-                           (:default-initargs
-                             :id ,id))
+                         (define-condition ,sym (corba:systemexception))
+                         (defmethod exception-name ((exc ,sym)) ',sym)
+                         (set-symbol-ifr-id ',sym ,id)
                          (setf (gethash ,id *system-execption-classes*) ',sym) ))))))
   (define-system-exceptions
       UNKNOWN BAD_PARAM NO_MEMORY IMP_LIMIT
@@ -70,15 +86,14 @@
                   ())
 
 (define-condition unknown-user-exception (corba:userexception)
-                  ((id :initarg :id :reader exception-id)
-                   (values :initarg :values :reader exception-values)))
+                  ((id :initarg :id :reader unknown-exception-id)
+                   (values :initarg :values :reader unknown-exception-values)))
 
 
-(defgeneric exception-typecode (exception)
-  (:documentation "The typecode for the exception"))
+(defun exception-typecode (exception)
+  "The typecode for the exception"
+  (symbol-typecode (exception-name exception)))
 
-(defmethod exception-id ((exc corba:userexception))
-  (op:id (exception-typecode exc)))
 
 (defvar *user-exception-classes*
   (make-hash-table :test #'equal))
@@ -112,25 +127,14 @@ Members: (name typecode)*"
         (setf (gethash ,id *user-exception-classes*) ',symbol)
         (defun ,symbol (&rest initargs)
           (apply #'make-condition ',symbol initargs))
-        (defmethod exception-typecode ((exc ,symbol))
-          (load-time-value (make-typecode :tk_except ,id ,name (list ,@tc-members))))
+        (set-symbol-ifr-id ',symbol ,id)
+        (set-symbol-typecode ',symbol 
+                             (lambda () (make-typecode :tk_except ,id ,name (list ,@tc-members))))
+        (defmethod exception-name ((exc ,symbol)) ',symbol)
         (defmethod userexception-values ((ex ,symbol))
           (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
-                          slots))))))) 
+                          (append slots members)))))))) 
 
 
 
 
-
-
-(defun report-systemexception (exc stream)
-  (format stream
-          "Exception ~A~_ minor ~A~_ completed ~A"
-	  (exception-id exc)
-          (system-exception-minor exc)
-          (system-exception-completed exc)))
-
-(defun report-userexception (exc stream)
-  (format stream
-          "User Exception (~A) ~_~S"
-          (exception-id exc) (userexception-values exc)))
