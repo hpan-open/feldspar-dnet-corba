@@ -6,7 +6,7 @@
                             "NET.CDDR.CLORB.SYSTEM"))
       (make-pathname :name nil :type nil :version nil
                      :defaults (or #+MCL ccl:*loading-file-source-file*
-                                   *compile-file-pathname*
+                                   #.*compile-file-pathname*
                                    *load-pathname* ))))
 
 
