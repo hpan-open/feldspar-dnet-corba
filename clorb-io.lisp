@@ -258,13 +258,12 @@
       (let ((desc (io-create-descriptor)))
         (setf (io-descriptor-stream desc) new)
         (setf (io-descriptor-status desc) :connected)
-        desc))))
+        (io-queue-event :new desc)))))
+
 
 (defun io-bg-listen ()
-  (loop
-    (let ((new (io-listen t)))
-      (when new
-        (io-queue-event :new new)))))
+  (loop (io-listen t)))
+
 
 (defun io-start-bg-listen ()
   (unless *io-listener-process*
@@ -282,72 +281,60 @@
                    read-buffer write-buffer)
              (type buffer-index read-limit read-pos
                    write-limit write-pos))
-    (or
-     (when (and read-buffer (< read-pos read-limit)
-                status (not (eql status :output)))
-       (handler-case
-         (when (socket-stream-listen stream)
-           (let ((n (read-octets-no-hang read-buffer read-pos
-                                         read-limit stream)))
-             (incf read-pos n)
-             (if (>= read-pos read-limit)
-               :read-ready)))
-         (stream-error (e)
-          (setf (io-descriptor-status desc) :broken)
-          (setf (io-descriptor-error desc)  e)
-          :error)))
-     (when (and write-buffer (< write-pos write-limit)
-                (member status '(:output :io :append)))
-       (handler-case
-         (let ((n (write-octets-no-hang write-buffer write-pos
-                                        write-limit stream)))
-           (incf write-pos n)
-           (if (>= write-pos write-limit)
-             :write-ready))
-         (stream-error (e)
-                (setf (io-descriptor-status desc) :broken)
-                (setf (io-descriptor-error desc)  e)
-                :error)))
-     (if (eq status :error)
-       :error))))
+
+    (cond ((eq status :error)
+           (io-queue-event :error desc))
+          (status
+           (handler-case
+               (progn 
+                 (when (and (not (eql status :output))
+                            (io-descriptor-read-ready desc))
+                   (let ((n (read-octets-no-hang read-buffer read-pos
+                                                   read-limit stream)))
+                       (incf read-pos n)
+                       (if (>= read-pos read-limit)
+                           (io-queue-event :read-ready desc)))) 
+                 (when (and (member status '(:output :io :append))
+                            (io-descriptor-write-ready desc))
+                   (let ((n (write-octets-no-hang write-buffer write-pos
+                                                  write-limit stream)))
+                     (incf write-pos n)
+                     (if (>= write-pos write-limit)
+                         (io-queue-event :write-ready desc)))))
+             (stream-error (e)
+               (setf (io-descriptor-status desc) :broken)
+               (setf (io-descriptor-error desc)  e)
+               (io-queue-event :error desc)))))))
+
+
+(defun io-poll-select ()
+  (let ((select (make-select)))
+    (dolist (desc *io-descriptions*)
+      (let ((stream (io-descriptor-stream desc)))
+        (when stream
+          ;; SBCL has always an input buffer, empty that before doing select
+          #+(or sbcl cmu18)
+          (when (and (io-descriptor-read-ready desc)
+                     (socket-stream-listen stream))
+            (io-poll-desc desc :input))
+          (let ((input (io-descriptor-read-ready desc))
+                (output (io-descriptor-write-ready desc)))
+            (when (or input output)
+              (select-add-stream select stream input output desc) )))))
+    (unless *io-event-queue*
+      (when *io-socket*
+        (select-add-listener select *io-socket*))
+      (setq select (select-wait select))
+      (select-do-result select #'io-poll-desc)
+      (when *io-socket*
+        (io-listen nil)))))
 
 
 (defmethod io-system-driver ((system io-system-select))
-  (declare (optimize (speed 2)))
-  (loop
-    named io-driver-select
-    for inactivity from 0 to 500
-    for select = (make-select)
-    for cookies = '()
-    do
-    (dolist (desc *io-descriptions* nil)
-      (let ((stream (io-descriptor-stream desc)))
-        (when stream
-          (let ((input (io-descriptor-read-ready desc))
-                (output (io-descriptor-write-ready desc)))
-            ;; SBCL has always an input buffer, empty that before doing select
-            #+(or sbcl cmu18)
-            (when (and input (socket-stream-listen stream))
-              (let ((event (io-poll-desc desc :input)))
-                (if event
-                  (return-from io-driver-select (values event desc)))))
-            (when (or input output)
-              (push (cons (select-add-stream select stream input output)
-                          desc)
-                    cookies))))))
-    (when *io-socket*
-      (select-add-listener select *io-socket*))
-    (setq select (select-wait select))
-    (loop for (cookie . desc) in cookies
-          for status = (select-stream-status select cookie)
-          when status
-          do (let ((event (io-poll-desc desc status)))
-               (if event
-                 (return-from io-driver-select (values event desc)))))
-    (when *io-socket*
-      (let ((new (io-listen nil)))
-        (when new
-          (return-from io-driver-select (values :new new)))))))
+  (loop until *io-event-queue*
+       repeat 500
+       do (io-poll-select) )
+  (values-list (or (pop *io-event-queue*) '(nil))) )
 
 
 
@@ -358,8 +345,7 @@
   (unless *io-event-queue*
     (process-wait-with-timeout "waiting for event" 3600
                                (lambda () *io-event-queue*)))
-  (let ((event (pop *io-event-queue*)))
-    (values-list (or event '(nil)))))
+  (values-list (or (pop *io-event-queue*) '(nil))))
 
 
 

@@ -12,11 +12,6 @@
 ;;; Frob with the *features* to make this all a bit easier.
 
 (eval-when (:compile-toplevel :execute)
-  #+clisp
-  (if (find-package "EXT")
-      (pushnew 'clorb::clisp-ext *features*))
-  #+clisp
-  (pushnew 'clorb::clisp-new-socket-status *features*)
 ;;  #+openmcl
 ;;  (pushnew :use-acl-socket *features*)
 ;;(setq *features* (delete :use-acl-socket *features*))
@@ -359,10 +354,8 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (%SYSDEP 
    "check if input is available on socket stream"
 
-   #+clorb::clisp-ext
+   #+clisp
    (ext:read-byte-lookahead stream)
-
-   #+clisp t                            ;Ouch!
 
    #+CCL
    (or (listen stream)
@@ -375,8 +368,10 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 (defun socket-close (socket)
   (%SYSDEP
    "close a listener socket"
+
    #+clisp 
    (socket-server-close socket)
+
    ;; default
    (close socket)))
 
@@ -404,10 +399,12 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
 ;;;; Select interface
 ;;(make-select) => y
-;;(select-add-listener y s) => cookie?
-;;(select-add-stream y s input output)   => cookie
+;;(select-reset y)
+;;(select-add-listener y s)
+;;(select-add-stream y s input output cookie)
 ;;(select-wait y) => y'
-;;(select-stream-status y cookie) => :input/:output/:io/:error
+;;(select-do-result y' func)
+;; where: (func cookie status)
 
 
 (%SYSDEP
@@ -415,12 +412,16 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
  #+(or sbcl cmu18)
  (defstruct SELECT
+   (fds  nil)
+   (cookies nil)
    (rset 0)
    (wset 0)
    (maxn 0 :type fixnum))
 
  (defstruct (SELECT (:constructor make-select))
-   value
+   (value   nil)
+   (cookies nil)
+   (streams nil)
    (writepending nil))
  )
 
@@ -435,7 +436,6 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (max (select-maxn ,sobj) ,fd))
       (setf (,set ,sobj) (logior (,set ,sobj) (ash 1 ,fd))))))
 
-
 #+(or sbcl cmu18)
 (defmacro %socket-file-descriptor (socket)
   (%SYSDEP
@@ -444,25 +444,40 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)
    #+cmu18 socket))
 
-(defmacro select-add-listener (select-obj socket)
-  (declare (ignorable select-obj socket))
+#+(or sbcl cmu18)
+(defmacro %stream-fd (stream)
+  (%SYSDEP
+   "file descriptor for stream"
+   #+cmu18 `(system:fd-stream-fd ,stream)
+   #+sbcl  `(sb-sys:fd-stream-fd ,stream)))
+
+#+(or sbcl cmu18)
+(defmacro %unix-select (maxn rset wset xset timeout)
+  `(#+sbcl sb-unix:unix-select #+cmu18 unix:unix-select
+           ,maxn ,rset ,wset ,xset ,timeout))
+
+
+(defun select-add-listener (select socket)
+  (declare (ignorable select socket))
   (%SYSDEP
    "add listener to select"
 
-   #+clorb::clisp-new-socket-status
-   `(length (push ,socket (select-value ,select-obj)))
+   #+clisp
+   (progn
+     (push socket (select-value select))
+     (push nil (select-cookies select)))
 
    #+(or sbcl cmu18)
-   `(%add-fd ,select-obj (%socket-file-descriptor ,socket) select-rset)
+   (%add-fd select (%socket-file-descriptor socket) select-rset)
 
    #+allegro
-   `(push (socket:socket-os-fd ,socket) (select-value ,select-obj))
+   (push (socket:socket-os-fd socket) (select-value select))
 
    ;; Default
    nil))
 
 
-(defun select-add-stream (select stream input output)
+(defun select-add-stream (select stream input output cookie)
   "Add STREAM to SELECT for INPUT and/or OUTPUT.
 Returns cookie that should be used after select-wait to get
 status for stream."
@@ -471,44 +486,46 @@ status for stream."
   (%SYSDEP
    "add stream to select"
 
-   #+clorb::clisp-new-socket-status
-   (length (push
-             (cons stream
-              (cond ((not input)  :output)
-                    ((not output) :input)
-                    (t            :io)))
-             (select-value select)))
-
    #+clisp
-   (length (push stream (select-value select)))
+   (progn
+     (push
+      (cons stream
+            (cond ((not input)  :output)
+                  ((not output) :input)
+                  (t            :io)))
+      (select-value select))
+     (push cookie (select-cookies select)))
 
-   #+sbcl
-   (let ((fd (sb-sys:fd-stream-fd stream)))
+   #+(or cmu18 sbcl)
+   (let ((fd (%stream-fd stream)))
      (declare (fixnum fd))
      (when input
        (%add-fd select fd select-rset))
      (when output
        (%add-fd select fd select-wset))
-     fd)
+     (push fd (select-fds select))
+     (push cookie (select-cookies select)))
 
-   #+cmu18
-   (let ((fd (system:fd-stream-fd stream)))
-     (declare (fixnum fd))
-     (when input
-       (%add-fd select fd select-rset))
-     (when output
-       (%add-fd select fd select-wset))
-     fd)
-
-   #+allegro
+   #+(or allegro)
    (progn
       (when output
         (setf (select-writepending select) t))
       (when input
-        (car (push stream (select-value select)))))
+        (push stream (select-value select)))
+      (push stream (select-streams select))
+      (push cookie (select-cookies select)))
 
    ;; Default
-   0))
+   (progn
+     (let ((read-ready
+            (if input (socket-stream-listen stream))))
+       (when (or output read-ready)
+         (setf (select-writepending select) t))
+       (push cookie (select-cookies select))
+       (push (if read-ready
+                 (if output :io :input)
+                 (if output :output nil))
+             (select-value select)))) ))
 
 
 (defun select-wait (select)
@@ -518,42 +535,29 @@ Returns select result to be used in getting status for streams."
    "wait on selected streams"
 
    #+clisp
-   (let (result)
-     ;;(sleep 2)
+   (progn
      (mess 1 "Selecting ~A" select)
-     ;; FIXME: can use larger timeout when socket-status is fixed
-     ;; to work on server sockets.
      (let ((select-list (select-value select)))
        (when select-list
-         (setq result (socket:socket-status (nreverse select-list) 10))))
-     (mess 1 "Select result ~A" result)
-     result)
-
-   #+allegro
-   (mp:wait-for-input-available
-    (select-value select)
-    :timeout (if (select-writepending select) 0 20)
-    :whostate "wating for CORBA input")
-
-   #+sbcl
-   (multiple-value-bind (result rset wset xset)
-       (sb-unix:unix-select (1+ (select-maxn select))
-                            (select-rset select)
-                            (select-wset select)
-                            0 20)
-     (declare (ignorable xset))
-     ;;FIXME: should perhaps use xset
-     (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
-     (setf (select-rset select) rset)
-     (setf (select-wset select) wset)
+         (setf (select-value select) (socket:socket-status select-list 60))))
+     (mess 1 "Select result ~A" (select-value select))
      select)
 
-   #+cmu18
+   #+allegro
+   (progn
+     (setf (select-value select)
+           (mp:wait-for-input-available
+            (select-value select)
+            :timeout (if (select-writepending select) 0 20)
+            :whostate "wating for CORBA input"))
+     select)
+
+   #+(or cmu18 sbcl)
    (multiple-value-bind (result rset wset xset)
-       (unix:unix-select (1+ (select-maxn select))
-                         (select-rset select)
-                         (select-wset select)
-                         0 200)
+       (%unix-select (1+ (select-maxn select))
+                     (select-rset select)
+                     (select-wset select)
+                     0 200)
      (declare (ignorable xset))
      ;;FIXME: should perhaps use xset
      (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
@@ -562,33 +566,44 @@ Returns select result to be used in getting status for streams."
      select)
 
    ;; Default
-   select))
+   (progn
+     (unless (select-writepending select)
+       (sleep 0.1))
+     select)))
 
 
-(defmacro select-stream-status (select-res cookie)
-  `(%SYSDEP
-    "get stream status"
-    
-    #+clisp
-    (elt ,select-res (1- ,cookie))
-    
-    #+(or sbcl cmu18)
-    (if (logbitp ,cookie (select-rset ,select-res))
-      (if (logbitp ,cookie (select-wset ,select-res))
-        :io
-        :input)
-      (if (logbitp ,cookie (select-wset ,select-res))
-        :output
-        nil))
-    #+allegro
-    (if (member ,cookie ,select-res)
-      :io :output)
-    
-    ;; Default
-    (progn ,select-res ,cookie                       ; use but ignore
-           :io)))
+(defun select-do-result (select func)
+  (%SYSDEP
+   "loop thru result of a select"
 
+   #+clisp
+   (loop for cookie in (select-cookies select)
+        for status in (select-value select)
+        when (and cookie status)
+        do (funcall func cookie status))
 
+   #+allegro
+   (loop for cookie in (select-cookies select)
+        for stream in (select-streams select)
+        do (funcall func cookie
+                    (if (member stream (select-value select))
+                        :io :output)))
+
+   #+(or sbcl cmu18)
+   (loop
+      with rset = (select-rset select)
+      with wset = (select-wset select)
+      for cookie in (select-cookies select)
+      for fd in (select-fds select)
+      do (let ((status (if (logbitp fd rset)
+                           (if (logbitp fd wset) :io :input)
+                           (if (logbitp fd wset) :output nil))))
+           (when status (funcall func cookie status))))
+
+   ;; Default
+   (loop for cookie in (select-cookies select)
+        for status in (select-value select)
+        do (funcall func cookie status))))
 
 ;;;; Read / Write 
 
@@ -607,8 +622,8 @@ Returns select result to be used in getting status for streams."
 
 
 (defun read-octets-no-hang (seq start end stream)
-  ;; read octets into seq from start to end, may stop reading before end if would hang
-  ;; return number of octets read
+  ;; read octets into seq from start to end, may stop reading before end
+  ;; if would hang return number of octets read
   (declare (optimize speed)
            (type octets seq)
            (type index start end))
@@ -616,6 +631,7 @@ Returns select result to be used in getting status for streams."
     (declare (type index read-pos))
     (%SYSDEP
      "read many octets without hanging"
+
      #+clisp
      (progn
        (setq read-pos (ext:read-byte-sequence seq stream
@@ -623,11 +639,13 @@ Returns select result to be used in getting status for streams."
        (if (and (= read-pos start)
                 (eql :eof (ext:read-byte-lookahead stream )))
            (error 'end-of-file :stream stream)))
+
      ;; Default
-     (loop while (listen stream)
+     (loop while (socket-stream-listen stream)
            do (setf (aref seq read-pos) (read-byte stream))
            (incf read-pos)
            until (= read-pos end)))
+
     ;; Common end:
     (- read-pos start)))
 
