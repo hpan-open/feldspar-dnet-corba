@@ -18,7 +18,7 @@
   "Where current chunk is ending in the buffer. If nil, not in a chunk.")
 
 
-(defstruct BUFFER
+(defstruct buffer
   (giop-version :giop-1-0 :type symbol)
   (orb          nil)
   (octets       *empty-octets* :type octets)
@@ -26,6 +26,11 @@
   (byte-order   1         :type bit)
   (start-pos    0         :type buffer-index)
   (ind-hash     nil))
+
+
+(defmethod the-orb ((obj buffer))
+  (or (buffer-orb obj)
+      *the-orb*))
 
 (defun buffer-contents (buffer)
   (copy-seq (buffer-octets buffer)))
