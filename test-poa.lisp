@@ -12,19 +12,20 @@
     ;; some cases).
     form))
 
+(setup-test-in)
 
-(defun test-poa-invoke (poa &key operation oid args (request nil request-p))
+(defun test-poa-invoke (poa &key operation oid args (kind :normal) (request nil request-p))
   (let ((buffer (get-work-buffer (the-orb poa))))
     (unless request-p
       (setq request
             (create-server-request 
              (the-orb poa)
-             :state :wait  :request-id 1
-             :operation operation
-             :input buffer)))
+             :state :wait  :request-id 1  :connection *test-in-conn*
+             :operation operation :kind kind  :response-flags 1
+             :input buffer :object-id oid)))
     (dolist (a args)
       (marshal-any-value a buffer))
-    (poa-invoke poa oid operation buffer request)
+    (poa-invoke poa request)
     request))
 
 
@@ -77,7 +78,7 @@
       (setq oid (op:activate_object root-poa servant))
       ;; for locate request
       (ensure-pattern*
-       (test-poa-invoke root-poa :oid oid :operation "_locate"))
+       (test-poa-invoke root-poa :oid oid :operation "_locate" :kind :locate))
       ;; standard request ops
       (ensure-pattern* 
        (test-poa-invoke root-poa :oid oid :operation "_non_existent")

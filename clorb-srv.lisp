@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.28 2004/12/19 23:34:19 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.29 2004/12/28 00:05:16 lenst Exp $	
 
 (in-package :clorb)
 
@@ -51,7 +51,6 @@
 
 
 (defun setup-incoming-connection (conn)
-  (setf (connection-error-callback conn) #'comm-failure-handler)
   (connection-init-read conn nil +iiop-header-size+ #'poa-message-handler))
 
 
@@ -112,55 +111,9 @@
       (connection-add-server-request conn request)
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
-      (loop
-        (handler-case
-          (let ((exception (request-exception request)))
-            (typecase exception
-              (null
-               (has-received-request-header orb request)
-               (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
-                 (cond
-                  ((and reftype poa)
-                   (setf (the-poa request) poa)
-                   (poa-invoke poa oid operation buffer request))
-                  (t
-                   (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
-              (PortableServer:ForwardRequest 
-               (set-request-forward request (op:forward_reference exception)))
-              (CORBA:UserException
-               (raise-system-exception 'CORBA:UNKNOWN))
-              (CORBA:SystemException
-               (mess 2 "#~D Exception: ~A" req-id exception)
-               (let ((buffer (get-request-response request :system_exception)))
-                 (marshal-string (exception-id exception) buffer)
-                 (marshal-ulong  (system-exception-minor exception) buffer)
-                 (%jit-marshal (system-exception-completed exception) CORBA::TC_completion_status buffer))))
-            (return))
+      (has-received-request-header orb request)
+      (dispatch-request orb request object-key))))
 
-          (CORBA:Exception (exception)
-                           (set-request-exception request exception))
-          (serious-condition (exc) 
-                             (set-request-exception request 
-                                                    (system-exception 'CORBA:UNKNOWN))
-                             (warn "Error in request processing: ~A" exc))))
-      (send-response request))))
-
-(defun set-request-forward (req obj)
-  (mess 3 "forwarding to ~A" obj)
-  (let ((buffer (get-location-forward-response req)))
-    (marshal-object obj buffer)
-    buffer))
-
-(defun send-response (request)
-  (let ((conn (request-connection request)))
-    (when (response-expected request)
-      (let ((buffer (reply-buffer request))
-            (req-id (request-id request)))
-        (mess 3 "#~D Sending response (~S)" req-id (reply-status request) )
-        (marshal-giop-set-message-length buffer)
-        (connection-send-buffer conn buffer)))
-    (setf (request-state request) :finished)
-    (connection-remove-server-request conn request)))
 
 
 (defun poa-cancelrequest-handler (conn)
@@ -186,47 +139,10 @@
            (operation "_locate")
            (request 
             (create-server-request
-             orb :operation operation :request-id req-id
-             :connection conn))
-           (status :UNKNOWN_OBJECT))
-      (setq buffer nil)
-      ;; FIXME: what if decode-object-key-poa raises an exception?
-      (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
-        (when (and reftype poa)
-          (handler-case
-            (setq buffer (poa-invoke poa oid operation buffer request)
-                  status :object_here)
-            (SystemException () nil))))
-      ;; FIXME: forwarding ??
-      (send-locate-reply conn req-id status))))
-
-
-(defun send-reply (conn request-id status service-context result-marshal result-data)
-  (let* ((orb (the-orb conn))
-         (buffer (get-work-buffer orb)))
-    (marshal-giop-header :reply buffer)
-    (marshal-service-context service-context buffer) 
-    (marshal-ulong request-id buffer)
-    (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
-    (funcall result-marshal result-data buffer)
-    (marshal-giop-set-message-length buffer)
-    (connection-send-buffer conn buffer)))
-
-(defun send-locate-reply (conn req-id status &optional forward-marshal forward-object)
-  (let* ((orb (the-orb conn))
-         (buffer (get-work-buffer orb)))
-    (marshal-giop-header :locatereply buffer)
-    (marshal-ulong req-id buffer)
-    (marshal-ulong (ecase status
-                     (:unknown_object 0)
-                     (:object_here 1)
-                     ((:object_forward :location_forward) 2))
-                   buffer)
-    (when forward-marshal
-      (funcall forward-marshal forward-object buffer))
-    (marshal-giop-set-message-length buffer)
-    (connection-send-buffer conn buffer)))
-
+             orb :operation operation :request-id req-id :kind :locate
+             :response-flags 1
+             :connection conn)))
+      (dispatch-request orb request object-key))))
 
 
 (defun poa-closeconnection-handler (conn)

@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.31 2004/09/17 19:52:45 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.32 2004/12/28 00:05:24 lenst Exp $
 
 (in-package :clorb)
 
@@ -77,7 +77,8 @@
           (poaid :initarg :poaid :accessor poa-poaid)
           (auto-id :accessor poa-auto-id :initform 0)
           (the-orb :initarg :orb :accessor the-orb)
-          (state :initform nil :accessor poa-state)))
+          (state :initform nil :accessor poa-state)
+          (queue :initform nil :accessor poa-request-queue)))
 
 (defmethod print-object ((p portableserver:poa) stream)
   (print-unreadable-object (p stream :type t)
@@ -335,19 +336,22 @@
     (raise-system-exception 'CORBA:BAD_INV_ORDER 17))
   (create-POA poa adapter-name poamanager policies (the-orb poa)))
 
+
 (defun find-requested-poa (poa name activate-it check-poa-status)
   (flet ((find-child ()
            (find name (op:the_children poa) :key #'op:the_name :test #'equal)))
-    (when check-poa-status
-      (when (or (not (eql :active (poa-effective-state poa))))
-        (raise-system-exception 'CORBA:TRANSIENT)))
     (or (find-child)
         (and activate-it
              (op:the_activator poa)
              (handler-case
-               (op:unknown_adapter (op:the_activator poa) poa name)
-               (CORBA:SystemException () (raise-system-exception 'CORBA:OBJ_ADAPTER 1 )))
-             (find-child)))))
+               (if (or (not check-poa-status)
+                             (eql :active (poa-effective-state poa)))
+                       ;; FIXME: check result of 
+                       (progn (op:unknown_adapter (op:the_activator poa) poa name)
+                              (find-child))
+                       :wait )
+               (CORBA:SystemException () (raise-system-exception 'CORBA:OBJ_ADAPTER 1 )))))))
+
 
 (define-method find_POA ((poa PortableServer:POA) name &optional activate-it)
   (or (find-requested-poa poa name activate-it nil) 
@@ -696,104 +700,105 @@ POA destruction does not occur.
       (break "_get_interface: ~A" condition)
       (raise-system-exception 'CORBA:intf_repos))))
 
+
 ;; ----------------------------------------------------------------------
 ;;;; Request Handling
 ;; ----------------------------------------------------------------------
 
-#|
-(defun dispatch-request (orb req objkey)
-  (decode-object-key objkey)
-  (if numberp poa=..)
-  (poa-locate *root-poa* poa-spec) => poa poa-spec'
-  (if poa-spec' 
-    (poa-enqueue poa req)
-    (poa-invoke poa ...)))
 
-(poa-dequeue poa) => req
-req => poa-spec
-(if pos-spec (poa-locate poa poa-spec) ..)
-(else poa-invoke)
-
-(progn
-  (setq poa *root-POA*)
-  (loop for n in poaid 
-        while poa
-        do (setq poa (find-requested-poa poa n t t))))
-
-
-(defun poa-dispatch (poa req poa-spec)
-  (cond (poa-spec
-         (let ((next-poa
-                (handler-case
-                  (find-requested-poa poa (car poa-spec) t t)
-                  (CORBA:TRANSIENT () (poa-enqueue poa req) nil)
-                  (CORBA:SystemException (exc) (server-request-systemexception-reply req exc) nil))))
-           (when next-poa
-             (setf (request-poa-spec req) (cdr poa-spec))
-             (poa-dispatch next-poa req (cdr poa-spec)))))
-        (t (poa-execute poa req))))
-
-(defun poa-execute (poa req)
-  (case (poa-state poa)
-    (case state
-      (hold (enq req))
-      (discard (request-respond req TRANSIENT))
-      (inactive (request-respond req OBJ_ADAPTER ?))
-      (active (poa-invoke poa req)))))
-
-
-(defun poa-enqueue (poa req)
-  (cond (poa-spec                       ; other poa to locate
-         (find-poa-child )
-         (if found (poa-enqueue ..))
-         (if not found but there is a poa manager
-             (case state
-               (hold (enq req))
-               (discard (request-respond req TRANSIENT))
-               (active (call poa-manager))
-               (inactive (request-respond req OBJ_ADAPTER ?)))
-             (request-respond req corba:object_not_exist)))
-        (t
-)))
-
-
-|#
-
-(defun poa-invoke (poa oid operation buffer request)
-  (unless (eq :active (poa-effective-state poa))
-    (raise-system-exception 'CORBA:TRANSIENT 1 :completed_no))
+(defun get-servant (poa oid operation)
   (flet ((check-servant (servant) 
            (unless (typep servant 'PortableServer:Servant)
-             (raise-system-exception 'corba:obj_adapter 2 :completed_no))
+             (raise-system-exception 'CORBA:OBJ_ADAPTER 2 :completed_no))
            servant))
-    (let (;(orb (the-orb poa))
-          (servant (oid-servant (active-object-map poa) oid))
-          (cookie nil)
-          (postinvoke (lambda ())))
-      (cond (servant)
-            ((poa-has-policy poa :use_servant_manager)
-             (cond ((poa-has-policy poa :retain)
-                    (setq servant (check-servant (op:incarnate (POA-servant-manager poa) oid poa)))
+    (cond ((oid-servant (active-object-map poa) oid))
+          ((poa-has-policy poa :use_servant_manager)
+           (cond ((poa-has-policy poa :retain)
+                  (let ((servant (check-servant (op:incarnate (POA-servant-manager poa) oid poa))))
                     (mess 2 "~A incarnated ~A for '~/clorb:stroid/'" poa servant oid)
-                    (op:activate_object_with_id poa oid servant))
-                   (t
-                    (multiple-value-setq (servant cookie)
-                      (op:preinvoke (POA-servant-manager poa) oid poa operation))
+                    (op:activate_object_with_id poa oid servant)
+                    servant))
+                 (t
+                  (multiple-value-bind (servant cookie)
+                                       (op:preinvoke (POA-servant-manager poa) oid poa operation)
                     (check-servant servant)
-                    (setq postinvoke (lambda ()
-                                       (op:postinvoke (POA-servant-manager poa)
-                                                      oid poa operation cookie servant))))))
-            ((poa-has-policy poa :use_default_servant)
-             (or (setq servant (POA-default-servant poa))
-                 (raise-system-exception 'CORBA:OBJ_ADAPTER 3 :completed_no)))
-            (t
-             (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))
-      (let ((*poa-current* (make-poa-current poa oid servant)))
-        (setf (request-state request) :exec)
-        (unwind-protect
-          (servant-invoke servant operation buffer request)
-          (funcall postinvoke)))
-      (server-request-respond request))))
+                    (values servant (lambda ()
+                                      (op:postinvoke (POA-servant-manager poa)
+                                                     oid poa operation cookie servant)))))))
+          ((poa-has-policy poa :use_default_servant)
+           (or (POA-default-servant poa)
+               (raise-system-exception 'CORBA:OBJ_ADAPTER 3 :completed_no)))
+          (t
+           (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
+
+
+
+(defun poa-invoke (poa request)
+  (let ((oid (request-object-id request))
+        (operation (request-operation request))
+        (buffer (request-input request)))
+    (handler-case
+      (multiple-value-bind (servant postinvoke)
+                           (get-servant poa oid operation)
+        (let ((*poa-current* (make-poa-current poa oid servant)))
+          (setf (request-state request) :exec)
+          (unwind-protect
+            (servant-invoke servant operation buffer request)
+            (when postinvoke (funcall postinvoke)))))
+      (PortableServer:ForwardRequest (exception)
+       (set-request-forward request (op:forward_reference exception)))
+      (CORBA:UserException ()
+       (raise-system-exception 'CORBA:UNKNOWN)))
+    (server-request-respond request)))
+
+
+(defun poa-locate (poa poa-spec)
+  (cond ((numberp poa-spec)
+         (values (gethash poa-spec *poa-map*)))
+        ((null poa-spec)
+         poa)
+        (t
+         (let ((next-poa (find-requested-poa poa (car poa-spec) t t)))
+           (cond ((eql next-poa :wait)
+                  (values poa poa-spec))
+                 ((null next-poa)
+                  (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no))
+                 (t
+                  (poa-locate next-poa (cdr poa-spec))))))))
+
+
+(defun poa-dispatch-1 (poa req poa-spec)
+  (when poa-spec
+    (multiple-value-setq (poa poa-spec) (poa-locate poa poa-spec))
+    (setf (poa-spec req) poa-spec))
+  (unless poa
+    (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no))
+  (let ((state (poa-effective-state poa)))
+    (cond ((or (eql state :holding) poa-spec)
+           (enqf (poa-request-queue poa) req))
+          ((eql state :discarding)
+           (raise-system-exception 'CORBA:TRANSIENT 1 :completed_no))
+          ((eql state :inactive)
+           (raise-system-exception 'CORBA:OBJ_ADAPTER 0 :completed_no))
+          (t
+           (poa-invoke poa req)))))
+    
+  
+(defun poa-dispatch (poa req)
+  (handler-case
+    (poa-dispatch-1 poa req (poa-spec req))
+    (CORBA:SystemException (exc)
+                           (server-request-systemexception-reply req exc))))
+
+
+(defun dispatch-request (orb req objkey)
+  (multiple-value-bind (type poa-spec object-id)
+                       (decode-object-key objkey)
+    (declare (ignore type))
+    (setf (request-object-id req) object-id)
+    (setf (poa-spec req) poa-spec)
+    (poa-dispatch *root-poa* req)))
+
 
 
 
