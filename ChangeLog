@@ -1,3 +1,27 @@
+Tue Feb 13 22:13:45 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* local-ir.lisp (addto): addto now returns the object added.
+	(create_constant): new
+	(create_exception): new
+	(create_union): new
+	(create_enum): new
+	(create_alias): new
+	(create_interface): new
+	(constant-def): new class
+	(find-opinfo): new
+	(create_attribute): new
+	(create_operation): new
+
+	* clorb-srvreq.lisp (set-request-result): Moved here.
+
+	* clorb-servant.lisp (servant-invoke): use new "opinfo" triple
+	instead of old opdef. This to better handle getters and setters.
+
+	* clorb-iir.lisp (opdef-from-attrdef): include setter also
+
+	* clorb-exceptions.lisp (report-systemexception): Removed
+	conditional format string
+
 2001-02-13  Lennart Staflin  <lennarts@infostream.no>
 
 	* clorb-macros.lisp (define-method): fix test for docstring
