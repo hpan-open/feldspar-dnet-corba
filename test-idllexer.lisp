@@ -64,20 +64,35 @@
       (ensure-equalp (cdr val) code)))
 
 
+  (define-test "make-idl-fixed"
+    (multiple-value-bind (d s n) (idl-fixed-values 
+                                  (make-idl-fixed 4 2 1234/100 ))
+      (ensure-eql d 4)
+      (ensure-eql s 2)
+      (ensure-eql n 1234/100))
+    ;; Truncate to 31 digits
+    (multiple-value-bind (d s n) 
+                         (idl-fixed-values
+                          (make-idl-fixed 32 2 (+ (* 12 (expt 2 28))
+                                                  (/ 3456 100))))
+      (ensure-eql d 31)
+      (ensure-eql s 1)
+      (ensure-eql n (+ (* 12 (expt 2 28)) (/ 3450 100)))))
+
+
   (define-test "parse-fixed"
-    (loop for (string expect) in '(("1.2" 12/10)
-                                   (".3" 3/10)
-                                   ("4" 4)
-                                   ("5." 5))
-          do (ensure-eql (parse-fixed string) expect)))
+    (loop for (string expect) in '(("1.2" (fixed 2 1 12/10))
+                                   (".3"  (fixed 1 1 3/10))
+                                   ("4"   (fixed 1 0 4))
+                                   ("5."  (fixed 1 0 5)))
+          do (ensure-equalp (parse-fixed string) expect)))
 
   (define-test "fixed literal"
-    (with-test-lex* (val expect '(("1.2D" 12/10)
-                                   (".3d" 3/10)
-                                   ("4d" 4)
-                                   ("5.D" 5)))
-      (ensure-typep val 'rational)
-      (ensure-eql val expect)))
+    (with-test-lex* (val expect '(("1.2D" (fixed 2 1 12/10))
+                                  (".3D"  (fixed 1 1 3/10))
+                                  ("4D"   (fixed 1 0 4))
+                                  ("5.D"  (fixed 1 0 5))))
+      (ensure-equalp val expect)))
 
 
 
