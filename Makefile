@@ -7,7 +7,7 @@ clean:
 	$(MAKE) -C luna clean
 
 clean-fasl:
-	-cd fasl && rm -f $(FASL) && rm -rf luna idlcomp
+	-cd fasl && eval rm -f $(FASL) && rm -rf luna idlcomp
 
 setmcl:
 	/Developer/Tools/SetFile -t TEXT -c CCL2 *.lisp

@@ -1,16 +1,15 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.15 2003/11/24 09:03:50 lenst Exp $
+ $Id: TODO,v 1.16 2003/11/29 23:23:47 lenst Exp $
 
 * Final Lisp Mapping
 
 -  marshal should signal CORBA:MARSHAL on type errors.
 
--  (deftype corba:environment() 'corba:exception)
+- 3.4 (deftype corba:environment() 'corba:exception)
 
--  typedefs Flags, Identifier? Are all names in CORBA package?
-  can NamedValue be defined as a specialised corba struct?
+- 3.5 typedefs Flags, Identifier? Are all names in CORBA package? YES
 
--  (corba:funcall op obj z) ~= (clorb:invoke obj op z)
+- 3.9.1 (corba:funcall op obj z) ~= (clorb:invoke obj op z)
 But lots of variantions possible in operation name. And also
 exceptions should be returned not raised.
 
@@ -21,7 +20,7 @@ exceptions should be returned not raised.
 - string_to_object
   Should handle more URL variants: corbname:
 
-- DynAny interface (5.16)
+- DynAny interface (3.13)
 
 - POAManager: must keep a list of managed POAs. Implement
   wait_for_completion flag by adding a wati-for-completion method to
