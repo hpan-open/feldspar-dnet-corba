@@ -222,11 +222,18 @@
   ;; op:type in IFR.
   (let ((typecode (get symbol 'typecode)))
     (cond ((null typecode)
-           (setf (get symbol 'typecode) (make-instance 'CORBA:TypeCode :kind t)))
+           (setf (get symbol 'typecode) 
+                 (make-instance 'CORBA:TypeCode 
+                   :kind t
+                   :params (list "" (symbol-name symbol)))))
           ((functionp typecode) 
            (setf (get symbol 'typecode) nil)
            (set-symbol-typecode symbol typecode))
           (t
+           #-omit-debug
+           (when (eql t (typecode-kind typecode))
+             (setf (typecode-params typecode)
+                   (list "" (symbol-name symbol))))
            typecode))))
 
 (defun set-symbol-typecode (symbol typecode)
