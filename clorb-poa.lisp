@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.22 2003/12/08 23:18:45 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.23 2003/12/15 07:03:03 lenst Exp $
 
 (in-package :clorb)
 
@@ -626,10 +626,11 @@ POA destruction does not occur.
 ;;;; Request Handling
 ;; ----------------------------------------------------------------------
 
-(defun poa-invoke (poa oid operation buffer handler)
+(defun poa-invoke (poa oid operation buffer request)
   (unless (eq :active (poa-effective-state poa))
     (error 'CORBA:TRANSIENT :completed :completed_no))
-  (let* ((servant (trie-get oid (POA-active-object-map poa)))
+  (let* ((orb (the-orb poa))
+         (servant (trie-get oid (POA-active-object-map poa)))
          (cookie nil)
          (topost nil))
     (handler-case    
@@ -653,17 +654,19 @@ POA destruction does not occur.
                (error 'CORBA:OBJECT_NOT_EXIST
                       :completed :completed_no)))
         (let ((*poa-current* (make-poa-current poa oid servant)))
+          ;;(break "before has-received-request: orb=~S req=~S" orb request)
+          (has-received-request orb request)
           (cond (topost
                  (unwind-protect
-                   (servant-invoke servant operation buffer handler)
+                   (servant-invoke servant operation buffer request)
                    (op:postinvoke (POA-servant-manager poa)
                                   oid poa operation cookie servant)))
                 (t
-                 (servant-invoke servant operation buffer handler)))))
+                 (servant-invoke servant operation buffer request)))))
       (PortableServer:ForwardRequest
        (fwd)
        (mess 3 "forwarding to ~A" (op:forward_reference fwd))
-       (let ((buffer (funcall handler :location_forward)))
+       (let ((buffer (get-location-forward-response request)))
          (marshal-object (op:forward_reference fwd) buffer)
          buffer)))))
 
