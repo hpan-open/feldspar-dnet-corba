@@ -46,7 +46,8 @@
 ;;;; Internal Interface Repository
 
 (eval-when (:load-toplevel)
-  (makunbound '*repository*))
+  (makunbound '*repository*)
+  (makunbound '*typecode-repository*))
 
 (defvar *repository*
     (make-hash-table :test #'equal))
@@ -155,12 +156,21 @@
     (request-invoke req)))
 
 (defun opdef-from-attrdef (irdef)
-  (let ((name (get-attribute irdef "_get_name" CORBA:tc_string)))
-    (mess 3 " attribute ~A" name)
-    (make-opdef
-     :name (format nil "_get_~A" name)
-     :result (simplify-type 
-              (get-attribute irdef "_get_type" CORBA:tc_TypeCode)))))
+  (let ((name (get-attribute irdef "_get_name" CORBA:tc_string))
+        (mode (get-attribute irdef "_get_mode" 
+                             (get-typecode "IDL:omg.org/CORBA/AttributeMode:1.0")))
+        (type (simplify-type 
+               (get-attribute irdef "_get_type" CORBA:tc_TypeCode))))
+    (mess 3 " attribute ~A ~A" name mode)
+    (cons (make-opdef
+           :name (format nil "_get_~A" name)
+           :result type)
+          (if (eq mode :attr_normal)
+              (list (make-opdef
+                     :params (list (make-param "" :param_in type))
+                     :name (format nil "_set_~A" name)
+                     :result CORBA:tc_void))))))
+
 
 (defun opdef-from-ir (irdef)
   (let ((parseq (get-typecode "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"))
@@ -211,7 +221,7 @@
            (get-attribute def "_get_base_interfaces" idseq))
          (list *object-interface*))
      :operations 
-     (nconc (map 'list #'opdef-from-attrdef (ir-contents def 2 t))
+     (nconc (mapcan #'opdef-from-attrdef (coerce (ir-contents def 2 t) 'list))
             (map 'list #'opdef-from-ir (ir-contents def 7 t))))))
 
 (defun typecode-from-def (def)
