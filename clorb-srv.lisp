@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.16 2003/11/15 17:23:39 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.17 2003/12/08 23:18:45 lenst Exp $	
 
 (in-package :clorb)
 
@@ -82,6 +82,31 @@
             (funcall decode-fun conn)
             (connection-init-read conn t (+ size *iiop-header-size*) decode-fun)))))))
 
+(defclass server-request ()
+  ((poa :accessor the-poa)
+   (state :initarg :state :initform :wait :accessor request-state)
+   (request-id :initarg :request-id :accessor request-id)
+   (connection :initarg :connection)
+   (response-flags :initarg :response-flags)))
+
+
+(defun get-request-response (request status)
+  (let ((buffer (get-work-buffer)))
+    (marshal-giop-header :reply buffer)
+    (marshal-ulong 0 buffer) ; service-context
+    (marshal-ulong (request-id request) buffer)
+    (marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
+    buffer))
+
+;; (defgeneric get-normal-response (handler))
+(defmethod get-normal-response ((req server-request))
+  (get-request-response req :no_exception))
+
+;; (defgeneric get-exception-response (handler))
+(defmethod get-exception-response ((req server-request))
+  (get-request-response req :user_exception))
+
+
 (defun poa-request-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
@@ -91,14 +116,10 @@
            (object-key (unmarshal-osequence buffer))
            (operation (unmarshal-string buffer))
            (principal (unmarshal-osequence buffer))
-           (handler
-            (lambda (status)
-               (let ((buffer (get-work-buffer)))
-                (marshal-giop-header :reply buffer)
-                (marshal-ulong 0 buffer) ; service-context
-                (marshal-ulong req-id buffer)
-                (marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
-                buffer))))
+           (request (make-instance 'server-request
+                      :request-id req-id
+                      :connection conn
+                      :state :wait :response-flags response)))
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
       (handler-case
@@ -107,13 +128,13 @@
           (cond ((and reftype poa)
                  (mess 2 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
                  ;; Check if POA is active, holding, discarding...
-                 (setq buffer (poa-invoke poa oid operation buffer handler)))
+                 (setq buffer (poa-invoke poa oid operation buffer request)))
                 (t
                  (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no))))
         (systemexception
          (exception)
          (mess 2 "#~D Exception from servant: ~A" req-id exception)
-         (setq buffer (funcall handler :system_exception))
+         (setq buffer (get-normal-response request :system_exception))
          (marshal-string (exception-id exception) buffer)
          (marshal-ulong  (system-exception-minor exception) buffer)
          (marshal (system-exception-completed exception) OMG.ORG/CORBA::TC_completion_status buffer)))

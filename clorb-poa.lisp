@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.21 2003/11/15 17:23:21 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.22 2003/12/08 23:18:45 lenst Exp $
 
 (in-package :clorb)
 
@@ -666,12 +666,6 @@ POA destruction does not occur.
        (let ((buffer (funcall handler :location_forward)))
          (marshal-object (op:forward_reference fwd) buffer)
          buffer)))))
-
-(defmethod get-normal-response ((handler function))
-  (funcall handler :no_exception))
-
-(defmethod get-exception-response ((handler function))
-  (funcall handler :user_exception))
 
 
 
