@@ -1,10 +1,10 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.5 2001/06/12 19:32:44 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.6 2001/06/18 19:26:19 lenst Exp $
 
 (in-package :clorb)
 
-(defparameter *specialized-structs*
-    (make-hash-table :test #'equal))
+(defvar *specialized-structs*
+  (make-hash-table :test #'equal))
 
 (defclass CORBA:struct ()
   ())
@@ -49,7 +49,7 @@ of fields can be defaulted (numbers and strings)."
       (let* ((typecode (if (stringp id-or-typecode)
                            (get-typecode id-or-typecode)
                          id-or-typecode))
-             (fields 
+             (fields
               (multiple-value-bind (kind params)
                   (type-expand typecode)
                 (assert (eq kind :tk_struct))
@@ -71,7 +71,7 @@ of fields can be defaulted (numbers and strings)."
 NV-PAIRS is a list field names and field values."
   (let ((class (gethash id *specialized-structs*)))
     (if class
-        (apply #'make-instance class 
+        (apply #'make-instance class
                (or nv-plist
                    (mapcan (lambda (x) (list (car x) (cdr x)))
                            nv-alist)))
@@ -100,7 +100,7 @@ NV-PAIRS is a list field names and field values."
 ;; Interface:
 (defun struct-typecode (id name &rest fields)
   (make-typecode :tk_struct
-                 id 
+                 id
                  (string (or name ""))
                  (coerce (loop for (name type) on fields by #'cddr
                              collect (list (string name) type))
@@ -113,8 +113,8 @@ NV-PAIRS is a list field names and field values."
 
 (defun default-from-type (typecode)
   (ecase (typecode-kind typecode)
-    ((:tk_ushort :tk_short :tk_ulong :tk_long :tk_float :tk_double 
-      :tk_octet :tk_longlong :tk_ulonglong :tk_longdouble) 
+    ((:tk_ushort :tk_short :tk_ulong :tk_long :tk_float :tk_double
+      :tk_octet :tk_longlong :tk_ulonglong :tk_longdouble)
      0)
     ((:tk_boolean) nil)
     ((:tk_char) #\Space)
@@ -139,7 +139,7 @@ NV-PAIRS is a list field names and field values."
 ;;; Macrology
 
 (defmacro define-corba-struct (name &key id members)
-  (loop 
+  (loop
       for member in members
       for slot = (car member)
       for field = (lispy-name (symbol-name slot))
@@ -156,8 +156,8 @@ NV-PAIRS is a list field names and field values."
       collect `(define-method (setf ,slot) (val (s ,name))
                  (setf (slot-value s ',slot) val))
       into setters
-      finally 
-        (return 
+      finally
+        (return
           `(progn
              (defclass ,name (CORBA:struct) ,slot-defs)
              (defun ,name (&rest initargs)
