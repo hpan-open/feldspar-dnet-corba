@@ -4,11 +4,11 @@
 
                 a Common Lisp implementation of CORBA
 
-                    Version 0.4+ (an ALPHA release)
+                    Version 0.5 (an ALPHA release)
 
                           by Lennart Staflin
 
-                              2004-01-22
+                              2004-02-10
 
 
 
@@ -29,7 +29,7 @@ It lacks:
    * Request context
    * DynAny
    * CORBA Messaging
-   * Multithreading
+   * Multi-threading
    * IIOP 1.1/1.2
 
 CLORB is released under GNU Library General Public License see the
@@ -109,7 +109,7 @@ be initialized. This is done with the CORBA:ORB_init function.
 
 (CORBA:ORB_init arguments orb-id) => orb-object, arguments'
 
-Where arguments is a list of strings (as would ususally be passed to
+Where arguments is a list of strings (as would usually be passed to
 a command line program in Unix) and orb-id is a string identifying
 the particular orb (only one is supported pass "" for this). The
 function can be called more than once, and will return the same
@@ -178,7 +178,7 @@ The IOR could also be a corbaloc or corbaname IOR.
 
                            Client Operation
 
-Initialize and get a refrence to the ORB object.
+Initialize and get a reference to the ORB object.
 
     (defvar *orb* (CORBA:ORB_init))
 
@@ -236,9 +236,6 @@ BSD package <URL:http://babs.cs.umass.edu/~bburns/software/bsd.lisp>.
 The networking code can either use OpenTransport directly or use the
 ACL-COMPAT code from portable allegro server [fix reference].
 
-The file clmcl.lisp is what I have used during development to load
-the system.
-
 To load CLORB you need to do something like this:
 
     (require 'bsd)
@@ -283,6 +280,17 @@ dependent on my devlopment environment).
    (list ;;"-ORBPort" "4712"
          ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
          )))
+
+
+                                CLISP
+
+You might need a recent version of CLISP for CLORB to work. I have
+tested with 2.32 on both Debian GNU/Linux (i386) and on Mac OS X 10.2.8.
+
+There is a pretty printer bug in CLISP 2.32 that cause problems for
+the CORBA:IDL function with either :print or :output options. You can
+get around this by also specifying :pprint-dispatch nil.
+
 
 
                          About the CMUCL port
