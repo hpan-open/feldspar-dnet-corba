@@ -13,12 +13,13 @@
 (defclass CORBA:TYPECODEFACTORY ()
   ())
 
-(define-corba-class ORB (CORBA:TypeCodeFactory)
-  :slots
+(defclass ORB (CORBA:TypeCodeFactory)
   ((adaptor :initform nil :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
    (host    :initarg :host    :accessor orb-host)
    (port    :initarg :port    :accessor orb-port)
+   (client-request-interceptors :accessor client-request-interceptors
+                                :initform nil)
    (initial-references :initform '()
                        :accessor orb-initial-references)
    (default-initial-reference
@@ -70,13 +71,13 @@
 ;;    void pre_init (in ORBInitInfo info);
 ;;    void post_init (in ORBInitInfo info);
 
-(defclass PORTABLEINTERCEPTOR:ORBINITIALIZER ()
+(defclass orb-initializer (PortableInterceptor:ORBInitializer)
   ())
 
-(define-method "PRE_INIT" ((init PortableInterceptor:ORBInitializer) info)
+(define-method "PRE_INIT" ((init orb-initializer) info)
   (declare (ignore info)))
 
-(define-method "POST_INIT" ((init PortableInterceptor:ORBInitializer) info)
+(define-method "POST_INIT" ((init orb-initializer) info)
   (declare (ignore info)))
 
 
@@ -109,7 +110,7 @@
 
 ;;; ORB CORBA:ORB_init (arg_list, orbid)
 
-(defun corba:orb_init (&optional args (orbid "") set-init)
+(defun CORBA:ORB_init (&optional args (orbid "") set-init)
   (when (eq args t)
     (setq args nil set-init t))
   (let ((info nil))
@@ -119,7 +120,7 @@
                         :host *host*
                         :port *port*))
       (setq set-init t)
-      (setq info (make-instance 'PortableInterceptor:ORBInitInfo
+      (setq info (make-instance 'orb-init-info
                    :orb *the-orb*
                    :arguments args
                    :orb_id orbid
@@ -737,43 +738,17 @@ Can be set to true globally for singel-process / development.")
 ;;    readonly attribute string orb_id;
 ;;    readonly attribute IOP::CodecFactory codec_factory;
 
-(define-corba-class PortableInterceptor:ORBInitInfo ()
+(define-corba-class orb-init-info (PortableInterceptor:ORBInitInfo)
   :attributes ((arguments :readonly)
                (orb_id :readonly)
                (codec_factory :readonly))
   :slots ((proto-orb :initarg :orb :reader the-orb)))
 
 
-;;;    typedef string ObjectId;
-
-(DEFINE-ALIAS PORTABLEINTERCEPTOR:ORBINITINFO/ObjectId
- :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/ObjectId:1.0"
- :name "ObjectId"
- :type OMG.ORG/CORBA:STRING
- :typecode OMG.ORG/CORBA:TC_STRING)
-
-
-;;;    exception DuplicateName {
-;;      string name;
-
-(DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/DUPLICATENAME
- :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/DuplicateName:1.0"
- :name "DuplicateName"
- :members (("name" OMG.ORG/CORBA:TC_STRING)))
-
-
-;;;    exception InvalidName {};
-
-(DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME
- :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/InvalidName:1.0"
- :name "InvalidName"
- :members NIL)
-
-
 ;;;    void register_initial_reference (in ObjectId id, in Object obj)
 ;;      raises (InvalidName);
 
-(define-method register_initial_reference ((orbinfo PortableInterceptor:ORBInitInfo) id obj)
+(define-method register_initial_reference ((orbinfo orb-init-info) id obj)
   (handler-case
       (op:register_initial_reference (the-orb orbinfo) id obj)
     (CORBA:ORB/InvalidName ()
@@ -783,7 +758,7 @@ Can be set to true globally for singel-process / development.")
 ;;;    void resolve_initial_references (in ObjectId id)
 ;;      raises (InvalidName);
 
-(define-method resolve_initial_references ((orbinfo PortableInterceptor:ORBInitInfo) id)
+(define-method resolve_initial_references ((orbinfo orb-init-info) id)
   (handler-case
       (op:resolve_initial_references (the-orb orbinfo) id)
     (CORBA:ORB/InvalidName ()
@@ -792,6 +767,13 @@ Can be set to true globally for singel-process / development.")
 
 ;;;    void add_client_request_interceptor (in ClientRequestInterceptor interceptor) 
 ;;      raises (DuplicateName);
+
+(define-method "ADD_CLIENT_REQUEST_INTERCEPTOR" ((self orb-init-info) interceptor)
+  (when (find (op:name interceptor) (client-request-interceptors (the-orb self)))
+    (error (omg.org/portableinterceptor:orbinitinfo/duplicatename 
+            :name (op:name interceptor))))
+  (push interceptor (client-request-interceptors (the-orb self))))
+
 
 ;;;    void add_server_request_interceptor (in ServerRequestInterceptor interceptor)
 ;;      raises (DuplicateName);
@@ -805,3 +787,10 @@ Can be set to true globally for singel-process / development.")
 ;;                                  in PolicyFactory policy_factory);
 
 
+;;;; Providing access to the orb 
+
+(defmethod the-orb ((req client-request))
+  *the-orb*)
+
+(defmethod the-orb ((obj CORBA:Object))
+  *the-orb*)
