@@ -116,11 +116,10 @@
         (setf (op:members def)
           (mapcar (lambda (x)
                     (let ((type (parse-type-in container (second x))))
-                      (make-struct
-                       "IDL:omg.org/CORBA/StructMember:1.0"
+                      (CORBA:StructMember
                        :name (first x)
                        :type_def type
-                       :type nil)))
+                       :type CORBA:tc_void)))
                   members))))))
 
 
