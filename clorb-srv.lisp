@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.27 2004/09/16 20:00:57 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.28 2004/12/19 23:34:19 lenst Exp $	
 
 (in-package :clorb)
 
@@ -109,7 +109,7 @@
                      :request-id req-id :operation operation
                      :service-context service-context :input buffer
                      :state :wait :response-flags response)))
-      (push request (connection-server-requests conn))
+      (connection-add-server-request conn request)
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
       (loop
@@ -160,8 +160,7 @@
         (marshal-giop-set-message-length buffer)
         (connection-send-buffer conn buffer)))
     (setf (request-state request) :finished)
-    (setf (connection-server-requests conn)
-          (delete request (connection-server-requests conn)))))
+    (connection-remove-server-request conn request)))
 
 
 (defun poa-cancelrequest-handler (conn)
