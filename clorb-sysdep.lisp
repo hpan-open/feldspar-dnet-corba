@@ -360,8 +360,8 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    "check if input is available on socket stream"
 
    #+clorb::clisp-ext
-   (eq t (ext:read-byte-lookahead stream))
-   ;;(not (ext:read-byte-will-hang-p stream))
+   (ext:read-byte-lookahead stream)
+
    #+clisp t                            ;Ouch!
 
    #+CCL
@@ -553,7 +553,7 @@ Returns select result to be used in getting status for streams."
        (unix:unix-select (1+ (select-maxn select))
                          (select-rset select)
                          (select-wset select)
-                         0 20)
+                         0 200)
      (declare (ignorable xset))
      ;;FIXME: should perhaps use xset
      (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
@@ -617,8 +617,12 @@ Returns select result to be used in getting status for streams."
     (%SYSDEP
      "read many octets without hanging"
      #+clisp
-     (setq read-pos (ext:read-byte-sequence seq stream
-                                            :start start :end end :no-hang t))
+     (progn
+       (setq read-pos (ext:read-byte-sequence seq stream
+                                              :start start :end end :no-hang t))
+       (if (and (= read-pos start)
+                (eql :eof (ext:read-byte-lookahead stream )))
+           (error 'end-of-file :stream stream)))
      ;; Default
      (loop while (listen stream)
            do (setf (aref seq read-pos) (read-byte stream))
@@ -638,17 +642,6 @@ Returns select result to be used in getting status for streams."
   "returns number of octets written"
   (%SYSDEP
    "write octets without hanging"
-   #+clisp
-   (let ((count 0))
-     (case (ext:socket-status stream 0)
-       ((:output :io)
-        (loop repeat 100
-              while (< start end)
-              do (write-byte (aref seq start) stream)
-              (incf start) (incf count)))
-       (:error (error "Stream status error")))
-     (force-output stream)
-     count)
 
    ;; Default is possibly blocking
    (progn

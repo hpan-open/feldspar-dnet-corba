@@ -284,7 +284,7 @@
                    write-limit write-pos))
     (or
      (when (and read-buffer (< read-pos read-limit)
-                (member status '(:input :io)))
+                status (not (eql status :output)))
        (handler-case
          (when (socket-stream-listen stream)
            (let ((n (read-octets-no-hang read-buffer read-pos
@@ -297,7 +297,7 @@
           (setf (io-descriptor-error desc)  e)
           :error)))
      (when (and write-buffer (< write-pos write-limit)
-                (member status '(:output :io)))
+                (member status '(:output :io :append)))
        (handler-case
          (let ((n (write-octets-no-hang write-buffer write-pos
                                         write-limit stream)))
@@ -330,7 +330,7 @@
             (when (and input (socket-stream-listen stream))
               (let ((event (io-poll-desc desc :input)))
                 (if event
-                  (return-from io-driver (values event desc)))))
+                  (return-from io-driver-select (values event desc)))))
             (when (or input output)
               (push (cons (select-add-stream select stream input output)
                           desc)
