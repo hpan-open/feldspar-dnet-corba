@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.11 2002/10/05 11:17:23 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.12 2002/10/08 18:05:20 lenst Exp $
 
 (in-package :clorb)
 
@@ -30,6 +30,7 @@
 
 
 ;; old:
+;;#+unused-defuns
 (defun struct-typecode (id name &rest fields)
   (make-typecode :tk_struct
                  id
@@ -102,22 +103,6 @@ of fields can be defaulted (numbers and strings)."
           :typecode typecode
           :fields fields)))))
 
-#+unused-defuns
-(defun make-struct-internal (id nv-alist &optional nv-plist)
-  "Make a CORBA structure of type ID.
-NV-PAIRS is a list field names and field values."
-  (let ((class (gethash id *specialized-structs*)))
-    (if class
-        (apply #'make-instance class
-               (or nv-plist
-                   (mapcan (lambda (x) (list (car x) (cdr x)))
-                           nv-alist)))
-      (make-instance 'generic-struct
-        :type-id id
-        :fields (or nv-alist
-                    (loop for (name val) on nv-plist by #'cddr
-                        collect (cons name val)))))))
-
 
 (defun struct-in (typecode function arg)
   (let* ((params (typecode-params typecode))
@@ -134,6 +119,29 @@ NV-PAIRS is a list field names and field values."
         :fields (loop for (name tc) across members
                       collect (cons (lispy-name name)
                                     (funcall function tc arg)))))))
+
+
+(defmethod struct-out ((struct CORBA:struct) typecode fn dest)
+  (let* ((params (typecode-params typecode))
+         (members (tcp-members params)))
+    (loop for (name tc) across members
+         do (funcall fn (struct-get struct name) tc dest))))
+
+#|
+(defmethod struct-out ((struct generic-struct) typecode fn dest)
+  (let* ((params (typecode-params typecode))
+         (members (tcp-members params)))
+    (loop for (name . value) in (fields struct)
+         do (funcall fn (field-typecode name members) value dest))))
+
+(defun field-typecode (name members)
+  (doseq (m members)
+         (loop for (field-name tc) across members
+            when (string-equal name field-name)
+            return tc)))
+|#
+
+
 
 
 (defmethod struct-get ((struct generic-struct) (field symbol))
