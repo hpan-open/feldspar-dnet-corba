@@ -42,7 +42,7 @@
                    (setf (fill-pointer (buffer-octets buffer)) 0)
                    (marshal-octet 1 buffer)
                    (marshal float typecode buffer)
-                   (setf (buffer-position buffer) 0)
+                   (setf (buffer-in-pos buffer) 0)
                    (unmarshal-octet buffer)
                    (let ((result (unmarshal typecode buffer)))
                      (ensure-equalp result (coerce float type))))))
@@ -130,7 +130,7 @@
           (ensure-equalp (unmarshal-string buffer)
                          "ParameterDescription")
           (ensure-equalp (unmarshal-ulong buffer) 4))
-        (setf (buffer-position buffer) 0)
+        (setf (buffer-in-pos buffer) 0)
         (let ((new-tc (unmarshal-typecode buffer)))
           (ensure-typecode new-tc tc))))
     

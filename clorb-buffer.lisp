@@ -19,7 +19,7 @@
 
 (defstruct BUFFER
   (octets *empty-octets* :type octets)
-  (position    0         :type buffer-index)
+  (in-pos      0         :type buffer-index)
   (byte-order  1         :type bit)
   (start-pos   0         :type buffer-index)
   (ind-hash    nil))
@@ -27,11 +27,14 @@
 (defun buffer-contents (buffer)
   (copy-seq (buffer-octets buffer)))
 
+(defun buffer-out-pos (buffer)
+  (fill-pointer (buffer-octets buffer)))
+
 (defun buffer-abs-pos (buffer)
-  (buffer-position buffer))
+  (buffer-in-pos buffer))
 
 (defun buffer-rel-pos (buffer)
-  (- (buffer-position buffer) (buffer-start-pos buffer)))
+  (- (buffer-in-pos buffer) (buffer-start-pos buffer)))
 
 
 
@@ -48,7 +51,7 @@
 (defmacro without-chunking ((buffer) &body body)
   `(progn
      (when (and chunking-p *chunk-end*)
-       (assert (= *chunk-end* (buffer-position ,buffer)))
+       (assert (= *chunk-end* (buffer-in-pos ,buffer)))
        (setq *chunk-end* nil))
      (assert (>= *chunking-level* 0))
      (let ((*chunking-level* (- *chunking-level*)))
@@ -65,14 +68,14 @@
     `(let* ((,buffervar ,buffer)
             (,lengthvar ,length)
             (,old-start (buffer-start-pos ,buffervar))
-            (,old-pos   (buffer-position ,buffervar))
+            (,old-pos   (buffer-in-pos ,buffervar))
             (,old-byteorder (buffer-byte-order ,buffervar)))
        (unwind-protect
            (progn
-             (setf (buffer-start-pos ,buffervar) (buffer-position ,buffervar))
+             (setf (buffer-start-pos ,buffervar) (buffer-in-pos ,buffervar))
              ,@body)
          (setf (buffer-start-pos ,buffervar) ,old-start)
-         (setf (buffer-position ,buffervar) (+ ,old-pos ,lengthvar))
+         (setf (buffer-in-pos ,buffervar) (+ ,old-pos ,lengthvar))
          (setf (buffer-byte-order ,buffervar) ,old-byteorder)))))
 
 (defun get-work-buffer ()
@@ -83,10 +86,6 @@
                        :element-type 'CORBA:octet)))
 
 
-
-;; should better be called buffer-out-pos
-(defun buffer-pos (buffer)
-  (fill-pointer (buffer-octets buffer)))
 
 (defun buffer-record (buffer)
   (or (buffer-ind-hash buffer)
@@ -124,7 +123,7 @@ In body:
 (defun start-in-chunk (buffer)
   (let ((size (without-chunking (buffer) (unmarshal-long buffer))))
     (assert (< 0 size #x7FFFFFFF))
-    (setf *chunk-end* (+ (buffer-position buffer) size))))
+    (setf *chunk-end* (+ (buffer-in-pos buffer) size))))
 
 (defmacro with-in-buffer ((buffer &key (check t)) &body body)
   `(progn
@@ -132,7 +131,7 @@ In body:
      (let ((buffer ,buffer))
        (declare (type buffer buffer))
        (let ((octets (buffer-octets buffer)))
-         (symbol-macrolet ((pos (buffer-position buffer)))
+         (symbol-macrolet ((pos (buffer-in-pos buffer)))
            (macrolet 
              ((get-octet () 
                 `(the CORBA:Octet
@@ -143,7 +142,7 @@ In body:
                 `(progn
                    (when (and chunking-p
                               (or (null *chunk-end*)
-                                  (>= (buffer-position buffer) *chunk-end*)))
+                                  (>= (buffer-in-pos buffer) *chunk-end*)))
                      (start-in-chunk buffer))
                    (unless (zerop ,n)
                      (incf pos (logand (- ,n (logand (the buffer-index (buffer-rel-pos buffer))
@@ -151,7 +150,7 @@ In body:
                                        (- ,n 1)))))))
              (prog1 (progn ,@body)
                (when (and chunking-p *chunk-end*
-                          (>= (buffer-position buffer) *chunk-end*))
+                          (>= (buffer-in-pos buffer) *chunk-end*))
                  (assert (= *chunk-end* pos))
                  (setq *chunk-end* nil)))))))))
 

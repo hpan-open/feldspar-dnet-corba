@@ -194,11 +194,11 @@
     (cond
      (recursive-typecode-pos
       (marshal-ulong #xFFFFFFFF buffer)
-      (marshal-long (- recursive-typecode-pos (buffer-pos buffer))
+      (marshal-long (- recursive-typecode-pos (buffer-out-pos buffer))
                     buffer))
      (t
       (let ((*marshal-typecode-record*
-             (acons tc (buffer-pos buffer)
+             (acons tc (buffer-out-pos buffer)
                     *marshal-typecode-record*))
             (kind (typecode-kind tc))
             (*typecode-params* (typecode-params tc)))

@@ -112,7 +112,7 @@
     (unless *chunk-end*
       (let ((tag (without-chunking (buffer) (unmarshal-long buffer))))
         (cond ((< 0 tag min-value-tag)
-               (setf *chunk-end* (+ tag (buffer-position buffer)))
+               (setf *chunk-end* (+ tag (buffer-in-pos buffer)))
                nil)
               (t
                tag))))))
@@ -136,15 +136,15 @@
           ((if (eql tag-type :unsigned)
              (= tag unsigned-indirection-tag) 
              (= tag signed-indirection-tag))
-           (let ((pos (+ (buffer-position buffer)
+           (let ((pos (+ (buffer-in-pos buffer)
                          (unmarshal-long buffer))))
              (or (gethash pos (buffer-record buffer))
                  (error "Illegal indirection"))))
           (t
-           (let ((start-pos (- (buffer-position buffer) 4))
+           (let ((start-pos (- (buffer-in-pos buffer) 4))
                  (registered nil))
              (unless tag-type
-               (setf (buffer-position buffer) start-pos))
+               (setf (buffer-in-pos buffer) start-pos))
              (flet ((register (obj)
                       (unless registered
                         (setf registered t)
@@ -303,7 +303,7 @@
 (defun unmarshal-value-state (chunked truncate keys types buffer)
   (labels 
     ((read-tag () (unmarshal-long buffer))
-     (rewind-tag () (incf (buffer-position buffer) -4))
+     (rewind-tag () (incf (buffer-in-pos buffer) -4))
      (truncating ()
        (unless truncate
          (mess 5 "Truncating a non truncatable value")
@@ -311,7 +311,7 @@
      (truncate-chunk ()
        (when *chunk-end*
          (truncating)
-         (setf (buffer-position buffer) *chunk-end*)
+         (setf (buffer-in-pos buffer) *chunk-end*)
          (setf *chunk-end* nil)
          t))
      (find-end-of-value ()
@@ -330,7 +330,7 @@
                      ((< tag min-value-tag)
                       ;; skip a chunk
                       (truncating)
-                      (incf (buffer-position buffer) tag))
+                      (incf (buffer-in-pos buffer) tag))
                      (t ; value tag
                       ;; need to skip this value
                       (let ((chunked (without-chunking (buffer)
