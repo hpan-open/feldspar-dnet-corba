@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.29 2004/06/09 21:13:11 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.30 2004/09/16 19:57:29 lenst Exp $
 
 (in-package :clorb)
 
@@ -96,6 +96,13 @@
   ;; Combine state from POAManager and other operations on the POA.
   (or (poa-state poa)
       (op:get_state (op:the_poamanager poa))))
+
+
+(defmethod wait-for-completion ((poa portableserver:poa))
+  ;; Currently we have no way to do this and as long as we are single
+  ;; threaded it should not be much of an issue.
+  t)
+
 
 ;;;; PortableServer::Current
 
@@ -148,7 +155,9 @@
 ;;;; interface POAManager
 
 (defclass PORTABLESERVER:POAMANAGER (corba:object)
-  ((state :initform :holding)))
+  ((state         :initform :holding)
+   (managed-poas  :initform '()
+                  :accessor managed-poas)))
 
 
 ;;; enum State {HOLDING, ACTIVE, DISCARDING, INACTIVE}
@@ -165,37 +174,59 @@
  :members NIL)
 
 
-(defun poamanager-new-state (pm new-state)
+(defun in-invocation-context (pm)
+  "True if in an invocation context for some POA in the same ORB as PM"
+  (when *poa-current*
+    (let ((pm-poas (managed-poas pm)))
+      (when pm-poas
+        (eql (the-orb (poa-current-poa *poa-current*))
+             (the-orb (car pm-poas)))))))
+
+
+(defun poamanager-new-state (pm new-state wait-for-completion
+                                    &optional etheralize-objects)
+  (when wait-for-completion 
+    (when (in-invocation-context pm)
+      (raise-system-exception 'CORBA:bad_inv_order 3)))
   (with-slots (state) pm
     (when (eq state :inactive)
-      (error 'POAManager/AdapterInactive))
-    (setf state new-state)))
+      (unless (eq new-state :inactive)
+        (error 'POAManager/AdapterInactive)))
+    (let ((old-state state))
+      (setf state new-state)
+      (unless (eql new-state old-state)
+        (when etheralize-objects
+          (dolist (poa (managed-poas pm))
+            (start-etheralize poa))))))
+  (when wait-for-completion
+    (dolist (poa (managed-poas pm))
+      (wait-for-completion poa))))
+
+
+(defmethod add-poa ((pm PortableServer:POAManager) poa)
+  (push poa (managed-poas pm)))
+
+(defmethod remove-poa ((pm PortableServer:POAManager) poa)
+  (setf (managed-poas pm) (delete poa (managed-poas pm))))
 
 
 ;;; void activate()
 ;;;	raises(AdapterInactive);
 (define-method activate ((pm PortableServer:POAManager))
-  (POAManager-new-state pm :active))
+  (POAManager-new-state pm :active nil))
 
 
 ;;; void hold_requests(in boolean wait_for_completion)
 ;;;     raises(AdapterInactive);
-(define-method hold_requests ((pm PortableServer:POAManager) wait_for_completion)
-  (when wait_for_completion
-    ;;(check-not-processing-request )
-    (when *poa-current*
-      ;; FIXME: check same ORB 
-      (raise-system-exception 'CORBA:BAD_INV_ORDER 3)))
-  (POAManager-new-state pm :holding))
+(define-method hold_requests ((pm PortableServer:POAManager) wait-for-completion)
+  (POAManager-new-state pm :holding wait-for-completion))
 
 
 ;;; void discard_requests(in boolean wait_for_completion)
 ;;;        raises(AdapterInactive);
-(define-method discard_requests ((pm PortableServer:POAManager) wait_for_completion)
-  (when wait_for_completion
-    (when *poa-current*
-      (raise-system-exception 'CORBA:bad_inv_order 3)))
-  (POAManager-new-state pm :discarding))
+(define-method discard_requests ((pm PortableServer:POAManager) wait-for-completion)
+  (POAManager-new-state pm :discarding wait-for-completion))
+
 
 
 ;;; void deactivate(	in boolean etherealize_objects,
@@ -203,9 +234,7 @@
 ;;;        raises(AdapterInactive);
 (define-method deactivate ((pm PortableServer:POAManager) etherealize_objects 
                            wait_for_completion)
-  ;;FIXME etherealize_objects wait_for_completion
-  (declare (ignore etherealize_objects wait_for_completion))
-  (POAManager-new-state pm :inactive))
+  (POAManager-new-state pm :inactive wait_for_completion etherealize_objects))
 
 
 ;;; State get_state ()
@@ -278,14 +307,16 @@
   (when (and poa (find name (op:the_children poa)
                        :key #'op:the_name :test #'equal))
     (error 'PortableServer:POA/AdapterAlreadyExists))
+  (setq manager (or manager (make-instance 'PortableServer:poamanager)))
   (let ((newpoa
          (make-instance 'PortableServer:POA
            :the_name name
            :the_parent poa
-           :the_poamanager (or manager (make-instance 'PortableServer:poamanager))
+           :the_poamanager manager
            :policies policies
            :poaid (or poaid (incf *last-poaid*))
            :orb orb)))
+    (add-poa manager newpoa)
     (when poa
       (push newpoa (slot-value poa 'the_children)))
     (register-poa newpoa)
@@ -375,6 +406,18 @@ individual call (some callers may choose to block, while others may not).
 
 |#
 
+
+(defun start-etheralize (poa)
+  (when (and (poa-has-policy poa :retain)
+             (poa-has-policy poa :use_servant_manager)
+             (POA-servant-manager poa))
+    (maptrie (lambda (oid servant)
+               (op:etherealize (POA-servant-manager poa) 
+                               oid poa servant t 
+                               (not (null (gethash servant (poa-active-servant-map poa))))))
+             (POA-active-object-map poa))))
+
+
 (define-method destroy ((poa PortableServer:POA) etherealize-objects wait-for-completion)
 #|
 * If wait_for_completion is TRUE and the current thread is in an invocation
@@ -386,6 +429,8 @@ POA destruction does not occur.
     (raise-system-exception 'CORBA:BAD_INV_ORDER 3 :completed_yes))
   (unless (eq :inactive (poa-effective-state poa))
     (setf (poa-state poa) :discarding))
+  (let ((manager (op:the_poamanager poa)))
+    (remove-poa manager poa))
   (dolist (child (op:the_children poa))
     (op:destroy child etherealize-objects wait-for-completion))
   ;; wait for ongoing requests to finnish,
@@ -394,14 +439,10 @@ POA destruction does not occur.
     (setf (slot-value parent 'the_children)
           (delete poa (op:the_children parent))))
   (unregister-poa poa)
-  (when (and etherealize-objects
-             (poa-has-policy poa :retain)
-             (poa-has-policy poa :use_servant_manager)
-             (POA-servant-manager poa))
-    (maptrie (lambda (oid servant)
-               (op:etherealize (POA-servant-manager poa) 
-                               oid poa servant t nil))
-             (POA-active-object-map poa))))
+  (when etherealize-objects
+    (start-etheralize poa)))
+
+
 
 
 ;;;; Some setters and getters
