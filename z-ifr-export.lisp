@@ -205,12 +205,13 @@
 
 (op:set_servant *z-poa* *z-serv*)
 (op:activate (op:the_poamanager *z-poa*))
-(rebind (make-remote *z-serv* *z-rep*) "zrep")
 
 ;;(idef-read (idef-write *idef-repository*) *z-rep*)
 
 (define-method _this ((obj IRObject))
   (make-remote *z-serv* obj))
+
+;;(rebind (make-remote *z-serv* *z-rep*) "zrep")
 
 #|
 

@@ -6,11 +6,45 @@
     :initarg :lexer
     :accessor idllex-lexer)))
 
-(defun make-idllex (stream)
-  (let ((lexer (make-instance 'streamchar-lexer
-                 :stream stream)))
-    (next-token lexer)
-    (make-instance 'idllex :lexer lexer)))
+(defclass cppchar-lexer (lexer)
+  ((stream
+    :initarg :cpp
+    :accessor lexer-cpp)
+   (line :initform "")
+   (pos  :initform 1)))
+
+
+(defmethod next-token ((lexer cppchar-lexer))
+  (with-slots (stream line pos) lexer
+    (do ((token nil))
+        (token (setf (slot-value lexer 'token) token))
+      (cond ((= pos (length line))
+             (incf pos)
+             (setf token #\Newline))
+            ((< pos (length line))
+             (setf token (char line pos))
+             (incf pos))
+            (t
+             (setf line (read-cpp-line stream))
+             (setf pos 0)
+             (if (null line)
+               (setf token :eof)))))))
+
+(defvar *current-cpp*)
+
+(defun using-idllex (file thunk include-directories)
+  (check-type file (or string pathname))
+  (using-cpp-stream
+   file
+   (lambda (cpp) 
+     (let ((*current-cpp* cpp)
+           (lexer (make-instance 'cppchar-lexer :cpp cpp)))
+       (next-token lexer)
+       (let ((*lexer* (make-instance 'idllex :lexer lexer)))
+         (next-token *lexer*)
+         (funcall thunk))))
+   :include-directories include-directories))
+
 
 (defmethod next-token ((lexer idllex))
   (let ((*lexer* (idllex-lexer lexer)))
@@ -57,6 +91,9 @@
                    (repeat (0) #'(lambda (ch) (char/= ch #\*)))
                    #\*)
                  #\/
+                 (action nil))
+            (seq #\/ 
+                 (seq* #'(lambda (ch) (char/= ch #\Newline)))
                  (action nil))
             (seq (action "/")))))
 

@@ -20,8 +20,9 @@
 (defun repo-id (name container &optional (version "1.0"))
   (apply #'concatenate 'string
          "IDL:"
-         `(,@(if *idef-current-prefix*
-               (list *idef-current-prefix* "/"))
+         `(,@(let ((prefix (idl-prefix *current-cpp*)))
+               (if (not (equal prefix ""))
+                 (list prefix "/")))           
            ,@(nreverse (repo-path container))
            ,name ":" ,version)))
 
@@ -42,14 +43,17 @@
 
 (defun <specification> ()
   (seq (seq+ (<definition>))
-       :eof ))
+       :eof
+       (action (id-adjustment))))
 
 (defun <definition> nil
- (alt (seq (<type_dcl>) ";")
-      (seq (<const_dcl>) ";")
-      (seq (<except_dcl>) ";")
-      (seq (<interface>) ";")
-      (seq (<module>) ";")))
+  (alt (seq (<type_dcl>) ";")
+       (seq (<const_dcl>) ";")
+       (seq (<except_dcl>) ";")
+       (seq (<interface/value>) ";")
+       (seq (<module>) ";")))
+
+
 
 
 ;;;; Names
@@ -76,29 +80,131 @@
        (let ((*container*
               (or (op:lookup *container* name)
                   (named-create *container* #'op:create_module name))))
-         (seq+ (<definition>)))
+         (seq (seq+ (<definition>))
+              (action (id-adjustment))))
        "}")) 
 
+(defun id-adjustment ()
+  ;; List of forms to adjust IDs of IDL types due to pragma.
+  ;; Should be done at the end of a scope.
+  (loop for (type name value) in (idl-repositoryid-pragmas *current-cpp*)
+        collect (let ((obj (lookup-name-in *container* name)))
+                  (ecase type
+                    (:id (setf (op:id obj) value))
+                    (:version 
+                     (setf (op:version obj) value)
+                     (let* ((old-id (op:id obj))
+                            (last-colon (position #\: old-id :from-end t)))
+                       (assert last-colon nil "ill-formed ID")
+                       (setf (op:id obj)
+                             (concatenate 'string (subseq old-id 0 (1+ last-colon))
+                                          value))))))))
 
-;;;; Interface
 
-(defun <interface> nil
-  (let (name bases obj)
-    (seq (opt (alt "abstract" "local"))
-         "interface"
-         (-> (<identifier>) name)
-         (action (setq obj (op:lookup *container* name))
-                 (unless obj
-                   (setq obj (named-create *container* #'op:create_interface name nil ))))
-         (opt (seq (opt (-> (<interface_inheritance_spec>) bases))
-                   "{"
-                   (action (setf (op:base_interfaces obj) bases))
-                   (let ((*container* obj))
-                     (<interface_body>))
-                   "}")))))
+;;;; Interface and ValueType
 
-(defun <interface_body> nil
-  (seq* (<export>)))
+(defun <interface/value> ()
+  (let (modifier valuep name)
+    (seq 
+     (-> (alt (seq "abstract" (action :abstract))
+              (seq "local"    (action :local))
+              (seq "custom"   (action :custom))
+              (seq            (action nil)))
+         modifier)
+     (alt (seq (not (eq modifier :local))
+               "valuetype"    (action (setq valuep t)))
+          (seq (not (eq modifier :custom))
+               "interface"))
+     (-> (<identifier>) name)
+     (if valuep
+       (<value>- modifier name)
+       (<interface>- modifier name)))))
+
+(defun <value>- (modifier name)
+  (alt 
+   ;; value box, cant be abstract or custom
+   (and (null modifier)
+        (let (type)
+          (seq (-> (<type_spec>) type)
+               (action (named-create *container* #'op:create_value_box name type)))))
+   ;; general valuetype
+   (let ((obj (or (op:lookup *container* name)
+                  (named-create *container* #'op:create_value name
+                                (eq modifier :custom) (eq modifier :abstract)
+                                ;; base_value is_truncatable 
+                                nil nil 
+                                ;; abstract_base_values supported_interfaces
+                                nil nil 
+                                ;; initializers
+                                nil )))
+         base-values supported-interfaces)
+     ;; FIXME: check that obj is right type 
+     (opt (opt ":" (opt "truncatable" (action (setf (op:is_truncatable obj) t)))
+               (-> (parse-list (<scoped_name>-lookup) ",") base-values)
+               (action 
+                 (unless (op:is_abstract (first base-values))
+                   (setf (op:base_value obj) (pop base-values)))
+                 (assert (every #'op:is_abstract base-values))
+                 (setf (op:abstract_base_values obj) base-values)))
+          (opt "supports" (-> (parse-list (<scoped_name>-lookup) ",") supported-interfaces)
+               (action (setf (op:supported_interfaces obj) supported-interfaces)))
+          "{" 
+          (let ((*container* obj))
+            (seq* ;; if abstract value type, only export
+             (<value_element>)))
+          "}"))))
+
+
+(defun <interface>- (modifier name)
+  (let* (bases
+         (obj (or (op:lookup *container* name)
+                  (named-create *container* 
+                                (case modifier
+                                  (:abstract #'op:create_abstract_interface)
+                                  (:local #'op:create_local_interface)
+                                  (otherwise #'op:create_interface))
+                                name bases))))
+    (opt (seq (opt (-> (<interface_inheritance_spec>) bases)) "{"
+              (action (setf (op:base_interfaces obj) bases))
+              (let ((*container* obj))
+                (seq (seq* (<export>))
+                     (action (id-adjustment))))
+              "}"))))
+
+
+(defun <value_element> nil
+  (alt (seq (<export>)) 
+       (seq (<state_member>))
+       (seq (<init_dcl>))))
+
+(defun <state_member> ()
+  (let (visibility type dlist)
+    (seq (-> (alt (seq "public"  (action corba:public_member))
+                  (seq "private" (action corba:private_member)))
+             visibility)
+         (-> (<type_spec>) type) (-> (<declarators>) dlist) ";"
+         (action (loop for (name . array-spec) in dlist
+                       do (named-create *container* #'op:create_value_member name
+                                        (convert-to-array type array-spec) visibility))))))
+
+(defun <init_dcl> (&aux name args)
+  (seq "factory" (-> (<identifier>) name)
+       "(" (-> (parse-list (<init_param_decl>) "," t) args) ")" ";"
+       (action 
+         (setf (op:initializers *container*)
+               (nconc (op:initializers *container*)
+                      (list (CORBA:Initializer :name name
+                                               :members args)))))))
+
+(defun <init_param_decl> (&aux name type)
+  (seq "in" 
+       (-> (<param_type_spec>) type)
+       (-> (<simple_declarator>) name)
+       (action (CORBA:StructMember :name name
+                                   :type_def type
+                                   :type CORBA:tc_void))))
+
+
 
 (defun <interface_inheritance_spec> nil
   (seq ":" 
@@ -110,6 +216,8 @@
        (seq (<except_dcl>) ";")
        (seq (<attr_dcl>) ";")
        (seq (<op_dcl>) ";")))
+
+
 
 
 ;;;; Operation Declaration
@@ -183,7 +291,7 @@
 (defun <attr_dcl> nil
   (let (mode type dlist)
     (seq (-> (alt (seq "readonly" (action :attr_readonly))
-                  (seq		(action :attr_normal)))
+                  (seq		  (action :attr_normal)))
              mode)
          "attribute"
          (-> (<param_type_spec>) type)
@@ -213,10 +321,13 @@
 
 (defun <type_dcl> nil
  (alt (seq "typedef" (<type_declarator>))
-      (seq (<struct_type>))
-      (seq (<union_type>))
-      (seq (<enum_type>))
-      (seq "native" (<simple_declarator>))))
+      (<struct_type>)
+      (<union_type>)
+      (<enum_type>)
+      (seq "native" 
+           (let (name)
+             (seq (-> (<simple_declarator>) name)
+                  (action (named-create *container* #'op:create_native name)))))))
 
 
 (defun <type_declarator> nil
@@ -439,15 +550,15 @@
          (seq (<primary_expr>)))))
 
 (defun <unary_operator> nil
-  (alt (seq "-") (seq "+") (seq "~")))
+  (alt "-" "+" "~"))
 
 
 
 ;;;; Type Specifications
 
 (defun <type_spec> nil
- (alt (seq (<simple_type_spec>)) 
-      (seq (<constr_type_spec>))))
+  (alt (<simple_type_spec>) 
+       (<constr_type_spec>)))
 
 (defun <simple_type_spec> (&key allow-kind disallow-kind)
   (let (type-def)
@@ -522,7 +633,8 @@
   (alt (<number_type>)
        (misc-type)
        (seq "any"	(action (op:get_primitive *the-repository* :pk_any)))
-       (seq "Object"	(action (op:get_primitive *the-repository* :pk_objref)))))
+       (seq "Object"	(action (op:get_primitive *the-repository* :pk_objref)))
+       (seq "ValueBase" (action (op:get_primitive *the-repository* :pk_value_base)))))
 
 (defun misc-type (&aux pk)
   (seq (-> (alt (seq "char"	(action :pk_char))
@@ -530,8 +642,6 @@
                 (seq "octet"	(action :pk_octet))
                 (seq "boolean"	(action :pk_boolean))) pk)
        (action (op:get_primitive *the-repository* pk))))
-
-
 
 (defun <constr_type_spec> nil
   (alt (seq (<struct_type>)) (seq (<union_type>)) (seq (<enum_type>))))
@@ -586,12 +696,11 @@
   ())
 
 (defmethod load-repository ((self my-idlparser) repository file)
-  (with-open-file (stream file :direction :input)
     (let* ((*the-repository* repository)
            (*container* *the-repository*))
-      (let ((*lexer* (make-idllex stream)))
-        (next-token *lexer*)
-        (<specification>)))))
+      (using-idllex file #'<specification>
+                    (include-directories self))))
+
 
 (unless *default-idl-compiler*
   (setq *default-idl-compiler* (make-instance 'my-idlparser)))
