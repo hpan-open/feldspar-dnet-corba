@@ -42,30 +42,95 @@
 
 ;;;    exception InvalidName {};
 (define-user-exception CORBA:ORB/InvalidName
-    :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
+  :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
 
 
-(defun ORB_init (&optional args (orbid "") set-init)
-  (declare (ignore orbid))
+;;; From "Portable Interceptors"
+;;; void register_initial_reference (in ObjectId id, in Object obj)
+;;;    raises (InvalidName);
+
+(define-method register_initial_reference ((orb CORBA:ORB) id obj)
+  (when (or (not (stringp id)) (equal id "")
+            (assoc id (orb-initial-references orb)
+                    :test #'string=))
+    (error (CORBA:ORB/InvalidName)))
+  (unless obj
+    (error 'CORBA:BAD_PARAM :minor 24))
+  (set-initial-reference orb id nil obj))
+
+
+
+;;;; Initializing the ORB
+
+;;; PortableInterceptor::ORBInitializer
+;;  local interface ORBInitializer {
+;;    void pre_init (in ORBInitInfo info);
+;;    void post_init (in ORBInitInfo info);
+
+(defclass PortableInterceptor:ORBInitializer ()
+  ())
+
+(define-method "PRE_INIT" ((init PortableInterceptor:ORBInitializer) info)
+  (declare (ignore info)))
+
+(define-method "POST_INIT" ((init PortableInterceptor:ORBInitializer) info)
+  (declare (ignore info)))
+
+
+
+(defun portableinterceptor:register_orb_initializer (init)
+  (pushnew init *orb-initializers*))
+
+
+
+;; Backward compatiblity with functions as initializers
+
+(define-method "PRE_INIT" ((init function) info)
+  (funcall init (the-orb info)))
+
+(define-method "POST_INIT" ((init function) info)
+  (declare (ignore info)))
+
+
+(define-method "PRE_INIT" ((init symbol) info)
+  (op:pre_init (symbol-function init) info))
+
+(define-method "POST_INIT" ((init symbol) info)
+  (op:post_init (symbol-function init) info))
+
+
+;;; ORB CORBA:ORB_init (arg_list, orbid)
+
+(defun CORBA:ORB_init (&optional args (orbid "") set-init)
   (when (eq args t)
     (setq args nil set-init t))
-  (unless *the-orb*
-    (setq *the-orb* (make-instance 'CORBA:ORB
-                      :active t
-                      :host *host*
-                      :port *port*))
-    (setq set-init t)
-    (dolist (fn *orb-initializers*)
-      (funcall fn *the-orb*)))
-  (when set-init
-    (when *name-service*
-      (set-initial-reference *the-orb* "NameService" *name-service*))
-    (when *interface-repository*
-      (set-initial-reference *the-orb* "InterfaceRepository"
-                             *interface-repository*)))
-  (setq args (process-orb-args *the-orb* args))
-  (setf (orb-active *the-orb*) t)
+  (let ((info nil))
+    (unless *the-orb*
+      (setq *the-orb* (make-instance 'CORBA:ORB
+                        :active t
+                        :host *host*
+                        :port *port*))
+      (setq set-init t)
+      (setq info (make-instance 'PortableInterceptor:ORBInitInfo
+                   :orb *the-orb*
+                   :arguments args
+                   :orb_id orbid
+                   :codec_factory nil ))
+      (dolist (fn *orb-initializers*)
+        (op:pre_init fn info)))
+    (when set-init
+      (when *name-service*
+        (set-initial-reference *the-orb* "NameService" *name-service*))
+      (when *interface-repository*
+        (set-initial-reference *the-orb* "InterfaceRepository"
+                               *interface-repository*)))
+    (setq args (process-orb-args *the-orb* args))
+    (setf (orb-active *the-orb*) t)
+    (when info
+      (dolist (fn *orb-initializers*)
+        (op:post_init fn info))))
   (values *the-orb* args))
+
 
 (defun process-orb-args (orb args)
   (let ((new-args '()))
@@ -139,7 +204,7 @@ Can be set to true globally for singel-process / development.")
                                            name)))
         (push ref-entry (orb-initial-references orb))))
     (unless ref-entry
-      (error 'ORB/InvalidName))
+      (error (CORBA:ORB/InvalidName)))
     (let ((obj (cddr ref-entry)))
       (unless obj
         (let ((designator (cadr ref-entry)))
@@ -542,13 +607,15 @@ Can be set to true globally for singel-process / development.")
   (fix-recursive-tc (create-interface-tc id name)))
 
 (define-method "CREATE_EXCEPTION_TC" ((obj corba:typecodefactory) id name members)
-  (fix-recursive-tc (create-exception-tc id name members)))
+  (fix-recursive-tc (create-exception-tc id name (simple-struct-members members))))
 
 (define-method "CREATE_STRUCT_TC" ((obj corba:typecodefactory) id name members)
-  (fix-recursive-tc (create-struct-tc id name 
-                                      (map 'vector 
-                                           (lambda (m) (list (op:name m) (op:type m)))
-                                           members))))
+  (fix-recursive-tc (create-struct-tc id name (simple-struct-members members))))
+
+(defun simple-struct-members (members)
+  (map 'vector (lambda (m) (list (op:name m) (op:type m)))
+       members))
+
 
 (define-method "CREATE_UNION_TC" ((obj corba:typecodefactory) 
                                   id name discriminator-type members)
@@ -571,3 +638,79 @@ Can be set to true globally for singel-process / development.")
 
 (define-method "CREATE_ENUM_TC" ((OBJ CORBA:TYPECODEFACTORY) id name members)
   (fix-recursive-tc (create-enum-tc id name members)))
+
+
+
+;;;; local interface ORBInitInfo {
+;;    readonly attribute CORBA::StringSeq arguments;
+;;    readonly attribute string orb_id;
+;;    readonly attribute IOP::CodecFactory codec_factory;
+
+(define-corba-class PortableInterceptor:ORBInitInfo ()
+  :attributes ((arguments :readonly)
+               (orb_id :readonly)
+               (codec_factory :readonly))
+  :slots ((proto-orb :initarg :orb :reader the-orb)))
+
+
+;;;    typedef string ObjectId;
+
+(DEFINE-ALIAS PORTABLEINTERCEPTOR:ORBINITINFO/ObjectId
+ :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/ObjectId:1.0"
+ :NAME "ObjectId"
+ :TYPE OMG.ORG/CORBA:STRING
+ :TYPECODE OMG.ORG/CORBA:TC_STRING)
+
+
+;;;    exception DuplicateName {
+;;      string name;
+
+(DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/DUPLICATENAME
+ :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/DuplicateName:1.0"
+ :NAME "DuplicateName"
+ :MEMBERS (("name" OMG.ORG/CORBA:TC_STRING)))
+
+
+;;;    exception InvalidName {};
+
+(DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME
+ :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/InvalidName:1.0"
+ :NAME "InvalidName"
+ :MEMBERS NIL)
+
+
+;;;    void register_initial_reference (in ObjectId id, in Object obj)
+;;      raises (InvalidName);
+
+(define-method register_initial_reference ((orbinfo PortableInterceptor:ORBInitInfo) id obj)
+  (handler-case
+      (op:register_initial_reference (the-orb orbinfo) id obj)
+    (CORBA:ORB/InvalidName ()
+      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
+  
+
+;;;    void resolve_initial_references (in ObjectId id)
+;;      raises (InvalidName);
+
+(define-method resolve_initial_references ((orbinfo PortableInterceptor:ORBInitInfo) id)
+  (handler-case
+      (op:resolve_initial_references (the-orb orbinfo) id)
+    (CORBA:ORB/InvalidName ()
+      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
+
+
+;;;    void add_client_request_interceptor (in ClientRequestInterceptor interceptor) 
+;;      raises (DuplicateName);
+
+;;;    void add_server_request_interceptor (in ServerRequestInterceptor interceptor)
+;;      raises (DuplicateName);
+
+;;;    void add_ior_interceptor (in IORInterceptor interceptor)
+;;      raises (DuplicateName);
+
+;;;    SlotId allocate_slot_id ();
+
+;;;    void register_policy_factory (in CORBA::PolicyType type,
+;;                                  in PolicyFactory policy_factory);
+
+
