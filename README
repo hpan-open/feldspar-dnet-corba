@@ -8,13 +8,19 @@
 
                           by Lennart Staflin
 
-                              2004-01-15
+                              2004-01-22
 
 
 
 CLORB is an Object Request Broker implementing CORBA 2. It currently
 supports IIOP 1.0, IDL, DII, DSI, POA and value types. The goal is to
 make the mapping follow the proposed mapping for LISP [1].
+
+New in 0.5:
+
+   * Valuetype (object by value) including Abstract interface.
+   * New idl parser
+   * Improved ports
 
 It lacks:
 
@@ -57,6 +63,16 @@ function RELOAD (in that package) that will compile and load CLORB.
 It will load files relative to the directory from where clorb-files
 was loaded. 
 
+The files:
+
+- devel.lisp - Loads CLORB for development purpose, it also initiates
+  the ORB and the object adaptor. It runs all the test cases and
+  prepares the "hello world" example (use (hh) to run it or (hhn) to
+  use the Name Service).
+
+- loadup.lisp - Loads CLORB for normal use. The code will be loaded
+  but not initialized.
+
 It is not necessary to setup any logical pathname hosts to load
 CLORB. But some extra features like test cases and examples might
 depend on the "CLORB" host. It should then be set up to map
@@ -77,13 +93,12 @@ Features to control what socket/tcp code gets used:
                         test the rest of the code)
 
 
-Features that are automatically (?) determined (in clorb-sysdep):
+Features that are automatically determined (in clorb-sysdep):
 
-    clorb-mcl-bsd 
-    db-sockets 
-    sb-bsd-sockets 
-    cmucl-sockets 
-
+    clorb::cmucl-sockets
+    clorb::db-sockets
+    clorb::sb-bsd-sockets
+    clorb::mcl-bsd
 
 
                          Initializing the ORB
@@ -117,12 +132,11 @@ returned as a second return value. The recognized items are:
 
       Specify the port that the Object adaptor will listen on.
 
+    -ORBHostname name
 
-There are also some variables to consider. The *name-service* and
-*interface-repository* variables (in package CLORB) was used to
-provide IORs for resolve_initial_references to the NameService and
-InterfaceRepository respectively. They will be removed in a future
-version in preference to the method above (-ORBInitRef).
+      Specify the hostname that will be included in object references,
+      could also be an IP-number.
+
 
 The clorb:*log-level* controls the amount of logging done by CLORB.
 It should be an integer, lower value gives more logging. Logging is
@@ -157,7 +171,7 @@ Producing a Lisp file with all code for an IDL file:
 
 The IOR could be on the IOR:xxx form or it could be a file or http
 URL, in that case the references resource is should contain an IOR.
-The IOR could also be a corbaloc IOR.
+The IOR could also be a corbaloc or corbaname IOR.
 
 
 
