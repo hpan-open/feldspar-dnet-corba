@@ -71,7 +71,7 @@
 (defun typecode-smash (tc new-tc)
   (setf (slot-value tc 'kind) (slot-value new-tc 'kind)
         (slot-value tc 'params) (slot-value new-tc 'params))
-  (slot-makunbound tc 'keywords)
+  (unset-extra-slots tc)
   (change-class tc (class-of new-tc)))
 
 (defun map-typecode (func tc &optional (params (typecode-params tc)))
@@ -209,11 +209,19 @@
              ((symbolp member-params)
               `((define-method ,member-params ((tc ,class-name) index)
                   (elt (tc-members tc) index)))))
+     ,@(if extra-slots
+         `((defmethod unset-extra-slots ((tc ,class-name))
+             ,@(loop for name in extra-slots
+                     collect `(slot-makunbound tc ',name)))))
      ,@(if constant
          `((defparameter ,(if (consp constant) (car constant) constant)
              (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
                                                       (cdr constant)))))))))
 
+
+(defgeneric unset-extra-slots (tc)
+  (:method ((tc CORBA:TypeCode))
+           (slot-makunbound tc 'keywords)))
 
 
 (defmacro with-cache-slot ((object slot &key 
