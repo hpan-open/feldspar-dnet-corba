@@ -252,6 +252,12 @@
        (when stream
          (let ((input (and read-buffer (< read-pos read-limit)))
                (output (and write-buffer (< write-pos write-limit))))
+           ;; SBCL has always an input buffer, empty that before doing select
+           #+sbcl
+           (when (and input (socket-stream-listen stream))
+             (let ((event (io-poll-desc desc :input)))
+              (if event
+                  (return-from io-driver (values event desc)))))
            (when (or input output)
              (push (cons (select-add-stream select stream input output)
                          desc)
