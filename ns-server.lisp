@@ -5,11 +5,11 @@
 
 ;;;; NamingContext Servant 
 
-(defconstant +naming-context-id+
+(defparameter +naming-context-id+
   "IDL:omg.org/CosNaming/NamingContext:1.0")
-(defconstant +name-component-id+
+(defparameter +name-component-id+
   "IDL:omg.org/CosNaming/NameComponent:1.0")
-(defconstant +binding-id+
+(defparameter +binding-id+
   "IDL:omg.org/CosNaming/Binding:1.0")
 
 

@@ -14,13 +14,16 @@
 
 (defvar *naming-seqno* 0)
 
-(defconstant +naming-context-id+
-  "IDL:omg.org/CosNaming/NamingContext:1.0")
-(defconstant +name-component-id+
-  "IDL:omg.org/CosNaming/NameComponent:1.0")
-(defconstant +binding-id+
-  "IDL:omg.org/CosNaming/Binding:1.0")
 
+
+;;;; NamingContext Servant
+
+(defparameter +naming-context-id+
+  "IDL:omg.org/CosNaming/NamingContext:1.0")
+(defparameter +name-component-id+
+  "IDL:omg.org/CosNaming/NameComponent:1.0")
+(defparameter +binding-id+
+  "IDL:omg.org/CosNaming/Binding:1.0")
 
 
 
@@ -44,7 +47,7 @@
 (define-method _default_POA ((servant naming-context))
   *naming-poa*)
 
-(defconstant +safe-characters-extra+  "_-,")
+(defparameter +safe-characters-extra+  "_-,")
 
 (defun encode-name (string)
   (with-output-to-string (out)

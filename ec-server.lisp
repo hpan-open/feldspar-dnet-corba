@@ -37,7 +37,7 @@
 
 ;;; Exceptions 
 
-(defconstant +already-connected-id+
+(defparameter +already-connected-id+
     "IDL:omg.org/CosEventChannelAdmin/AlreadyConnected:1.0")
 
 ;;;; Utilities

@@ -1,5 +1,5 @@
 ;;; clorb-poamgr.lisp --- POA Manager
-;; $Id: clorb-poamgr.lisp,v 1.1 2000/11/14 22:50:22 lenst Exp $
+;; $Id: clorb-poamgr.lisp,v 1.2 2001/06/11 15:49:46 lenst Exp $
 
 (in-package :clorb)
 
@@ -15,7 +15,7 @@
     :id "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0")
 
 ;;; enum State {HOLDING, ACTIVE, DISCARDING, INACTIVE}
-(defconstant +valid-states+ '(:holding :active :discarding :inactive))
+(defparameter +valid-states+ '(:holding :active :discarding :inactive))
 (deftype POAManager/State ()
   `(member ,@+valid-states+))
 
