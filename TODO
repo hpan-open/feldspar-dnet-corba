@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.16 2003/11/29 23:23:47 lenst Exp $
+ $Id: TODO,v 1.17 2003/12/06 11:54:15 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -35,8 +35,6 @@ exceptions should be returned not raised.
 * Future
 
 - Multi-Threading
-
-- Values types
 
 - IIOP 1.1
 

@@ -14,10 +14,8 @@ module vtest {
         double width;
         double height;
     };
-#pragma class Box Box
     
     valuetype VBox Box;
-#pragma class VBox Box
     
     valuetype Node supports Access
     {
@@ -38,7 +36,6 @@ module vtest {
         private Node right;
         readonly attribute long depth;
     };
-#pragma class Tree Tree
 
     valuetype WTree:Tree
     {

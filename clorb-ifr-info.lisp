@@ -49,7 +49,8 @@
 (defclass ifr-info-target (code-target)
   ())
 
-(defmethod target-code ((op CORBA:OperationDef) (target ifr-info-target))
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef)
+                                   (target ifr-info-target))
   (let ((desc (op:value (omg.org/features:describe op))))
     (assert (typep desc 'corba:operationdescription))
     (make-progn* 
@@ -70,7 +71,8 @@
         :exceptions ,(map 'list #'scoped-target-symbol (repeated target) (op:exceptions op))))))
 
 
-(defmethod target-code ((attr CORBA:AttributeDef) (target ifr-info-target))
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) 
+                                   (target ifr-info-target))
   (let ((desc (op:value (omg.org/features:describe attr))))
     (make-progn*
      (call-next-method)

@@ -121,7 +121,7 @@
 
     (define-test "Typecodes"
       (let* ((buffer (get-work-buffer))
-             (tc (symbol-typecode 'CORBA::ParameterDescription)))
+             (tc (symbol-typecode 'CORBA:ParameterDescription)))
         (marshal-typecode tc buffer)
         (ensure-equalp (unmarshal-ulong buffer) 15)
         (with-encapsulation buffer

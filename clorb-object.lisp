@@ -445,13 +445,13 @@ Might destructivley change the original object."
 
 ;;;; ValueBase
 
-(defclass CORBA::ValueBase ()
+(defclass CORBA:ValueBase ()
   ())
 
 
 ;;;; AbstractBase
 
-(defclass CORBA::AbstractBase (CORBA:Object)
+(defclass CORBA:AbstractBase (CORBA:Object)
   ())
 
 

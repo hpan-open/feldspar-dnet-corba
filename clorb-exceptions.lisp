@@ -36,7 +36,7 @@ Members on form: (name TypeCode)"
   :name "completion_status"
   :members ("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE"))
 
-(defparameter corba::tc_completion_status
+(defparameter corba:tc_completion_status
   (symbol-typecode 'CORBA:completion_status))
 
 

@@ -274,7 +274,6 @@
       ((:tk_double) (marshal-double arg buffer))
       ((:tk_longdouble) (marshal-longdouble arg buffer))
       ((:tk_string) (marshal-string arg buffer))
-      ((:tk_objref) (marshal-object arg buffer))
       ((:tk_typecode) (marshal-typecode arg buffer))
       ((:tk_null)))))
 
