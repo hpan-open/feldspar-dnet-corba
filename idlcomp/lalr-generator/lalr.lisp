@@ -200,6 +200,7 @@
 
 (defun close-items (items)    
   "computes the closure of a set of items"
+  (declare (optimize (speed 3) (space 0) (safety 1)))
   (do ((toDo items))
       ((null toDo) items)
     (let ((i (pop toDo)))

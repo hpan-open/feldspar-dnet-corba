@@ -29,6 +29,7 @@
     "clorb-ifr"
     "clorb-target"
     "clorb-idl"
+    "clorb-idlcpp"
     "dumpir"))
 
 (defparameter *server-files*
@@ -48,7 +49,6 @@
     "idef-read"
     "idef-write"
     ("idef-macros" t)
-    "z-sexp-idl"
     ;; Services
     "cosnaming-idl"
     "cosnaming-skel"
@@ -59,26 +59,45 @@
     "hello-new-servant"
     "hello-server"
     "hello-client"
-    ;; IDL Compiler
-    "scanner-support"
-    "idl-compiler-support"
-    "idl-scanner-parser"
-    "idl-compiler"
     ))
+
+(defparameter *idlcomp*
+  '( ;; IDL Compiler
+    "idlcomp;lisp-scanner;scanner-support"
+    "idlcomp;idl-compiler-support"
+    "idlcomp;idl-scanner-parser"
+    "idlcomp;idl-compiler" ))
+
+(defparameter *my-idlparser*
+  '("my-lexer"
+    "my-idlparser" 
+    "z-sexp-idl" ))
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
 (defvar *clorb-pathname-defaults* *load-pathname*)
+
+
+(defun dir-split (base)
+  (let ((dir-pos (position #\; base)))
+    (if dir-pos
+      (cons (subseq base 0 dir-pos)
+            (dir-split (subseq base (1+ dir-pos))))
+      (list base))))
 
 (defun compile-changed (files)
   (loop
     with defs-date = 0
     for x in files
     for (base defs) = (if (consp x) x (list x nil))
-    do (let* ((sf (make-pathname :name base :type "lisp" 
+    do (let* ((names (dir-split base))
+              (name (car (last names)))
+              (dir (nbutlast names))
+              (sf (make-pathname :name name :type "lisp"
+                                 :directory (if dir (cons :relative dir))
                                  :defaults *clorb-pathname-defaults*))
-              (cf (compile-file-pathname sf))
-              )
+              (cf (compile-file-pathname sf)))
+         
          (when (or (not (probe-file cf))
                    (let ((dcf (file-write-date cf))
                          (dsf (file-write-date sf)))
@@ -107,7 +126,8 @@
   (compile-changed (append *base-files*
                            *server-files*
                            *x-files*
-)))
+                           #+use-idlcomp *idlcomp*
+                           #+use-my-idlparser *my-idlparser* )))
 
 
 (defun acl-defsys ()
@@ -129,37 +149,3 @@
                         (symbol-value var)))))
   (format t ")~%"))
 
-(defun gen-package-decl (&optional (package :op))
-  (let ((exports nil))
-    (do-external-symbols (op package)
-      (push op exports))
-    (format t "(defpackage ~S~%  (:use)~%" (package-name package))
-    (let ((nicks (package-nicknames package)))
-      (when nicks 
-        (format t "  (:nicknames~{ ~S~})~%" nicks)))
-    (setq exports (sort exports #'string<))
-    (setq exports (mapcar #'symbol-name exports))
-    (let ((*package* (find-package package)))
-      #-clisp
-      (pprint-logical-block (*standard-output* exports
-                                               :prefix "  ("
-                                               :suffix ")")
-        (princ ":export")
-        (pprint-newline :mandatory *standard-output*)
-        (pprint-fill *standard-output* exports nil))
-      #+clisp
-      (loop for op in exports and n from 0
-            initially (terpri) (princ "  (:export")
-            finally   (princ ")")
-            when (zerop (rem n 3))
-            do (terpri) (princ "   ")
-            do (prin1 op) (princ " ")))
-    (format t ")~%")
-    (values)))
-
-#|
-(gen-package-decl "CORBA")
-(gen-package-decl "OP")
-(gen-package-decl "IOP")
-(gen-package-decl "OMG.ORG/PORTABLESERVER")
-|#

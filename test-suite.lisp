@@ -58,12 +58,13 @@
        (let ((*test-suite-result* (make-instance 'test-result
                                     :suite ,name
                                     :parent *test-suite-result*))
-             (tc-current nil))
+             (tc-current nil)
+             (tc-current-sub nil))
          (labels
            ((tc-report (msg &rest args)
               (add-error *test-suite-result*)
-              (format t "~&;;; In test case ~A~%;;;! ~A~%" 
-                      tc-current
+              (format t "~&;;; In test case ~A~@[/~A~]~%;;;! ~A~%" 
+                      tc-current tc-current-sub
                       (apply #'cl:format nil msg args))
                 (when *test-suite-debug*
                   (break "Failed ensure")))
@@ -79,10 +80,11 @@
               (unless (typep obj type)
                 (tc-report "~S shoubd be of type ~S, but is ~S"
                            obj type (type-of obj))))
-            (ensure (bool &optional description)
+            (ensure (bool &optional description &rest args)
               (unless bool
-                (tc-report "~A fail"
-                           (or description "ensure"))))
+                (if args (apply #'tc-report description args)
+                    (tc-report "~A fail"
+                               (or description "ensure")))))
             (ensure-pattern (obj pattern)
               (handler-case 
                 (match pattern obj)
@@ -111,6 +113,7 @@
                                                        (return)))))
                                (progn
                                  (setq tc-current ,(string name))
+                                 (setq tc-current-sub nil)
                                  (start-test-case *test-suite-result* ,(string name))
                                  ,@body
                                  (end-test-case *test-suite-result*)))))))

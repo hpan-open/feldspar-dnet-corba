@@ -120,14 +120,17 @@
 
 
   (define-test "Read Struct"
-    (idef-read '((define-struct "S"
-                       (("a" long)
-                        ("b" string))))
-                 r)
-    (let* ((o (op:lookup r "S")))
-      (ensure o "lookup name")
-      (ensure-equalp (op:def_kind o) :dk_Struct)
-      (ensure-equalp (length (op:members o)) 2  )))
+    (test-idef-read
+     ((define-struct "S"
+        (("a" long)
+         ("b" string))))
+     "S" (def-pattern :dk_Struct
+           'op:members 
+           (seq-pattern (struct-pattern 'struct-class-name 'CORBA:StructMember
+                                        'op:name "a"
+                                        'op:type CORBA:tc_long)
+                        (struct-pattern 'op:name "b"
+                                        'op:type CORBA:tc_string)))))
 
   (define-test "Read Union 1"
     (idef-read '((define-union "MyUnion" long
@@ -171,28 +174,42 @@
       (ensure-equalp (op:mode o) :attr_readonly)
       (ensure-equalp (op:id o) "IDL:I/b:1.0")))
 
+
   (define-test "Complex example"
-      (idef-read 
-       '((define-module "FileSys" ()
-           (define-enum "FileType"
-               ("NORMAL" "DIRECTORY" "SYMLINK"))
-           (define-struct "Stat"
-               (("mtime" long)
-                ("ctime" long)
-                ("inode" long)
-                ("type" "FileType")))
-           (define-interface "FileDescription" ()
-             (define-attribute "name" string :readonly t)
-             (define-type "Buffer" string)
-             (define-operation "read" ((:param_in "size" long) 
-                                       (:param_out "buf" "Buffer"))
-               :result-type void
-               :exceptions nil)
-             (define-operation "destroy" ()
-               :result-type void))
-           (define-interface "FileSystem" ()
-             (define-operation "open" ((:param_in file_name string)
-                                       (:param_in flags long))
-               :result-type "::FileSys::FileDescription"))))
-       r)))
+    (test-idef-read
+     ((define-module "FileSys" ()
+        (define-enum "FileType"
+          ("NORMAL" "DIRECTORY" "SYMLINK"))
+        (define-struct "Stat"
+          (("mtime" long)
+           ("ctime" long)
+           ("inode" long)
+           ("type" "FileType")))
+        (define-interface "FileDescription" ()
+          (define-attribute "name" string :readonly t)
+          (define-type "Buffer" string)
+          (define-operation "read" ((:param_in "size" long) 
+                                    (:param_out "buf" "Buffer"))
+            :result-type void
+            :exceptions nil)
+          (define-operation "destroy" ()
+            :result-type void))
+        (define-interface "FileSystem" ()
+          (define-operation "open" ((:param_in file_name string)
+                                    (:param_in flags long))
+            :result-type "::FileSys::FileDescription"))))
+     ;;
+     "FileSys" (def-pattern :dk_module)
+     "FileSys::FileType" (def-pattern :dk_enum
+                           'op:defined_in (pattern 'op:name "FileSys"))
+     "FileSys" (repository-pattern
+                "FileType" (def-pattern :dk_enum)
+                "Stat" (def-pattern :dk_struct)
+                "FileDescription" (def-pattern :dk_interface
+                                    'op:id "IDL:FileSys/FileDescription:1.0" )
+                "FileSystem" (def-pattern :dk_interface))))
+
+
+)
+
 

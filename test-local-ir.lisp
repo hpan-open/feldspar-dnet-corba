@@ -109,19 +109,23 @@
     (let* ((name "Fie") (ver "1.1")
            (id (format nil "IDL:~A:~A" name ver))
            (alias (op:create_alias repository id name ver a-string)))
-      (let ((tc (op:type alias)))
-        (ensure-eql (op:kind tc) :tk_alias)
-        (ensure-eql (op:kind (op:content_type tc)) :tk_string))
-      (ensure-eql (op:original_type_def alias) a-string)
+      (ensure-pattern 
+       alias
+       (def-pattern :dk_alias
+         'op:name name 'op:version ver 'op:id id
+         'op:absolute_name "::Fie"
+         'op:type (pattern 'op:kind :tk_alias
+                           'op:content_type CORBA:tc_string )
+         'op:original_type_def a-string ))
+      (ensure-pattern repository (repository-pattern name alias))
       (setf (op:original_type_def alias) a-ulong)
-      (let ((tc (op:type alias)))
-        (ensure-typecode (op:content_type tc) :tk_ulong))))
+      (ensure-pattern alias
+                      (pattern 'op:type (pattern 'op:content_type CORBA:tc_ulong)))))
 
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
-      (ensure-equalp (op:def_kind obj) :dk_sequence)
-      (ensure-equalp (op:bound obj) 0)
-      (ensure-typecode (op:element_type obj) :tk_ulong)
+      (ensure-pattern obj (def-pattern :dk_sequence 
+                            'op:bound 0 'op:element_type CORBA:tc_ulong))
       ;; Write interface
       (setf (op:element_type_def obj) a-string)
       (ensure-typecode (op:element_type obj) :tk_string)))

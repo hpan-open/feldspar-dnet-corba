@@ -142,9 +142,9 @@ typedef string aa[2][9];
   (define-idl-test "const"
     "const long A = 1;
      const char B = 'C';
+     const octet C = 1; 
      const string S = \"wibbel\";
      const boolean D = TRUE; "
-    ;;    const octet C = 1;    // not supported by orbit ?
     "A" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_long)
           'op:value (pattern 'any-typecode CORBA:tc_long
@@ -155,15 +155,15 @@ typedef string aa[2][9];
           'op:value (pattern 'any-typecode CORBA:tc_char
                              'any-value #\C))
     
+    "C" (def-pattern :dk_constant 
+        'op:type_def (def-pattern :dk_primitive 'op:kind :pk_octet)
+        'op:value (pattern 'any-typecode CORBA:tc_octet
+                           'any-value 1))
+    
     "S" (def-pattern :dk_constant
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_string)
           'op:value (pattern 'any-typecode omg.org/corba:tc_string
                              'any-value "wibbel"))
-    
-    #| "C" (def-pattern :dk_constant 
-        'op:type_def (def-pattern :dk_primitive 'op:kind :pk_long)
-        'op:value (pattern 'any-typecode CORBA:tc_octet
-                           'any-value 1))|#  
     
     "D" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_boolean)
@@ -300,6 +300,8 @@ typedef long a[y];
     "b" (def-pattern :dk_interface
           'op:base_interfaces (seq-pattern (def-pattern :dk_interface 'op:name "a")))
     "b::peer" (def-pattern :dk_attribute 
+                'op:absolute_name "::b::peer"
+                'op:id "IDL:b/peer:1.0"
                 'op:type_def (def-pattern :dk_interface 'op:name "c")
                 'op:type_def (repository-pattern "e" (def-pattern :dk_exception)))
     "c" (def-pattern :dk_interface))
@@ -307,16 +309,30 @@ typedef long a[y];
   
   ;; TODO:
   ;; forward struct, union,..
-  ;; preprocessing
-  ;; pragmas
+  ;; preprocessing ifdef..
+
 
   (define-idl-test "Prefix Pragma"
     "/* foo */
-  #pragma prefix \"omg.org\"
+  # pragma prefix \"omg.org\"
 	module CosNaming { typedef string Istring; }; "
-    ;; FIXME: idlcomp doesn't work if I add a space after #
     "CosNaming::Istring" (def-pattern :dk_alias
                            'op:id "IDL:omg.org/CosNaming/Istring:1.0" ))
 
-  )
+  (define-idl-test "ID Pragma"
+    "interface Foo {
+	#pragma ID Foo \"DCE:1293789123791873891:1\"
+	}; "
+    "Foo" (pattern 'op:id "DCE:1293789123791873891:1"))
+
+  (define-idl-test "Version Pragma"
+    "interface Foo {
+	#pragma version Foo 1.2
+	}; "
+    "Foo" (pattern 'op:id "IDL:Foo:1.2"))
+
+
+
+
+  #|end|# ) ; end test suite
 

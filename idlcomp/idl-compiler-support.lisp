@@ -65,10 +65,16 @@
 	  (setf ans (append (reverse (car l)) ans))
 	(push (car l) ans)))))
 
-; the current prefix, this is a list because we have to deal with included files (not done yet)
 
-(defvar *current-idl-prefix*)
-(setf  *current-idl-prefix* (list nil))
+(defvar *current-cpp* nil
+  "Current preprocessor stream. This tracks prefix and other pragma.")
 
 (defvar *LALR-DEBUG* nil)
 
+
+(defun id-adjustment ()
+  ;; List of forms to adjust IDs of IDL types due to pragma
+  (loop for (type name value) in (idl-repositoryid-pragmas *current-cpp*)
+        collect (ecase type
+                  (:id `(set-id ,name ,value))
+                  (:version `(set-version ,name ,value)))))

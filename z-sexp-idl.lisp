@@ -269,7 +269,8 @@
 (defmethod load-repository ((comp libidl-compiler) *container* file) 
   (process-list (get-idl-sexp file)))
 
-(setq *default-idl-compiler* (make-instance 'libidl-compiler))
+(unless *default-idl-compiler*
+  (setq *default-idl-compiler* (make-instance 'libidl-compiler)))
 
 
 #||

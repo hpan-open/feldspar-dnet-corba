@@ -554,6 +554,7 @@
 
 (defun make-static-servant (idef target class-symbol)
   `(defmethod servant-invoke ((servant ,class-symbol) operation input handler)
+     (declare (ignorable input))
      (cond ,@(mapcan #'identity
                      (map 'list
                           (lambda (def) (target-invoke-static def target))

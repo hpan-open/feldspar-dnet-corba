@@ -122,7 +122,11 @@
 	    ((top-definition top-definitions) append))
 
 	(1y top-definition
-	    ((definition) (lambda (d) (if (car *current-idl-prefix*) (list (append `(with-prefix ,(car *current-idl-prefix*)) d)) d))))
+	    ((definition) (lambda (d) 
+                            (let ((prefix (idl-prefix *current-cpp*)))
+                              (if (and prefix (not (equal prefix "")))
+                                `((with-prefix ,prefix ,@d))
+                                d)))))
 	    
 	(1a definitions
 	    ((definition) identity) 
@@ -140,8 +144,8 @@
 	(3 module
 	   (( T_MODULE T_IDENTIFIER T_LEFT_CURLY_BRACKET
 		       definitions T_RIGHT_CURLY_BRACKET)
-	    (lambda (m i l d r) `(define-module ,i nil ,@d))))
-					;
+	    (lambda (m i l d r) `(define-module ,i nil ,@d
+                                   ,@(id-adjustment)))))
 
 	(4 interface
 	   (( interface_dcl) identity)
@@ -151,7 +155,8 @@
 	(5 interface_dcl
 	   (( interface_header T_LEFT_CURLY_BRACKET interface_body
 			       T_RIGHT_CURLY_BRACKET)
-	    (lambda (h po body pc) (append h body))))
+	    (lambda (h po body pc) 
+              (append h body (id-adjustment)))))
 					;
 
 	(6  forward_dcl
@@ -587,10 +592,7 @@
              (lambda (label element t1)
                (declare (ignore t1))
                (list (list* label element))))
-	    (( case_label T_PRAGMA element_spec T_SEMICOLON) ;New
-             (lambda (label t0 element t1)
-               (declare (ignore t0 t1))
-               (list (list* label element))))) 
+            ) 
 					;
 
 	(76 case_label
@@ -605,7 +607,7 @@
 	(78 enum_type
 	    (( T_ENUM T_IDENTIFIER T_LEFT_CURLY_BRACKET enumerators
 		      T_RIGHT_CURLY_BRACKET)
-	     (lambda (te id bo enums bc) (list 'define-enum  id enums))))
+	     (lambda (te id bo enums bc) (list 'define-enum id enums :expand t))))
 					;
 
 	(78a enumerators

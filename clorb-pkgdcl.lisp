@@ -164,15 +164,24 @@
    "STRING-TO-OID" "THREADPOLICY" "THREADPOLICY-PROXY" "THREADPOLICY-SERVANT" "THREADPOLICYVALUE"
    "THREAD_POLICY_ID"))
 
+
+;;;; Implementation Packages
+
 (defpackage "NET.CDDR.CLORB.INTERNALS"
   (:use "COMMON-LISP")
   (:export idl-compiler load-repository *default-idl-compiler*
+           ;; idlcpp
+           using-cpp-stream read-cpp-line
+           idl-prefix idl-source-position idl-repositoryid-pragmas
+           ;; idef
            idef-read 
+           ;; sysdep
            shell-to-string-or-stream external-namestring))
 
 (defpackage :clorb
   (:nicknames "NET.CDDR.CLORB")
   (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS"
+        #+:use-my-idlparser :net.cddr.redpas
         #+cmu MOP #-(or sbcl cmu mcl) CLOS)
   #+cmu
   (:shadowing-import-from "MOP"

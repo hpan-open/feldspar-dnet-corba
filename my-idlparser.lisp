@@ -585,7 +585,8 @@
         (next-token *lexer*)
         (<specification>)))))
 
-(setq *default-idl-compiler* (make-instance 'my-idlparser))
+(unless *default-idl-compiler*
+  (setq *default-idl-compiler* (make-instance 'my-idlparser)))
 
 
 #|

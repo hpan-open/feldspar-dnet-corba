@@ -25,6 +25,24 @@
       (idef-read-contents forms container)
       nil)))
 
+(defmethod idef-read-part ((op (eql 'set-version)) sexp container)
+  (destructuring-bind (name version) sexp
+    (let ((def (lookup-name-in container name)))
+      (setf (op:version def) version)
+      (let* ((old-id (op:id def))
+             (last-colon (position #\: old-id :from-end t)))
+        (assert last-colon nil "ill-formed ID")
+        (setf (op:id def)
+              (concatenate 'string (subseq old-id 0 (1+ last-colon))
+                           version))))
+    nil))
+
+(defmethod idef-read-part ((op (eql 'set-id)) sexp container)
+  (destructuring-bind (name id) sexp
+    (let ((def (lookup-name-in container name)))
+      (setf (op:id def) id))
+    nil ))
+
 
 (defmethod idef-read-part ((op (eql 'define-module))
                            sexp container)
@@ -92,11 +110,18 @@
 
 
 (defmethod idef-read-part ((op (eql 'define-enum)) sexp container)
-  (destructuring-bind (name members &key version id) sexp
+  (destructuring-bind (name members &key version id expand) sexp
     (setq name (string name))
-    (create-contained container 'enum-def
-                      :name name :members members
-                      :version version :id id)
+    (let ((def (create-contained container 'enum-def
+                                 :name name :members members
+                                 :version version :id id)))
+      (when expand
+        (dolist (m members)
+          (create-contained container 'constant-def
+                            :name m
+                            :type_def def
+                            :value (CORBA:Any :any-value (key m)
+                                              :any-typecode CORBA:tc_void)))))
     nil))
 
 (defmethod idef-read-part ((op (eql 'define-struct)) sexp container)
@@ -165,6 +190,7 @@
   (destructuring-bind (name type value &key id version) sexp
     (let ((def (create-contained container 'constant-def 
                                  :name name :id id :version version)))
+
       (lambda ()
         (let ((type (parse-type-in container type)))
           (setf (op:type_def def) type)

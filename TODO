@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.11 2002/11/20 16:40:16 lenst Exp $
+ $Id: TODO,v 1.12 2003/02/19 22:39:52 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -37,9 +37,12 @@ exceptions should be returned not raised.
 
 - DynAny interface (5.16)
 
-- POAManager: must keep a list of managed POAs. Implement wait_for_completion flag by adding a wati-for-completion method to POA. 
+- POAManager: must keep a list of managed POAs. Implement
+  wait_for_completion flag by adding a wati-for-completion method to
+  POA.
 
-- POA need to keep track of executing requests. wait-for-completion method .. does it make sens in a single threaded impl?
+- POA need to keep track of executing requests. wait-for-completion
+  method .. does it make sens in a single threaded impl?
 
 
 

@@ -1,8 +1,12 @@
 (in-package :cl-user)
 
 (pushnew :use-acl-socket *features*)
-(require 'acl-socket)
+(pushnew :use-my-idlparser *features*)
+(pushnew :use-idlcomp *features*)
+
+#+:use-acl-socket (require 'acl-socket)
 (net.cddr.packer:require-package "BSD")
+#+:use-my-idlparser
 (net.cddr.packer:require-package "NET.CDDR.REDPAS")
 
 (load "CLORB:SRC;CLORB-PKGDCL")
@@ -126,5 +130,4 @@
       (op:list ns 100))))
 
 
-(defparameter +calculator.idl+
-  #P"Macintosh HD:Users:lenst:src:corba:interfaces:Calculator.idl")
+

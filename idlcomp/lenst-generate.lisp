@@ -9,16 +9,16 @@
                      #+ccl (pathname (ccl:front-window)))))
 
 (setf (logical-pathname-translations "idlcomp")
-      `(("scanner;*.*" ,(merge-pathnames ":lisp-scanner:*.*" *base-dir*))
-        ("**;*.*"      ,(merge-pathnames ":**:*.*" *base-dir*))
+      `(("**;*.*"      ,(merge-pathnames ":**:*.*" *base-dir*))
         ("*.*"         ,(merge-pathnames "*.*" *base-dir*))))
 
-(load "idlcomp:lisp-scanner;nfa-compiler")
-(load "idlcomp:lisp-scanner;scanner-support")
-;;(load "idlcomp:lalr-generator;lalr.lisp")
-(load "idlcomp:lisp-scanner;scanner-generator")
-(load "idlcomp:idl-scanner-spec")
-(load "idlcomp:lalr-generator;lalr")
+(defparameter *generator-files*
+  '("idlcomp;lisp-scanner;nfa-compiler"
+    "idlcomp;lisp-scanner;scanner-generator"
+    "idlcomp;idl-scanner-spec"
+    "idlcomp;lalr-generator;lalr" ))
+
+(clorb::compile-changed *generator-files*)
 
 (setf *lalr-debug* nil)  ; Inserts debugging code into parser if non-NIL
 
@@ -44,4 +44,3 @@
   (generate-to-stream  *token-list* nil s)
   (pprint '(defun def-lambda (&rest a) a) s)
   (pprint (rolands-make-parser (add-ignorable-declaration *rules*) *tokens*) s))
-  

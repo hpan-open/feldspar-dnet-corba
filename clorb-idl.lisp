@@ -6,11 +6,12 @@
 
 (defgeneric load-repository (idl-compiler repository file))
 
-(defvar *default-idl-compiler*)
+(defvar *default-idl-compiler* nil)
 
-(defun CORBA:IDL (file &key print (eval t) (redefine t))
+(defun CORBA:IDL (file &key print (eval t) 
+                         (compiler *default-idl-compiler*))
   (let ((repository (make-instance 'repository)))
-    (load-repository *default-idl-compiler* repository file)
+    (load-repository compiler repository file)
     (let* ((target (make-instance 'code-target :dynamic-stubs nil))
            (code (make-progn
                   (list (target-code repository target) 
