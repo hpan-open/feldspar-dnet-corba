@@ -24,8 +24,8 @@
     ("clorb-opdef" t)
     ("clorb-iir" t)
     "clorb-util"
-    "local-ir"
-    "target"
+    "clorb-ifr"
+    "clorb-target"
     "clorb-idl"
     "dumpir"))
 
