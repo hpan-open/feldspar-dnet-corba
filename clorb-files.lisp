@@ -2,12 +2,39 @@
 
 (defpackage "NET.CDDR.CLORB.SYSTEM"
   (:use "COMMON-LISP")
-  (:export "RELOAD" *use-server* *use-portable-interceptor*))
+  (:export "SET-LOAD-OPTS" "RELOAD"))
 
 (in-package "NET.CDDR.CLORB.SYSTEM")
 
-(defvar *use-server* t)
-(defvar *use-portable-interceptor* t)
+
+;;; Load options
+
+(defmacro def-load-opts (setter tester &rest opts)
+  (let ((vars (loop for (key) in opts
+                    collect (intern (symbol-name key) *package*))))
+    `(let ((opts (make-hash-table)))
+       (defun ,tester (key)
+         (if (eq key 'print-it)
+           (loop for (key nil comment) in ',opts do
+                 (format t "~22S ~5S ~A~%" key (gethash key opts) comment))
+           (multiple-value-bind (val good) (gethash key opts)
+             (unless good (warn "Undefined load opt: ~S" key))
+             val)))
+       (defun ,setter (&key ,@(loop for (nil def) in opts for var in vars 
+                                    collect `(,var ,def)))
+         ,(format nil "Set load options~:{~%~A (~A) - ~A~}" opts)
+         ,@(loop for (key) in opts for var in vars
+                 collect `(setf (gethash ,key opts) ,var)))
+       (,setter))))
+
+(def-load-opts set-load-opts load-opt
+  (:server t "Load the code needed to server objects")
+  (:idlcomp nil "Load the old IDL parser")
+  (:my-idlparser t "Load the new IDL parser")
+  (:portable-interceptor nil "Load support for Portable Interceptors"))
+
+
+;;; Files
 
 (defparameter *base-files*
   '(("clorb-pkgdcl")
@@ -49,6 +76,11 @@
     "clorb-srv"
     "clorb-ifr-info"))
 
+(defparameter *redpas-files*
+  '("redpas;package"
+    "redpas;lexer"
+    "redpas;parsys"))
+
 (defparameter *dev-pre-files*
   '("luna;package"
     "luna;pattern"
@@ -80,8 +112,8 @@
     "idlcomp;idl-compiler" ))
 
 (defparameter *my-idlparser*
-  '("my-lexer"
-    "my-idlparser"))
+  '("clorb-idllexer"
+    "clorb-idlparser"))
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
@@ -135,15 +167,17 @@
 
 
 (defun reload ()
-  (compile-changed (append #+clorb-dev *dev-pre-files*
-                           *base-files*
-                           (if *use-server* *server-files*)
-                           *x-files*
-                           (if *use-portable-interceptor* 
-                             *portable-interceptor-files*)
-                           #+clorb-dev *dev-post-files*
-                           #-no-idlcomp *idlcomp*
-                           #+use-my-idlparser *my-idlparser* )))
+  #+clorb-packer-redpas (packer:require-package :net.cddr.redpas)
+  (compile-changed 
+   (append #+clorb-dev *dev-pre-files*
+           #-clorb-packer-redpas *redpas-files*
+           *base-files*
+           (if (load-opt :server) *server-files*)
+           *x-files*
+           (if (load-opt :portable-interceptor) *portable-interceptor-files*)
+           #+clorb-dev *dev-post-files*
+           (if (load-opt :idlcomp) *idlcomp*)
+           (if (load-opt :my-idlparser) *my-idlparser*) )))
 
 
 (defun acl-defsys ()
