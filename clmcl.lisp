@@ -17,6 +17,10 @@
 (load "CLORB:SRC;CLORB-FILES")
 (net.cddr.clorb.system:reload)
 
+(import '(@ @@ @@@) "CLORB")
+(define-symbol-macro inpc (in-package :clorb))
+(define-symbol-macro clorb::inpu (in-package :cl-user))
+
 
 (ignore-errors
  (setq clorb:*host*
@@ -111,7 +115,9 @@
            :eval nil :print t )
 
 
-(corba:idl "clorb:idl;orb.idl" :eval nil :print t :skeleton nil)
+(corba:idl "clorb:idl;orb.idl" :eval nil :print t :skeleton nil
+           :output "clorb:src;y-orb.lisp")
+
 
 (corba:idl "clorb:idl;interface_repository.idl" :eval nil :print t :skeleton nil
            :exclude '("::CORBA::TypeCode"))
@@ -127,9 +133,6 @@
 (defparameter *random-ior*
   "IOR:000000000000000f49444c3a52616e646f6d3a312e3000000000000100000000000000500001000000000016706c616e7874792e6473672e63732e7463642e69650006220000002c3a5c706c616e7874792e6473672e63732e7463642e69653a52616e646f6d3a303a3a49523a52616e646f6d00")
 
-(import '(@ @@ @@@) "CLORB")
-(define-symbol-macro inpc (in-package :clorb))
-(define-symbol-macro clorb::inpu (in-package :cl-user))
 
 #|
 (setq ccl::*search-default* (format nil "~A:" (package-name (find-package :corba)))

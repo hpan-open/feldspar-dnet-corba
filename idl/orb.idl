@@ -131,4 +131,128 @@ module IOP {
 
 };
 
+module GIOP {                   // IDL extended for version 1.1
+
+  struct Version {						 	
+    octet major;
+    octet minor;
+  };
+
+#ifndef GIOP_1_1
+  // GIOP 1.0
+  enum MsgType_1_0{ 	// rename from MsgType
+    Request, Reply, CancelRequest,
+    LocateRequest, LocateReply,
+    CloseConnection, MessageError
+  };
+
+#else
+  // GIOP 1.1
+  enum MsgType_1_1{
+    Request, Reply, CancelRequest,
+    LocateRequest, LocateReply,
+    CloseConnection, MessageError,					
+    Fragment			// GIOP 1.1 addition
+  };
+#endif
+
+  // GIOP 1.0 
+  struct MessageHeader_1_0 { // Renamed from MessageHeader
+    char		magic [4];
+    Version		GIOP_version;
+    boolean		byte_order;		 	
+    octet		message_type;
+    unsigned long	message_size;
+  };
+
+  // GIOP 1.1
+  struct MessageHeader_1_1 {
+    char		magic [4];
+    Version		GIOP_version;
+    octet		flags;			 // GIOP 1.1 change
+    octet		message_type;
+    unsigned long	message_size;
+  };						
+
+  typedef sequence<octet> Principal;  // really a primitive
+
+  struct RequestHeader_1_0 {
+    IOP::ServiceContextList service_context;
+    unsigned long	    request_id;
+    boolean		    response_expected;
+    sequence <octet>	    object_key;
+    string		    operation;
+    Principal		    requesting_principal;
+  };
+
+  // GIOP 1.1
+  struct RequestHeader_1_1 {
+    IOP::ServiceContextList service_context;
+    unsigned long	    request_id;
+    boolean		    response_expected;
+    octet 		    reserved[3]; // Added in GIOP 1.1
+    sequence <octet>	    object_key;
+    string		    operation;
+    Principal		    requesting_principal;
+  };
+  
+  enum ReplyStatusType {
+    NO_EXCEPTION,
+    USER_EXCEPTION,
+    SYSTEM_EXCEPTION,
+    LOCATION_FORWARD
+  };
+
+  struct ReplyHeader {
+    IOP::ServiceContextList service_context;
+    unsigned long 	    request_id;
+    ReplyStatusType	    reply_status;
+  };
+
+  struct CancelRequestHeader {
+    unsigned long request_id;
+  };
+
+  struct LocateRequestHeader {
+    unsigned long request_id;
+    sequence <octet> object_key;
+  };
+  
+  enum LocateStatusType {
+    UNKNOWN_OBJECT,
+    OBJECT_HERE,
+    OBJECT_FORWARD
+  };
+
+  struct LocateReplyHeader {
+    unsigned long    request_id;
+    LocateStatusType locate_status;
+  };
+};
+
+
+
+module IIOP {				// IDL extended for version 1.1
+						
+  struct Version {
+    octet			major;
+    octet			minor;
+  };
+
+  struct ProfileBody_1_0 { // renamed from ProfileBody
+    Version			iiop_version;
+    string			host;
+    unsigned short		port;
+    sequence <octet>		object_key;
+  };
+
+  struct ProfileBody_1_1 {
+    Version			iiop_version;
+    string			host;
+    unsigned short		port;
+    sequence <octet>		object_key;
+    sequence <IOP::TaggedComponent> components;
+  };
+};
+
 #endif
