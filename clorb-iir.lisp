@@ -118,7 +118,7 @@
                             :result corba:tc_boolean
                             :raises '())
                 (make-opdef :name "_interface"
-                            :result corba:tc_objref)
+                            :result corba:tc_object)
                 (make-opdef :name "_non_existent"
                             :result corba:tc_boolean))))
 
@@ -141,7 +141,7 @@
          :argument id
          :arg_modes ARG_IN))
        (CORBA:NamedValue
-        :argument (CORBA:Any :any-typecode CORBA:tc_objref)
+        :argument (CORBA:Any :any-typecode CORBA:tc_object)
         :arg_modes ARG_OUT)
        0)
     (declare (ignore result))

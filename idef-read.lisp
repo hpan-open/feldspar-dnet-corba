@@ -241,7 +241,7 @@
     (any (values :pk_any CORBA:tc_any))
     (TypeCode (values :pk_TypeCode CORBA:tc_TypeCode))
     (string (values :pk_string CORBA:tc_string))
-    (object (values :pk_objref CORBA:tc_objref))
+    (object (values :pk_objref CORBA:tc_object))
     (longlong (values :pk_longlong CORBA:tc_longlong))
     (ulonglong (values :pk_ulonglong CORBA:tc_ulonglong))
     (longdouble (values :pk_longdouble CORBA:tc_longdouble))

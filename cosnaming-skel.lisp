@@ -230,7 +230,7 @@
                                                         BUFFER))
                                                       INPUT))
                          (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
-                           (MARSHAL RESULT OMG.ORG/CORBA:TC_OBJREF OUTPUT)
+                           (MARSHAL RESULT OMG.ORG/CORBA:tc_object OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
@@ -417,7 +417,7 @@
                                                        BUFFER))
                                                      INPUT)
                                                     (UNMARSHAL
-                                                     OMG.ORG/CORBA:TC_OBJREF
+                                                     OMG.ORG/CORBA:tc_object
                                                      INPUT))
                          (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
@@ -478,7 +478,7 @@
                                                      BUFFER))
                                                    INPUT)
                                                   (UNMARSHAL
-                                                   OMG.ORG/CORBA:TC_OBJREF
+                                                   OMG.ORG/CORBA:tc_object
                                                    INPUT))
                          (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
@@ -553,7 +553,7 @@
                                                          (UNMARSHAL-STRING
                                                           INPUT))
                          (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
-                           (MARSHAL RESULT OMG.ORG/CORBA:TC_OBJREF OUTPUT)
+                           (MARSHAL RESULT OMG.ORG/CORBA:tc_object OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
