@@ -27,7 +27,7 @@
                                        &key
                                        (:id :required "IDL:test/s:1.0")
                                        (:name :required "s")
-                                       (:members :required (("a" &any &any)))
+                                       (:members :required (("a" &any)))
                                        (:read :optional )
                                        (:write :optional ) )))))
 
@@ -50,7 +50,9 @@
                       (sexp-pattern `(define-user-exception omg.org/root::e &key
                                        (:name :required "e")
                                        (:id :required "IDL:test/e:1.0")
-                                       (:members :required (("a" CORBA:tc_long))))))))
+                                       (:members :required (("a" CORBA:tc_long)))
+                                       (:version :optional "1.0")
+                                       (:defined_in :required nil))))))
   
   
   
