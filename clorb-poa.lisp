@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.33 2004/12/31 10:43:51 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.34 2005/01/04 22:29:23 lenst Exp $
 
 (in-package :clorb)
 
@@ -78,6 +78,7 @@
           (auto-id :accessor poa-auto-id :initform 0)
           (the-orb :initarg :orb :accessor the-orb)
           (state :initform nil :accessor poa-state)
+          (destroy-in-progres-p :initform nil :accessor destroy-in-progres-p)
           (queue :initform nil :accessor poa-request-queue)))
 
 (defmethod print-object ((p portableserver:poa) stream)
@@ -347,8 +348,7 @@
 ;; raises (AdapterAlreadyExists, InvalidPolicy);
 
 (define-method create_POA ((poa PortableServer:POA) adapter-name poamanager policies)
-  (when (poa-state poa)
-    ;; Currently only have state when destroying
+  (when (destroy-in-progres-p poa)
     (raise-system-exception 'CORBA:BAD_INV_ORDER 17))
   (create-POA poa adapter-name poamanager policies (the-orb poa)))
 
@@ -451,7 +451,8 @@ POA destruction does not occur.
   (when (and wait-for-completion *poa-current*)
     (raise-system-exception 'CORBA:BAD_INV_ORDER 3 :completed_yes))
   (unless (eq :inactive (poa-effective-state poa))
-    (setf (poa-state poa) :discarding))
+    (poa-new-state poa :discarding))
+  (setf (destroy-in-progres-p poa) t)
   (let ((manager (op:the_poamanager poa)))
     (remove-poa manager poa))
   (dolist (child (op:the_children poa))
@@ -630,12 +631,14 @@ POA destruction does not occur.
   (let ((profiles (object-profiles reference)))
     (unless profiles
       (error 'PortableServer:poa/wrongadapter))
-    (multiple-value-bind (ref-type refpoa oid)
-                         (decode-object-key-poa (iiop-profile-key (first profiles)))
+    (multiple-value-bind (ref-type poa-spec oid)
+                         (decode-object-key (iiop-profile-key (first profiles)))
       (declare (ignore ref-type))
-      (unless (eql refpoa poa)
-        (error 'PortableServer:poa/wrongadapter))
+      (let ((refpoa (poa-locate *root-poa* poa-spec)))
+        (unless (eql refpoa poa)
+          (error 'PortableServer:poa/wrongadapter)))
       oid)))
+
 
 ;;;   Servant id_to_servant(in ObjectId oid)
 ;;;     raises (ObjectNotActive, WrongPolicy);
@@ -768,13 +771,13 @@ POA destruction does not occur.
     (server-request-respond request)))
 
 
-(defun poa-locate (poa poa-spec)
+(defun poa-locate (poa poa-spec &optional (check-poa-status t))
   (cond ((numberp poa-spec)
          (values (gethash poa-spec *poa-map*)))
         ((null poa-spec)
          poa)
         (t
-         (let ((next-poa (find-requested-poa poa (car poa-spec) t t)))
+         (let ((next-poa (find-requested-poa poa (car poa-spec) t check-poa-status)))
            (cond ((eql next-poa :wait)
                   (values poa poa-spec))
                  ((null next-poa)
