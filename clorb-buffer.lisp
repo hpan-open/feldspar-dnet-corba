@@ -27,6 +27,13 @@
   (start-pos    0         :type buffer-index)
   (ind-hash     nil))
 
+(defmethod print-object ((buffer buffer) stream)
+  (print-unreadable-object (buffer stream :identity t :type t)
+    (format stream "~D/~S/~D ~A"
+            (buffer-in-pos buffer)
+            (ignore-errors (fill-pointer (buffer-octets buffer)))
+            (buffer-start-pos buffer)
+            (if (buffer-byte-order buffer) "L" "B"))))
 
 (defmethod the-orb ((obj buffer))
   (or (buffer-orb obj)
@@ -90,7 +97,7 @@
          (setf (buffer-in-pos ,buffervar) (+ ,old-pos ,lengthvar))
          (setf (buffer-byte-order ,buffervar) ,old-byteorder)))))
 
-(defun get-work-buffer (&optional orb)
+(defun get-work-buffer (orb)
   (make-buffer
    :orb orb
    :octets (make-array 2000
