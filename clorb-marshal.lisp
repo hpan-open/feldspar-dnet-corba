@@ -283,6 +283,8 @@
            (error 'CORBA:MARSHAL))
          (doseq (el arg) (marshal el tc buffer))))
       ((:tk_struct)
+       (unless (typep arg 'CORBA:struct)
+         (error 'CORBA:MARSHAL))
        (doseq (el (tcp-members params))
 	      (marshal (struct-get arg (first el)) (second el) buffer)))
       ((:tk_union)
