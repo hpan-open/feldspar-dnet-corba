@@ -33,7 +33,7 @@
 	for c fixnum below size
 	do (marshal-octet (ldb (byte 8 p) n) buffer)))
 
-#-clisp
+;;#-clisp
 (define-compiler-macro marshal-number (&whole form n size buffer)
   (if (numberp size)
       (let ((nvar '#:nvar)
