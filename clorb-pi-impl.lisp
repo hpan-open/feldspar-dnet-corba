@@ -2,53 +2,42 @@
 
 (in-package :clorb)
 
-#|
-  local interface RequestInfo {
-    readonly attribute unsigned long request_id;
-    readonly attribute string operation;
-    readonly attribute Dynamic::ParameterList arguments;
-    readonly attribute Dynamic::ExceptionList exceptions;
-    readonly attribute Dynamic::ContextList contexts;
-    readonly attribute Dynamic::RequestContext operation_context;
-    readonly attribute any result;
-    readonly attribute boolean response_expected;
-    //readonly attribute Messaging::SyncScope sync_scope;
-    readonly attribute ReplyStatus reply_status;
-    readonly attribute Object forward_reference;
-    any get_slot (in SlotId id) raises (InvalidSlot);
-    IOP::ServiceContext get_request_service_context (in IOP::ServiceId id);
-    IOP::ServiceContext get_reply_service_context (in IOP::ServiceId id);
-  };
 
-  local interface ServerRequestInfo : RequestInfo {
-    readonly attribute any sending_exception;
-    readonly attribute CORBA::OctetSeq object_id;
-    readonly attribute CORBA::OctetSeq adapter_id;
-    readonly attribute CORBA::RepositoryId
-    target_most_derived_interface;
-    CORBA::Policy get_server_policy (in CORBA::PolicyType type);
-    void set_slot (in SlotId id, in any data) raises (InvalidSlot);
-    boolean target_is_a (in CORBA::RepositoryId id);
-    void add_reply_service_context (in IOP::ServiceContext service_context,
-                                    in boolean replace);
-  };
 
-  local interface ServerRequestInterceptor : Interceptor {
-    void receive_request_service_contexts (in ServerRequestInfo ri)
-      raises (ForwardRequest);
-    void receive_request (in ServerRequestInfo ri)
-      raises (ForwardRequest);
-    void send_reply (in ServerRequestInfo ri);
-    void send_exception (in ServerRequestInfo ri)
-      raises (ForwardRequest);
-    void send_other (in ServerRequestInfo ri) raises (ForwardRequest);
-  };
+;;;; Request Classes 
 
-|#
+(defclass pi-request (PortableInterceptor:RequestInfo)
+  ((flow-stack  :accessor flow-stack  :initform nil)))
 
-;; ClientRequestInfo aspect of CORBA:Request 
+(defclass pi-client-request (pi-request client-request PortableInterceptor:ClientRequestInfo)
+  ())
 
-(define-method request_id ((req client-request)))
+(defclass pi-server-request (pi-request server-request PortableInterceptor:ServerRequestInfo)
+  ())
+
+(defgeneric run-interceptors (req list operation))
+(defgeneric rerun-interceptors (req operation))
+(defgeneric pop-interceptors (req operation))
+
+(defmethod run-interceptors ((self pi-request) interceptors operation)
+  (setf (flow-stack self) nil)
+  (dolist (interceptor interceptors)
+    (funcall operation interceptor self)
+    (push interceptor (flow-stack self))))
+
+(defmethod rerun-interceptors ((self pi-request) operation)
+  (dolist (interceptor (flow-stack self))
+    (funcall operation interceptor self)))
+
+(defmethod pop-interceptors ((self pi-request) operation)
+  (loop while (flow-stack self)
+        do (funcall operation (pop (flow-stack self)) self)))
+
+
+
+
+;;;; ClientRequestInfo aspect of client-request
+
 
 (define-method "TARGET" ((self client-request))
    (request-target self))
@@ -62,7 +51,6 @@
     (let ((profile-id (car (rassoc (selected-profile target) 
                                    (object-profiles target)))))
       (assoc profile-id (raw-profiles target)))))
-
 
 (define-method "RECEIVED_EXCEPTION" ((self client-request))
   (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
@@ -83,19 +71,23 @@
   (DECLARE (IGNORE _TYPE))
   (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
 
+(defmacro %add-service-context (req context-accessor service_context replace)
+  `(let* ((service_context ,service_context)
+          (replace ,replace)
+          (self ,req)
+          (list (,context-accessor self))
+          (old (find (op:context_id service_context) list
+                     :key #'op:context_id)))
+     (when old
+       (unless replace
+         (error 'omg.org/corba:bad_inv_order :minor 11 :completed :completed_no))
+       (setf list (delete old list)))
+     (setf (,context-accessor self) (cons service_context list))))
+
 (define-method "ADD_REQUEST_SERVICE_CONTEXT" ((self client-request)
                                                     service_context replace)
-  (let* ((list (service-context-list self))
-         (old (find (op:context_id service_context) list
-                    :key #'op:context_id)))
-    (when old
-      (unless replace
-        (error 'omg.org/corba:bad_inv_order :minor 11 :completed :completed_no))
-      (setf list (delete old list)))
-    (setf (service-context-list self) (cons service_context list))))
-
-
-
+  (%add-service-context self service-context-list 
+                                service_context replace))
 
 (define-method "REQUEST_ID" ((self client-request))
   (request-req-id self))
@@ -152,46 +144,162 @@ PortableInterceptor::TRANSPORT_RETRY
   (get-service-context id (service-context-list self)))
 
 (define-method "GET_REPLY_SERVICE_CONTEXT" ((self client-request) id)
-  (get-service-context id (reply-service-context-list self)))
+  (get-service-context id (reply-service-context self)))
 
 
 
-;;;; Request operations to support interceptors
+;;;; ServerRequestInfo aspect
 
-(defgeneric run-interceptors (req list operation))
-(defgeneric rerun-interceptors (req operation))
-(defgeneric pop-interceptors (req operation))
+
+(define-method "REQUEST_ID" ((self server-request))
+  (request-id self))
+
+(define-method "OPERATION" ((self server-request))
+  (request-operation self))
+
+(define-method "ARGUMENTS" ((self server-request))
+  (error 'omg.org/corba:no_resources))
+
+(define-method "EXCEPTIONS" ((self server-request))
+  (error 'omg.org/corba:no_resources))
+
+(define-method "CONTEXTS" ((self server-request))
+  (error 'omg.org/corba:no_resources))
+
+(define-method "OPERATION_CONTEXT" ((self server-request))
+  (error 'omg.org/corba:no_resources))
+
+(define-method "RESULT" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "RESPONSE_EXPECTED" ((self server-request))
+  (response-expected self))
+
+(define-method "REPLY_STATUS" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "FORWARD_REFERENCE" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "GET_SLOT" ((self server-request) ID)
+  (DECLARE (IGNORE ID))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self server-request) id)
+  (get-service-context id (service-context-list self)))
+
+(define-method "GET_REPLY_SERVICE_CONTEXT" ((self server-request) id)
+  (get-service-context id (reply-service-context self)))
+
+(define-method "SENDING_EXCEPTION" ((self server-request))
+  (request-exception self))
+
+(define-method "OBJECT_ID" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "ADAPTER_ID" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "TARGET_MOST_DERIVED_INTERFACE" ((self server-request))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "GET_SERVER_POLICY" ((self server-request) _TYPE)
+  (DECLARE (IGNORE _TYPE))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "SET_SLOT" ((self server-request) _ID _DATA)
+  (DECLARE (IGNORE _ID _DATA))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "TARGET_IS_A" ((self server-request) _ID)
+  (DECLARE (IGNORE _ID))
+  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+
+(define-method "ADD_REPLY_SERVICE_CONTEXT" ((self server-request)
+                                            service_context replace)
+  (%add-service-context self reply-service-context
+                        service_context replace))
+
+
+
+;;;; ORB Operations for interceptors
+
+(defclass pi-orb (clorb-orb)
+  ((client-request-interceptors :accessor client-request-interceptors
+                                :initform nil)
+   (server-request-interceptors :accessor server-request-interceptors
+                                :initform nil)))
+
+
+(defmethod create-client-request ((orb pi-orb) &rest initargs)
+  (apply #'make-instance 'pi-client-request 
+         :the-orb orb initargs))
+
+(defmethod create-server-request ((orb pi-orb) &rest initargs)
+  (apply #'make-instance 'pi-server-request 
+         :the-orb orb initargs))
+
+
+(defmethod will-send-request ((orb pi-orb) client-request)
+  (run-interceptors client-request (client-request-interceptors orb)
+                    #'op:send_request))
+
+(defmethod has-received-exception ((orb pi-orb) client-request)
+  (pop-interceptors client-request #'op:receive_exception))
+
+(defmethod has-received-reply ((orb pi-orb) client-request)
+  (pop-interceptors client-request #'op:receive_reply))
+
+
+(defmethod has-received-request-header ((orb pi-orb) server-request)
+  (run-interceptors server-request (server-request-interceptors orb)
+                    #'op:receive_request_service_contexts))
+
+(defmethod has-received-request ((orb pi-orb) server-request)
+  (rerun-interceptors server-request #'op:receive_request))
+
+(defmethod will-send-exception ((orb pi-orb) server-request)
+  (loop 
+    while (handler-case
+            (progn (pop-interceptors server-request #'op:send_exception)
+                   nil)
+            (systemexception (exc)
+                             (set-request-exception server-request exc)))))
+
+(defmethod will-send-reply ((orb pi-orb) server-request)
+  (pop-interceptors server-request #'op:send_reply))
+
+(defmethod will-send-other ((orb pi-orb) server-request)
+  (pop-interceptors server-request #'op:send_other))
+
+
+
+;;;; PortableInterceptor:ORBInitInfo operations
+
+;;;    void add_client_request_interceptor (in ClientRequestInterceptor interceptor) 
+;;      raises (DuplicateName);
+
+(define-method "ADD_CLIENT_REQUEST_INTERCEPTOR" ((self orb-init-info) interceptor)
+  (when (find (op:name interceptor) (client-request-interceptors (the-orb self)))
+    (error (omg.org/portableinterceptor:orbinitinfo/duplicatename 
+            :name (op:name interceptor))))
+  (push interceptor (client-request-interceptors (the-orb self))))
+
+
+;;;    void add_server_request_interceptor (in ServerRequestInterceptor interceptor)
+;;      raises (DuplicateName);
+
+;;;    void add_ior_interceptor (in IORInterceptor interceptor)
+;;      raises (DuplicateName);
+
+;;;    SlotId allocate_slot_id ();
+
+;;;    void register_policy_factory (in CORBA::PolicyType type,
+;;                                  in PolicyFactory policy_factory);
+
 
 
 ;;;; Test interceptor
-
-(defun about-to-send-request (req)
-  (setf (client-request-interceptors req) nil)
-  (dolist (interceptor (client-request-interceptors (the-orb req)))
-    (push interceptor (client-request-interceptors req))
-    (handler-case
-      (op:send_request interceptor req)
-      (systemexception (exc)
-                       (setf (request-exception req) exc)
-                       (about-to-receive-exception req)))))
-
-
-(defun about-to-receive-exception (req)
-  (dolist (interceptor (client-request-interceptors req))
-    (handler-case
-      (op:receive_exception interceptor req)
-      (systemexception (exc) (setf (request-exception req) exc)))))
-
-
-(defun about-to-receive-reply (req)
-  (handler-case
-    (do ()
-        ((null (client-request-interceptors req)))
-      (op:receive_reply (pop (client-request-interceptors req)) req))
-    (systemexception (exc)
-                     (setf (request-exception req) exc)
-                     (about-to-receive-exception req))))
-
 
 (defclass my-client-interceptor (omg.org/portableinterceptor:clientrequestinterceptor)
   ((name :initarg :name)))
@@ -201,7 +309,7 @@ PortableInterceptor::TRANSPORT_RETRY
 
 (define-method "SEND_REQUEST" ((self my-client-interceptor) info)
   (mess 3 "SEND_REQUEST: ~S" info)
-  (omg.org/features:add_request_service_context 
+  (op:add_request_service_context 
    info 
    (iop:ServiceContext :context_id 17 :context_data #(1))
    nil))
@@ -227,13 +335,22 @@ PortableInterceptor::TRANSPORT_RETRY
   ((name :initarg :name)))
 
 (define-method RECEIVE_REQUEST_SERVICE_CONTEXTS ((self my-server-interceptor) info)
-  (mess 3 "RECEIVE_REQUEST_SERVICE_CONTEXTS: ~S" info))
+  (mess 3 "RECEIVE_REQUEST_SERVICE_CONTEXTS: ~S" 
+        (ignore-errors (omg.org/features:get_request_service_context info 17))
+        info))
 
 (define-method RECEIVE_REQUEST ((self my-server-interceptor) info)
   (mess 3 "RECEIVE_REQUEST: ~S" info))
 
 (define-method SEND_REPLY ((self my-server-interceptor) info)
-  (mess 3 "SEND_REPLY: ~S" info))
+  (mess 3 "SEND_REPLY: ~S" info)
+  (omg.org/features:add_reply_service_context
+   info
+   (omg.org/iop:servicecontext
+    :context_id 17
+    :context_data #(17 47))
+   nil))
+
 
 (define-method SEND_EXCEPTION ((self my-server-interceptor) info)
   (mess 3 "SEND_EXCEPTION: ~S" info))
@@ -251,6 +368,7 @@ PortableInterceptor::TRANSPORT_RETRY
 
 
 #|
+(change-class *the-orb* 'pi-orb)
 (pushnew *my-interceptor* (client-request-interceptors *the-orb*))
 (pushnew *my-server-interceptor* (server-request-interceptors *the-orb*))
 |#

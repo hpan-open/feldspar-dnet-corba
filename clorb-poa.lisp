@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.23 2003/12/15 07:03:03 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.24 2003/12/16 00:44:00 lenst Exp $
 
 (in-package :clorb)
 
@@ -203,6 +203,8 @@
 ;;;        raises(AdapterInactive);
 (define-method deactivate ((pm PortableServer:POAManager) etherealize_objects 
                            wait_for_completion)
+  ;;FIXME etherealize_objects wait_for_completion
+  (declare (ignore etherealize_objects wait_for_completion))
   (POAManager-new-state pm :inactive))
 
 

@@ -146,7 +146,8 @@
 (defvar *default-trace-connection* nil)
 
 (defclass Connection ()
-  ((read-buffer :initarg :read-buffer :accessor connection-read-buffer)
+  ((the-orb     :initarg :orb         :accessor the-orb)
+   (read-buffer :initarg :read-buffer :accessor connection-read-buffer)
    (read-callback :initarg :read-callback :accessor connection-read-callback)
    (write-buffer :initarg :write-buffer :accessor connection-write-buffer
                  :initform nil)
@@ -159,8 +160,8 @@
 
 (defvar *desc-conn* (make-hash-table))
 
-(defun make-associated-connection (desc)
-  (let* ((conn (make-instance 'Connection :io-descriptor desc)))
+(defun make-associated-connection (orb desc)
+  (let* ((conn (make-instance 'Connection :orb orb :io-descriptor desc)))
     (setf (gethash desc *desc-conn*) conn)
     conn))
 
@@ -170,11 +171,18 @@
     ;; FIXME: or is that remhash??
     (setf (gethash desc *desc-conn*) nil)))
 
-(defun create-connection (host port)
-  (let* ((desc (io-create-descriptor))
-         (conn (make-associated-connection desc)))
-    (io-descriptor-connect desc host port)
-    conn))
+(defun create-connection (orb host port)
+  (let ((desc (io-create-descriptor)))
+    (handler-case
+      (progn (io-descriptor-connect desc host port)
+             (make-associated-connection orb desc))
+      (error (err)
+             (mess 4 "(connect ~S ~S): ~A" err)
+             (setf (io-descriptor-error desc) err)
+             (setf (io-descriptor-status desc) :broken)
+             (io-descriptor-destroy desc)
+             nil))))
+
 
 (defun connection-working-p (conn)
   (let ((desc (connection-io-descriptor conn)))
@@ -240,6 +248,22 @@
     (push (connection-write-buffer conn) (connection-trace-send conn)))
   (funcall (connection-write-callback conn) conn))
 
+
+
+;;;; IIOP - Profiles
+
+(defmethod decode-ior-profile ((tag (eql 0)) encaps)
+  (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
+
+(defun unmarshal-iiop-profile-body (buffer)
+  (make-iiop-profile
+   :version (cons (unmarshal-octet buffer) 
+                  (unmarshal-octet buffer))
+   :host (unmarshal-string buffer)
+   :port (unmarshal-ushort buffer)
+   :key (unmarshal-osequence buffer)))
+
+
 
 ;;;; IIOP - Sending request
 
@@ -251,7 +275,7 @@
     (setf (request-req-id req) (incf *request-id-seq*))
     (values
      (setf (request-forward req) forward)
-     (setf (request-buffer req) (get-work-buffer))
+     (setf (request-buffer req) (get-work-buffer (the-orb req)))
      conn)))
 
 (defun locate (obj)
@@ -271,6 +295,7 @@
 (defun request-marshal-head (req)
   (multiple-value-bind (object buffer)
                        (request-prepare req (request-target req))
+    (will-send-request (the-orb req) req)
     (marshal-giop-header :request buffer)
     (marshal-service-context (service-context-list req) buffer)
     (marshal-ulong (request-req-id req) buffer)
@@ -283,7 +308,6 @@
 (defun send-request (req)
   (let ((buffer (request-buffer req)))
     (marshal-giop-set-message-length buffer)
-    (about-to-send-request req)
     (setf (request-buffer req) nil)
     (setf (request-status req) nil)
     (connection-send-buffer (request-connection req) buffer))
@@ -366,7 +390,7 @@
                             buffer)))
     (setup-outgoing-connection conn)
     (when req
-      (setf (reply-service-context-list req) service-context)
+      (setf (reply-service-context req) service-context)
       (setf (request-status req) status)
       (setf (request-buffer req) buffer))))
 
@@ -472,13 +496,13 @@ Where host is a string and port an integer.")
     (setf (cdr holder) conn-out)
     (setup-outgoing-connection conn-out)))
 
-(defun get-connection (host port)
+(defun get-connection (orb host port)
   (let* ((holder (get-connection-holder host port))
          (conn   (cdr holder)))
     (unless (and conn (connection-working-p conn))
       (when conn (connection-destroy conn))
-      (setq conn (create-connection host port))
-      (setup-outgoing-connection conn)
+      (setq conn (create-connection orb host port))
+      (when conn (setup-outgoing-connection conn))
       (setf (cdr holder) conn))
     conn))
 
@@ -496,7 +520,7 @@ Where host is a string and port an integer.")
   (dolist (profile (object-profiles proxy))
     (let* ((host (iiop-profile-host profile))
            (port (iiop-profile-port profile))
-           (conn (get-connection host port)))
+           (conn (get-connection (the-orb proxy) host port)))
       (when (and conn
                  (connection-working-p conn))
         (setf (object-connection proxy) conn)
@@ -508,8 +532,10 @@ Where host is a string and port an integer.")
 ;;;; Support for static stubs
 
 (defun start-request (operation object &optional no-response)
-  (let ((req (make-instance 'client-request :target object :operation operation
-                            :response-expected (not no-response))))
+  (let ((req (create-client-request 
+              (the-orb object)
+              :target object :operation operation
+              :response-expected (not no-response))))
     (values req (request-marshal-head req))))
 
 (defun invoke-request (req)
@@ -526,13 +552,13 @@ Where host is a string and port an integer.")
              (:system_exception
               (let ((condition (unmarshal-systemexception buffer)))
                 (setf (request-exception req) condition)
-                (about-to-receive-exception req)
+                (has-received-exception (the-orb req) req)
                 (setq condition (request-exception req))
                 (if (typep condition 'omg.org/corba:transient)
                   (values status)
                   (error condition))))
              (otherwise
-              (about-to-receive-reply req)
+              (has-received-reply (the-orb req) req)
               (values status buffer)))))
         (t
          :no_exception)))
@@ -601,13 +627,13 @@ Where host is a string and port an integer.")
            (ecase status
              (:no_exception 
               (request-unmarshal-result req buffer)
-              (about-to-receive-reply req))
+              (has-received-reply (the-orb req) req))
              (:user_exception 
               (request-unmarshal-userexception req buffer)
-              (about-to-receive-exception req))
+              (has-received-exception (the-orb req) req))
              (:system_exception
               (request-unmarshal-systemexception req buffer)
-              (about-to-receive-exception req)))
+              (has-received-exception (the-orb req) req)))
            (setf (request-buffer req) nil)
            (return))))))
     (values))

@@ -262,21 +262,28 @@
 (defclass CORBA:Request ()
   ())
 
-(defclass client-request (CORBA:Request PortableInterceptor:ClientRequestInfo)
-  ((target    :initarg :target     :reader request-target)
+(defclass client-request (CORBA:Request)
+  ((the-orb   :initarg :the-orb    :reader the-orb)
+   (target    :initarg :target     :reader request-target)
    (operation :initarg :operation  :reader request-operation)
    (paramlist :initform nil :initarg :paramlist
               :accessor request-paramlist) ;result + arguments
    (req-id :initform nil :accessor request-req-id)
    (connection :initform nil :accessor request-connection)
    (service-context-list :initform nil :accessor service-context-list)
-   (reply-service-context-list :initform nil :accessor reply-service-context-list)
-   (client-request-interceptors :initform nil :accessor client-request-interceptors)
+   (reply-service-context :initform nil :accessor reply-service-context)
    (response-expected :initform t :initarg :response-expected :accessor response-expected)
    (forward :initform nil :accessor request-forward)
    (status :initform nil :accessor request-status)
    (buffer :initform nil :accessor request-buffer)
    (exceptions :initform nil :initarg :exceptions :accessor request-exceptions)))
+
+
+(defmethod initialize-instance :before ((req client-request) &key (the-orb nil orb-p))
+  (declare (ignore the-orb))
+  (unless orb-p (error ":the-orb not supplied to client-request")))
+
+(defgeneric create-client-request (orb &rest initargs))
 
 
 (define-method target ((r client-request))
@@ -356,11 +363,12 @@
 
 ;; Used in stubs, shorter code then op:_create_request
 (defun request-create (obj operation result-type )
-  (make-instance 'client-request
-    :target obj
-    :operation operation
-    :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
-                                       :argument (CORBA:Any :any-typecode result-type)))))
+  (create-client-request
+   (the-orb obj)
+   :target obj
+   :operation operation
+   :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
+                                      :argument (CORBA:Any :any-typecode result-type)))))
 
 (defun get-attribute (obj getter result-tc)
   (static-call (getter obj)

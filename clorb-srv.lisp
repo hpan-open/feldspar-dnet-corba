@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.19 2003/12/15 07:03:59 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.20 2003/12/16 00:44:00 lenst Exp $	
 
 (in-package :clorb)
 
@@ -63,7 +63,7 @@
     (setf (cdr holder) nil)))
 
 (defun poa-connection-handler (desc)
-  (let ((conn (make-associated-connection desc)))
+  (let ((conn (make-associated-connection *the-orb* desc)))
     (setup-incoming-connection conn)))
 
 (defun poa-message-handler (conn)
@@ -83,20 +83,28 @@
             (connection-init-read conn t (+ size *iiop-header-size*) decode-fun)))))))
 
 
+
 ;;;; server-request class
 
-(defclass server-request (PortableInterceptor:ServerRequestInfo)
-  ((poa :accessor the-poa)
-   (state :initarg :state :initform :wait :accessor request-state)
+(defclass server-request ()
+  ((the-orb  :initarg :the-orb  :reader the-orb)
+   (poa      :accessor the-poa)
+   (state    :initarg :state :initform :wait :accessor request-state)
    (request-id :initarg :request-id :accessor request-id)
    (operation  :initarg :operation  :accessor request-operation)
    (connection :initarg :connection :accessor request-connection)
    (response-flags  :initarg :response-flags :accessor response-flags)
    (service-context :initarg :service-context :accessor service-context-list)
+   (reply-service-context :initform nil :accessor reply-service-context)
    (exception  :accessor request-exception  :initform nil)
-   (reply-buffer :initform nil :accessor request-buffer)
-   (server-request-interceptors :accessor server-request-interceptors
-                                :initform nil)))
+   (reply-status :initform nil :accessor reply-status)
+   (reply-buffer :initform nil :accessor reply-buffer)))
+
+
+(defmethod create-server-request ((orb clorb-orb) &rest initargs)
+  (apply #'make-instance 'server-request 
+         :the-orb orb initargs))
+
 
 (defmethod set-request-exception ((req server-request) exc)
   (setf (request-exception req) exc))
@@ -104,27 +112,23 @@
 (defmethod response-expected ((req server-request))
   (logbitp 0 (response-flags req)))
 
-(defmethod run-interceptors ((self server-request) interceptors operation)
-  (setf (server-request-interceptors self) nil)
-  (dolist (interceptor interceptors)
-    (funcall operation interceptor self)
-    (push interceptor (server-request-interceptors self))))
-
-(defmethod rerun-interceptors ((self server-request) operation)
-  (dolist (interceptor (server-request-interceptors self))
-    (funcall operation interceptor self)))
-
-(defmethod pop-interceptors ((self server-request) operation)
-  (loop while (server-request-interceptors self)
-        do (funcall operation (pop (server-request-interceptors self)) self)))
-
-
 
 (defun get-request-response (request status)
-  (let ((buffer (get-work-buffer)))
-    (setf (request-buffer request) buffer)
+  (let* ((orb (the-orb request))
+         (buffer (get-work-buffer orb)))
+    (setf (reply-buffer request) buffer)
+    (setf (reply-status request) status)
+    (case status
+      (:no_exception
+       (will-send-reply orb request))
+      (:user_exception
+       (will-send-exception orb request))
+      (:location_forward
+       (will-send-other orb request))
+      (:system_exception
+       (will-send-exception orb request)))
     (marshal-giop-header :reply buffer)
-    (marshal-ulong 0 buffer) ; service-context
+    (marshal-service-context (reply-service-context request) buffer) 
     (marshal-ulong (request-id request) buffer)
     (marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
     buffer))
@@ -146,55 +150,52 @@
 (defun poa-request-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
-    (let* ((service-context (unmarshal-service-context buffer))
+    (let* ((orb *the-orb*)              ; FIXME: from connection maybe?
+           (service-context (unmarshal-service-context buffer))
            (req-id (unmarshal-ulong buffer))
            (response (unmarshal-octet buffer))
            (object-key (unmarshal-osequence buffer))
            (operation (unmarshal-string buffer))
            (principal (unmarshal-osequence buffer))
-           (request (make-instance 'server-request
-                      :request-id req-id
-                      :connection conn
-                      :operation operation
-                      :service-context service-context
-                      :state :wait :response-flags response)))
+           (request (create-server-request
+                     orb :connection conn
+                     :request-id req-id :operation operation
+                     :service-context service-context
+                     :state :wait :response-flags response)))
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
-      (handler-case
-        (progn
-          (has-received-request-header *the-orb* request)
-          (multiple-value-bind (reftype poa oid)
-                               (decode-object-key-poa object-key)
-            (cond
-             ((and reftype poa)
-              (mess 2 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
-              ;; Check if POA is active, holding, discarding...
-              (setq buffer (poa-invoke poa oid operation buffer request)))
-             (t
-              (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no)))))
-        (systemexception
-         (exception)
-         (mess 2 "#~D Exception from servant: ~A" req-id exception)
-         (set-request-exception request exception)
-         (will-send-exception *the-orb* request)))
+      (loop
+        (handler-case
+          (let ((exception (request-exception request)))
+            (typecase exception
+              (null
+               (has-received-request-header orb request)
+               (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
+                 (cond
+                  ((and reftype poa)
+                   (poa-invoke poa oid operation buffer request))
+                  (t
+                   (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no)))))
+              (CORBA:SystemException
+               (mess 2 "#~D Exception: ~A" req-id exception)
+               (let ((buffer (get-request-response request :system_exception)))
+                 (marshal-string (exception-id exception) buffer)
+                 (marshal-ulong  (system-exception-minor exception) buffer)
+                 (marshal (system-exception-completed exception) CORBA::TC_completion_status buffer))))
+            (return))
+          (CORBA:SystemException (exception)
+           (set-request-exception request exception))))
       (send-response request))))
 
 
 (defun send-response (request)
   (when (response-expected request)
     (let ((conn (request-connection request))
-          (buffer (request-buffer request))
+          (buffer (reply-buffer request))
           (req-id (request-id request)))
       (mess 3 "#~D Sending response" req-id )
-      (let ((exception (request-exception request)))
-        (typecase exception
-          (CORBA:SYSTEMEXCEPTION
-           (setq buffer (get-request-response request :system_exception))
-           (marshal-string (exception-id exception) buffer)
-           (marshal-ulong  (system-exception-minor exception) buffer)
-           (marshal (system-exception-completed exception) CORBA::TC_completion_status buffer)))
-        (marshal-giop-set-message-length buffer)
-        (connection-send-buffer conn buffer)))))
+      (marshal-giop-set-message-length buffer)
+      (connection-send-buffer conn buffer))))
 
 
 (defun poa-cancelrequest-handler (conn)

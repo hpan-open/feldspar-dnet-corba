@@ -29,19 +29,14 @@
     "clorb-object"
     "clorb-io"
     "clorb-ifr-base"
-    "clorb-iiop"
-    "clorb-pi-impl"
     "clorb-orb"
-    ;;("clorb-opdef" t)
-    ;;"clorb-iir"
+    "clorb-iiop"
     "cosnaming-stub"
     "clorb-util"
     "clorb-ifr"
     "clorb-target"
     "clorb-idl"
-    "clorb-idlcpp"
-    ;;"dumpir"
-    ))
+    "clorb-idlcpp" ))
 
 (defparameter *server-files*
   '("clorb-objkey"
@@ -62,6 +57,7 @@
 
 (defparameter *x-files*
   '(;; Experimental
+    "clorb-pi-impl"
     "idef-read"
     "idef-write"
     ("idef-macros" t)

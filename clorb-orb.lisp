@@ -1,32 +1,60 @@
-;;;; The ORB Interface
+;;;; clorb-orb.lisp -- The ORB Interface
 
 (in-package :clorb)
+
+(defvar *orb-class* 'clorb-orb
+  "The class (name) of the ORB instantiated by CORBA:ORB_init.")
 
 (defvar *the-orb* nil)
 
 (defvar *orb-initializers* nil)
 
+(defvar *running-orb* t
+  "Will be set to true in the process that is running the ORB server part.
+If this is true, orb-wait will check server streams also.
+Can be set to true globally for singel-process / development.")
 
 
-;;;  interface ORB {				// PIDL
+(deftype CORBA:ORBId ()
+  'string)
+
+
+
+;;;;  interface ORB {				// PIDL
 
 (defclass CORBA:TYPECODEFACTORY ()
   ())
 
-(defclass ORB (CORBA:TypeCodeFactory)
+(defclass CORBA:ORB ()
+  ())
+
+(defclass clorb-orb (CORBA:ORB CORBA:TypeCodeFactory)
   ((adaptor :initform nil     :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
    (host    :initarg :host    :accessor orb-host)
    (port    :initarg :port    :accessor orb-port)
-   (client-request-interceptors :accessor client-request-interceptors
-                                :initform nil)
-   (server-request-interceptors :accessor server-request-interceptors
-                                :initform nil)
    (initial-references :initform '()
                        :accessor orb-initial-references)
    (default-initial-reference
     :initform nil
     :accessor orb-default-initial-reference)))
+
+
+;;;; Internal orb interface
+
+(defmethod create-client-request ((orb clorb-orb) &rest initargs)
+  (apply #'make-instance 'client-request 
+         :the-orb orb initargs))
+
+
+(defmethod create-objref ((orb clorb-orb) &key ior-id expected-id 
+                           raw-profiles profiles)
+  (make-instance (find-proxy-class 
+                  (if (equal ior-id "") expected-id ior-id))
+    :id ior-id
+    :profiles profiles
+    :raw-profiles raw-profiles ))
+
 
 ;; initial ref:
 ;;  ( name  .  ( string . object  ))
@@ -46,157 +74,54 @@
     (when (cadr ref) (setf (cddr ref) nil))))
 
 
+
+;;; ORB Operations for interceptors
+
+(defmethod has-received-exception ((orb clorb-orb) client-request)
+  (declare (ignore client-request))
+  nil)
+
+(defmethod has-received-reply ((orb clorb-orb) client-request)
+  (declare (ignore client-request))
+  nil)
+
+(defmethod will-send-request ((orb clorb-orb) client-request)
+  (declare (ignore client-request))
+  nil)
+
+(defmethod has-received-request-header ((orb clorb-orb) server-request)
+  (declare (ignore server-request))
+  nil)
+
+(defmethod has-received-request ((orb clorb-orb) server-request)
+  (declare (ignore server-request))
+  nil)
+
+(defmethod will-send-exception ((orb clorb-orb) server-request)
+  (declare (ignore server-request))
+  nil)
+
+(defmethod will-send-reply ((orb clorb-orb) server-request)
+  (declare (ignore server-request))
+  nil)
+
+(defmethod will-send-other ((orb clorb-orb) server-request)
+  (declare (ignore server-request))
+  nil)
+
+
+;;;; CORBA:ORB Interface
+
 ;;;    exception InvalidName {};
 (define-user-exception CORBA:ORB/InvalidName
   :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
 
 
-;;; From "Portable Interceptors"
-;;; void register_initial_reference (in ObjectId id, in Object obj)
-;;;    raises (InvalidName);
-
-(define-method register_initial_reference ((orb CORBA:ORB) id obj)
-  (when (or (not (stringp id)) (equal id "")
-            (assoc id (orb-initial-references orb)
-                    :test #'string=))
-    (error (CORBA:ORB/InvalidName)))
-  (unless obj
-    (error 'CORBA:BAD_PARAM :minor 24))
-  (set-initial-reference orb id nil obj))
-
-
-
-;;;; Initializing the ORB
-
-;;; PortableInterceptor::ORBInitializer
-;;  local interface ORBInitializer {
-;;    void pre_init (in ORBInitInfo info);
-;;    void post_init (in ORBInitInfo info);
-
-(defclass orb-initializer (PortableInterceptor:ORBInitializer)
-  ())
-
-(define-method "PRE_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-(define-method "POST_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-
-
-(defun portableinterceptor:register_orb_initializer (init)
-  (pushnew init *orb-initializers*))
-
-
-
-;; Backward compatiblity with functions as initializers
-
-(define-method "PRE_INIT" ((init function) info)
-  (funcall init (the-orb info)))
-
-(define-method "POST_INIT" ((init function) info)
-  (declare (ignore info)))
-
-
-(define-method "PRE_INIT" ((init symbol) info)
-  (op:pre_init (symbol-function init) info))
-
-(define-method "POST_INIT" ((init symbol) info)
-  (op:post_init (symbol-function init) info))
-
-
-
-(deftype CORBA:ORBId ()
-  'string)
-
-
-;;; ORB CORBA:ORB_init (arg_list, orbid)
-
-(defun CORBA:ORB_init (&optional args (orbid "") set-init)
-  (when (eq args t)
-    (setq args nil set-init t))
-  (let ((info nil))
-    (unless *the-orb*
-      (setq *the-orb* (make-instance 'CORBA:ORB
-                        :active t
-                        :host *host*
-                        :port *port*))
-      (setq set-init t)
-      (setq info (make-instance 'orb-init-info
-                   :orb *the-orb*
-                   :arguments args
-                   :orb_id orbid
-                   :codec_factory nil ))
-      (dolist (fn *orb-initializers*)
-        (op:pre_init fn info)))
-    (when set-init
-      (when *name-service*
-        (set-initial-reference *the-orb* "NameService" *name-service*))
-      (when *interface-repository*
-        (set-initial-reference *the-orb* "InterfaceRepository"
-                               *interface-repository*)))
-    (setq args (process-orb-args *the-orb* args))
-    (setf (orb-active *the-orb*) t)
-    (when info
-      (dolist (fn *orb-initializers*)
-        (op:post_init fn info))))
-  (values *the-orb* args))
-
-
-
-(defun process-orb-args (orb args)
-  (let ((new-args '()))
-    (loop while args do
-          (let ((arg (pop args)))
-            (if (string-starts-with arg "-ORB")
-              (let ((value nil))
-                (flet ((option-match (prefix)
-                         (when (string-starts-with arg prefix)
-                           (setq value (subseq arg (length prefix)))
-                           (setq value (string-left-trim " 	" value))
-                           (when (equal value "") 
-                             (setq value (pop args)))
-                           t)))
-                  (cond ((option-match "-ORBInitRef")
-                         (process-opt-initial-reference orb value))
-                        ((option-match "-ORBDefaultInitRef")
-                         (setf (orb-default-initial-reference orb) value))
-                        ((option-match "-ORBPort")
-                         (setf (orb-port orb) (parse-arg-integer value))) 
-                        (t (error 'CORBA:BAD_PARAM)))))
-              
-              (push arg new-args))))
-    
-    (nreverse new-args)))
-
-#|
-(CORBA:ORB_init '("-ORBDefaultInitRef" "corbaloc::555objs.com"))
-(CORBA:ORB_init '("-ORBInitRef" "NameService=corbaloc::1.2@localhost:2001/NameService"))
-|#
-
-(defun process-opt-initial-reference (orb arg)
-  (let ((eq-pos (position #\= arg)))
-    (unless eq-pos (error "Illegal InitialReferences option: ~A" arg))
-    (let ((name (subseq arg 0 eq-pos))
-          (ior  (subseq arg (+ eq-pos 1))))
-      (set-initial-reference orb name ior))))
-
-(defun parse-arg-integer (arg)
-  (typecase arg 
-    (number arg)
-    (string (parse-integer arg))
-    (t (error "Argument should be integer: ~A" arg))))
-
-
 ;;;    void shutdown( in boolean wait_for_completion );
 (define-method shutdown ((orb orb) wait_for_completion)
+  ;;FIXME: wait_for_completion
+  (declare (ignore wait_for_completion))
   (setf (orb-active orb) nil))
-
-(defvar *running-orb* t
-  "Will be set to true in the process that is running the ORB server part.
-If this is true, orb-wait will check server streams also.
-Can be set to true globally for singel-process / development.")
-
 
 
 ;;;    Object string_to_object (in string str);
@@ -294,26 +219,175 @@ Can be set to true globally for singel-process / development.")
 ;;;    typedef sequence <ObjectId> ObjectIdList;
 ;;;
 
-;;;; ORB Operations for interceptors
 
-(defmethod has-received-request-header ((orb CORBA:ORB) server-request)
-  (run-interceptors server-request (server-request-interceptors orb)
-                    #'op:receive_request_service_contexts))
 
-(defmethod has-received-request ((orb CORBA:ORB) server-request)
-  (rerun-interceptors server-request #'op:receive_request))
+;;;; Value factory operations
 
-(defmethod will-send-exception ((orb CORBA:ORB) server-request)
-  (loop 
-    while (handler-case
-            (progn (pop-interceptors server-request #'op:send_exception)
-                   nil)
-            (systemexception (exc)
-                             (set-request-exception server-request exc)))))
+;;; ValueFactory register_value_factory(
+;; in RepositoryId id,
+;; in ValueFactory factory
+
+(define-method register_value_factory ((orb clorb-orb) id factory)
+  (check-type id string)
+  (check-type factory (or class symbol))
+  (setf (gethash id *value-factory-registry*) factory))
+
+
+;;; void unregister_value_factory(in RepositoryId id);
+
+(define-method unregister_value_factory ((orb clorb-orb) id)
+  (check-type id string)
+  (remhash id *value-factory-registry*))
+
+
+;;; ValueFactory lookup_value_factory(in RepositoryId id);
+
+(define-method lookup_value_factory ((orb clorb-orb) id)
+  (check-type id string)
+  (gethash id *value-factory-registry*))
+
+
+
+;;;; From "Portable Interceptors"
+
+
+;;; void register_initial_reference (in ObjectId id, in Object obj)
+;;;    raises (InvalidName);
+
+(define-method register_initial_reference ((orb CORBA:ORB) id obj)
+  (when (or (not (stringp id)) (equal id "")
+            (assoc id (orb-initial-references orb)
+                    :test #'string=))
+    (error (CORBA:ORB/InvalidName)))
+  (unless obj
+    (error 'CORBA:BAD_PARAM :minor 24))
+  (set-initial-reference orb id nil obj))
+
+
+
+;;;; Initializing the ORB
+;;; ORB CORBA:ORB_init (arg_list, orbid)
+
+(defun CORBA:ORB_init (&optional args (orbid "") set-init)
+  (when (eq args t)
+    (setq args nil set-init t))
+  (let ((info nil))
+    (unless *the-orb*
+      (setq *the-orb* (make-instance *orb-class*
+                        :active t
+                        :host *host*
+                        :port *port*))
+      (setq set-init t)
+      (setq info (create-orb-init-info *the-orb* args orbid))
+      (dolist (fn *orb-initializers*)
+        (op:pre_init fn info)))
+    (when set-init
+      (when *name-service*
+        (set-initial-reference *the-orb* "NameService" *name-service*))
+      (when *interface-repository*
+        (set-initial-reference *the-orb* "InterfaceRepository"
+                               *interface-repository*)))
+    (setq args (process-orb-args *the-orb* args))
+    (setf (orb-active *the-orb*) t)
+    (when info
+      (dolist (fn *orb-initializers*)
+        (op:post_init fn info))))
+  (values *the-orb* args))
+
+(defmethod create-orb-init-info ((orb clorb-orb) args orbid)
+  (make-instance 'orb-init-info
+    :orb *the-orb*
+    :arguments args
+    :orb_id orbid
+    :codec_factory nil ))
+
+(defun process-orb-args (orb args)
+  (let ((new-args '()))
+    (loop while args do
+          (let ((arg (pop args)))
+            (if (string-starts-with arg "-ORB")
+              (let ((value nil))
+                (flet ((option-match (prefix)
+                         (when (string-starts-with arg prefix)
+                           (setq value (subseq arg (length prefix)))
+                           (setq value (string-left-trim " 	" value))
+                           (when (equal value "") 
+                             (setq value (pop args)))
+                           t)))
+                  (cond ((option-match "-ORBInitRef")
+                         (process-opt-initial-reference orb value))
+                        ((option-match "-ORBDefaultInitRef")
+                         (setf (orb-default-initial-reference orb) value))
+                        ((option-match "-ORBPort")
+                         (setf (orb-port orb) (parse-arg-integer value))) 
+                        (t (error 'CORBA:BAD_PARAM)))))
+              
+              (push arg new-args))))
+    
+    (nreverse new-args)))
+
+#|
+(CORBA:ORB_init '("-ORBDefaultInitRef" "corbaloc::555objs.com"))
+(CORBA:ORB_init '("-ORBInitRef" "NameService=corbaloc::1.2@localhost:2001/NameService"))
+|#
+
+(defun process-opt-initial-reference (orb arg)
+  (let ((eq-pos (position #\= arg)))
+    (unless eq-pos (error "Illegal InitialReferences option: ~A" arg))
+    (let ((name (subseq arg 0 eq-pos))
+          (ior  (subseq arg (+ eq-pos 1))))
+      (set-initial-reference orb name ior))))
+
+(defun parse-arg-integer (arg)
+  (typecase arg 
+    (number arg)
+    (string (parse-integer arg))
+    (t (error "Argument should be integer: ~A" arg))))
+
+
+
+;;; PortableInterceptor::ORBInitializer
+;;  local interface ORBInitializer {
+;;    void pre_init (in ORBInitInfo info);
+;;    void post_init (in ORBInitInfo info);
+
+(defclass orb-initializer (PortableInterceptor:ORBInitializer)
+  ())
+
+(define-method "PRE_INIT" ((init orb-initializer) info)
+  (declare (ignore info)))
+
+(define-method "POST_INIT" ((init orb-initializer) info)
+  (declare (ignore info)))
+
+
+
+(defun portableinterceptor:register_orb_initializer (init)
+  (pushnew init *orb-initializers*))
+
+
+
+;; Backward compatiblity with functions as initializers
+
+(define-method "PRE_INIT" ((init function) info)
+  (funcall init (the-orb info)))
+
+(define-method "POST_INIT" ((init function) info)
+  (declare (ignore info)))
+
+
+(define-method "PRE_INIT" ((init symbol) info)
+  (op:pre_init (symbol-function init) info))
+
+(define-method "POST_INIT" ((init symbol) info)
+  (op:post_init (symbol-function init) info))
+
+
+
 
 
 
-;;;; Parsing Stringified Object Refrences
+;;;; Parsing Stringified Object References
 
 (defun string-to-object (orb str)
   (multiple-value-bind (method rest)
@@ -522,32 +596,6 @@ Can be set to true globally for singel-process / development.")
 
 
 
-;;;; Value factory operations
-
-;;; ValueFactory register_value_factory(
-;; in RepositoryId id,
-;; in ValueFactory factory
-
-(define-method register_value_factory ((orb CORBA:ORB) id factory)
-  (check-type id string)
-  (check-type factory (or class symbol))
-  (setf (gethash id *value-factory-registry*) factory))
-
-
-;;; void unregister_value_factory(in RepositoryId id);
-
-(define-method unregister_value_factory ((orb CORBA:ORB) id)
-  (check-type id string)
-  (remhash id *value-factory-registry*))
-
-
-;;; ValueFactory lookup_value_factory(in RepositoryId id);
-
-(define-method lookup_value_factory ((orb CORBA:ORB) id)
-  (check-type id string)
-  (gethash id *value-factory-registry*))
-
-
 
 ;;;; CORBA::Current
 
@@ -559,7 +607,10 @@ Can be set to true globally for singel-process / development.")
   :id "IDL:omg.org/CORBA/Current:1.0"
   :name "Current")
 
+
+
 ;;;; Policy
+
 
 (DEFINE-ALIAS OMG.ORG/CORBA:POLICYTYPE
   :id "IDL:omg.org/CORBA/PolicyType:1.0"
@@ -785,32 +836,16 @@ Can be set to true globally for singel-process / development.")
       (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
 
 
-;;;    void add_client_request_interceptor (in ClientRequestInterceptor interceptor) 
-;;      raises (DuplicateName);
-
-(define-method "ADD_CLIENT_REQUEST_INTERCEPTOR" ((self orb-init-info) interceptor)
-  (when (find (op:name interceptor) (client-request-interceptors (the-orb self)))
-    (error (omg.org/portableinterceptor:orbinitinfo/duplicatename 
-            :name (op:name interceptor))))
-  (push interceptor (client-request-interceptors (the-orb self))))
-
-
-;;;    void add_server_request_interceptor (in ServerRequestInterceptor interceptor)
-;;      raises (DuplicateName);
-
-;;;    void add_ior_interceptor (in IORInterceptor interceptor)
-;;      raises (DuplicateName);
-
-;;;    SlotId allocate_slot_id ();
-
-;;;    void register_policy_factory (in CORBA::PolicyType type,
-;;                                  in PolicyFactory policy_factory);
 
 
 ;;;; Providing access to the orb 
 
-(defmethod the-orb ((req client-request))
-  *the-orb*)
+;;(defmethod the-orb ((req client-request))
+;;  *the-orb*)
 
 (defmethod the-orb ((obj CORBA:Object))
   *the-orb*)
+
+(defmethod the-orb ((obj buffer))
+  (or (buffer-orb obj)
+      *the-orb*))
