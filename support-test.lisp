@@ -93,11 +93,11 @@
 (defmacro ensure-exception (code exception &rest pattern)
   `(handler-case
      (progn ,code
-            (tc-report "~S should raise exception" ',code))
+            (net.cddr.luna::tc-report "~S should raise exception" ',code))
      (,exception (exc)
                  (ensure-pattern* exc ,@pattern))
      (t (exc)
-        (tc-report "Should raise ~A. Got: ~A" ',exception exc))))
+        (net.cddr.luna::tc-report "Should raise ~A. Got: ~A" ',exception exc))))
 
 (defmacro ensure-repository (&rest args)
   `(ensure-pattern repository (repository-pattern ,@args)))
