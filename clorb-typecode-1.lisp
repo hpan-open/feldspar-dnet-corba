@@ -80,6 +80,8 @@
     (labels ((transform (x)
                (typecase x
                  (CORBA:TypeCode  (funcall func x))
+                 (null      x)
+                 (string    x)
                  (sequence  (map 'vector #'transform x))
                  (t  x))))
       (apply #'make-typecode (typecode-kind tc)

@@ -73,15 +73,29 @@
   :kind :tk_typecode
   :constant corba:tc_typecode)
 
+
+
+;;;; abstract class named-typecode
+
+(define-typecode named-typecode
+  :params (id name))
+
+
+
+;;;; Simple named typecodes: Native, LocalInterface
+
 (define-typecode native-typecode
   :kind :tk_native
   :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
+  :params (id name)
+  :share named-typecode :shared-params 2)
+
 
 (define-typecode local_interface-typecode
   :kind :tk_local_interface
   :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
+  :params (id name)
+  :share named-typecode :shared-params 2)
 
 
 
@@ -199,21 +213,15 @@
 
 
 
-;;;; abstract class named-typecode
-
-(define-typecode named-typecode
-  :params (id name))
-
 
 
 ;;;; Objref
 
 (define-typecode objref-typecode
   :kind :tk_objref
-  :share named-typecode
-  :shared-params 2
   :cdr-syntax (complex :tk_string :tk_string)
   :params (id name)
+  :share named-typecode :shared-params 2
   :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
 
 (defmethod marshal (arg (tc objref-typecode) buffer)
@@ -250,7 +258,6 @@
 (defmethod unmarshal ((tc enum-typecode) buffer)
   (let ((index (unmarshal-ulong buffer)))
     (elt (tc-keywords tc) index)))
-
 
 
 
@@ -345,6 +352,50 @@
 (define-method concrete_base_type ((tc corba:typecode))
   (error 'corba:typecode/badkind))
 
+(defgeneric tc-unalias (tc)
+  (:method ((tc t)) tc)
+  (:method ((tc alias-typecode)) (op:content_type tc)))
+(define-feature equivalent)
+
+(define-method equivalent ((tc1 CORBA:TypeCode) tc2)
+  (macrolet ((maybe (form)
+               `(handler-case ,form (corba:typecode/badkind nil t))))
+    (let ((tc1 (tc-unalias tc1))
+          (tc2 (tc-unalias tc2)))
+      (labels ((compare-members ()
+                 (let ((n1 (op:member_count tc1)))
+                   (and (eql n1 (op:member_count tc2))
+                        (loop for i below n1
+                              always (and (maybe (op:equivalent 
+                                                  (op:member_type tc1 i)
+                                                  (op:member_type tc2 i)))
+                                          (maybe (equal 
+                                                  (op:member_label tc1 i)
+                                                  (op:member_label tc2 i)))
+                                          (maybe (eql
+                                                  (op:member_visibility tc1 i)
+                                                  (op:member_visibility tc2 i))))))))
+               (compare-params (l1 l2)
+                 (loop for x1 in l1 for x2 in l2
+                       always (typecase x1
+                                (CORBA:TypeCode (op:equivalent x1 x2))
+                                (vector (compare-members))
+                                (t (equal x1 x2))))))
+        (let ((kind1 (typecode-kind tc1))
+              (kind2 (typecode-kind tc2)))
+          (and (eql kind1 kind2)
+               (if (typep tc1 'named-typecode)
+                 (let ((id1 (op:id tc1))
+                       (id2 (op:id tc2)))
+                   (if (or (equal id1 "") (equal id2 ""))
+                     (compare-params (cddr (typecode-params tc1))
+                                     (cddr (typecode-params tc2)))
+                     (equal id1 id2)))
+                 (compare-params (typecode-params tc1)
+                                 (typecode-params tc2)))))))))
+  
+
+
 
 ;;;; Constructors
 
@@ -394,6 +445,7 @@
 (DEFCONSTANT OMG.ORG/CORBA:VM_NONE (QUOTE 0))
 
 (defun create-value-tc (id name type-modifier concrete-base members)
+  "members: (name type visibility)*"
   (check-type id string)
   (check-type name string)
   (check-type type-modifier fixnum) ; ValueModifier
@@ -437,8 +489,8 @@
 (defun arbritary-value (tc)
   (ecase (op:kind tc)
     ((:tk_short :tk_long :tk_ushort :tk_ulong :tk_float :tk_double :tk_octet 
-                :tk_longlong :tk_ulonglong :tk_enum) 
-     ;; FIXME: enum ?? 
+                :tk_longlong :tk_ulonglong)
      0)
+    ((:tk_enum) (elt (tc-keywords tc) 0))
     ((:tk_boolean) nil)
     ((:tk_char :tk_wchar) #\space)))

@@ -209,7 +209,7 @@
 
 
 
-  (define-test "get_compact_typecode" ()
+  (define-test "get_compact_typecode"
     (let ((tc (create-sequence-tc
                12 (create-alias-tc "IDL:alias:1.0" "alias"
                                    (create-struct-tc
@@ -222,14 +222,45 @@
          'op:length 12
          'op:content_type
          (pattern 'op:kind :tk_alias
+                  'op:id (isa 'string)
                   'op:id "IDL:alias:1.0"
+                  'op:name (isa 'string)
                   'op:name ""
                   'op:content_type
                   (pattern 'op:kind :tk_struct
                            'op:id "IDL:struct:1.0"
                            'op:name ""
                            '(op:member_name * 0) ""
-                           '(op:member_type * 0) CORBA:tc_long ))) )))
+                           '(op:member_type * 0) CORBA:tc_long ))) ))
+    (let ((tc (create-value-tc "xx" "foo" CORBA:VM_NONE nil nil)))
+      (ensure-pattern* (op:get_compact_typecode tc)
+                       'op:id "xx" 'op:name ""
+                       'op:type_modifier CORBA:VM_NONE
+                       'op:concrete_base_type nil
+                       'op:member_count 0)))
 
+
+  (define-test "equivalent"
+    (ensure (op:equivalent CORBA:tc_ulong (make-typecode :tk_ulong)))
+    (ensure (op:equivalent CORBA:tc_string (create-string-tc 0)))
+    (ensure (op:equivalent (create-fixed-tc 12 3) (create-fixed-tc 12 3)))
+    (ensure (not (op:equivalent CORBA:tc_ulong CORBA:tc_short)))
+    (ensure (not (op:equivalent (create-fixed-tc 12 3) (create-fixed-tc 12 -3))))
+    (ensure (op:equivalent CORBA:tc_ulong
+                           (create-alias-tc "" "" CORBA:tc_ulong)))
+    (ensure (op:equivalent (create-alias-tc "" "" CORBA:tc_ulong)
+                           CORBA:tc_ulong))
+    (ensure (not (op:equivalent CORBA:tc_ulong 
+                                (create-alias-tc "" "" CORBA:tc_short))))
+    (let* ((id "IDL:test/value:1.0") 
+           (members (list (list "a" CORBA:tc_long 0) (list "b" CORBA:tc_string 1)))
+           (v1 (create-value-tc id "foo" CORBA:VM_NONE nil members))
+           (v2 (create-value-tc "" "foo" CORBA:VM_TRUNCATABLE v1 nil)))
+      (ensure (op:equivalent v1 (op:get_compact_typecode v1)))
+      (ensure (op:equivalent v1 (create-value-tc id "bar" CORBA:VM_NONE nil nil)))
+      (ensure (not (op:equivalent v1 (create-value-tc "x" "foo" CORBA:VM_NONE nil members))))
+      (ensure (op:equivalent v2 (create-value-tc "" "fum" CORBA:VM_TRUNCATABLE v1 nil)))
+      (ensure (not (op:equivalent v2 (create-value-tc "" "foo" CORBA:VM_NONE v1 nil))))))
+      
 
   #|end-suite|#)
