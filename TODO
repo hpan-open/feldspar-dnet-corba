@@ -1,5 +1,14 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.5 2001/12/20 23:28:21 lenst Exp $
+ $Id: TODO,v 1.6 2002/03/21 19:31:12 lenst Exp $
+
+- string_to_object
+Should handle more URL variants:
+       corbaloc:, corbname:, file:, (http:)
+
+Then change the *name-service*, *interface-repository*
+to be something that can be passed to string_to_object.
+Like: "file:///tmp/NameService"
+       
 
 + Final Lisp Mapping
 
@@ -58,6 +67,6 @@ exceptions should be returned not raised.
   stream could be done with a weak mapping (weak hash?) and perhaps
   some finalization to close the stream. The CORBA:Object could
   contain a field for the assigned network stream. The connection to
-  the server could the be closed when there is no more objects from
+  the server could then be closed when there is no more objects from
   that server.
 

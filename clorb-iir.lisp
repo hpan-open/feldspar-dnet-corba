@@ -42,7 +42,7 @@
     (print-interface intf stream))))
 
 
-
+
 ;;;; Internal Interface Repository
 
 #|(eval-when (:load-toplevel)
@@ -87,7 +87,6 @@
 	    (typecode-from-def id))))
 
 
-
 (defun simplify-type (typecode)
   (macrolet ((mush (id def)
                `(or (known-idl-type ,id)
@@ -101,7 +100,7 @@
                  typecode)))
     (let ((params (typecode-params typecode)))
       (case (typecode-kind typecode)
-        ((:tk_alias) (mush (first params) (simplify-type (third params))))
+        ((:tk_alias) (mush (first params) (simplifyf (third params))))
         ((:tk_sequence) (simplifyf (first params)))
         ((:tk_struct) (mush (first params) (simplifyv (third params) second)))
         ((:tk_except) (mush (first params) (simplifyv (third params) second)))

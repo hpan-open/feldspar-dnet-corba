@@ -1,3 +1,4 @@
+(in-package :cl-user)
 
 (setq CLOS::*GF-WARN-ON-REPLACING-METHOD*       nil)
 (setq CLOS::*WARN-IF-GF-ALREADY-CALLED*         nil)
@@ -6,25 +7,26 @@
 ;;(mk:oos :clorb :compile) 
 (load "clorb-pkgdcl")
 (load "clorb-files")
-(clorb::reload)
-(clorb::load-ir)
+(clorb:reload)
+(clorb:load-ir)
+
+(setq clorb:*host* "localhost")
+(setq clorb::*name-service* "corbaloc::1.2@localhost:2001/NameService")
 
 (defvar *orb* (CORBA:ORB_init))
 (setf clorb::*running-orb* t)
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(format t "~&;;; ORB listning on port ~A~%" (clorb::orb-port clorb::*the-orb*))
-
-;;(op:object_to_string *orb* cl-user::root)
+(format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port clorb::*the-orb*))
 
 (defun hh ()
-  (cl-user::setup-hello :file "hello.ior")
-  (cl-user::hello-client :file "hello.ior"))
+  (setup-hello :file "hello.ior")
+  (hello-client :file "hello.ior"))
 
 (defun hhn ()
-  (cl-user::setup-hello :name "hello")
-  (cl-user::hello-client :name "hello"))
+  (setup-hello :name "hello")
+  (hello-client :name "hello"))
 
 
 
@@ -35,6 +37,11 @@
         :clorb)
 
 
+(defparameter *openorb-ns-ior*
+  "corbaloc::1.2@localhost:2001/NameService")
 
+(defvar *openorb-ns*
+  (op:string_to_object *orb* *openorb-ns-ior*))
 
-
+;; (clorb::locate *openorb-ns*)
+;; (clorb::object-narrow *openorb-ns* +naming-context-id+)

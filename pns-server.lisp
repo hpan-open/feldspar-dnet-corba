@@ -259,6 +259,8 @@
                 (setf (bindings bi) (subseq bindings end))
                 res))))
 
+;; void destroy () raises (NotEmpty);
+
 (define-method destroy ((bi binding-iterator))
   (let* ((current (op:resolve_initial_references (the-orb bi) "POACurrent"))
          (poa (op:get_POA current))

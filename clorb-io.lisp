@@ -21,6 +21,11 @@
 ;;(select-wait y) => y'
 ;;(%select-stream-status y cookie) => :input/:output/:io/:error
 
+#+clisp
+(eval-when (:compile-toplevel)
+  (pushnew :clisp-new-socket-status *features*))
+
+
 (%SYSDEP
  "make select obj"
 
@@ -82,9 +87,9 @@ status for stream."
    #+clisp-new-socket-status
    (length (push
              (cons stream
-              (cond ((not input) '(:output))
-                    ((not output) '(:input))
-                    (t '(:input :output))))
+              (cond ((not input)  :output)
+                    ((not output) :input)
+                    (t            :io)))
              (%value select)))
 
    #+clisp
@@ -122,10 +127,12 @@ Returns select result to be used in getting status for streams."
      (mess 1 "Selecting ~A" select)
      ;; FIXME: can use larger timeout when socket-status is fixed
      ;; to work on server sockets.
-     (setq result (socket:socket-status (nreverse (%value select)) 0 1))
+     (let ((select-list (%value select)))
+       (when select-list
+         (setq result (socket:socket-status (nreverse select-list) 10))))
      (mess 1 "Select result ~A" result)
      result)
-   
+
    #+allegro
    (mp:wait-for-input-available
     (%value select)
@@ -307,76 +314,78 @@ Returns select result to be used in getting status for streams."
 
 
 
+(defun io-poll-desc (desc status)
+  (with-slots (stream read-buffer read-limit read-pos
+                      write-buffer write-pos write-limit) desc
+    (declare (type (or null octets)
+                   read-buffer write-buffer)
+             (type buffer-index read-limit read-pos
+                   write-limit write-pos))
+    (or
+     (when (and read-buffer (< read-pos read-limit)
+                (member status '(:input :io)))
+       (handler-case
+           (let ((n (io-read-bytes-no-hang read-buffer read-pos
+                                           read-limit stream)))
+             (incf read-pos n)
+             (if (>= read-pos read-limit)
+                 :read-ready))
+         (error (e)
+           (setf (io-descriptor-status desc) :broken)
+           (setf (io-descriptor-error desc)  e)
+           :error)))
+     (when (and write-buffer (< write-pos write-limit)
+                (member status '(:output :io)))
+       (handler-case
+           (let ((n (io-write-bytes-no-hang write-buffer write-pos
+                                            write-limit stream)))
+             (incf write-pos n)
+             (if (>= write-pos write-limit)
+                 :write-ready))
+         (error (e)
+           (setf (io-descriptor-status desc) :broken)
+           (setf (io-descriptor-error desc)  e)
+           :error)))
+     (if (eq status :error)
+         :error))))
+
+
 (defun io-driver ()
   (declare (optimize debug))
-  (labels
-      ((poll-desc (desc status)
-         (with-slots (stream read-buffer read-limit read-pos
-                             write-buffer write-pos write-limit) desc
-           (declare (type (or null octets)
-                          read-buffer write-buffer)
-                    (type buffer-index read-limit read-pos
-                          write-limit write-pos))
-           (when (and read-buffer (< read-pos read-limit)
-                      (member status '(:input :io)))
-             (handler-case
-                 (incf read-pos
-                       (io-read-bytes-no-hang read-buffer read-pos
-                                              read-limit stream))
-               (error (e)
-                 (setf (io-descriptor-status desc) :broken)
-                 (setf (io-descriptor-error desc)  e)
-                 (return-from io-driver (values :error desc))))
-             (when (>= read-pos read-limit)
-               (return-from io-driver (values :read-ready desc))))
-           (when (and write-buffer (< write-pos write-limit)
-                      (member status '(:output :io)))
-             (handler-case
-                 (incf write-pos
-                       (io-write-bytes-no-hang write-buffer
-                                               write-pos write-limit
-                                               stream))
-               (error (e)
-                 (setf (io-descriptor-status desc) :broken)
-                 (setf (io-descriptor-error desc)  e)
-                 (return-from io-driver (values :error desc))))
-             (when (>= write-pos write-limit)
-               (mess 1 "Io-driver ready writing ~S" (type-of desc))
-               (return-from io-driver (values :write-ready desc))))
-           (when (eq status :error)
-             (return-from io-driver (values :error desc))))))
-
-    (loop
-     for inactivity from 0 to 500
-     for select = (make-select)
-     for cookies = '()
-     do
-     (dolist (desc *io-descriptions* nil)
-       (with-slots (stream read-buffer read-limit read-pos
-                           write-buffer write-pos write-limit) desc
-         (declare (type buffer-index read-limit read-pos
-                        write-limit write-pos))
-         (when stream
-           (poll-desc desc :io)
-           (let ((input (and read-buffer (< read-pos read-limit)))
-                 (output (and write-buffer (< write-pos write-limit))))
-             (when (or input output)
-               (push (cons (select-add-stream select stream input output)
-                           desc)
-                     cookies))))))
-     (when *io-socket*
-       (%add-listner select *io-socket*))
-     (setq select (select-wait select))
-     (loop for (cookie . desc) in cookies
-           for status = (%select-stream-status select cookie)
-           when status
-           do (poll-desc desc status))
-     (when *io-socket*
-       (let ((new (accept-connection-on-socket *io-socket* nil)))
-         (when new
-           (let ((desc (io-create-descriptor)))
-             (setf (io-descriptor-stream desc) new)
-             (setf (io-descriptor-status desc) :connected)
-             (return-from io-driver (values :new desc)))))))))
-
-
+  (loop
+   for inactivity from 0 to 500
+   for select = (make-select)
+   for cookies = '()
+   do
+   (dolist (desc *io-descriptions* nil)
+     (with-slots (stream read-buffer read-limit read-pos
+                         write-buffer write-pos write-limit) desc
+       (declare (type buffer-index read-limit read-pos
+                      write-limit write-pos))
+       (when stream
+         #+ignore-not-needed
+         (let ((event (io-poll-desc desc :io)))
+           (if event
+               (return-from io-driver (values event desc))))
+         (let ((input (and read-buffer (< read-pos read-limit)))
+               (output (and write-buffer (< write-pos write-limit))))
+           (when (or input output)
+             (push (cons (select-add-stream select stream input output)
+                         desc)
+                   cookies))))))
+   (when *io-socket*
+     (%add-listner select *io-socket*))
+   (setq select (select-wait select))
+   (loop for (cookie . desc) in cookies
+         for status = (%select-stream-status select cookie)
+         when status
+         do (let ((event (io-poll-desc desc status)))
+              (if event
+                  (return-from io-driver (values event desc)))))
+   (when *io-socket*
+     (let ((new (accept-connection-on-socket *io-socket* nil)))
+       (when new
+         (let ((desc (io-create-descriptor)))
+           (setf (io-descriptor-stream desc) new)
+           (setf (io-descriptor-status desc) :connected)
+           (return-from io-driver (values :new desc))))))))

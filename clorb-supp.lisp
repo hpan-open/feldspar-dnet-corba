@@ -1,5 +1,5 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.4 2001/06/11 01:17:16 lenst Exp $
+;; $Id: clorb-supp.lisp,v 1.5 2002/03/21 19:31:12 lenst Exp $
 
 (in-package :clorb)
 
@@ -12,6 +12,7 @@
                    (make-string level :initial-element #\;)
                    fmt)
            args)
+    #-clisp
     (finish-output *log-output*)))
 
 (defun stroid (stream oid colon-p at-p)

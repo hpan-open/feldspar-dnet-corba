@@ -1,3 +1,42 @@
+2002-03-21  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-unmarshal.lisp (iiop-profile): new struct
+	(unmarshal-iiop-profile-body): return struct, don't modify proxy obj
+	(unmarshal-ior): decode all IIOP profiles and store in profiles
+	field, defer selection of profile until object is "connected".
+
+	* clorb-iiop.lisp (get-object-connection): new 
+	(connect-object): new
+	(request-send): use get-object-connection
+
+	* clorb-orb.lisp (string-to-object): changed to accept "corbaloc"
+	and "file" URLs. Several helper functions added.
+
+	* clorb-srv.lisp (initialize-poa): new for the new ORB
+	initialization mechanism.
+
+	* clorb-options.lisp (*name-service*, *interface-repository*): use
+	file:// urls as default.
+
+	* clorb-object.lisp (CORBA:Proxy): added field raw-profiles,
+	stores the raw encapsulations for the profiles (used to be
+	profiles). The profiles field now stores decoded IIOP profiles.
+	New field connection stores the connection object after it has
+	been assigned.
+	(object-narrow): copy raw-profiles
+
+2002-03-20  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-orb.lisp (*default-initial-references*): remove
+	(*orb-initializers*): new variable, list of functions to run when
+	initializing the orb.
+
+	* clorb-util.lisp (ns-name*): changed name from ns-name
+	(ns-name): changed name from ns-name1
+	(ns-name): namestring syntax now follows the CosNaming Stringified
+	Names syntax. That is "/" separates components and "." separates
+	id and kind.
+
 Mon Jul  9 17:19:39 2001  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* local-ir.lisp (operation-description): include exception

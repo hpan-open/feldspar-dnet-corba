@@ -57,7 +57,7 @@
     "hello-server"
     "hello-client"
     ;; Code Gen
-    "target"
+    ;;"target"
     ))
 
 

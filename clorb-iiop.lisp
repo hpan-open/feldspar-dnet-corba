@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.3 2002/02/14 21:12:11 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.4 2002/03/21 19:31:12 lenst Exp $
 
 (in-package :clorb)
 
@@ -137,8 +137,7 @@
   (let ((object (request-target req)))
     (setq object (or (object-forward object)
 		     object))
-    (let ((conn (get-connection (object-host object)
-                                (object-port object)))
+    (let ((conn (get-object-connection object))
           (buffer (get-work-buffer)))
       (setf (request-connection req) conn)
       (setf (request-req-id req) (incf *request-id-seq*))
@@ -285,7 +284,7 @@
 
   (multiple-value-bind (event desc) (io-driver)
     (when event
-      (mess 2 "io-event: ~S ~S~%" event (type-of desc)))
+      (mess 2 "io-event: ~S ~S" event (type-of desc)))
     (let ((conn (gethash desc *desc-conn*)))
       (case event
         (:read-ready
@@ -350,6 +349,27 @@ Where host is a string and port an integer.")
       (setup-outgoing-connection conn)
       (setf (cdr holder) conn))
     conn))
+
+(defun get-object-connection (proxy)
+  ;; get the connection to use for a proxy object.
+  (or
+   (object-connection proxy)
+   (connect-object proxy)))
+
+(defun connect-object (proxy)
+  ;; select a profile and create a connection for that profile
+  (dolist (profile (object-profiles proxy))
+    (let* ((host (iiop-profile-host profile))
+           (port (iiop-profile-port profile))
+           (conn (get-connection host port)))
+      (when (and conn
+                 (connection-working-p conn))
+        (setf (object-connection proxy) conn)
+        (setf (object-host proxy) host)
+        (setf (object-port proxy) port)
+        (setf (object-key proxy) (iiop-profile-key profile))
+        (return conn)))))
+
 
 ;;;; CORBA:Request - deferred operations
 

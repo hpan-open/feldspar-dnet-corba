@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.2 2001/07/02 16:34:44 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.3 2002/03/21 19:31:12 lenst Exp $
 
 (in-package :clorb)
 
@@ -65,9 +65,12 @@
 
 (defclass CORBA:Proxy (CORBA:Object)
   ((id :initform nil :initarg :id :accessor object-id)
+   (connection :initform nil :accessor object-connection)
    (host :initform nil :initarg :host :accessor object-host)
    (port :initform nil :initarg :port :accessor object-port)
    (key :initform nil :initarg :key :accessor object-key)
+   (raw-profiles :initform nil :initarg :raw-profiles
+                 :accessor object-raw-profiles)
    (profiles :initform nil :initarg :profiles :accessor object-profiles)
    (forward :initform nil :initarg :forward :accessor object-forward)))
 
@@ -75,9 +78,9 @@
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
     (format stream "~S @ ~A:~A"
-          (object-id o)
-          (object-host o)
-          (object-port o))))
+            (object-id o)
+            (object-host o)
+            (object-port o))))
 
 (define-method _is_nil ((x null))
   t)
@@ -89,10 +92,19 @@
 ;;; _is_equivalent in lisp mapping
 
 (define-method _is_equivalent ((obj corba:proxy) other)
-  (and
-   (equal (object-host obj) (object-host other))
-   (equal (object-port obj) (object-port other))
-   (equalp (object-key obj) (object-key other))))
+  (if (object-host obj)
+      (and
+       (equal (object-host obj) (object-host other))
+       (equal (object-port obj) (object-port other))
+       (equalp (object-key obj) (object-key other)))
+      (if (object-profiles obj)
+          (let ((profile1 (car (object-profiles obj)))
+                (profile2 (car (object-profiles other))))
+            (and
+             (equal (iiop-profile-host profile1) (iiop-profile-host profile2))
+             (equal (iiop-profile-port profile1) (iiop-profile-port profile2))
+             (equalp (iiop-profile-key profile1) (iiop-profile-key profile2)))))))
+
 
 ;;;| unsigned 	long hash(in unsigned long maximum);
 ;;; _hash in lisp mapping
@@ -284,7 +296,8 @@
     :port (object-port obj)
     :key  (object-key obj)
     :profiles (object-profiles obj)
-    :forward (object-forward obj)))
+    :forward (object-forward obj)
+    :raw-profiles (object-raw-profiles obj)))
 
 
 ;;; clorb-object.lisp ends here

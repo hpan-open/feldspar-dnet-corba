@@ -175,33 +175,39 @@
   (cons (unmarshal-ulong buffer)
 	(unmarshal-osequence buffer)))
 
-(defun unmarshal-iiop-profile-body (reference buffer)
-   (unmarshal-octet buffer)			;Version (ignored for now)
-   (unmarshal-octet buffer)
-   (setf (object-host reference) (unmarshal-string buffer))
-   (setf (object-port reference) (unmarshal-ushort buffer))
-   (setf (object-key reference) (unmarshal-osequence buffer)))
+(defstruct iiop-profile
+  (version '(1 . 0))
+  (host    nil)
+  (port    0    :type fixnum)
+  (key     nil))
+
+(defun unmarshal-iiop-profile-body (buffer)
+  (make-iiop-profile
+   :version (cons (unmarshal-octet buffer) 
+                  (unmarshal-octet buffer))
+   :host (unmarshal-string buffer)
+   :port (unmarshal-ushort buffer)
+   :key (unmarshal-osequence buffer)))
 
 (defun unmarshal-ior (buffer &optional expected-id)
   (let* ((type-id (unmarshal-string buffer))
          (n-profiles (unmarshal-ulong buffer))
-         reference)
+         (reference 'nil))
     (when (> n-profiles 0)
       (setq reference (make-instance 
                           (find-proxy-class 
                            (if (equal type-id "")
                                expected-id type-id))
                         :id type-id))
-      (setf (object-profiles reference)
-        (loop repeat n-profiles
-            for tag = (unmarshal-ulong buffer)
-            for encaps = (unmarshal-osequence buffer)
-            collect (cons tag encaps)
-            when (= tag 0)
-            do (unmarshal-encapsulation 
-                encaps 
-                (lambda (buffer) 
-                  (unmarshal-iiop-profile-body reference buffer))))))
+      (setf (object-raw-profiles reference)
+            (loop repeat n-profiles
+                  for tag = (unmarshal-ulong buffer)
+                  for encaps = (unmarshal-osequence buffer)
+                  collect (cons tag encaps)
+                  when (= tag 0)
+                  do (push (unmarshal-encapsulation
+                            encaps #'unmarshal-iiop-profile-body)
+                           (object-profiles reference)))))
     reference))
 
 

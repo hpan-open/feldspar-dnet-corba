@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.4 2001/07/02 16:43:07 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.5 2002/03/21 19:31:12 lenst Exp $
 
 (in-package :clorb)
 
@@ -447,12 +447,5 @@
   (unless *poa-current* (error 'Current/NoContext))
   (poa-current-object-id *poa-current*))
 
-(eval-when (:load-toplevel :execute)
-  (pushnew (cons "POACurrent" 
-                 (lambda (orb)
-                   (declare (ignore orb))
-                   (make-instance 'PortableServer::Current)))
-           *default-initial-references*
-           :key #'car :test #'equal ))
 
 ;;; clorb-poa.lisp ends here

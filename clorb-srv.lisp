@@ -90,11 +90,15 @@
     (setf (the-orb *root-poa*) orb))
   *root-POA*)
 
+(defun initialize-poa (orb)
+  (set-initial-reference orb "RootPOA" #'root-POA)
+  (set-initial-reference orb "POACurrent" nil
+                         (make-instance 'PortableServer::Current)))
+
+
 (eval-when (:load-toplevel :execute)
   (setq *new-connection-callback* 'poa-connection-handler)
-  (pushnew (cons "RootPOA" #'root-POA)
-           *default-initial-references*
-           :key #'car :test #'equal ))
+  (pushnew 'initialize-poa *orb-initializers* ))
 
 (defun main-loop (&optional (orb (ORB_init)))
   (root-POA)

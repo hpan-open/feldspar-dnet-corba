@@ -8,15 +8,13 @@ If nil, use default.")
   "The port to listen to.
 If nil, let implementation choose a port.")
 
-(defvar *name-service* "/tmp/NameService"
+(defvar *name-service* "file:///tmp/NameService"
   "Reference to the CORBA NameService.
-This should be the name of a file where the name service IOR is stored
-or the IOR.")
+Should be an URL that can be accepted by op:string_to_object.")
 
-(defvar *interface-repository* "/tmp/InterfaceRepository"
+(defvar *interface-repository* "file:///tmp/InterfaceRepository"
   "Reference to the CORBA InterfaceRepository.
-This should be the name of a file where the service IOR is stored
-or the IOR.")
+Should be an URL that can be accepted by op:string_to_object.")
 
 (defparameter *log-level* 2)
 
