@@ -163,12 +163,9 @@
 
 ;;;; Exceptions 
 
-(defmacro define-user-exception (symbol &key (name "") (id "") members)
-  "Syntax: scoped-symbol
-id: repo-id
-name: repo-name
-Slots: deprecated
-Members: (name typecode)*"
+(defmacro define-user-exception (symbol &key (name "") (id "") (version "1.0") defined_in members)
+  "Syntax: scoped-symbol :id repo-id :name repo-name :members (name typecode)*
+              :version version :defined_in parent-repo-id"
   (loop
     for member in members
     for slot-name = (string (car member))
@@ -189,9 +186,13 @@ Members: (name typecode)*"
         ,@getters
         (defun ,symbol (&key ,@args)
           (make-condition ',symbol ,@initargs))
-        (set-symbol-id/typecode ',symbol ,id
-                                (create-exception-tc ,id ,name (list ,@tc-members)))
-        (defmethod exception-name ((exc ,symbol)) ',symbol)))))
+        (defmethod exception-name ((exc ,symbol)) ',symbol)
+        (set-ifr-info ',symbol
+                      :id ,id
+                      :typecode (create-exception-tc ,id ,name (list ,@tc-members))
+                      :version ,version
+                      :defined_in ',defined_in)))))
+
 
 
 ;;;; Stub generation
@@ -221,6 +222,7 @@ Members: (name typecode)*"
 (defmacro define-interface (symbol super &key (id "") proxy (name ""))
   `(progn
      (set-symbol-id/typecode ',symbol ,id (create-interface-tc ,id ,name))
+     (setf (get ',symbol 'ifr-bases) ',super)
      (defclass ,SYMBOL ,super ())
      ,@(if proxy
          `((defclass ,(CAR PROXY) ,(cdr proxy) ())
@@ -230,3 +232,19 @@ Members: (name typecode)*"
      (defmethod object-is-a or ((obj ,symbol) interface-id)
        (string= interface-id ,id))))
 
+
+(defmacro define-operation (symbol &key id name defined_in (version "1.0")
+                                    (result 'CORBA:tc_void) (mode :op_normal)
+                                    parameters exceptions contexts)
+  (declare (ignore contexts))
+  `(set-ifr-info ',symbol 
+                 :id ,id :name ,name :defined_in ',defined_in :version ,version
+                 :result ,result :mode ,mode
+                 :parameters (list ,@(mapcar #'cons (repeated 'list) parameters))
+                 :exceptions ',exceptions))
+  
+
+(defmacro define-attribute (symbol &key id name defined_in (version "1.0") (mode :attr_normal) type)
+  `(set-ifr-info ',symbol
+                 :id ,id :name ,name :defined_in ',defined_in :version ,version
+                 :mode ,mode :type ,type))

@@ -33,7 +33,10 @@
     (format stream "~<#<TYPECODE~;~:I~@{~:_ ~W~}~;>~:>" (cons (slot-value tc 'kind) (slot-value tc 'params))))
    (t
     (print-unreadable-object (tc stream :type t :identity t)
-      (prin1 (slot-value tc 'kind) stream)))))
+      (let ((params (slot-value tc 'params)))
+        (when (stringp (ignore-errors (cadr params)))
+          (prin1 (cadr params))))))))
+  
 
 
 (eval-when (load eval)
@@ -176,3 +179,48 @@
 (defun set-symbol-id/typecode (symbol id typecode)
   (set-symbol-ifr-id symbol id)
   (set-symbol-typecode symbol typecode))
+
+
+;;;; Interface Repository Descriptions
+;; Not exactly TypeCode related, but similar to the stuff above
+
+(defun set-ifr-description (symbol desc)
+  (setf (get symbol 'ifr-desc) desc))
+
+(defgeneric generate-ifr-description (tc symbol))
+
+(defun ifr-description (symbol)
+  (let ((desc (get symbol 'ifr-desc)))
+    (cond ((functionp desc)
+           (set-ifr-description symbol (funcall desc)))
+          ((null desc)
+           (set-ifr-description symbol
+            (generate-ifr-description (get symbol 'typecode) symbol)))
+          (t 
+           desc))))
+
+(defun set-ifr-info (symbol &key id name typecode version defined_in parameters exceptions result mode type bases)
+  (setf (get symbol 'ifr-desc) nil)
+  (when id 
+    (set-symbol-ifr-id symbol id))
+  (when name
+    (setf (get symbol 'ifr-name) name))
+  (when typecode
+    (set-symbol-typecode symbol typecode))
+  (when version
+    (setf (get symbol 'ifr-version) version))
+  (when defined_in
+    (setf (get symbol 'ifr-parent) defined_in)
+    (pushnew symbol (get defined_in 'ifr-contents)))
+  (when result
+    (setf (get symbol 'ifr-result) result))
+  (when mode
+    (setf (get symbol 'ifr-mode) mode))
+  (when type
+    (setf (get symbol 'ifr-type) type))
+  (when parameters
+    (setf (get symbol 'ifr-params) parameters))
+  (when exceptions
+    (setf (get symbol 'ifr-exceptions) exceptions))
+  (when bases
+    (setf (get symbol 'ifr-bases) bases)))
