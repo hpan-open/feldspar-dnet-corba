@@ -1,28 +1,18 @@
 (in-package :cl-user)
 
-(require :db-sockets)
+;;(require :db-sockets)
+(require :asdf)
+(require :sb-bsd-sockets)
+
 (load "clorb-pkgdcl")
 (load "clorb-files")
 
 (clorb:reload)
 
-(clorb::load-ir)
+;;(clorb::load-ir)
 
-(import '(cl-user::setup-pns
-          cl-user::hello-client
-          cl-user::setup-hello
-          cl-user::run-hello)
-        :clorb)
+(load "examples/hello/auto")
 
-(defun hh ()
-  (cl-user::setup-hello :file "hello.ior")
-  (cl-user::hello-client :file "hello.ior"))
-
-(defun hhn ()
-  (cl-user::setup-hello :name "hello")
-  (cl-user::hello-client :name "hello"))
-
-(import '(hh hhn) :clorb)
 
 ;; Local variables:
 ;; inferior-lisp-program: "sbcl"

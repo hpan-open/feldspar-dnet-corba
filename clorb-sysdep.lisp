@@ -30,12 +30,18 @@
 ;;; uses its usual socket support (cmucl-sockets).  In SBCL we have
 ;;; no other option
 
+;;; Added support for SB-BSD-SOCKETS in SBCL. It seems to be a
+;;; standard contrib package.
+
 #+(or cmu sbcl)
 (eval-when (:compile-toplevel :load-toplevel)
-  (if (find-package "SOCKETS")
-      (pushnew :db-sockets *features*)
-    #+cmu (pushnew :cmucl-sockets *features*)
-    #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own")))
+  (cond ((find-package "SOCKETS")
+         (pushnew :db-sockets *features*))
+        ((find-package "SB-BSD-SOCKETS")
+         (pushnew :sb-bsd-sockets *features*))
+        (t
+         #+cmu (pushnew :cmucl-sockets *features*)
+         #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own"))))
 
 
 (defmacro %sysdep (desc &rest forms)
@@ -50,7 +56,7 @@
 (require "OPENTRANSPORT")
 
 #+(and mcl (not openmcl))
-(defclass MCL-LISTNER-SOCKET ()
+(defclass MCL-LISTENER-SOCKET ()
   ((port :initarg :port :accessor mcl-listener-port)
    (stream :initform nil :accessor listener-stream)))
 
@@ -77,6 +83,13 @@
      (setf (sockets:sockopt-reuse-address s) t)
      (sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sockets:socket-listen s 5)
+     s)
+   #+sb-bsd-sockets
+   (let ((s (make-instance 'sb-bsd-sockets:inet-socket
+                           :type :stream :protocol :tcp)))
+     (setf (sb-bsd-sockets:sockopt-reuse-address s) t)
+     (sb-bsd-sockets:socket-bind s #(0 0 0 0) (or port 0))
+     (sb-bsd-sockets:socket-listen s 5)
      s)
    #+mcl
    (let ((listener (make-instance 'mcl-listener-socket :port port)))
@@ -119,6 +132,11 @@
        (sockets:socket-name socket)
      (declare (ignore adr))
      port)
+   #+sb-bsd-sockets
+   (multiple-value-bind (adr port)
+       (sb-bsd-sockets:socket-name socket)
+     (declare (ignore adr))
+     port)
    #+cmu
    (nth-value 1 (ext:get-socket-host-and-port socket))
    #+mcl
@@ -134,7 +152,7 @@
     (%SYSDEP
      "open socket to host/port"
      #+dummy-tcp
-     (error "Dummy TCP can connect")
+     (error "Dummy TCP cannot connect")
      #+clisp 
      (socket-connect port host :element-type type) 
      #+cmucl-sockets
@@ -146,6 +164,14 @@
                       (sockets:get-host-by-name host)))))
        (sockets:socket-connect s num port)
        (sockets:socket-make-stream s :element-type type
+                                   :input t :output t :buffering :none))
+     #+sb-bsd-sockets
+     (let ((s (make-instance 'sb-bsd-sockets:inet-socket
+                             :type :stream :protocol :tcp))
+           (num (sb-bsd-sockets:host-ent-address
+                 (sb-bsd-sockets:get-host-by-name host))))
+       (sb-bsd-sockets:socket-connect s num port)
+       (sb-bsd-sockets:socket-make-stream s :element-type type
                                    :input t :output t :buffering :none))
      #+(or allegro use-acl-socket)
      (socket:make-socket 
@@ -187,6 +213,19 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                                              :input t :output t )))
            (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
+   #+sb-bsd-sockets
+   (let ((before (sb-bsd-sockets:non-blocking-mode socket)))
+     (unwind-protect
+         (handler-case
+             (progn
+               (setf (sb-bsd-sockets:non-blocking-mode socket) (not blocking))
+               (let ((k (sb-bsd-sockets:socket-accept socket)))
+                 (setf (sb-bsd-sockets:non-blocking-mode k) nil)
+                 (sb-bsd-sockets:socket-make-stream k
+                                             :element-type '(unsigned-byte 8)
+                                             :input t :output t )))
+           (sb-bsd-sockets:interrupted-error nil))
+       (setf (sb-bsd-sockets:non-blocking-mode socket) before)))
    #+clisp 
    (when (socket-wait socket (if blocking 10 0))
      (let* ((conn (socket-accept socket 
@@ -306,6 +345,13 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
       (setf (,set ,sobj) (logior (,set ,sobj) (ash 1 ,fd))))))
 
 
+#+sbcl
+(defmacro %socket-file-descriptor (socket)
+  (%SYSDEP
+   "file descriptor for listener socket"
+   #+db-sockets `(sockets:socket-file-descriptor ,socket)
+   #+sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)) )
+
 (defmacro select-add-listener (select-obj socket)
   (declare (ignorable select-obj socket))
   (%SYSDEP
@@ -315,9 +361,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    `(length (push ,socket (select-value ,select-obj)))
 
    #+sbcl
-   `(%add-fd ,select-obj
-     (sockets:socket-file-descriptor ,socket)
-     select-rset)
+   `(%add-fd ,select-obj (%socket-file-descriptor ,socket) select-rset)
 
    #+allegro
    `(push (socket:socket-os-fd ,socket) (select-value ,select-obj))
@@ -558,6 +602,10 @@ Returns select result to be used in getting status for streams."
    (with-output-to-string (out)
      (ext:run-program "/bin/sh" (list "-c" command)
                       :output out))
+   #+sbcl
+   (with-output-to-string (out)
+     (sb-ext:run-program "/bin/sh" (list "-c" command)
+                         :output out))   
 
    #+clorb-mcl-bsd
    (bsd:system-command command)
