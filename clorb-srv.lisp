@@ -27,61 +27,44 @@
 
 ;;;; Server proper
 
-(defvar *server-socket* nil
-  "The `master' socket that we accept new connections on")
-
-(defclass clorb-adaptor ()
-  ((orb :initarg :orb  :accessor adaptor-orb)
-   (listner-socket
-    :initarg :listner
-    :initform nil :accessor listner-socket)
-   (client-streams :initform nil :accessor client-streams-raw)))
-
 (defun setup-server (&optional (orb (ORB_init)))
-  (setq *server-socket* (open-passive-socket *port*))
-  (let ((adaptor (make-instance 'clorb-adaptor
-                   :orb orb
-                   :listner *server-socket*)))
-    (setf (adaptor orb) adaptor)))
+  (multiple-value-bind (port host)
+      (io-create-listner (orb-port orb))
+    (setf (adaptor orb) t)
+    (setf (orb-port orb) port)
+    (unless (orb-host orb)
+      (setf (orb-host orb) host))
+    (setup-shortcut)))
 
-(defmethod listner-sockets ((adaptor clorb-adaptor))
-  (if (listner-socket adaptor)
-      (list (listner-socket adaptor))))
+(defun setup-incoming-connection (conn)
+  (connection-init-read conn nil *iiop-header-size* #'poa-request-handler))
 
-(defmethod listner-host ((adaptor clorb-adaptor))
-  (passive-socket-host *server-socket*))
+(defun setup-shortcut-in (&optional (conn-in *shortcut-in*))
+  (setup-incoming-connection conn-in))
 
-(defmethod listner-port ((adaptor clorb-adaptor))
-  (passive-socket-port *server-socket*))
+(defun setup-shortcut ()
+  (let ((orb (CORBA:ORB_init)))
+    (setup-shortcut-out (orb-host orb) (orb-port orb))
+    (setup-shortcut-in)))
 
-(defmethod handle-socket ((adaptor clorb-adaptor) socket &optional allow-blocking)
-  (let ((conn (accept-connection-on-socket socket allow-blocking)))
-    (when conn
-      (push conn (client-streams-raw adaptor)))))
+(defun shortcut-off ()
+  (let* ((orb (CORBA:ORB_init))
+         (holder (get-connection-holder (orb-host orb) (orb-port orb))))
+    (setf (cdr holder) nil)))
 
-(defmethod client-streams ((adaptor clorb-adaptor))
-  (dolist (stream (client-streams-raw adaptor))
-    (unless (socket-stream-functional-p stream)
-      (mess 1 "Removing closed stream ~S" stream)
-      (setf (client-streams-raw adaptor)
-        (delete stream (client-streams-raw adaptor)))))
-  (client-streams-raw adaptor))
+(defun poa-connection-handler (desc)
+  (let ((conn (make-associated-connection desc)))
+    (setup-incoming-connection conn)))
 
-(defmethod handle-stream ((adaptor clorb-adaptor) stream)
-  (when (and (typep stream 'stream)
-             (socket-stream-functional-p stream))
-    (when (socket-stream-listen stream)
-      (mess 1 "Getting message from ~S" stream)
-      (get-message stream))
-    t))
-
-(defun get-message (stream)
+(defun poa-request-handler (conn)
   (let ((sreq (make-server-request
-               :stream stream
-               :buffer (get-work-buffer))))
-    (when (read-request sreq stream)
-      (decode-request sreq)
-      (poa-demux sreq))))
+               :connection conn
+               :buffer (connection-read-buffer conn))))
+    (read-request sreq
+                  (lambda (conn)
+                    (setup-incoming-connection conn)
+                    (decode-request sreq)
+                    (poa-demux sreq)))))
 
 (defun poa-demux (sreq)
   (with-slots (object-key operation) sreq
@@ -108,6 +91,7 @@
   *root-POA*)
 
 (eval-when (:load-toplevel :execute)
+  (setq *new-connection-callback* 'poa-connection-handler)
   (pushnew (cons "RootPOA" #'root-POA)
            *default-initial-references*
            :key #'car :test #'equal ))
@@ -117,7 +101,5 @@
   (op:run orb))
 
 (defun recover (&optional (orb (ORB_init)))
-  (let ((adaptor (adaptor orb)))
-    (mapc #'socket-close (client-streams-raw adaptor))
-    (setf (client-streams-raw adaptor) nil))
+  (io-reset :listner nil)
   (main-loop orb))
