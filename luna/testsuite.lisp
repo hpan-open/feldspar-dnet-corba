@@ -92,6 +92,19 @@
 (defmacro ensure-pattern* (obj &rest args)
   `(ensure-pattern ,obj (pattern ,@args)))
 
+(defmacro ensure-values (exp &rest values)
+  `(ensure-pattern 
+    (multiple-value-list ,exp)
+    (list ,@values)))
+
+(defmacro ensure-exception (code exception &rest pattern)
+  `(handler-case
+     (progn ,code
+            (tc-report "~S should raise exception" ',code))
+     (,exception (exc)
+                 (ensure-pattern* exc ,@pattern))
+     (t (exc)
+        (tc-report "Should raise ~A. Got: ~A" ',exception exc))))
 
 
 (defmacro define-test-suite (name &body body)
