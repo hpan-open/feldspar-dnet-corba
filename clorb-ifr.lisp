@@ -399,7 +399,7 @@
                        (:pk_TypeCode CORBA:tc_TypeCode)
                        ;;(:pk_Principal CORBA:tc_Principal)
                        (:pk_string CORBA:tc_string)
-                       (:pk_objref CORBA:tc_objref)
+                       (:pk_objref CORBA:tc_object)
                        (:pk_longlong CORBA:tc_longlong)
                        (:pk_ulonglong CORBA:tc_ulonglong)
                        (:pk_longdouble CORBA:tc_longdouble)
@@ -791,10 +791,11 @@
     (setf (op:type member) (op:type (op:type_def member)))))
 
 (defmethod idltype-tc ((obj union-def))
+  ;; FIXME: should be simpler to use op:create_union_tc
   (flet ((default-label-p (label)
            (and (not (symbolp label))
                 (eql :tk_octet (op:kind (any-typecode label)))
-                                (= 0 (any-value label)))))
+                (= 0 (any-value label)))))
     (create-union-tc (op:id obj) (op:name obj)
                      (op:discriminator_type obj)
                      (map 'list (lambda (m)
@@ -911,8 +912,7 @@
   (op:type (op:element_type_def obj)))
 
 (defmethod idltype-tc ((obj sequence-def))
-  (make-sequence-typecode (op:element_type obj)
-                          (op:bound obj)))
+  (create-sequence-tc (op:bound obj) (op:element_type obj)))
 
 
 ;;; ArrayDef : IDLType
@@ -930,8 +930,7 @@
   (op:type (op:element_type_def obj)))
 
 (defmethod idltype-tc ((obj array-def))
-  (make-array-typecode (op:element_type obj)
-                       (op:length obj)))
+  (create-array-tc (op:length obj) (op:element_type obj)))
 
 
 ;;;; interface FixedDef : IDLType

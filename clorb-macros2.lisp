@@ -22,7 +22,7 @@
 (defmacro DEFINE-ALIAS (symbol &key id name type typecode)
   `(progn (deftype ,symbol () ',type)
           (set-symbol-id/typecode ',symbol ,id 
-                                  (make-tc-alias ,id ,name ,typecode))))
+                                  (create-alias-tc ,id ,name ,typecode))))
 
 ;;;; Enum
 
@@ -30,12 +30,12 @@
   (let ((keys (mapcar #'key members)))
     `(progn (deftype ,symbol () '(member ,@keys))
             (set-symbol-id/typecode ',symbol ,id
-                                    (make-typecode :tk_enum ,id ,name
+                                    (create-enum-tc ,id ,name
                                                    ',(coerce members 'vector))))))
 
 ;;;; Struct Macrology
 
-(defmacro define-corba-struct (name &key id members)
+(defmacro define-corba-struct (name &key members)
   (loop
       for member in members
       for slot = (car member)
@@ -76,7 +76,7 @@
   read = ((buffer) unmarshallingcode*)
   write = ((obj buffer) marshallingcode*)"
   `(progn
-     (define-corba-struct ,symbol :id ,id 
+     (define-corba-struct ,symbol 
        :members ,(loop for (nil nil slot-name) in members
                        collect (list slot-name nil)))
      (set-symbol-ifr-id ',symbol ,id)
@@ -209,8 +209,7 @@ Members: (name typecode)*"
 
 (defmacro define-interface (symbol super &key (id "") proxy (name ""))
   `(progn
-     (set-symbol-id/typecode ',symbol ,id 
-                             (make-typecode :tk_objref ,id ,name))
+     (set-symbol-id/typecode ',symbol ,id (create-interface-tc ,id ,name))
      (defclass ,symbol ,super ())
      ,@(if proxy
          `((defclass ,(car proxy) ,(cdr proxy) ())

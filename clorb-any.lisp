@@ -76,14 +76,10 @@
 
 
 (defmethod any-typecode ((obj array))
-  (make-array-typecode
-   (member-typecode obj)
-   (length obj)))
+  (create-array-tc (length obj) (member-typecode obj)))
 
 (defmethod any-typecode ((obj list))
-  (make-sequence-typecode
-   (member-typecode obj)
-   0))
+  (create-sequence-tc 0 (member-typecode obj)))
 
 (defmethod any-typecode ((obj string))
   CORBA:tc_string)

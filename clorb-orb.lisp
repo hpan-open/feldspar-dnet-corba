@@ -10,7 +10,7 @@
 
 ;;;  interface ORB {				// PIDL
 
-(define-corba-class ORB ()
+(define-corba-class ORB (CORBA:TypeCodeFactory)
   :slots
   ((adaptor :initform nil :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
@@ -170,9 +170,25 @@ Can be set to true globally for singel-process / development.")
 
 ;;;    Status create_list ( in long    count,
 ;;;                         out NVList new_list );
+
+
 ;;;    Status create_operation_list ( in OperationDef oper,
 ;;;                                   out NVList      new_list );
-;;;
+
+(define-method create_operation_list ((orb CORBA:ORB) opdef)
+  (map 'list
+       (lambda (pd) 
+         (CORBA:NamedValue
+          :name (op:name pd)
+          :argument (CORBA:Any :any-typecode (op:type pd))
+          :arg_modes (ecase (op:mode pd)
+                       (:param_in ARG_IN)
+                       (:param_out ARG_OUT)
+                       (:param_inout ARG_INOUT))))
+       (op:params opdef)))
+
+
+
 ;;;    Status get_default_context (out Context ctx);
 ;;;    boolean get_service_information (in ServiceType         service_type,
 ;;;                                     out ServiceInformation service_information );
@@ -185,7 +201,6 @@ Can be set to true globally for singel-process / development.")
 ;;;    typedef string ObjectId;
 ;;;    typedef sequence <ObjectId> ObjectIdList;
 ;;;
-
 
 
 ;;;; Parsing Stringified Object Refrences
@@ -439,7 +454,7 @@ Can be set to true globally for singel-process / development.")
   :ID "IDL:omg.org/CORBA/PolicyList:1.0"
   :NAME "PolicyList"
   :TYPE SEQUENCE
-  :TYPECODE (MAKE-SEQUENCE-TYPECODE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY) 0))
+  :TYPECODE (create-sequence-tc 0 (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY)))
 
 (DEFCONSTANT OMG.ORG/CORBA:SECCONSTRUCTION (QUOTE 11))
 (DEFCONSTANT OMG.ORG/CORBA:UNSUPPORTED_POLICY_VALUE (QUOTE 4))
@@ -471,3 +486,88 @@ Can be set to true globally for singel-process / development.")
 
 
 
+;;;; TypeCodeFactory
+
+
+;;(DEFINE-INTERFACE CORBA:TYPECODEFACTORY (OBJECT)
+;; :ID "IDL:omg.org/CORBA/TypeCodeFactory:1.0"
+;; :NAME "TypeCodeFactory")
+
+(defclass CORBA:TYPECODEFACTORY ()
+  ())
+
+
+(define-method "CREATE_RECURSIVE_TC" ((obj corba:typecodefactory) id)
+  (make-typecode :recursive id))
+
+(defun fix-recursive-tc (tc)
+  (let ((recur-list '())
+        (id (op:id tc)))
+    (labels 
+      ((rec (obj)
+         (typecase obj
+           (sequence
+            (map nil #'rec obj))
+           (CORBA:TypeCode
+            (cond ((eql (op:kind obj) :recursive)
+                   (when (equal id (first (typecode-params obj)))
+                     (typecode-smash obj tc)))
+                  ((not (member obj recur-list))
+                   (push obj recur-list)
+                   (rec (typecode-params obj))))))))
+      (rec tc)
+      tc)))
+  
+
+
+(define-method "CREATE_ARRAY_TC" ((obj corba:typecodefactory) length element_type)
+  (create-array-tc length element_type))
+
+;; Deprecated
+;;(DEFINE-METHOD "CREATE_RECURSIVE_SEQUENCE_TC" ((obj corba:typecodefactory) bound _OFFSET))
+
+(DEFINE-METHOD "CREATE_SEQUENCE_TC" ((obj corba:typecodefactory) bound element_type)
+  (create-sequence-tc bound element_type))
+
+(define-method "CREATE_FIXED_TC" ((obj corba:typecodefactory) digits scale)
+  (create-fixed-tc digits scale))
+
+(define-method "CREATE_WSTRING_TC" ((OBJ CORBA:TYPECODEFACTORY) bound)
+  (create-wstring-tc bound))
+
+(define-method "CREATE_STRING_TC" ((OBJ CORBA:TYPECODEFACTORY) bound)
+  (create-string-tc bound))
+
+(define-method "CREATE_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (fix-recursive-tc (create-interface-tc id name)))
+
+(define-method "CREATE_EXCEPTION_TC" ((obj corba:typecodefactory) id name members)
+  (fix-recursive-tc (create-exception-tc id name members)))
+
+(define-method "CREATE_STRUCT_TC" ((obj corba:typecodefactory) id name members)
+  (fix-recursive-tc (create-struct-tc id name 
+                                      (map 'vector 
+                                           (lambda (m) (list (op:name m) (op:type m)))
+                                           members))))
+
+(define-method "CREATE_UNION_TC" ((obj corba:typecodefactory) 
+                                  id name discriminator-type members)
+  (fix-recursive-tc
+   (create-union-tc id name discriminator-type 
+                    (map 'list
+                         (lambda (member)
+                           (let* ((label (op:label member))
+                                  (label-value (any-value label)))
+                             (list (if (and (eq :tk_octet (any-typecode label))
+                                            (= 0 label-value))
+                                     'default
+                                     label-value)
+                                   (op:name member)
+                                   (op:type member))))
+                         members))))
+
+(define-method "CREATE_ALIAS_TC" ((obj corba:typecodefactory) id name typecode)
+  (fix-recursive-tc (create-alias-tc id name typecode)))
+
+(define-method "CREATE_ENUM_TC" ((OBJ CORBA:TYPECODEFACTORY) id name members)
+  (fix-recursive-tc (create-enum-tc id name members)))

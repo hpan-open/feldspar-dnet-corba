@@ -36,25 +36,25 @@
  :ID "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0"
  :NAME "AttrDescriptionSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:OPDESCRIPTIONSEQ
  :ID "IDL:omg.org/CORBA/OpDescriptionSeq:1.0"
  :NAME "OpDescriptionSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDESCRIPTION)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:REPOSITORYIDSEQ
  :ID "IDL:omg.org/CORBA/RepositoryIdSeq:1.0"
  :NAME "RepositoryIdSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:OPERATIONDESCRIPTION
  :ID "IDL:omg.org/CORBA/OperationDescription:1.0"
@@ -126,25 +126,25 @@
  :ID "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0"
  :NAME "ExcDescriptionSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDESCRIPTION)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:EXCEPTIONDEFSEQ
  :ID "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"
  :NAME "ExceptionDefSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTEXTIDSEQ
  :ID "IDL:omg.org/CORBA/ContextIdSeq:1.0"
  :NAME "ContextIdSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDENTIFIER)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDENTIFIER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTEXTIDENTIFIER
  :ID "IDL:omg.org/CORBA/ContextIdentifier:1.0"
@@ -156,9 +156,9 @@
  :ID "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"
  :NAME "ParDescriptionSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERDESCRIPTION)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERDESCRIPTION)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:PARAMETERDESCRIPTION
  :ID "IDL:omg.org/CORBA/ParameterDescription:1.0"
@@ -358,17 +358,17 @@
  :ID "IDL:omg.org/CORBA/EnumMemberSeq:1.0"
  :NAME "EnumMemberSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:UNIONMEMBERSEQ
  :ID "IDL:omg.org/CORBA/UnionMemberSeq:1.0"
  :NAME "UnionMemberSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBER)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:UNIONMEMBER
  :ID "IDL:omg.org/CORBA/UnionMember:1.0"
@@ -399,9 +399,9 @@
  :ID "IDL:omg.org/CORBA/StructMemberSeq:1.0"
  :NAME "StructMemberSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBER)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:STRUCTMEMBER
  :ID "IDL:omg.org/CORBA/StructMember:1.0"
@@ -429,17 +429,17 @@
  :ID "IDL:omg.org/CORBA/ContainedSeq:1.0"
  :NAME "ContainedSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:INTERFACEDEFSEQ
  :ID "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"
  :NAME "InterfaceDefSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:VERSIONSPEC
  :ID "IDL:omg.org/CORBA/VersionSpec:1.0"
@@ -627,9 +627,9 @@
  :ID "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
  :NAME "DescriptionSeq"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)
-             0))
+ :TYPECODE (create-sequence-tc
+             0
+             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:CONTAINER/DESCRIPTION
  :ID "IDL:omg.org/CORBA/Container/Description:1.0"

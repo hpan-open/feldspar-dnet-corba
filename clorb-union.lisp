@@ -12,9 +12,13 @@
 
 
 (defun create-union-tc (id name discriminator-type members)
+  "Create a TypeCode for union type.
+members = ( (label name typecode)* )
+where label = symbol clorb:default or value"
   (check-type id string)
   (check-type name string)
   (check-type discriminator-type corba:typecode)
+  (setq members (coerce members 'list))
   (let* ((default-index -1)
          (massaged-members 
           (loop for (label name typecode) in members

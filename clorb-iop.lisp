@@ -25,13 +25,13 @@
  :ID "IDL:IOP/ServiceContextList:1.0"
  :NAME "ServiceContextList"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE (SYMBOL-TYPECODE 'IOP:SERVICECONTEXT) 0))
+ :TYPECODE (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:SERVICECONTEXT)))
 
 (DEFINE-STRUCT IOP:SERVICECONTEXT
  :ID "IDL:IOP/ServiceContext:1.0"
  :NAME "ServiceContext"
  :MEMBERS (("context_id" (SYMBOL-TYPECODE 'IOP:SERVICEID) CONTEXT_ID)
-           ("context_data" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET 0)
+           ("context_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
             CONTEXT_DATA))
  :READ ((BUFFER)
         (IOP:SERVICECONTEXT
@@ -96,13 +96,13 @@
  :ID "IDL:IOP/MultipleComponentProfile:1.0"
  :NAME "MultipleComponentProfile"
  :TYPE SEQUENCE
- :TYPECODE (MAKE-SEQUENCE-TYPECODE (SYMBOL-TYPECODE 'IOP:TAGGEDCOMPONENT) 0))
+ :TYPECODE (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDCOMPONENT)))
 
 (DEFINE-STRUCT IOP:TAGGEDCOMPONENT
  :ID "IDL:IOP/TaggedComponent:1.0"
  :NAME "TaggedComponent"
  :MEMBERS (("tag" (SYMBOL-TYPECODE 'IOP:COMPONENTID) TAG)
-           ("component_data" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET 0)
+           ("component_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
             COMPONENT_DATA))
  :READ ((BUFFER)
         (IOP:TAGGEDCOMPONENT
@@ -124,7 +124,7 @@
  :NAME "IOR"
  :MEMBERS (("type_id" OMG.ORG/CORBA:TC_STRING TYPE_ID)
            ("profiles"
-            (MAKE-SEQUENCE-TYPECODE (SYMBOL-TYPECODE 'IOP:TAGGEDPROFILE) 0)
+            (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDPROFILE))
             PROFILES))
  :READ ((BUFFER)
         (IOP:IOR :TYPE_ID
@@ -143,7 +143,7 @@
  :ID "IDL:IOP/TaggedProfile:1.0"
  :NAME "TaggedProfile"
  :MEMBERS (("tag" (SYMBOL-TYPECODE 'IOP:PROFILEID) TAG)
-           ("profile_data" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET 0)
+           ("profile_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
             PROFILE_DATA))
  :READ ((BUFFER)
         (IOP:TAGGEDPROFILE

@@ -5,11 +5,16 @@
 (defclass CORBA:struct ()
   ())
 
+
 (defun create-struct-tc (id name members)
   (check-type id string)
   (check-type name string)
-  (make-typecode :tk_struct id name
-                 (coerce members 'vector)))
+  (check-type members sequence)
+  (doseq (m members)
+    (check-type m (cons string (cons CORBA:TypeCode null))))
+  (make-typecode :tk_struct id name (coerce members 'vector)))
+
+
 
 (defmethod any-typecode ((struct CORBA:struct))
   (symbol-typecode (class-name (class-of struct))))

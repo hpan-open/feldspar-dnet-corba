@@ -2,22 +2,7 @@
 
 (in-package :clorb)
 
-(defclass code-target ()
-  ((packages :initform nil)
-   (symbols  :initform nil)
-   (defs     :initform nil)
-   (dynamic-stubs
-    :initarg :dynamic-stubs
-    :initform nil
-    :reader target-dynamic-stubs)
-   (dynamic-servant
-    :initarg :dynamic-servant
-    :initform nil
-    :reader target-dynamic-servant)
-   (struct-marshal
-    :initarg :struct-marshal
-    :initform t
-    :reader target-struct-marshal )))
+
 
 (defgeneric target-typecode (obj target)
   (:documentation
@@ -31,6 +16,19 @@
   (:documentation
    "Lisp type mapping for IDL-type."))
 
+
+
+;;;; Basic Target
+
+(defclass code-target ()
+  ((packages :initform nil)
+   (symbols  :initform nil)
+   (excludes :initarg :excludes  :initform nil  :reader target-excludes)
+   (only     :initarg :only      :initform nil  :reader target-only)
+   (struct-marshal
+    :initarg :struct-marshal
+    :initform t
+    :reader target-struct-marshal )))
 
 
 (defun param-symbol (parameterdesc)
@@ -99,6 +97,9 @@
                      (cdr x)
                      (list x)))))
 
+(defun make-progn* (&rest l)
+  (make-progn l))
+
 (defun make-target-ensure-package (package target)
   (let* ((package-name (package-name package))
          (exports (loop for sym in (slot-value target 'symbols)
@@ -139,6 +140,10 @@
 
 (defun getter-name (name)
   (concatenate 'string "_get_" name))
+
+
+
+;;;; Target Type Methods
 
 (defmethod target-type ((obj CORBA:PrimitiveDef) target)
   (declare (ignore target))
@@ -189,7 +194,7 @@
    (:pk_long `CORBA:tc_long)
    (:pk_longdouble `CORBA:tc_longdouble)
    (:pk_longlong `CORBA:tc_longlong)
-   (:pk_objref `CORBA:tc_objref)
+   (:pk_objref `CORBA:tc_object)
    (:pk_octet `CORBA:tc_octet)
    (:pk_short `CORBA:tc_short)
    (:pk_string `CORBA:tc_string)
@@ -207,9 +212,9 @@
      `(make-typecode :tk_string ,(op:bound x))))
 
 (defmethod target-typecode ((x CORBA:SequenceDef) target)
-  `(make-sequence-typecode
-    ,(target-typecode (op:element_type_def x) target)
-    ,(op:bound x)))
+  `(create-sequence-tc
+    ,(op:bound x)
+    ,(target-typecode (op:element_type_def x) target)))
 
 (defmethod target-typecode ((x CORBA:Contained) target)
   `(symbol-typecode ',(scoped-target-symbol target x)))
@@ -218,20 +223,48 @@
   `(symbol-typecode ',(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ArrayDef) target)
-  `(make-array-typecode ,(target-typecode (op:element_type_def x) target)
-                        ,(op:length x)))
+  `(create-array-tc ,(op:length x)
+                    ,(target-typecode (op:element_type_def x) target)))
 
 
 
 ;;;; target-code methods
 
 (defmethod target-code ((x CORBA:Contained) target)
+  (declare (ignore target)))
+
+(defmethod target-code ((mdef CORBA:Container) target)
+  (make-progn (map 'list (lambda (contained)
+                           (if (and (not (member contained (target-excludes target)))
+                                    (or (null (target-only target))
+                                        (member contained (target-only target))))
+                             (target-code contained target)))
+                   (sort (op:contents mdef :dk_All t)
+                         #'<  :key #'target-sort-key ))))
+
+(defmethod target-sort-key ((def CORBA:InterfaceDef))
+  (1+ (reduce #'max (map 'list #'target-sort-key (op:base_interfaces def))
+              :initial-value 0)))
+
+(defmethod target-sort-key ((x t)) 0)
+
+
+
+;;;; Stub Target
+
+(defclass stub-target (code-target)
+  ((dynamic-stubs
+    :initarg :dynamic-stubs
+    :initform nil
+    :reader target-dynamic-stubs)))
+
+(defmethod target-code ((x CORBA:Contained) (target stub-target))
   (declare (ignore target))
-  (mess 4 "Can't generate code for ~A of kind ~S"
+  (warn "Can't generate code for ~A of kind ~S"
         (op:name x)
         (op:def_kind x)))
 
-(defmethod target-code ((x CORBA:AliasDef) target)
+(defmethod target-code ((x CORBA:AliasDef) (target stub-target))
   (let ((symbol (scoped-target-symbol target x)))
     `(define-alias ,symbol
        :id ,(op:id x)
@@ -239,7 +272,7 @@
        :type ,(target-type (op:original_type_def x) target)
        :typecode ,(target-typecode (op:original_type_def x) target) )))
 
-(defmethod target-code ((const CORBA:ConstantDef) target)
+(defmethod target-code ((const CORBA:ConstantDef) (target stub-target))
   (unless (and (eq :tk_enum (op:kind (op:type const)))
                (eq (op:defined_in const)
                    (op:defined_in (op:type_def const)))
@@ -248,7 +281,8 @@
     `(defconstant ,(scoped-target-symbol target const)
        ',(any-value (op:value const)))))
 
-(defmethod target-code ((idef CORBA:InterfaceDef) target)
+
+(defmethod target-code ((idef CORBA:InterfaceDef) (target stub-target))
   (make-progn
    (list 
     (let ((bases (op:base_interfaces idef))
@@ -264,8 +298,6 @@
     
     (call-next-method))))
 
-
-;;; Stub --------------------------------------------
 
 (defun make-dynamic-stub-1 (op target)
   (let* ((op-name (op:name op))
@@ -326,7 +358,7 @@
                           (op:exceptions opdef))))))
 
 
-(defmethod target-code ((op CORBA:OperationDef) target)
+(defmethod target-code ((op CORBA:OperationDef) (target stub-target))
   (case (target-dynamic-stubs target)
     (1
      (make-dynamic-stub-1 op target))
@@ -336,7 +368,7 @@
      (make-static-stub op target))))
 
 
-(defmethod target-code ((op CORBA:AttributeDef) target)
+(defmethod target-code ((op CORBA:AttributeDef) (target stub-target))
   (let* ((att-name (op:name op))
          (lisp-name (string-upcase att-name))
          (class (target-proxy-class-symbol target (op:defined_in op))))
@@ -353,20 +385,8 @@
                          `(set-attribute obj ,(setter-name att-name)
                                          ,(target-typecode (op:type_def op) target) newval))))))))
 
-(defmethod target-sort-key ((def CORBA:InterfaceDef))
-  (1+ (reduce #'max (map 'list #'target-sort-key (op:base_interfaces def))
-              :initial-value 0)))
 
-(defmethod target-sort-key ((x t)) 0)
-
-(defmethod target-code ((mdef CORBA:Container) target)
-  (make-progn (map 'list (lambda (contained)
-                           (target-code contained target))
-                   (sort (op:contents mdef :dk_All t)
-                         #'<  :key #'target-sort-key ))))
-
-
-(defmethod target-code ((sdef CORBA:StructDef) target)
+(defmethod target-code ((sdef CORBA:StructDef) (target stub-target))
   (let ((sym (scoped-target-symbol target sdef)))
     `(define-struct ,sym
        :id ,(op:id sdef)
@@ -391,14 +411,14 @@
                                                      'buffer))))))))
 
 
-(defmethod target-code ((enum CORBA:EnumDef) target)
+(defmethod target-code ((enum CORBA:EnumDef) (target stub-target))
   `(define-enum ,(scoped-target-symbol target enum)
      :id ,(op:id enum)
      :name ,(op:name enum)
      :members ,(coerce (op:members enum) 'list)))
 
 
-(defmethod target-code ((exc CORBA:ExceptionDef) target)
+(defmethod target-code ((exc CORBA:ExceptionDef) (target stub-target))
   `(define-user-exception ,(scoped-target-symbol target exc)
      :id ,(op:id exc)
      :name ,(op:name exc)
@@ -409,7 +429,7 @@
                     (op:members exc))))
 
 
-(defmethod target-code ((def CORBA:UnionDef) target)
+(defmethod target-code ((def CORBA:UnionDef) (target stub-target))
   (let ((collected-members '())
         (default-member nil)
         (used-labels '())
@@ -518,37 +538,37 @@
 
 ;;;; Servants
 
-(defmethod target-servant ((def CORBA:IRObject) target)
+(defclass servant-target (code-target)
+  ((dynamic-servant
+    :initarg :dynamic-servant
+    :initform nil
+    :reader target-dynamic-servant)))
+
+(defmethod target-code ((def CORBA:IRObject) (target servant-target))
   (declare (ignore target))
-  nil)
+  (call-next-method))
 
-(defmethod target-servant ((def CORBA:Container) target)
-  (make-progn (map 'list (lambda (contained)
-                           (target-servant contained target))
-                   (sort (op:contents def :dk_All t)
-                         #'<  :key #'target-sort-key ))))
-
-
-(defmethod target-servant ((idef CORBA:InterfaceDef) target)
+(defmethod target-code ((idef CORBA:InterfaceDef) (target servant-target))
   (let ((bases (op:base_interfaces idef))
         (class-symbol (target-servant-class-symbol target idef)))
-    `(progn
-       (define-corba-class ,class-symbol
-         ,(list* (scoped-target-symbol target idef)
-                 (target-base-list target bases #'target-servant-class-symbol
-                                   (if (target-dynamic-servant target)
-                                     'PortableServer:DynamicImplementation
-                                     'PortableServer:Servant)))
-         :attributes
-         (,@(map 'list
-                 (lambda (attdef)
-                   (list* (feature (op:name attdef))
-                          (if (eq (op:mode attdef) :attr_readonly)
-                            '(:readonly) )))
-                 (op:contents idef :dk_attribute t)) ))
-       ,(if (target-dynamic-servant target)
-          (make-dynamic-servant idef target class-symbol)
-          (make-static-servant idef target class-symbol)))))
+    (make-progn*
+     (call-next-method)
+     `(define-corba-class ,class-symbol
+        ,(list* (scoped-target-symbol target idef)
+                (target-base-list target bases #'target-servant-class-symbol
+                                  (if (target-dynamic-servant target)
+                                    'PortableServer:DynamicImplementation
+                                    'PortableServer:Servant)))
+        :attributes
+        (,@(map 'list
+                (lambda (attdef)
+                  (list* (feature (op:name attdef))
+                         (if (eq (op:mode attdef) :attr_readonly)
+                           '(:readonly) )))
+                (op:contents idef :dk_attribute t)) ))
+     (if (target-dynamic-servant target)
+        (make-dynamic-servant idef target class-symbol)
+        (make-static-servant idef target class-symbol)))))
 
 
 
@@ -609,14 +629,14 @@
     (list*
      `((string= operation ,(getter-name name))
        (let ((result (,(feature name) servant))
-             (output (funcall handler :no_exception)))
+             (output (get-normal-response handler)))
          ,(target-marshal (op:type_def def) target 'result 'output)
          output)) 
      (if (eq :attr_normal (op:mode def))
        (list `((string= operation ,(setter-name name))
                (setf (,(feature name) servant)
                      ,(target-unmarshal (op:type_def def) target 'input))
-               (funcall handler :no_exception)))))))
+               (get-normal-response handler)))))))
 
 
 
@@ -670,6 +690,10 @@
 
 ;;;; Stub code generator
 
+(defclass all-target (servant-target stub-target)
+  ())
+
+
 (defparameter *stub-code-ignored-packages*
   (list (find-package :keyword)
         (find-package :clorb)
@@ -678,7 +702,7 @@
 (defun stub-code (object)
   (when (stringp object)
     (setq object (lookup-name object)))
-  (let ((target (make-instance 'code-target)))
+  (let ((target (make-instance 'stub-target)))
     (let ((code (target-code object target))
           (ignored-packages *stub-code-ignored-packages*))
       `(,@(loop for package in (slot-value target 'packages)
@@ -689,7 +713,7 @@
 
 (defun gen-stub-file (object filename &key package-def dynamic-stubs)
   (with-open-file (*standard-output* filename :direction :output :if-exists :supersede)
-    (let* ((target (make-instance 'code-target :dynamic-stubs dynamic-stubs))
+    (let* ((target (make-instance 'stub-target :dynamic-stubs dynamic-stubs))
            (code (target-code object target)))
       (pprint '(in-package :clorb))
       (when package-def
@@ -707,8 +731,8 @@
 
 (defun gen-skel-file (object filename &key dynamic-servant package-def)
   (with-open-file (*standard-output* filename :direction :output :if-exists :supersede)
-    (let* ((target (make-instance 'code-target :dynamic-servant dynamic-servant))
-           (code (target-servant object target)))
+    (let* ((target (make-instance 'servant-target :dynamic-servant dynamic-servant))
+           (code (target-code object target)))
       (pprint '(in-package :clorb))
       (when package-def
         (loop for package in (slot-value target 'packages)
@@ -774,22 +798,22 @@
 
 #||
 (load "clorb:src;iop-idl")
-(gen-stub-file (lookup-name "IOP") "clorb:x-iop.lisp")
-(gen-stub-file (lookup-name "CosNaming") "clorb:x-cosnaming-stub.lisp" :package-def t)
-(gen-skel-file (lookup-name "CosNaming") "clorb:x-cosnaming-skel.lisp" :package-def t)
+(gen-stub-file (lookup-name "IOP") "clorb:y-iop.lisp")
+(gen-stub-file (lookup-name "CosNaming") "clorb:y-cosnaming-stub.lisp" :package-def t)
+(gen-skel-file (lookup-name "CosNaming") "clorb:y-cosnaming-skel.lisp" :package-def t)
 
 (load "clorb:src;ifr-idl")
-(gen-stub-file (lookup-name "CORBA") "clorb:x-ifr-base.lisp")
+(gen-stub-file (lookup-name "CORBA") "clorb:y-ifr-base.lisp")
 
-(gen-stub-file (vsns-get "clorb") "clorb:x-orb-base.lisp")
-(gen-stub-file (vsns-get "ir") "clorb:x-ifr-base.lisp")
-(gen-stub-file (vsns-get "file.i") "clorb:x-file.lisp")
+(gen-stub-file (vsns-get "clorb") "clorb:y-orb-base.lisp")
+(gen-stub-file (vsns-get "ir") "clorb:y-ifr-base.lisp")
+(gen-stub-file (vsns-get "file.i") "clorb:y-file.lisp")
 
 
 (gen-stub-file (lookup-name "PortableServer") "clorb:y-portableserver.lisp" )
 
 (load "clorb:src;file-idl")
-(gen-stub-file (lookup-name "poa") "clorb:x-file.lisp" :package-def t :dynamic-stubs nil)
+(gen-stub-file (lookup-name "poa") "clorb:y-file.lisp" :package-def t :dynamic-stubs nil)
 
 (defvar *target* (make-instance 'code-target))
 (target-code (lookup-name "CosNaming") *target*)

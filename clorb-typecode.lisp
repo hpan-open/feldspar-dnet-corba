@@ -179,23 +179,16 @@
    (CORBA:tc_octet :tk_octet)
    (CORBA:tc_any :tk_any)
    (CORBA:tc_typecode :tk_typecode)
-   ;;(CORBA:tc_principal :tk_principal)
-   (CORBA:tc_objref :tk_objref "" "")
-   ;;(CORBA:tc_struct :tk_struct)
-   ;;(CORBA:tc_union :tk_union)
-   ;;(CORBA:tc_enum :tk_enum)
+   (CORBA:tc_object :tk_objref "IDL:omg.org/CORBA/Object:1.0" "Object")
    (CORBA:tc_string :tk_string 0)
-   ;;(CORBA:tc_sequence :tk_sequence)
-   ;;(CORBA:tc_array :tk_array)
-   ;;(CORBA:tc_alias :tk_alias)
-   ;;(CORBA:tc_except :tk_except)
    (CORBA:tc_longlong :tk_longlong)
    (CORBA:tc_ulonglong :tk_ulonglong)
    (CORBA:tc_longdouble :tk_longdouble)
    (CORBA:tc_wchar :tk_wchar)
-   (CORBA:tc_wstring :tk_wstring 0)
-   ;;(CORBA:tc_fixed :tk_fixed)
-   ))
+   (CORBA:tc_wstring :tk_wstring 0)))
+
+;; deprecated
+;;(defparameter corba:tc_objref corba:tc_object)
 
 
 ;;;; PIDL interface to TypeCode
@@ -407,11 +400,41 @@
 
 ;;;; Constructors
 
-(defun MAKE-SEQUENCE-TYPECODE (member-type &optional (maxsize 0))
-  (make-typecode :tk_sequence member-type maxsize))
-
-(defun MAKE-ARRAY-TYPECODE (member-type size)
+(defun create-array-tc (size member-type)
   (make-typecode :tk_array member-type size))
+
+(defun create-sequence-tc (maxsize member-type)
+  (make-typecode :tk_sequence member-type maxsize))
+(defun make-sequence-typecode (member-type &optional (maxsize 0))
+  (create-sequence-tc maxsize member-type))
+
+(defun create-fixed-tc (digits scale)
+  (make-typecode :tk_fixed digits scale))
+
+(defun create-wstring-tc (maxsize)
+  (make-typecode :tk_wstring maxsize))
+
+(defun create-string-tc (maxsize)
+  (make-typecode :tk_string maxsize))
+
+(defun create-interface-tc (id name)
+  (make-typecode :tk_objref id name))
+
+(defun create-exception-tc (id name members)
+  (make-typecode :tk_except id name 
+                 (map 'list (lambda (m)
+                              (list (op:name m) (op:type m)))
+                      members)))
 
 (defun make-tc-alias (id name typecode)
   (make-typecode :tk_alias id name typecode))
+
+(defun create-alias-tc (id name typecode)
+  (make-typecode :tk_alias id name typecode))
+
+(defun create-enum-tc (id name members)
+  (make-typecode :tk_enum id name (coerce members 'vector)))
+
+
+
+

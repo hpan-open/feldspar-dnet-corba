@@ -25,7 +25,7 @@
 (DEFINE-STRUCT GIOP:MESSAGEHEADER_1_0
   :ID "IDL:GIOP/MessageHeader_1_0:1.0"
   :NAME "MessageHeader_1_0"
-  :MEMBERS (("magic" (MAKE-ARRAY-TYPECODE OMG.ORG/CORBA:TC_CHAR 4) MAGIC)
+  :MEMBERS (("magic" (create-array-tc 4 OMG.ORG/CORBA:TC_CHAR) MAGIC)
             ("GIOP_version" (SYMBOL-TYPECODE 'GIOP:VERSION) GIOP_VERSION)
             ("byte_order" OMG.ORG/CORBA:TC_BOOLEAN BYTE_ORDER)
             ("message_type" OMG.ORG/CORBA:TC_OCTET MESSAGE_TYPE)
@@ -35,7 +35,7 @@
  :ID "IDL:GIOP/LocateRequestHeader:1.0"
  :NAME "LocateRequestHeader"
  :MEMBERS (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
-           ("object_key" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET NIL) OBJECT_KEY)))
+           ("object_key" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET) OBJECT_KEY)))
 
 (define-enum GIOP:LocateStatusType
   :ID "IDL:GIOP/LocateStatusType:1.0"
@@ -59,7 +59,7 @@
   :MEMBERS (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST) SERVICE_CONTEXT)
             ("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
             ("response_expected" OMG.ORG/CORBA:TC_BOOLEAN RESPONSE_EXPECTED)
-            ("object_key" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET NIL) OBJECT_KEY)
+            ("object_key" (create-sequence-tc NIL OMG.ORG/CORBA:TC_OCTET) OBJECT_KEY)
             ("operation" OMG.ORG/CORBA:TC_STRING OPERATION)
             ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL) REQUESTING_PRINCIPAL)))
 
@@ -79,7 +79,7 @@
   :id "IDL:GIOP/Principal:1.0"
   :name"Principal" 
   :type sequence
-  :typecode (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET))
+  :typecode (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
 
 
 
