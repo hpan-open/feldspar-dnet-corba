@@ -157,20 +157,20 @@
           
 
 (defmethod unmarshal ((tc fixed-typecode) buffer)
-  (let ((digits (op:fixed_digits tc))
-        (scale  (op:fixed_scale tc)))
-    (let ((octet-count (ceiling (+ digits 1) 2)))
-      (with-in-buffer (buffer)
-        (do ((i 0 (+ i 1))
-             (n 0))
-            ((>= i octet-count) 
-             (/ n (expt 10 scale)))
-          (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
+  (let ((scale  (op:fixed_scale tc)))
+    (let ((n 0))
+      (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
+        (with-in-buffer (buffer)
+          (loop
             (let ((octet (get-octet)))
               (accumulate (ash octet -4))
               (let ((digit (logand octet #xF)))
-                (cond ((< digit 10) (accumulate digit))
-                      ((= digit #xD) (setf n (- n))))))))))))
+                (if (< digit 10) 
+                  (accumulate digit)
+                  (progn (when (= digit #xD) (setf n (- n)))
+                         (return))))))))
+      (/ n (expt 10 scale)))))
+
 
 
 
