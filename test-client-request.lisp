@@ -55,7 +55,7 @@
          :request-keys '((:response 1) (:operation "op") (:object-key #(17)))
          :args (list a1))
         (test-write-response req '(224412))
-        (orb-work)
+        (orb-work orb nil t)
         (assert (op:poll_response req) () "should have gotten the response")
         (op:get_response req)
         (ensure-eql (corba:any-value (op:return_value req)) 224412))))
