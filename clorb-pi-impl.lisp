@@ -122,10 +122,7 @@
     (or (object-forward target) target)))
 
 (define-method "EFFECTIVE_PROFILE" ((self client-request))
-  (let ((target (op:effective_target self)))
-    (let ((profile-id (car (rassoc (selected-profile target) 
-                                   (object-profiles target)))))
-      (assoc profile-id (raw-profiles target)))))
+ (request-effective-profile self))
 
 (define-method "RECEIVED_EXCEPTION" ((self client-request))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
@@ -162,10 +159,10 @@
 (define-method "ADD_REQUEST_SERVICE_CONTEXT" ((self client-request)
                                                     service_context replace)
   (%add-service-context self service-context-list 
-                                service_context replace))
+                        service_context replace))
 
 (define-method "REQUEST_ID" ((self client-request))
-  (request-req-id self))
+  (request-id self))
 
 (define-method "OPERATION" ((self client-request))
   (request-operation self))
@@ -194,18 +191,22 @@
 
 (define-method "REPLY_STATUS" ((self client-request))
 #| FIXME:
-This attribute describes the state of the result of the operation invocation. Its value can
-be one of the following:
+This attribute describes the state of the result of the operation invocation. 
+Its value can be one of the following:
 PortableInterceptor::SUCCESSFUL
 PortableInterceptor::SYSTEM_EXCEPTION
 PortableInterceptor::USER_EXCEPTION
 PortableInterceptor::LOCATION_FORWARD
 PortableInterceptor::TRANSPORT_RETRY
 |#
-  (request-status self))
+  (ecase (request-status self)
+    ((:user_exception) PortableInterceptor::USER_EXCEPTION)
+    ((:no_exception) PortableInterceptor::SUCCESSFUL)
+    ((:system_exception) PortableInterceptor::SYSTEM_EXCEPTION)
+    ((:location_forward) PortableInterceptor::LOCATION_FORWARD)))
 
 (define-method "FORWARD_REFERENCE" ((self client-request))
-  (request-forward self))
+  (object-forward (request-target self)))
 
 (define-method "GET_SLOT" ((self client-request) _ID)
   (DECLARE (IGNORE _ID))
@@ -319,6 +320,8 @@ PortableInterceptor::TRANSPORT_RETRY
 (defmethod has-received-reply ((orb pi-orb) client-request)
   (pop-interceptors client-request #'op:receive_reply))
 
+(defmethod has-received-other ((orb pi-orb) client-request)
+  (pop-interceptors client-request #'op:receive_other))
 
 (defmethod has-received-request-header ((orb pi-orb) server-request)
   (run-interceptors server-request (server-request-interceptors orb)
@@ -345,18 +348,26 @@ PortableInterceptor::TRANSPORT_RETRY
 
 ;;;; PortableInterceptor:ORBInitInfo operations
 
+
 ;;;    void add_client_request_interceptor (in ClientRequestInterceptor interceptor) 
 ;;      raises (DuplicateName);
 
 (define-method "ADD_CLIENT_REQUEST_INTERCEPTOR" ((self orb-init-info) interceptor)
   (when (find (op:name interceptor) (client-request-interceptors (the-orb self)))
-    (error (omg.org/portableinterceptor:orbinitinfo/duplicatename 
+    (error (portableinterceptor:orbinitinfo/duplicatename 
             :name (op:name interceptor))))
   (push interceptor (client-request-interceptors (the-orb self))))
 
 
 ;;;    void add_server_request_interceptor (in ServerRequestInterceptor interceptor)
 ;;      raises (DuplicateName);
+
+(define-method add_server_request_interceptor ((self orb-init-info) interceptor)
+  (when (find (op:name interceptor) (server-request-interceptors (the-orb self)))
+    (error (portableinterceptor:orbinitinfo/duplicatename 
+            :name (op:name interceptor))))
+  (push interceptor (server-request-interceptors (the-orb self))))
+
 
 ;;;    void add_ior_interceptor (in IORInterceptor interceptor)
 ;;      raises (DuplicateName);
@@ -370,7 +381,7 @@ PortableInterceptor::TRANSPORT_RETRY
 
 ;;;; Test interceptor
 
-(defclass my-client-interceptor (omg.org/portableinterceptor:clientrequestinterceptor)
+(defclass my-client-interceptor (portableinterceptor:clientrequestinterceptor)
   ((name :initarg :name)))
 
 (define-method name ((self my-client-interceptor))
@@ -388,11 +399,11 @@ PortableInterceptor::TRANSPORT_RETRY
 
 
 (define-method "RECEIVE_REPLY" ((self my-client-interceptor) info)
-  (mess 3 "RECEIVE_REPLY: ~S" (ignore-errors (omg.org/features:get_reply_service_context info 17)))
+  (mess 3 "RECEIVE_REPLY: ~S" (ignore-errors (op:get_reply_service_context info 17)))
 )
 
 (define-method "RECEIVE_EXCEPTION" ((self my-client-interceptor) info)
-  (mess 3 "RECEIVE_EXCEPTION: ~S" (ignore-errors (omg.org/features:get_reply_service_context info 17)))
+  (mess 3 "RECEIVE_EXCEPTION: ~S" (ignore-errors (op:get_reply_service_context info 17)))
 )
 
 (define-method "RECEIVE_OTHER" ((self my-client-interceptor) info)
@@ -405,7 +416,7 @@ PortableInterceptor::TRANSPORT_RETRY
 
 (define-method RECEIVE_REQUEST_SERVICE_CONTEXTS ((self my-server-interceptor) info)
   (mess 3 "RECEIVE_REQUEST_SERVICE_CONTEXTS: ~S" 
-        (ignore-errors (omg.org/features:get_request_service_context info 17))
+        (ignore-errors (op:get_request_service_context info 17))
         info))
 
 (define-method RECEIVE_REQUEST ((self my-server-interceptor) info)
@@ -413,9 +424,9 @@ PortableInterceptor::TRANSPORT_RETRY
 
 (define-method SEND_REPLY ((self my-server-interceptor) info)
   (mess 3 "SEND_REPLY: ~S" info)
-  (omg.org/features:add_reply_service_context
+  (op:add_reply_service_context
    info
-   (omg.org/iop:servicecontext
+   (iop:servicecontext
     :context_id 17
     :context_data #(17 47))
    nil))
@@ -429,15 +440,15 @@ PortableInterceptor::TRANSPORT_RETRY
 
 
 
-(defvar *my-interceptor* (make-instance 'my-client-interceptor
-                           :name "Test client-interceptor"))
+(defvar *my-client-interceptor* (make-instance 'my-client-interceptor
+                                      :name "Test client-interceptor"))
 
 (defvar *my-server-interceptor* (make-instance 'my-server-interceptor
-                                  :name "My Server Interceptor"))
+                                      :name "My Server Interceptor"))
 
 
 #|
 (change-class *the-orb* 'pi-orb)
-(pushnew *my-interceptor* (client-request-interceptors *the-orb*))
+(pushnew *my-client-interceptor* (client-request-interceptors *the-orb*))
 (pushnew *my-server-interceptor* (server-request-interceptors *the-orb*))
 |#

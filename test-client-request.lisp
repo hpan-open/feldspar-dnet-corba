@@ -1,10 +1,13 @@
 (in-package :clorb)
 
 (define-test-suite "Client Request"
+  (variables
+   (orb (CORBA:ORB_init)))
 
   (define-test "one way static call"
     (let ((obj (make-instance 'CORBA:Proxy
                  :id "IDL:test:1.0"
+                 :the-orb orb
                  :profiles (list (make-iiop-profile
                                   :version '(1 . 0)
                                   :host "localhost"
@@ -24,7 +27,7 @@
                      :output ((buffer) (marshal-long 123 buffer))
                      :no-response t))
       (ensure 
-       (> (io-descriptor-write-pos (connection-io-descriptor conn)) 12))))
+       (> (io-descriptor-write-limit (connection-io-descriptor conn)) 12))))
   
 
 

@@ -163,6 +163,7 @@
     (define-test "Object"
       (let ((obj1 nil)
             (obj2 (make-instance 'CORBA:Proxy :id "Hello World"
+                                 :the-orb *the-orb*
                                  :profiles (list (make-iiop-profile 
                                                   :version '(1 . 0)
                                                   :host "h1"

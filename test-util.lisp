@@ -34,7 +34,8 @@
   ;; file URL
   
   (define-test "pathname-url"
-    (let ((url (pathname-url "clorb:idl;orb.idl")))
+    (let ((url (pathname-url (merge-pathnames "orb.idl"
+                                              (first *default-include-directories*)))))
       (ensure (string-starts-with url "file:"))
       #|???|#))
   

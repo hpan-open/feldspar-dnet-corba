@@ -200,6 +200,7 @@
   (define-test "Abstract Interface"
     (let ((ab-tc (symbol-typecode 'test-abint-1))
           (abi (make-instance 'test-abint-1-proxy
+                 :the-orb *the-orb*
                  :profiles (list (make-iiop-profile :version '(1 . 0)
                                                     :host "he" :port 98
                                                     :key (string-to-oid "hej"))))))

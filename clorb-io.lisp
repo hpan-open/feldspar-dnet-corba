@@ -1,17 +1,25 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;;
+;; $Id: clorb-io.lisp,v 1.22 2004/01/21 17:45:29 lenst Exp $
+
+
 ;; io-reset ()
 ;; io-create-listener (&optional port)
 ;; io-create-descriptor ()
 ;; io-descriptor-destroy (desc)
 ;; io-descriptor-connect (desc host port)
+;; io-descriptor-working-p (desc)
 ;; io-descriptor-set-read (desc buf start end)
 ;; io-descriptor-set-write (desc buf start end)
-;; io-descriptor-status
-;; io-descriptor-error
-;; io-descriptor-read-buffer
+;; io-descriptor-status (desc)
+;; io-descriptor-error (desc)
+;; io-descriptor-read-buffer (desc)
 ;; io-driver ()
-;;
+
+;; io-descriptor-shortcut-connect (desc)
+;; io-fix-broken ()
+;; io-reset (&key listener)
+;; io-system-switch (new-class)
+
 
 (in-package :clorb)
 
@@ -143,8 +151,7 @@
 
 
 (defvar *io-system*
-  #+digitool (make-instance 'io-system-multiprocess)
-  #-digitool (make-instance 'io-system-select))
+  (make-instance 'io-system-select))
 
 (defun io-system-switch (new-class)
   (io-reset)
@@ -225,6 +232,7 @@
 
 
 (defun io-descriptor-set-read (desc buf start end)
+  (declare (optimize (speed 2) (safety 3) (debug 1)))
   (setf (io-descriptor-read-buffer desc) buf
         (io-descriptor-read-pos desc) start
         (io-descriptor-read-limit desc) end)

@@ -122,4 +122,21 @@
       (ensure-exception (op:get_servant poa)
                         Portableserver:POA/Noservant)))
 
+  (define-test "reference creation"
+    (let ((id "IDL:myObj:1.0")
+          (user-poa (op:create_POA root-poa "user" nil
+                                   (list (op:create_id_assignment_policy root-poa :user_id)))))
+      (let ((obj (op:create_reference root-poa id)))
+        (ensure-pattern* obj 'proxy-id id 'the-orb orb)
+        (ensure-typep obj 'CORBA:Proxy))
+      (let* ((oid (string-to-oid "foo"))
+             (obj (op:create_reference_with_id user-poa oid id)))
+        (ensure-typep obj 'CORBA:Proxy)
+        (ensure-equalp (proxy-id obj) id)
+        (let ((ior-string (op:object_to_string orb obj)))
+          (let ((obj2 (op:string_to_object orb ior-string)))
+            (ensure (op:_is_equivalent obj obj2))
+            (ensure-equalp (proxy-id obj2) id)))
+        (ensure-equalp (op:reference_to_id user-poa obj) oid ))))
+
 #| end suite |# )
