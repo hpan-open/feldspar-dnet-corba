@@ -1,3 +1,8 @@
+Wed Jun 20 20:36:58 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-orb.lisp (string-to-object): removed orb from name and arglist
+	(object-to-string): removed orb from name and arglist
+
 Thu Jun 14 08:21:16 2001  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* socket.lisp (wait-for-input-on-streams): put in the sleep in the

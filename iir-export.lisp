@@ -33,7 +33,7 @@
     :base_interfaces (map 'list 'get-iirx
                           (interface-inherit interface))))
 
-(define-method op::_interface ((servant auto-servant))
+(define-method _interface ((servant auto-servant))
   (let ((def (servant-interface servant)))
     (if (typep def 'interface)
         (get-iirx def)

@@ -31,11 +31,11 @@
 ;;;; Naming Context Implementation
 
 ;; I could use a default servant to handle all...
-;; But I'll use ... to instantiate a servant for every context
+;; But I'll use a ServantActivator to instantiate a servant for every context
 
 ;; A naming context is a directory. All names in the context are translated
 ;; to file names in the directory. The file contains a type marker plus the
-;; the stringified IOR of the object as dotted pair.
+;; the stringified IOR of the object.
 
 ;; NameComponents are translated to file names by escaping any but
 ;; safe characters and concatenating the id and kind by an ampersand.

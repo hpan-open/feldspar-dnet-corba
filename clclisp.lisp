@@ -33,3 +33,13 @@
           cl-user::setup-hello
           cl-user::run-hello))
 
+(defun show-error ()
+  (let ((s (car (get-connections))))
+    (loop for byte = (read-byte s nil nil)
+          for i to 100
+          while byte
+          do (if (< 31 byte 127)
+                 (princ (code-char byte))
+                 (format t "<~X>" byte)))
+    (close s)))
+

@@ -221,7 +221,7 @@
   (let ((orb (corba:orb_init)))
     (with-open-file (wr *name-service* :direction :output
                         :if-exists :supersede)
-                    (princ (orb-object-to-string orb (root-ns force)) wr))))
+                    (princ (op:object_to_string orb (root-ns force)) wr))))
 
 (defun run-ns ()
   (let ((orb (corba:orb_init)))

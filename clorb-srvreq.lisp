@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.5 2001/06/11 01:16:40 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.6 2001/07/01 20:37:46 lenst Exp $
 
 (in-package :clorb)
 
@@ -214,13 +214,13 @@
       (setf (op:argument nv) (CORBA:Any)))))
   nvlist)
 
-(define-method op::ctx ((sreq server-request))
+(define-method ctx ((sreq server-request))
   (error "NIY"))
 
-(define-method op::set_result ((sreq server-request) val)
+(define-method set_result ((sreq server-request) val)
   (setf (server-request-result sreq) val))
 
-(define-method op::set_exception ((sreq server-request) val)
+(define-method set_exception ((sreq server-request) val)
   (setf (server-request-exception sreq) val)
   (set-request-exception sreq val))
 

@@ -280,7 +280,8 @@
 (defun unmarshal-giop-header (buffer)
   (unless (loop for c in '(#\G #\I #\O #\P)
 		always (eql c (unmarshal-char buffer)))
-    (error "Not a GIOP message"))
+    (error "Not a GIOP message: ~S"
+           (map 'string 'code-char (buffer-octets buffer))))
   (let* ((major (unmarshal-octet buffer))
 	 (minor (unmarshal-octet buffer))
 	 (byte-order (unmarshal-octet buffer))

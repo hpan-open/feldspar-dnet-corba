@@ -104,7 +104,7 @@
           (op:name obj)))))
   (slot-value obj 'absolute_name))
 
-(define-method op:describe ((obj contained))
+(define-method describe ((obj contained))
   (CORBA:Contained/Description
    :kind (op:def_kind obj)
    :value (describe-contained obj)))
@@ -143,7 +143,7 @@
   (setf (slot-value object 'defined_in) c)
   object)
 
-(define-method op:contents ((obj container) limit-type exclude-inherit)
+(define-method contents ((obj container) limit-type exclude-inherit)
   (declare (ignore exclude-inherit))
   ;; exclude-inherit only aplicable for operations???
   (loop for contained in (contents obj)
@@ -151,13 +151,13 @@
                     (eql limit-type (op:def_kind contained))))
       collect contained))
 
-(define-method op:lookup_name
+(define-method lookup_name
     ((obj container) search-name levels-to-search limit-type  exclude-inherit)
   (loop for contained in (op:contents obj limit-type exclude-inherit)
       when (equal search-name (op:name contained))
       collect contained))
 
-(define-method op:lookup ((obj container) search_name)
+(define-method lookup ((obj container) search_name)
   (loop for contained in (op:contents obj :dk_all nil)
       when (equal search_name (op:name contained))
       do (return contained)))
@@ -421,11 +421,11 @@
 (defmethod idltype-tc ((idef interface-def))
   (make-typecode :tk_objref (subject-id idef) (op:name idef)))
 
-(define-method op:is_a ((def interface-def) interface-id)
+(define-method is_a ((def interface-def) interface-id)
   ;; FIXME: check base classes
   (equal (subject-id def) interface-id))
 
-(define-method op:describe_interface ((def interface-def))
+(define-method describe_interface ((def interface-def))
   (CORBA:InterfaceDef/FullInterfaceDescription
    :name (op:name def)
    :id   (subject-id def)
@@ -442,7 +442,7 @@
 (defmethod describe-contained ((def interface-def))
   (op:describe_interface def))
 
-(define-method op:contents ((obj interface-def) limit-type exclude-inherit)
+(define-method contents ((obj interface-def) limit-type exclude-inherit)
   (if exclude-inherit
       (call-next-method)
     (append (call-next-method)

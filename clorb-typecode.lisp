@@ -203,7 +203,7 @@
 (define-condition corba:typecode/badkind (corba:userexception) ())
 
 
-(define-method op::equal ((tc1 corba:typecode) tc2)
+(define-method equal ((tc1 corba:typecode) tc2)
   (or (eq tc1 tc2)
       (and (eq (typecode-kind tc1) (typecode-kind tc2))
            (tcp-equal (typecode-params tc1)
@@ -218,17 +218,17 @@
              tcp1
              tcp2)))
 
-(define-method op::kind ((tc corba:typecode))
+(define-method kind ((tc corba:typecode))
   (typecode-kind tc))
 
-(define-method op::id ((tc corba:typecode))
+(define-method id ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum)
      (tcp-id (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::name ((tc corba:typecode))
+(define-method name ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum)
      (tcp-name (typecode-params tc)))
@@ -244,10 +244,10 @@
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::member_count ((tc corba:typecode))
+(define-method member_count ((tc corba:typecode))
   (length (tc-members tc)))
 
-(define-method op::member_name ((tc corba:typecode) index)
+(define-method member_name ((tc corba:typecode) index)
   (case (typecode-kind tc)
     ((:tk_struct :tk_except :tk_enum)
      (first (elt (tc-members tc) index)))
@@ -256,7 +256,7 @@
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::member_type ((tc corba:typecode) index)
+(define-method member_type ((tc corba:typecode) index)
   (case (typecode-kind tc)
     ((:tk_struct :tk_except)
      (second (elt (tc-members tc) index)))
@@ -265,28 +265,28 @@
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::member_label ((tc corba:typecode) index)
+(define-method member_label ((tc corba:typecode) index)
   (case (typecode-kind tc)
     ((:tk_union)
      (first (elt (tc-members tc) index)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::discriminator_type ((tc corba:typecode))
+(define-method discriminator_type ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_union)
      (third (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::default_index ((tc corba:typecode))
+(define-method default_index ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_union)
      (fourth (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::length ((tc corba:typecode))
+(define-method length ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_string :tk_wstring)
      (or (first (typecode-params tc)) 0))
@@ -295,7 +295,7 @@
     (otherwise
      (error 'corba:typecode/badkind))))
 
-(define-method op::content_type ((tc corba:typecode))
+(define-method content_type ((tc corba:typecode))
   (case (typecode-kind tc)
     ((:tk_sequence :tk_array)
      (first (typecode-params tc)))

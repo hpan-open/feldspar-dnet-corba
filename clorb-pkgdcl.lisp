@@ -21,6 +21,7 @@
    :TRANSIENT :FREE_MEM :INV_IDENT :INV_FLAG :INTF_REPOS
    :BAD_CONTEXT :OBJ_ADAPTER :DATA_CONVERSION :OBJECT_NOT_EXIST
    :TRANSACTION_REQUIRED :TRANSACTION_ROLLEDBACK :INVALID_TRANSACTION
+   "ORB/INVALIDNAME"
    ;; Type code constants
    :tc_null :tc_void :tc_short :tc_long :tc_ushort :tc_ulong
    :tc_float :tc_double :tc_boolean :tc_char

@@ -61,10 +61,8 @@
     (setq object (or (object-forward object)
 		     object))
     (handler-case (request-send-to req object flags)
-     ;; FIXME: this is stupid!
-     ;; it is when reading the response that the exception will be
-     ;; detected! Move the following to the reply handling.
      ;; [lenst/2001-06-01 01:34:26] COMM_FAILURE could happen here.
+     ;; but not OBJECT_NOT_EXIST. FIXME!
      (corba:systemexception (exc)
        (setq object (request-target req))
        (cond ((and (object-forward object)
@@ -283,16 +281,16 @@
                     :arg_modes mode))))
     arg))
 
-(define-method op::add_in_arg ((req request))
+(define-method add_in_arg ((req request))
   (add-arg req nil ARG_IN))
 
-(define-method op::add_inout_arg ((req request))
+(define-method add_inout_arg ((req request))
   (add-arg req nil ARG_INOUT))
 
-(define-method op::add_out_arg ((req request) &optional (name ""))
+(define-method add_out_arg ((req request) &optional (name ""))
   (add-arg req name ARG_OUT))
 
-(define-method op::add_named_out_arg ((req request) name)
+(define-method add_named_out_arg ((req request) name)
   (add-arg req name ARG_OUT))
 
 
