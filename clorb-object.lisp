@@ -106,12 +106,57 @@
 
 ;;;| boolean is_a (in string logical_type_id);
 
+(DEFINE-OPERATION CORBA::Object/_is_a
+  :ID "IDL:omg.org/CORBA/Object/_is_a:1.0"
+  :NAME "_is_a"
+  :DEFINED_IN CORBA:OBJECT
+  :VERSION "1.0"
+  :RESULT OMG.ORG/CORBA:TC_BOOLEAN
+  :MODE :OP_NORMAL
+  :CONTEXTS NIL
+  :PARAMETERS (("obj" :param_in CORBA:Tc_string))
+  :EXCEPTIONS NIL)
+
 (define-method _is_a ((obj t) interface-id)
   (declare (ignore interface-id))
   (raise-system-exception 'CORBA:no_implement 3 :completed_no))
 
 (define-method _is_a ((obj CORBA:Object) interface-id)
   (object-is-a obj interface-id))
+
+
+;;;| boolean	non_existent();
+;;; _non_existent in lisp mapping
+
+(define-method _non_existent ((obj t))
+  nil)
+
+
+(DEFINE-OPERATION CORBA::Object/_non_existent
+  :ID "IDL:omg.org/CORBA/Object/_non_existent:1.0"
+  :NAME "_non_existent"
+  :DEFINED_IN CORBA:OBJECT
+  :VERSION "1.0"
+  :RESULT OMG.ORG/CORBA:TC_BOOLEAN
+  :MODE :OP_NORMAL
+  :CONTEXTS NIL
+  :PARAMETERS NIL
+  :EXCEPTIONS NIL)
+
+
+
+;;;| boolean	is_equivalent (in Object other_object);
+;;; _is_equivalent in lisp mapping
+
+(define-method _is_equivalent ((obj t) other)
+  (eql obj other))
+
+
+
+;;; Deferred from Any
+
+(defmethod any-value ((obj corba:object))
+  obj)
 
 
 
@@ -161,6 +206,14 @@
   (marshal-sequence (raw-profiles objref) #'marshal-tagged-component buffer))
 
 
+(defgeneric profile-component (profile tag))
+
+(defmethod object-component ((obj CORBA:Proxy) tag)
+  (loop for profile in (object-profiles obj)
+        thereis (profile-component profile tag)))
+
+
+
 (defun get-object-connection (proxy)
   ;; get the connection to use for a proxy object.
   (let ((conn (object-connection proxy)))
@@ -192,12 +245,6 @@
          (setf (selected-profile proxy) profile)
          (return conn))))))
 
-
-;;;| boolean	is_equivalent (in Object other_object);
-;;; _is_equivalent in lisp mapping
-
-(define-method _is_equivalent ((obj t) other)
-  (eql obj other))
 
 (defgeneric profile-equal (profile1 profile2)
   (:method ((profile1 t) (profile2 t)) (eq profile1 profile2)))
@@ -239,7 +286,7 @@
   (declare (ignore ctx operation arg_list result req_flags))
   (raise-system-exception 'CORBA:NO_IMPLEMENT 4 :completed_no))
 
-(define-method _create_request ((obj CORBA:Object)
+(define-method _create_request ((obj CORBA:Proxy)
                                 ctx operation arg_list result req_flags)
   (declare (ignorable req_flags ctx))
   (check-type operation string)
@@ -257,28 +304,8 @@
                                  #| :ctx ctx |# )))
 
 
-(define-method _is_a ((obj CORBA:Proxy) interface-id)
-  (or (object-is-a obj interface-id)
-      (static-call ("_is_a" obj)
-                   :output ((buffer) (marshal-string interface-id buffer))
-                   :input ((buffer) (unmarshal-bool buffer)))))
 
 
-;;;| boolean	non_existent();
-;;; _non_existent in lisp mapping
-
-(define-method _non_existent ((obj t))
-  nil)
-
-(define-method _non_existent ((obj CORBA:Proxy))
-  ;;FIXME: Should perhaps send a "_non_existent" message to object ?
-  (eq (locate obj) :unknown_object ))
-
-
-;;; Deferred from Any
-
-(defmethod any-value ((obj corba:object))
-  obj)
 
 
 
