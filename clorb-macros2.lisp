@@ -199,22 +199,18 @@
 
 (defmacro static-call ((op obj) &key output input exceptions no-response)
   (let ((req '#:REQ) 
-        (status '#:status)
         (output-buf (or (caar output) '#:output-buf))
         (input-buf (or (caar input) '#:input-buf)))
-    `(loop
-       (let (,req)
-         (let (,output-buf)
-           ,@(if (and output-buf (null (cdr output)))
-               `((declare (ignorable ,output-buf))))
-           (multiple-value-setq (,req ,output-buf) (start-request ,op ,obj ,no-response))
-           ,@(cdr output))
-         (multiple-value-bind (,status ,input-buf) (invoke-request ,req)
-           (case ,status
-             (:no_exception
-              (return (values ,@(cdr input))))
-             (:user_exception
-              (process-exception ,input-buf ',exceptions))))))))
+    `(do-static-call
+      ,obj ,op ,(if no-response `(not ,no-response) t)
+      (lambda (,req ,output-buf)
+        (declare (ignorable ,output-buf ,req))
+        ,@(cdr output))
+      (lambda (,req ,input-buf)
+        (declare (ignorable ,input-buf ,req))
+        (values ,@(cdr input)))
+      (load-time-value
+       (mapcar #'symbol-typecode ',exceptions)))))
 
 
 ;;;; Interface

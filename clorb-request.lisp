@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.9 2004/01/21 17:48:32 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.10 2004/01/29 19:53:15 lenst Exp $
 
 (in-package :clorb)
 
@@ -11,6 +11,7 @@
   ())
 
 
+
 ;;;; Client-Request 
 
 (defclass client-request (CORBA:Request)
@@ -50,6 +51,15 @@
    (buffer
     :initarg :buffer                :initform nil
     :accessor request-buffer)
+   (output-func
+    :initarg :output-func           :initform 'dii-output-func
+    :accessor output-func)
+   (input-func
+    :initarg :input-func            :initform 'dii-input-func
+    :accessor input-func)
+   (error-handler
+    :initarg :error-handler         :initform 'dii-error-handler
+    :accessor error-handler)
    (exception
     :initarg :exception             :initform nil 
     :accessor request-exception
@@ -60,9 +70,11 @@
     :documentation "Valid exceptions")))
 
 
-(defmethod initialize-instance :before ((req client-request) &key (the-orb nil orb-p))
+(defmethod initialize-instance :before ((req client-request)
+                                        &key (the-orb nil orb-p))
   (declare (ignore the-orb))
   (unless orb-p (error ":the-orb not supplied to client-request")))
+
 
 (defgeneric create-client-request (orb &rest initargs))
 
@@ -85,7 +97,8 @@
 (define-method return_value ((r client-request))
   (let ((params (request-paramlist r)))
     (unless params
-      (setf params (list (CORBA:NamedValue :argument (CORBA:Any) :arg_modes ARG_OUT)))
+      (setf params (list (CORBA:NamedValue :argument (CORBA:Any)
+                                           :arg_modes ARG_OUT)))
       (setf (request-paramlist r) params))
     (let ((result (op:argument (first params))))
       (when (request-exception r)
@@ -131,6 +144,7 @@
   (push typecode (request-exceptions req)))
 
 
+
 ;; Used in stubs, shorter code then op:_create_request
 (defun request-create (obj operation result-type )
   (create-client-request
@@ -139,6 +153,9 @@
    :operation operation
    :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
                                       :argument (CORBA:Any :any-typecode result-type)))))
+
+
+;;;; Sending requests
 
 
 (defun request-start-request (req)
@@ -154,56 +171,70 @@
       (values conn))))
 
 
-(defun request-marshal-head (req)
+(defun static-error-handler (condition)
+  (error condition))
+
+
+(defun do-static-call (obj operation response-expected
+                       output-func input-func exceptions)
+  (let ((req (create-client-request
+              (the-orb obj)
+              :target obj
+              :operation operation
+              :response-expected response-expected
+              :exceptions exceptions
+              :output-func output-func
+              :input-func input-func 
+              :error-handler #'static-error-handler)))
+    (request-send req)
+    (when response-expected
+      (request-get-response req))))
+
+
+(defun request-invoke (req)
+  (request-send req)
+  (request-get-response req))
+
+
+(defun request-send (req)
+  (setf (request-status req) nil)
+  (setf (service-context-list req) nil)
   (let ((connection (request-start-request req)))
     (setf (request-id req) (next-request-id connection))
     (will-send-request (the-orb req) req)
-    (setf (request-buffer req) 
-          (connection-start-request
-           connection
-           (request-id req)
-           (service-context-list req)
-           (response-expected req)
-           (request-effective-profile req)
-           (request-operation req)))))
-
-
-(defun request-marshal (req)
-  (let ((buffer (request-marshal-head req)))
-    (loop for nv in (request-paramlist req)
-          when (/= 0 (logand ARG_IN (op:arg_modes nv)))
-          do (marshal-any-value (op:argument nv) buffer))))
-
-
-
-(defun send-request (req)
-  (let ((buffer (request-buffer req)))
-    (setf (request-buffer req) nil)
-    (setf (request-status req) nil)
-    (connection-send-request (request-connection req) buffer
-                             (if (response-expected req) req))))
+    (let ((buffer (connection-start-request
+                   connection
+                   (request-id req)
+                   (service-context-list req)
+                   (response-expected req)
+                   (request-effective-profile req)
+                   (request-operation req))))
+      (setf (request-buffer req) buffer)
+      (funcall (output-func req) req buffer) 
+      (setf (request-buffer req) nil)
+      (connection-send-request connection buffer
+                               (if (response-expected req) req)))))
 
 
 ;;; void send_oneway ()
 
 (define-method send_oneway ((req client-request))
   (setf (response-expected req) nil)  
-  (request-marshal req)
-  (send-request req))
+  (request-send req))
 
 
 ;;; void send_deferred ()
 
 (define-method send_deferred ((req client-request))
-  (request-marshal req)
-  (send-request req))
+  (request-send req))
 
 
 
-;;;; response
+
+;;;; Response handling
 
 
-(defun request-locate-repy (req status buffer)
+(defun request-locate-reply (req status buffer)
   (setf (request-status req) status)
   (setf (request-buffer req) buffer))
 
@@ -214,34 +245,47 @@
   (setf (reply-service-context req) service-context))
 
 
-(defun request-unmarshal-result (req buffer)
-  (loop for nv in (request-paramlist req)
-        when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
-        do (setf (any-value (op:argument nv))
-                 (unmarshal (any-typecode (op:argument nv)) buffer))))
-
-
-(defun request-exception-typecode (request id)
-  (find id (request-exceptions request)
-        :key #'op:id :test #'equal))
-
-
-(defun request-unmarshal-userexception (req buffer)
-  (let* ((id (unmarshal-string buffer))
-         (tc (request-exception-typecode req id)))
-    (setf (request-exception req) 
-          (if tc 
-            (unmarshal tc buffer)
-            (system-exception 'corba:unknown 1 :completed_yes)))))
-
-
-(defun request-unmarshal-systemexception (req buffer)
-  (setf (request-exception req) (unmarshal-systemexception buffer)))
-
-
 (defun request-wait-response (req)
   (orb-wait #'request-status req))
 
+
+(defun request-handle-error (req)
+  (has-received-other (the-orb req) req)
+  (funcall (error-handler req) (request-exception req)))
+
+
+(defun request-get-response (req)
+  (request-wait-response req)
+  (let ((buffer (request-buffer req)))
+    (case (request-status req)
+      (:error                             ; Communication error
+       (setf (request-status req) :system_exception)
+       (request-handle-error req))
+      (:user_exception
+       (let ((id (unmarshal-string buffer)))
+         (let ((tc (find id (request-exceptions req)
+                         :key #'op:id :test #'equal)))
+         (setf (request-exception req) 
+               (cond (tc (unmarshal tc buffer))
+                     (t
+                      (setf (request-status req) :system_exception)
+                      (system-exception 'corba:unknown 1 :completed_yes))))))
+       (request-handle-error req))
+      (:system_exception
+       (setf (request-exception req) (unmarshal-systemexception buffer))
+       (request-handle-error req))
+      (:location_forward
+       (setf (object-forward (request-target req))
+             (unmarshal-object buffer))
+       (has-received-other (the-orb req) req)
+       (request-invoke req))
+      (:no_exception
+       ;; FIXME: the has-received-reply should ideally be done after
+       ;; unmarshalling result, but then we can't simply return the
+       ;; result as we do here for static calls. The static call would
+       ;; have to cons a list of results..
+       (has-received-reply (the-orb req) req)
+       (funcall (input-func req) req buffer)))))
 
 
 ;;; void get_response () raises (WrongTransaction);
@@ -262,33 +306,8 @@
 ;; transaction context that differs from that of the request.
 
 (define-method op::get_response ((req client-request))
-  (loop 
-    (request-wait-response req)
-    (let ((buffer (request-buffer req)))
-      (unless buffer (return))
-      (let ((status (request-status req)))
-        (case status
-          (:location_forward
-           (setf (object-forward (request-target req))
-                 (unmarshal-object buffer))
-           (has-received-other (the-orb req) req)
-           (request-marshal req)
-           (send-request req))
-          (otherwise
-           (ecase status
-             (:no_exception 
-              (request-unmarshal-result req buffer)
-              (has-received-reply (the-orb req) req))
-             (:user_exception 
-              (request-unmarshal-userexception req buffer)
-              (has-received-exception (the-orb req) req))
-             (:system_exception
-              (request-unmarshal-systemexception req buffer)
-              (has-received-exception (the-orb req) req)))
-           (setf (request-buffer req) nil)
-           (return))))))
-    (values))
-
+  (request-get-response req)
+  (values))
 
 
 (define-method poll_response ((req client-request))
@@ -298,6 +317,7 @@
 
 
 ;;; void invoke ()
+
 (define-method op::invoke ((req client-request))
   (op:send_deferred req)
   (op:get_response req))
@@ -320,3 +340,23 @@
                                        (any-typecode (op:argument nv))))))
                   collect (any-value (op:argument nv))))))))
 
+
+(defun dii-output-func (req buffer)
+  (loop for nv in (request-paramlist req)
+        when (/= 0 (logand ARG_IN (op:arg_modes nv)))
+        do (marshal-any-value (op:argument nv) buffer)))
+
+
+(defun dii-input-func (req buffer)
+  (loop for nv in (request-paramlist req)
+        when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
+        do (setf (any-value (op:argument nv))
+                 (unmarshal (any-typecode (op:argument nv)) buffer))))
+
+
+(defun dii-error-handler (condition)
+  (declare (ignore condition)))
+
+
+
+;;; clorb-request.lisp ends here
