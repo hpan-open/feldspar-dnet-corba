@@ -16,7 +16,7 @@
           (conn (make-instance 'connection
                   :orb (CORBA:ORB_init)
                   :io-descriptor (make-io-descriptor
-                                  :shortcut-p t
+                                  :shortcut-p (make-io-descriptor)
                                   :stream (make-instance 'shortcut-stream
                                             :output (make-instance 'octets-stream))))))
       

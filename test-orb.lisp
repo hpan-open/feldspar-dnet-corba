@@ -37,6 +37,22 @@
               (ensure-equalp (oid-to-string 
                               (iiop-profile-key (first (object-profiles obj))))
                              n)))))
+
+
+  (define-test "Initializing port and host"
+    (let ((orb (CORBA:ORB_init)))
+      (let ((host (orb-host orb))
+            (port (orb-port orb)))
+        (unwind-protect
+          (progn (CORBA:ORB_init
+                  '("-ORBPort 98" "-ORBHostname lagostz")
+                  "")
+                 (ensure-pattern* orb
+                                  'orb-host "lagostz"
+                                  'orb-port 98))
+          (setf (orb-host orb) host
+                (orb-port orb) port)))))
+  
   
   (define-test "Resolve corbaname URL"
     (let ((orb (make-instance 'test-orb)))

@@ -121,7 +121,7 @@
                   (:is_truncatable :optional nil)
                   (:supported_interfaces :optional nil)
                   (:abstract_base_values :required (omg.org/root::abv))
-                  (:members :optional (("a" (symbol-typecode 'omg.org/root::v) ,corba:public_member))))
+                  (:members :optional (("a" (%symbol-typecode omg.org/root::v) ,corba:public_member))))
                 &rest nil)))))
 
 
