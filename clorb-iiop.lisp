@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.1 2001/07/02 16:55:29 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.2 2001/12/16 22:47:23 lenst Exp $
 
 (in-package :clorb)
 
@@ -180,7 +180,7 @@
             ((4) #'get-response-locate-reply)
             ((5)                        ;Close Connection
              (mess 3 "Connection closed")
-             ;; FIXME: shoul initiated cleaning up conn...
+             ;; FIXME: should initiated cleaning up conn...
              ;; all wating requests get some system exception
              (connection-error conn)
              nil)
@@ -284,7 +284,8 @@
     (return-from orb-wait))
 
   (multiple-value-bind (event desc) (io-driver)
-    (mess 3 "~S ~S~%" event (type-of desc))
+    (when event
+      (mess 2 "io-event: ~S ~S~%" event (type-of desc)))
     (let ((conn (gethash desc *desc-conn*)))
       (case event
         (:read-ready

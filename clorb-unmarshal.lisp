@@ -249,7 +249,7 @@
        (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
       ((:tk_struct)
-       (make-struct-internal 
+       (make-struct-internal
         (first params) 
         (map 'list (lambda (nt-pair)
                      (cons (lispy-name (first nt-pair))
