@@ -85,7 +85,7 @@
 (defun ensure-pattern (obj pattern)
   (handler-case 
     (match pattern obj)
-    (match-fail (c) (tc-report "~A" (match-fail-message c)))))
+    (match-fail (c) (tc-report "~A" c))))
 
 (defmacro ensure-pattern* (obj &rest args)
   `(ensure-pattern ,obj (pattern ,@args)))

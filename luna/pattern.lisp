@@ -6,12 +6,15 @@
 
 (define-condition match-fail (warning)
                   ((object :initarg :object :reader match-fail-object)
-                   (message :initarg :message :reader match-fail-message))
+                   (message :initarg :message :reader match-fail-message)
+                   (inside :initarg :indside  :initform nil :accessor match-fail-inside))
   (:report print-match-fail))
 
 (defun print-match-fail (condition stream)
-  (format stream "IR object ~S : ~A" (match-fail-object condition)
-          (match-fail-message condition)))
+  (format stream "object ~S : ~A~@[ in ~S~]" 
+          (match-fail-object condition)
+          (match-fail-message condition)
+          (match-fail-inside condition)))
 
 (defvar *failed-match-warning* t)
 
@@ -101,15 +104,21 @@
   (if (consp pattern)
     (progn
       (unless (consp object)
-        (fail-match object "not a cons"))
-      (case (car pattern)
-        (&key (match-keys (cdr pattern) object))
-        (&any (match-sexp (cdr pattern) (cdr object)))
-        (&rest (map nil (lambda (obj) (match-sexp (second pattern) obj)) object))
-        (&any-rest)
-        (otherwise
-         (progn (match-sexp (car pattern) (car object))
-                (match-sexp (cdr pattern) (cdr object))))))
+        (fail-match object "not a cons (pattern ~S)" pattern))
+      (handler-case
+        (case (car pattern)
+          (&key (match-keys (cdr pattern) object))
+          (&any (match-sexp (cdr pattern) (cdr object)))
+          (&rest (map nil (lambda (obj) (match-sexp (second pattern) obj)) object))
+          (&any-rest)
+          (otherwise
+           (progn (match-sexp (car pattern) (car object))
+                  (match-sexp (cdr pattern) (cdr object)))))
+        
+        (match-fail (condition)
+                    (when (tailp (match-fail-inside condition) object)
+                      (setf (match-fail-inside condition) object))
+                    (signal condition))))
     (match pattern object)))
   
 (defun match-keys (keys list)
