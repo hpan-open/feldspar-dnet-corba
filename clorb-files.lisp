@@ -3,24 +3,24 @@
 
 (defparameter *base-files*
   '(("clorb-pkgdcl")
-    ("clorb-macros" t)
     "clorb-options"
     "clorb-supp"
-    "socket"
+    ("clorb-macros" t)
+    "clorb-sysdep"
     "clorb-basetypes"
     ("clorb-exceptions" t)
-    "clorb-object"
     ("clorb-typecode" t)
-    "clorb-any"
     ("clorb-struct" t)
     "clorb-union"
+    "clorb-any"
+    "clorb-object"
     ("clorb-buffer" t)
     "clorb-marshal"
-    ("clorb-unmarshal" t)
+    ("clorb-unmarshal" )
     ("clorb-opdef" t)
-    "clorb-client"
+    "clorb-io"
+    "clorb-iiop"
     "clorb-orb"
-    "clorb-request"
     ("clorb-iir" t)
     "clorb-util"
     "dumpir"))
@@ -36,7 +36,7 @@
 
 
 (defparameter *x-files*
-  '("test-suite"
+  '(;"test-suite"
     ;; Experimental
     "orb-export"
     "orb-structs"
@@ -49,7 +49,7 @@
     "cosnaming-stub"
     "cosnaming-skel"
     "pns-server"
-    "ec-server"
+    ;"ec-server"
     ;; Example
     "hello-idl"
     "hello-server"
@@ -93,4 +93,26 @@
 (defun reload ()
   (compile-changed (append *base-files*
                            *server-files*
-                           *x-files*)))
+                           *x-files*
+)))
+
+
+(defun acl-defsys ()
+  (format t "(defsystem :clorb ()~%")
+  (let ((groups '((base . *base-files*)
+                  (server . *server-files*)
+                  (x-files . *x-files*))))
+    (format t "~2t(:definitions (:serial . ~S)~%~8t(:serial . ~A))~%"
+            '("clorb-pkgdcl" "clorb-macros")
+            (mapcar 'car groups))
+    (loop
+     for (name . var) in groups
+     do (format t "~&~2t(:module-group ~A~%~4t(:serial ~{~14,1t~S~^~%~}))"
+                name
+                (mapcar (lambda (x)
+                          (if (consp x)
+                              (car x)
+                              x))
+                        (symbol-value var)))))
+  (format t ")~%"))
+

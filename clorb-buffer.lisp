@@ -47,7 +47,7 @@
 
 (defun get-work-buffer ()
   (make-buffer
-   :octets (make-array 200
+   :octets (make-array 2000
                        :adjustable t
                        :fill-pointer 0
                        :element-type 'CORBA:octet)))
