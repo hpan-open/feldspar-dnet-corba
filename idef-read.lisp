@@ -201,38 +201,14 @@
 (define-method defined_in ((r repository))
   nil)
 
-(defun lookup-name-in (container qname
-                       &optional (default nil no-error-p))
+(defun lookup-name-in (container qname &optional (default nil no-error-p))
   "Find an object given its qualified name"
-  (let ((parts (parse-name qname))
-        (start-container container))
-    (when (eql :absolute (car parts))
-      (setq start-container (repository-of container)
-            parts (cdr parts))
-      (unless parts (error "Illegal name: ~A" qname)))
-    (let ((object
-           (loop
-               for container = start-container then (op::defined_in container)
-               while container
-               thereis (op::lookup container (car parts)))))
-      ;; FIXME: if object still nil, should the name be looked up in
-      ;; the CORBA module?
-      (loop while object
-          do (setq parts (cdr parts))
-          while parts
-          do (setq object (op::lookup object (car parts))))
-      (if object
-          object
-        (if no-error-p
-            default
-          (error "Name '~A' (of '~A') not found" (car parts) qname))))))
-
-
-(defun repository-of (container)
-  ;; FIXME: what about attribute containing_repository
-  (loop while (not (typep container 'repository))
-      do (setf container (op:defined_in container)))
-  container)
+  (let ((object (op:lookup container qname)))
+    (if object
+      object
+      (if no-error-p
+        default
+        (error "Name '~A' not found" qname)))))  
 
 (defun parse-name (name)
   (loop with parts = '()
