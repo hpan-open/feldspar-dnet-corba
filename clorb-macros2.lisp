@@ -181,8 +181,8 @@ Members: (name typecode)*"
 (defmacro static-call ((op obj) &key output input exceptions)
   (let ((req '#:REQ) 
         (status '#:status)
-        (output-buf (caar output))
-        (input-buf (caar input)))
+        (output-buf (or (caar output) '#:output-buf))
+        (input-buf (or (caar input) '#:input-buf)))
     `(loop
        (let (,req)
          (let (,output-buf)
