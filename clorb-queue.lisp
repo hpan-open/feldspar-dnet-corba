@@ -31,3 +31,13 @@
          (let ((new (cons object (cdr queue))))
            (setf (cdr queue) new)
            new))))
+
+
+(defun queue-memeber-p (queue item)
+  (and queue
+       (let ((pos queue))
+         (loop (when (eql item (car queue))
+                 (return t))
+               (setq pos (cdr pos))
+               (when (eql pos queue)
+                 (return nil))))))

@@ -29,6 +29,23 @@
     request))
 
 
+(defun test-poa-dispatch (poa &key operation oid args (kind :normal)
+                              (request nil request-p)
+                              poa-spec)
+  (let ((buffer (get-work-buffer (the-orb poa))))
+    (unless request-p
+      (setq request
+            (create-server-request 
+             (the-orb poa)
+             :state :wait  :request-id 1  :connection *test-in-conn*
+             :operation operation :kind kind  :response-flags 1
+             :input buffer :object-id oid :poa-spec poa-spec)))
+    (dolist (a args)
+      (marshal-any-value a buffer))
+    (poa-dispatch poa request)
+    request))
+
+
 (defclass null-servant (portableserver:servant) ())
 (defmethod interface-name ((self null-servant)) 'CORBA:Object)
 
@@ -230,5 +247,33 @@
              `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
       (op:deactivate (omg.org/features:the_poamanager poa) t t)
       (ensure-eql (slot-value activator 'etheralize-called) 1)))
+
+
+  (define-test "Hold and activate"
+    (let* ((poa-1 (op:create_POA root-poa "a1" nil nil))
+           (poa-2 (op:create_POA root-poa "a2" (op:the_poamanager poa-1) nil)))
+      (op:activate (op:the_poamanager root-poa))
+      (op:hold_requests (op:the_poamanager poa-1) nil)
+      (let ((r1 (test-poa-dispatch root-poa :operation "foo" :poa-spec '("a1")))
+            (r2 (test-poa-dispatch root-poa :operation "foo" :poa-spec '("a2"))))
+        (ensure-eql (request-state r1) :wait)
+        (ensure-eql (request-state r2) :wait)
+        (ensure (queue-memeber-p (poa-request-queue poa-1) r1))
+        (ensure (queue-memeber-p (poa-request-queue poa-2) r2))
+        (op:activate (op:the_poamanager poa-1))
+        ;; orb-wait ??
+        (ensure-eql (request-state r1) :finished)
+        (ensure-eql (request-state r2) :finished))))
+
+  (define-test "Hola and discard"
+    (let* ((oid #(1))
+           (proxy (op:activate_object_with_id root-poa oid (make-instance 'null-servant)))
+           (r1 (test-poa-dispatch root-poa :operation "_is_a" :args '("foo") :oid oid)))
+      (ensure-eql (request-state r1) :wait)
+      (op:discard_requests (op:the_poamanager root-poa) t)
+      (ensure-pattern* r1
+                       'request-state :finished
+                       'request-exception (pattern 'identity (isa 'CORBA:TRANSIENT)
+                                                   'system-exception-minor (std-minor 1)))))
 
 #| end suite |# )

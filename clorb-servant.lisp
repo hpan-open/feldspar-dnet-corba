@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.19 2004/12/28 00:05:16 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.20 2004/12/31 10:43:51 lenst Exp $
 
 (in-package :clorb)
 
@@ -192,12 +192,17 @@
          (make-locate-reply req :unknown_object))
         (t
          (set-request-exception req condition)
-         (setf (request-status req) :system_exception)
+         (setf (request-state req) :system_exception)
          (let ((buffer (get-request-response req :system_exception)))
            (marshal-string (exception-id condition) buffer)
            (marshal-ulong  (system-exception-minor condition) buffer)
            (%jit-marshal (system-exception-completed condition) CORBA::TC_completion_status buffer))))
   (send-response req))
+
+
+(defun discard-request (req)
+  (server-request-systemexception-reply 
+   req (system-exception 'CORBA:TRANSIENT 1 :completed_no)))
 
 
 

@@ -52,6 +52,7 @@
    (:file "clorb-trie")
    (:file "clorb-aom")
    (:file "clorb-poa-base")
+   (:file "clorb-queue")
    (:file "clorb-poa")
    (:file "clorb-srv")
    (:file "clorb-ifr-info")

@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.32 2004/12/28 00:05:24 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.33 2004/12/31 10:43:51 lenst Exp $
 
 (in-package :clorb)
 
@@ -105,6 +105,20 @@
   ;; threaded it should not be much of an issue.
   t)
 
+
+(defmethod poa-new-state ((poa portableserver:poa) new-state)
+  (setf (poa-state poa) new-state)
+  (case new-state
+    ((:active) 
+     (loop (multiple-value-bind (req found) (deqf (poa-request-queue poa))
+             (unless found (return))
+             (poa-dispatch poa req))))
+    ((:discarding)
+     (loop (multiple-value-bind (req found) (deqf (poa-request-queue poa))
+             (unless found (return))
+             (discard-request req))))))
+
+
 
 ;;;; PortableServer::Current
 
@@ -197,8 +211,9 @@
     (let ((old-state state))
       (setf state new-state)
       (unless (eql new-state old-state)
-        (when etheralize-objects
-          (dolist (poa (managed-poas pm))
+        (dolist (poa (managed-poas pm))
+          (poa-new-state poa new-state)
+          (when etheralize-objects
             (start-etheralize poa))))))
   (when wait-for-completion
     (dolist (poa (managed-poas pm))
@@ -261,6 +276,7 @@
 (defun unregister-poa (poa)
   (remhash (poa-poaid poa) *poa-map*))
 
+#+unused-function
 (defun decode-object-key-poa (objkey)
   (multiple-value-bind (type poaid oid)
       (decode-object-key objkey)
@@ -343,12 +359,12 @@
     (or (find-child)
         (and activate-it
              (op:the_activator poa)
+             ;; if no activator OBJECT_NOT_EXIST systemexceptionwithstandardminorcode2. 
              (handler-case
                (if (or (not check-poa-status)
-                             (eql :active (poa-effective-state poa)))
-                       ;; FIXME: check result of 
-                       (progn (op:unknown_adapter (op:the_activator poa) poa name)
-                              (find-child))
+                       (eql :active (poa-effective-state poa)))
+                       (and (op:unknown_adapter (op:the_activator poa) poa name)
+                            (find-child))
                        :wait )
                (CORBA:SystemException () (raise-system-exception 'CORBA:OBJ_ADAPTER 1 )))))))
 
@@ -762,7 +778,7 @@ POA destruction does not occur.
            (cond ((eql next-poa :wait)
                   (values poa poa-spec))
                  ((null next-poa)
-                  (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no))
+                  (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 2 :completed_no))
                  (t
                   (poa-locate next-poa (cdr poa-spec))))))))
 
