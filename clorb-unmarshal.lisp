@@ -3,6 +3,7 @@
 (in-package :clorb)
 
 
+(declaim (ftype (function (buffer) octet) unmarshal-octet))
 (defun unmarshal-octet (buffer)
   (declare (type buffer buffer)
            (optimize speed (debug 0)))
@@ -65,7 +66,8 @@
 
 (defun unmarshal-ulong (buffer)
   (declare (optimize speed))
-  (unmarshal-number 4 nil buffer))
+  (the CORBA:ULong
+      (unmarshal-number 4 nil buffer)))
 
 (defun unmarshal-long (buffer)
   (unmarshal-number 4 t buffer))
@@ -84,10 +86,13 @@
                         (funcall el-reader buffer)))
 
 (defun unmarshal-string (buffer)
+  (declare (optimize speed)
+           (type buffer buffer))
   (loop with len = (1- (unmarshal-ulong buffer))
 	with r = (make-string len)
 	for i from 0 below len
-	do (setf (char r i) (unmarshal-char buffer))
+	do (setf (char r (the buffer-index i))
+                 (the character (unmarshal-char buffer)))
 	finally (progn
 		  (unmarshal-octet buffer)
 		  (return r))))
@@ -210,6 +215,7 @@
 ;;; Main entry
 
 (defun unmarshal (type buffer)
+  (declare (optimize (speed 2)))
   (multiple-value-bind (kind params) 
       (type-expand type)
     (case kind
