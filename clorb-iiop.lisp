@@ -249,7 +249,7 @@
 
 ;;;; IIOP - Response handling
 
-(defconstant +message-types+
+(defparameter +message-types+
   '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
               :CLOSECONNECTION :MESSAGEERROR))
 
