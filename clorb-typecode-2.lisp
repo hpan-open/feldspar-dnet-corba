@@ -7,7 +7,9 @@
 
 (define-typecode null-typecode
   :kind :tk_null
-  :constant corba:tc_null)
+  :constant corba:tc_null 
+  :marshal 'marshal-void
+  :unmarshal 'unmarshal-void)
 
 (define-typecode void-typecode
   :kind :tk_void
@@ -519,22 +521,6 @@
 (DEFCONSTANT OMG.ORG/CORBA:VM_ABSTRACT (QUOTE 2))
 (DEFCONSTANT OMG.ORG/CORBA:VM_CUSTOM (QUOTE 1))
 (DEFCONSTANT OMG.ORG/CORBA:VM_NONE (QUOTE 0))
-
-(defun create-value-tc (id name type-modifier concrete-base members)
-  "members: (name type visibility)*"
-  (check-type id string)
-  (check-type name string)
-  (check-type type-modifier fixnum) ; ValueModifier
-  (check-type concrete-base (or null CORBA:TypeCode))
-  (check-type members sequence)
-  (map nil (lambda (m)
-             (check-type m 
-                         (cons string 
-                               (cons CORBA:TypeCode (cons fixnum null)))))
-       members)
-  (make-typecode :tk_value id name type-modifier concrete-base
-                 (coerce members 'vector)))
-
 
 
 ;;;; Convenience ?
