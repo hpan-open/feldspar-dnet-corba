@@ -73,10 +73,44 @@
 ;;;; Easy name service access
 
 (defun ns-name (names)
-  (map 'vector 
-    (lambda (id) (make-struct "IDL:omg.org/CosNaming/NameComponent:1.0"
-                              :id id :kind ""))
-    names))
+  (loop for ns in names
+        append (ns-name1 ns)))
+
+(defun ns-name1 (namestring)
+  (let ((name nil)
+        (id (make-array 50 :fill-pointer 0 :adjustable t
+                        :element-type 'character))
+        (kind (make-array 50 :fill-pointer 0 :adjustable t
+                          :element-type 'character)))
+    (loop for c across (concatenate 'string namestring ";")
+          with state = 0 do
+          (cond
+            ((eql c #\;)
+             (push (make-struct "IDL:omg.org/CosNaming/NameComponent:1.0"
+                                :id (copy-seq id) :kind (copy-seq kind))
+                   name)
+             (setf (fill-pointer id) 0
+                   (fill-pointer kind) 0)
+             (setq state 0))
+            (t
+             (ecase state
+               (0 (cond ((eql c #\&) (setq state 1))
+                        (t (vector-push-extend c id))))
+               (1 (cond ((eql c #\&) 
+                         (vector-push-extend c id)
+                         (setq state 0))
+                        (t
+                         (vector-push-extend c kind)
+                         (setq state 2))))
+               (2 (cond ((eql c #\&) (setq state 3))
+                        (t (vector-push-extend c kind))))
+               (3 (cond ((eql c #\&)
+                         (vector-push-extend c kind)
+                         (setq state 2))
+                        (t (error "Name syntax error"))))))))
+    (nreverse name)))
+
+
 
 (defun get-ns ()
   (object-narrow
