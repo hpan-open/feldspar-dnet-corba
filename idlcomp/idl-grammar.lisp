@@ -321,7 +321,7 @@
 	(27 const_dcl
 	    (( T_CONST const_type T_IDENTIFIER T_EQUAL const_exp) 
              (lambda (t_const typ id t_equal expr) 
-               (list 'define-constant id typ (eval expr)))))  
+               (list 'define-constant id typ expr))))  
 					;
 
 	(28 const_type

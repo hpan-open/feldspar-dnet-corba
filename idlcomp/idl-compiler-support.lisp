@@ -28,17 +28,12 @@
 
 ; simple 
 (defun string->string (str)
-  (subseq str 1 (1- (length str))))
+  (list 'string 
+        (subseq str 1 (1- (length str)))))
 
 (defun string->char (str)
   (char str 1))
 
-
-(defun << (int n)
-  (ash int n))
-
-(defun >> (int n)
-  (ash (logand int #xFFFFFFFF) (- n)))
 
 ;
 (defun idl-expand (l pos)
