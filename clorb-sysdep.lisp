@@ -346,7 +346,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (%SYSDEP
    "file descriptor for listener socket"
    #+clorb::db-sockets `(sockets:socket-file-descriptor ,socket)
-   #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)) )
+   #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)
    #+cmu18 socket))
 
 (defmacro select-add-listener (select-obj socket)
