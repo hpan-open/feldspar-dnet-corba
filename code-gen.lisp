@@ -104,8 +104,29 @@
 
 (defmethod gen-type ((obj primitive-def))
   (ecase (op:kind obj)
+    ;;(:pk_null 'CORBA:null)
     (:pk_short 'CORBA:short)
-    (:pk_string 'CORBA:string)))
+    (:pk_long 'CORBA:long)
+    (:pk_ushort 'CORBA:ushort)
+    (:pk_ulong 'CORBA:ulong)
+    (:pk_float 'CORBA:float)
+    (:pk_double 'CORBA:double)
+    (:pk_boolean 'CORBA:boolean)
+    (:pk_char 'CORBA:char)
+    (:pk_octet 'CORBA:octet)
+    (:pk_any 'CORBA:any)
+    (:pk_TypeCode 'CORBA:TypeCode)
+    (:pk_string 'CORBA:string)
+    (:pk_objref 'CORBA:Object)
+    (:pk_longlong 'CORBA:longlong)
+    (:pk_ulonglong 'CORBA:ulonglong)
+    ;;(:pk_longdouble 'CORBA:longdouble)
+    (:pk_wchar 'CORBA:wchar)
+    ;;(:pk_wstring 'CORBA:wstring)
+))
+
+
+
 
 (defmethod gen-type ((obj sequence-def))
   `sequence)
