@@ -2,7 +2,45 @@
 
 (in-package :clorb)
 
-(defvar *repositories* '())
+
+;;;; Accessing Interface Repositories
+
+(defclass repository-facade (CORBA:Repository)
+  ((loaded-idl-repositories 
+    :initform (make-hash-table :test #'equal)
+    :accessor loaded-idl-repositories)
+   (repository-list
+    :initarg :repository-list
+    :initform '()
+    :accessor repository-list)))
+
+
+(defvar *internal-interface-repository* (make-instance 'repository-facade))
+
+(defun map-repositories (proc facade)
+  (loop for rep being the hash-values of (loaded-idl-repositories facade)
+        do (funcall proc rep))
+  (loop for candidate in (repository-list facade)
+        for rep = (if (symbolp candidate)
+                    (symbol-value candidate)
+                    candidate)
+        do (funcall proc rep)))
+
+(define-method lookup_id ((rep repository-facade) id)
+  (block search-loop
+    (map-repositories 
+     (lambda (r)
+       (let ((obj (op:lookup_id r id)))
+         (when obj (return-from search-loop obj)))) 
+     rep)))
+
+
+(defmethod add-repository ((facade repository-facade) repository-or-symbol)
+  (pushnew repository-or-symbol (repository-list facade)))
+
+(defmethod add-idl-repository ((facade repository-facade) file repository)
+  (setf (gethash file (loaded-idl-repositories facade))
+        repository))
 
 
 ;;;; file URL
@@ -75,8 +113,7 @@
   (let ((effective-id (proxy-id object)))
     (or (find-opdef *object-interface* op)
         (find-opdef (or (known-interface effective-id)
-                        (loop for rep in *repositories*
-                              thereis (op:lookup_id (if (symbolp rep) (symbol-value rep) rep) effective-id))
+                        (op:lookup_id *internal-interface-repository* effective-id)
                         (object-interface object)
                         (get-interface effective-id)) 
                     op))))
@@ -159,11 +196,23 @@ The list free operation is used to free the returned information.
 
 
 
+(defvar *pre-narrowed-ns* nil)
+(defvar *narrowed-ns* nil)
+
 (defun get-ns ()
   (let ((ns (op:resolve_initial_references (orb_init) "NameService")))
-    (typecase ns
-      (cosnaming:namingcontext ns)
-      (t (object-narrow ns 'cosnaming:namingcontext)))))
+    (cond ((and (eq ns *pre-narrowed-ns*)
+                *narrowed-ns*)
+           *narrowed-ns*)
+          (t
+           (setq *pre-narrowed-ns* ns
+                 *narrowed-ns* nil)
+           (typecase ns
+             (cosnaming:namingcontext ns)
+             (t
+              (or
+               (setq *narrowed-ns* (object-narrow ns 'cosnaming:namingcontextext t))
+               (setq *narrowed-ns* (object-narrow ns 'cosnaming:namingcontext)))))))))
 
 (defun resolve (&rest names)
   (op:resolve (get-ns) (ns-name* names)))
