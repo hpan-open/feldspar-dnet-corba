@@ -106,6 +106,20 @@
                           (parse-type-in container (second x))))
                   members))))))
 
+(defmethod idef-read-part ((op (eql 'define-union)) sexp container)
+  (destructuring-bind (name discriminator-type members &key version id) sexp
+    (setq name (string name))
+    (let ((def (make-instance-in container 'union-def
+                                 :name name :version version :id id)))
+      (lambda ()
+        (setf (op:discriminator_type_def def) (parse-type-in container discriminator-type))
+        (setf (op:members def)
+          (mapcar (lambda (x)
+                    (destructuring-bind (label name type) x
+                      (CORBA:UnionMember :name (string name)
+                                         :label label
+                                         :type_def (parse-type-in container type))))
+                  members))))))
 
 (defmethod idef-read-part ((op (eql 'define-exception)) sexp container)
   (destructuring-bind (name members &key version id) sexp

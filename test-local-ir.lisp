@@ -63,6 +63,30 @@
         (ensure-equalp (op:lookup module "fie") nil)))
 
 
+  (define-test "UnionDef"
+    (let* ((id "IDL:foo/Union:1.1")
+           (name "aunion") (version "1.1")
+           (desc-type a-ulong)
+           (members (list (CORBA:UnionMember :name "aa"
+                                             :label 1
+                                             :type_def a-string)
+                          (CORBA:UnionMember :name "bb"
+                                             :label 2
+                                             :type_def a-ulong)))
+           (obj (op:create_union repository id name version desc-type members)))
+      (ensure-equalp (op:id obj) id)
+      (ensure-equalp (op:version obj) version)
+      (ensure-equalp (length (op:members obj)) (length members))
+      (ensure-equalp (omg.org/features:member_count (op:type obj))
+                     (length members))
+      (ensure-equalp (op:kind (omg.org/features:discriminator_type obj))
+                     :tk_ulong)
+      ;; update
+      (setf (omg.org/features:discriminator_type_def obj)
+            (op:get_primitive repository :pk_ushort))
+      (ensure-equalp (op:kind (omg.org/features:discriminator_type obj))
+                     :tk_ushort)))
+      
   (define-test "EnumDef"
     (let ((obj (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
       (ensure-eql (op:lookup repository "foo") obj)

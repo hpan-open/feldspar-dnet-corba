@@ -1,6 +1,6 @@
 (in-package :clorb)
 
-(define-test-suite "IDEF Read Test" () 
+(define-test-suite "IDEF Read Test"
   (variables 
     (r (make-instance 'repository)))
 
@@ -79,11 +79,13 @@
   (define-test "Read Union"
     (idef-read '((define-union "MyUnion" long
                    ((0 "foo" string)
-                    (1 "bar" long))
-                   ))
+                    (1 "bar" long))))
                r)
-    ;;FIXME
-    (ensure (op:lookup r "MyUnion")))
+    (ensure (op:lookup r "MyUnion"))
+    (let ((obj (op:lookup r "MyUnion")))
+      (ensure-equalp (op:member_count (op:type obj)) 2)
+      (ensure-equalp (op:name (elt (op:members obj) 1))
+                     "bar")))
 
   (define-test "Read Attribute"
       (let ((r (make-instance 'repository)))
