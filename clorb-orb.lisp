@@ -5,8 +5,6 @@
 (defvar *orb-class* 'clorb-orb
   "The class (name) of the ORB instantiated by CORBA:ORB_init.")
 
-(defvar *the-orb* nil)
-
 (defvar *orb-initializers* nil)
 
 
@@ -31,11 +29,12 @@
    (initial-references :initform '()
                        :accessor orb-initial-references)
    (default-initial-reference
-    :initform nil
-    :accessor orb-default-initial-reference)
+     :initform nil
+     :accessor orb-default-initial-reference)
    (pending-client-request
     :initform nil
-    :accessor pending-client-request)))
+    :accessor pending-client-request)
+   (work-queue  :initform nil  :accessor work-queue)))
 
 
 
@@ -60,6 +59,13 @@
     :the-orb orb
     :profiles profiles
     :raw-profiles raw-profiles ))
+
+
+;;; Work Queue
+
+(defmethod enqueu-work ((orb clorb-orb) thunk)
+  (setf (work-queue orb)
+        (nconc (work-queue orb) (list thunk))))
 
 
 (defmethod add-pending-client-request ((orb clorb-orb) client-request)
@@ -227,14 +233,16 @@
 ;;;    boolean work_pending(  );
 
 (define-method work_pending ((orb orb))
-  (io-work-pending-p))
+  (or (io-event-waiting-p)
+      (work-queue orb)
+      (progn (io-driver t) (io-event-waiting-p))))
 
 
 ;;;    void perform_work( );
 
 (define-method perform_work ((orb orb))
   (let ((*running-orb* t))
-    (orb-work t)))
+    (orb-work orb t t)))
 
 
 ;;;    void run();
@@ -248,7 +256,7 @@
     (unwind-protect 
       (let ((*running-orb* t))
         (loop while (orb-active orb)
-              do (orb-work nil)))
+              do (orb-work orb t nil)))
       (setq *running-orb* old))))
 
 
@@ -906,7 +914,3 @@
 
 (defmethod the-orb ((obj CORBA:Object))
   *the-orb*)
-
-(defmethod the-orb ((obj buffer))
-  (or (buffer-orb obj)
-      *the-orb*))
