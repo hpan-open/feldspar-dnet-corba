@@ -13,6 +13,9 @@
              "Typecode ~A equal to ~A" obj type))))
 
 
+(defmethod match ((pattern corba:typecode) object)
+  (boolean-match pattern object (op:equal object pattern)))
+
 
 
 ;;;; IR Definition Pattern

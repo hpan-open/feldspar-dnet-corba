@@ -1,3 +1,8 @@
+2003-09-23  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-marshal.lisp (marshal-float, marshal-double,
+	marshal-longdouble): new funcs 
+
 2003-08-13  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (pathname-url): handle logical pathnames and

@@ -79,7 +79,7 @@
            (obj (op:create_union repository id name version desc-type members)))
       (ensure-pattern obj (def-pattern :dk_union
                             'op:id id  'op:version version
-                            'op:members (seq-pattern (pattern 'op:name "aa"
+                            'op:members (sequence-pattern (pattern 'op:name "aa"
                                                               'op:label (pattern 'any-value 1)
                                                               'op:type_def a-string
                                                               'op:type corba:tc_string )
@@ -153,7 +153,7 @@
                      'op:id "IDL:my/Exception:1.0"
                      'op:type (pattern 'op:kind :tk_except 
                                        'op:member_count (length members))
-                     'op:members (seq-pattern (pattern 'op:type corba:tc_string)
+                     'op:members (sequence-pattern (pattern 'op:type corba:tc_string)
                                               (pattern 'op:type corba:tc_ulong))
                      'op:describe (struct-pattern
                                    'struct-class-name 'CORBA:Contained/Description
@@ -217,7 +217,7 @@
        "Interface::Op1" (def-pattern :dk_operation
                           'identity obj
                           'op:result corba:tc_ulong
-                          'op:params (seq-pattern (pattern 'op:name "a"
+                          'op:params (sequence-pattern (pattern 'op:name "a"
                                                            'op:type corba:tc_string))
                           'op:describe (struct-pattern
                                         'op:kind :dk_operation

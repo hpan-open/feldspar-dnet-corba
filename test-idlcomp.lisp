@@ -23,10 +23,9 @@
 (defmacro define-idl-test (name idl &rest pattern)
   `(define-test ,name 
      (let ((repository (repository-from-string ,idl)))
-       (handler-case 
-         (match (make-instance 'repository-pattern :args (list ,@pattern))
-                repository)
-         (match-fail (c) (tc-report "~A" (match-fail-message c)))))))
+       (ensure-pattern repository
+                       (make-instance 'repository-pattern :args (list ,@pattern))))))
+
 
 
 (define-test-suite "idlcomp"
@@ -193,7 +192,7 @@ typedef long a[y];
     "Bar::foo" (def-pattern :dk_struct
                  'op:name "foo"
                  'op:absolute_name "::Bar::foo"
-                 'op:members (seq-pattern  
+                 'op:members (sequence-pattern  
                               (struct-pattern 'struct-class-name 'omg.org/corba:structmember
                                               'op:name "x"
                                               'op:type CORBA:tc_long
@@ -213,7 +212,7 @@ typedef long a[y];
    case FALSE: unsigned long y; };"
     "u" (def-pattern :dk_union
           'op:discriminator_type_def (def-pattern :dk_primitive 'op:kind :pk_boolean)
-          'op:members (seq-pattern 
+          'op:members (sequence-pattern 
                        (struct-pattern 'op:name "x" 
                                        'op:label (pattern 'any-value t))
                        (struct-pattern 'op:name "y"
@@ -230,7 +229,7 @@ typedef long a[y];
     ;;
     "u" (def-pattern :dk_union
           'op:discriminator_type_def (def-pattern :dk_primitive 'op:kind :pk_long)
-          'op:members (seq-pattern 
+          'op:members (sequence-pattern 
                        (struct-pattern 'op:name "x" 
                                        'op:label (pattern 'any-value 0
                                                           'any-typecode CORBA:tc_long))
@@ -247,7 +246,7 @@ typedef long a[y];
     "enum E { NISSE, OLLE };
 	const E x = NISSE; " 
     "E" (def-pattern :dk_enum
-          'op:members (seq-pattern "NISSE" "OLLE"))
+          'op:members (sequence-pattern "NISSE" "OLLE"))
     "x" (def-pattern :dk_constant
           'op:type_def (def-pattern :dk_enum)
           'op:value (pattern 'any-value :nisse)))
@@ -261,7 +260,7 @@ typedef long a[y];
                               'op:name "exc"
                               'op:id "IDL:exc:1.0"                            
                               'op:member_count 1)
-            'op:members (seq-pattern
+            'op:members (sequence-pattern
                          (struct-pattern
                           'struct-class-name 'omg.org/corba:structmember
                           'op:name "msg"
@@ -283,12 +282,12 @@ typedef long a[y];
     "foo::maybe" (def-pattern :dk_operation
                    'op:mode :op_normal
                    'op:result_def (def-pattern :dk_interface)
-                   'op:params (seq-pattern
+                   'op:params (sequence-pattern
                                (struct-pattern 'op:name "n" 'op:mode :param_in)
                                (struct-pattern 'op:name "rest" 'op:mode :param_out))
-                   'op:exceptions (seq-pattern))
+                   'op:exceptions (sequence-pattern))
     "foo::check" (def-pattern :dk_operation 
-                   'op:exceptions (seq-pattern (def-pattern :dk_exception 'op:name "ex")))
+                   'op:exceptions (sequence-pattern (def-pattern :dk_exception 'op:name "ex")))
     "foo::note" (def-pattern :dk_operation 'op:mode :op_oneway))
   
 
@@ -301,7 +300,7 @@ typedef long a[y];
     "a" (def-pattern :dk_interface)
     "a::n" (def-pattern :dk_attribute)
     "b" (def-pattern :dk_interface
-          'op:base_interfaces (seq-pattern (def-pattern :dk_interface 'op:name "a")))
+          'op:base_interfaces (sequence-pattern (def-pattern :dk_interface 'op:name "a")))
     "b::peer" (def-pattern :dk_attribute 
                 'op:absolute_name "::b::peer"
                 'op:id "IDL:b/peer:1.0"

@@ -126,11 +126,12 @@
          ("b" string))))
      "S" (def-pattern :dk_struct
            'op:members 
-           (seq-pattern (struct-pattern 'struct-class-name 'CORBA:StructMember
-                                        'op:name "a"
-                                        'op:type CORBA:tc_long)
-                        (struct-pattern 'op:name "b"
-                                        'op:type CORBA:tc_string)))))
+           (sequence-pattern 
+            (struct-pattern 'struct-class-name 'CORBA:StructMember
+                            'op:name "a"
+                            'op:type CORBA:tc_long)
+            (struct-pattern 'op:name "b"
+                            'op:type CORBA:tc_string)))))
 
   (define-test "Read Union 1"
     (idef-read '((define-union "MyUnion" long

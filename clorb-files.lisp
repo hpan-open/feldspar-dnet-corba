@@ -42,8 +42,11 @@
 
 
 (defparameter *x-files*
-  '("test-suite"
-    "pattern"
+  '("luna;package"
+    "luna;testsuite"
+    "luna;pattern"
+    "setup-test"
+    "support-test"
     ;; Experimental
     "internalize"
     "idef-read"
