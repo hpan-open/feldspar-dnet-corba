@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.12 2003/02/19 22:39:52 lenst Exp $
+ $Id: TODO,v 1.13 2003/03/01 16:19:31 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -42,7 +42,7 @@ exceptions should be returned not raised.
   POA.
 
 - POA need to keep track of executing requests. wait-for-completion
-  method .. does it make sens in a single threaded impl?
+  method .. does it make sense in a single threaded impl?
 
 
 
