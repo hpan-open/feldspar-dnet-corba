@@ -14,7 +14,8 @@
   (octets *empty-octets* :type octets)
   (position    0         :type buffer-index)
   (byte-order  1         :type bit)
-  (start-pos   0         :type buffer-index))
+  (start-pos   0         :type buffer-index)
+  (ind-hash    nil))
 
 (defun buffer-contents (buffer)
   (copy-seq (buffer-octets buffer)))
@@ -53,8 +54,13 @@
 
 
 
+;; should better be called buffer-out-pos
 (defun buffer-pos (buffer)
   (fill-pointer (buffer-octets buffer)))
+
+(defun buffer-record (buffer)
+  (or (buffer-ind-hash buffer)
+      (setf (buffer-ind-hash buffer) (make-hash-table :test #'eql))))
 
 
 (defmacro with-out-buffer ((buffer &key (resize 400)) &body body)
