@@ -165,10 +165,11 @@
             (obj2 (make-instance 'CORBA:Proxy :id "Hello World"
                                  :the-orb *the-orb*
                                  :profiles (list (make-iiop-profile 
-                                                  :version '(1 . 0)
+                                                  :version (make-iiop-version 1 1)
                                                   :host "h1"
                                                   :port 12
-                                                  :key #(1 2 3))))))
+                                                  :key #(1 2 3)
+                                                  :components `((,iop:tag_orb_type . 4711)))))))
         (with-sub-test ("Nil object cdr")
           (marshal-res #(1 0 0 0  0       ; id ""
                          0 0 0            ; padding
@@ -183,7 +184,9 @@
           (let ((buffer (get-work-buffer *the-orb*)))
             (marshal-object obj2 buffer)
             (let ((obj (unmarshal-object buffer)))
-              (ensure (op:_is_equivalent obj obj2)))))))
+              (ensure (op:_is_equivalent obj obj2))
+              (ensure-eql (object-component obj iop:tag_orb_type) 4711))))))
+
 
 t))
 

@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.36 2005/02/07 22:49:06 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.37 2005/02/15 21:08:43 lenst Exp $
 
 (in-package :clorb)
 
@@ -576,14 +576,14 @@ POA destruction does not occur.
    :ior-id intf 
    :profiles (list
               (make-iiop-profile
-               :version (make-iiop-version 1 0)
+               :version (make-iiop-version 1 1)
                :host (orb-host (the-orb poa))
                :port (orb-port (the-orb poa))
                :key (make-object-key (if (poa-has-policy poa :persistent)
                                        :persistent
                                        :transient)
-                                     (poa-poaid poa) oid (the-orb poa)
-                                     :poa-name (poa-name poa))))))
+                                     (poa-poaid poa) oid (the-orb poa) 
+                                     (poa-name poa))))))
 
 
 ;; ----------------------------------------------------------------------

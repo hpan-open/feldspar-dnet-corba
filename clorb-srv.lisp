@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.30 2005/02/07 22:49:06 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.31 2005/02/15 21:08:45 lenst Exp $	
 
 (in-package :clorb)
 
@@ -73,21 +73,27 @@
 
 (defun poa-message-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
-    (multiple-value-bind (msgtype) (unmarshal-giop-header buffer)
-      ;; FIXME: If the version is larger than we handel, send a error message
-      ;; and close connection.
+    (multiple-value-bind (msgtype fragment version) (unmarshal-giop-header buffer)
+      (declare (ignore fragment))
+      (setf (buffer-giop-version buffer) version)
       (let ((decode-fun
-             (ecase msgtype
+             (case msgtype
                ((:request)         #'poa-request-handler)
                ((:cancelrequest)   #'poa-cancelrequest-handler)
                ((:locaterequest)   #'poa-locaterequest-handler)
                ((:closeconnection) #'poa-closeconnection-handler)
                ((:messageerror)    #'poa-messageerror-handler))))
-        (let ((size (unmarshal-ulong buffer)))
-          (mess 1 "Message type ~A size ~A" msgtype size)
-          (if (zerop size)
-            (funcall decode-fun conn)
-            (connection-init-read conn t (+ size +iiop-header-size+) decode-fun)))))))
+        (cond ((> (giop-version-minor version) 1)
+               (connection-message-error conn giop-1-1))
+              ((null decode-fun)
+               (warn "Unknown message type: ~A" msgtype)
+               (connection-message-error conn))
+              (t
+               (let ((size (unmarshal-ulong buffer)))
+                 (mess 1 "Message type ~A size ~A" msgtype size)
+                 (if (zerop size)
+                   (funcall decode-fun conn)
+                   (connection-init-read conn t (+ size +iiop-header-size+) decode-fun)))))))))
 
 
 
@@ -98,7 +104,7 @@
 (defun poa-request-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
-    (let* ((orb *the-orb*)              ; FIXME: from connection maybe?
+    (let* ((orb (the-orb conn)) 
            (service-context (unmarshal-service-context buffer))
            (req-id (unmarshal-ulong buffer))
            (response (unmarshal-octet buffer))
@@ -108,7 +114,8 @@
            (request (create-server-request
                      orb :connection conn
                      :request-id req-id :operation operation
-                     :service-context service-context :input buffer
+                     :service-context service-context :input buffer 
+                     :giop-version (buffer-giop-version buffer)
                      :state :wait :response-flags response)))
       (connection-add-server-request conn request)
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
@@ -142,8 +149,8 @@
            (request 
             (create-server-request
              orb :operation operation :request-id req-id :kind :locate
-             :response-flags 1
-             :connection conn)))
+             :response-flags 1 :giop-version (buffer-giop-version buffer)
+             :input buffer :connection conn)))
       (dispatch-request orb request object-key))))
 
 

@@ -30,16 +30,28 @@
 
   (define-test "one way static call"
     (setup-test-out)
-    (let ((obj (test-object orb))
+    (let ((obj (test-object orb (make-iiop-version 1 0)))
           (n -129988))
       (let ((*io-event-queue* nil))
         (static-call ("foo" obj)
                      :output ((buffer) (marshal-any-value n buffer))
                      :no-response t))
-      (test-read-request 
-       :request-keys '((:response 0) (:operation "foo"))
+      (test-read-request
+       :request-keys `((:response 0) (:operation "foo") (:version ,giop-1-0))
        :args (list n))))
-        
+
+  (define-test "static call with iiop 1.1"
+    (setup-test-out)
+    (let ((obj (test-object orb (make-iiop-version 1 1)))
+          (n -129988))
+      (let ((*io-event-queue* nil))
+        (static-call ("foo" obj)
+                     :output ((buffer) (marshal-any-value n buffer))
+                     :no-response t))
+      (test-read-request
+       :request-keys `((:response 0) (:operation "foo") (:version ,giop-1-1))
+       :args (list n))))
+
 
   (define-test "DII" 
     (setup-test-out)
@@ -60,6 +72,16 @@
         (op:get_response req)
         (ensure-eql (corba:any-value (op:return_value req)) 224412))))
 
+
+  (define-test "corba:funcall"
+    (let* ((obj (test-object orb)))
+      (setf (response-func *test-out-conn*)
+            (lambda (req)
+              (test-read-request :args '("IDL:test:1.0"))
+              (test-write-response req 
+                                   (list (corba:any :any-typecode corba:tc_boolean
+                                                    :any-value t)))))
+      (ensure-eql (corba:funcall "_is_a" obj "IDL:test:1.0") t)))
 
   (define-test "jit-call oneway"
     (setup-test-out)

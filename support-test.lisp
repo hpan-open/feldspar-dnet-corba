@@ -163,14 +163,14 @@
 
 ;;; Testing functions
 
-(defun test-object (orb)
+(defun test-object (orb &optional (version (make-iiop-version 1 0)))
   "Create a proxy object connected to the testing output connection.
 Requests sent to this object will end up in *test-sink-stream*."
   (let ((obj (make-instance 'CORBA:Proxy
                :id "IDL:test:1.0"
                :the-orb orb
                :profiles (list (make-iiop-profile
-                                :version (make-iiop-version 1 0)
+                                :version version
                                 :host "localhost"
                                 :port 9999
                                 :key #(17))))))
@@ -194,8 +194,9 @@ Requests sent to this object will end up in *test-sink-stream*."
          (reader (funcall stream 'reader)))
     (setf (fill-pointer octets) +iiop-header-size+)
     (assert (funcall reader octets 0 +iiop-header-size+))
-    (multiple-value-bind (msgtype version)
+    (multiple-value-bind (msgtype fragmented version)
                          (unmarshal-giop-header buffer)
+      (declare (ignore fragmented))
       (ensure-eql msgtype :request)
       (let ((size (+ (unmarshal-ulong buffer) +iiop-header-size+)))
         (adjust-array octets size)
@@ -232,21 +233,75 @@ Requests sent to this object will end up in *test-sink-stream*."
       (io-descriptor-set-write *test-response-desc* octets 0 (length octets)))))
 
 
+(defun enum-integer (enum-tc keyword)
+  (position keyword (tc-keywords (if (symbolp enum-tc) (symbol-typecode enum-tc) enum-tc))))
+
 (defun test-write-request (&key
                               (desc *test-request-desc*)
                               (orb *the-orb*)
-                              buffer message-type message)
-  (check-type message-type integer)
+                              buffer message-type message
+                              (giop-version giop-1-0))
   (unless buffer
     (setq buffer (get-work-buffer orb)))
-  (marshal-any-value (giop:messageheader_1_0 :magic "GIOP" 
-                                             :giop_version (giop:version :major 1 :minor 0)
-                                             :byte_order (buffer-byte-order buffer)
-                                             :message_type message-type
-                                             :message_size 0)
-                     buffer)
+  (when (symbolp message-type)
+    (setq message-type (enum-integer 'GIOP:MSGTYPE_1_1 message-type)))
+  (when message-type
+    (marshal-any-value 
+     (cond ((eql giop-version giop-1-0)
+            (giop:messageheader_1_0 :magic "GIOP" 
+                                    :giop_version (giop:version :major 1 :minor 0)
+                                    :byte_order (buffer-byte-order buffer)
+                                    :message_type message-type
+                                    :message_size 0))
+           ((eql giop-version giop-1-1)
+            (giop:messageheader_1_1 :magic "GIOP" 
+                                    :giop_version (giop:version :major 1 :minor 1)
+                                    :flags (buffer-byte-order buffer)
+                                    :message_type message-type
+                                    :message_size 0)))
+     buffer))
   (loop for v in message do
         (marshal-any-value v buffer))
   (marshal-giop-set-message-length buffer)
   (io-descriptor-set-write desc (buffer-octets buffer)
                            0 (length (buffer-octets buffer))))
+
+
+
+(defun test-read-response (&key 
+                              (stream *test-response-sink*)
+                              (orb *the-orb*) buffer 
+                              message)
+  (unless buffer (setq buffer (get-work-buffer orb)))
+  (let* ((octets (buffer-octets buffer))
+         (reader (funcall stream 'reader)))
+    (setf (fill-pointer octets) +iiop-header-size+)
+    (assert (funcall reader octets 0 +iiop-header-size+))
+    (multiple-value-bind (msgtype fragmented version)
+                         (unmarshal-giop-header buffer)
+      (declare (ignore fragmented))
+      (let ((size (+ (unmarshal-ulong buffer) +iiop-header-size+)))
+        (adjust-array octets size)
+        (setf (fill-pointer octets) size)
+        (assert (funcall reader octets +iiop-header-size+ size)))
+      (loop for (type pattern) on message by #'cddr
+            do (ensure-pattern (etypecase type
+                                 (CORBA:TypeCode (unmarshal type buffer))
+                                 (keyword (ecase type
+                                            (:version version)
+                                            (:message-type msgtype)))
+                                 (symbol (unmarshal (symbol-typecode type) buffer)))
+                               pattern)))))
+
+
+(defun test-request-response (&key (orb *the-orb*) 
+                                       request-type request response)
+  (setup-test-in)
+  (let ((request-version 
+         (if (eql (car request) :version)
+           (progn (pop request) (pop request))
+           giop-1-0)))
+    (test-write-request :orb orb :message request :message-type request-type 
+                        :giop-version request-version)
+    (orb-work orb nil t)
+    (test-read-response :orb orb :message response)))

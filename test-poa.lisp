@@ -11,7 +11,7 @@
              (the-orb poa)
              :state :wait  :request-id 1  :connection *test-in-conn*
              :operation operation :kind kind  :response-flags 1
-             :input buffer :object-id oid)))
+             :input buffer :giop-version giop-1-0 :object-id oid)))
     (dolist (a args)
       (marshal-any-value a buffer))
     (poa-invoke poa request)
@@ -28,7 +28,7 @@
              (the-orb poa)
              :state :wait  :request-id 1  :connection *test-in-conn*
              :operation operation :kind kind  :response-flags 1
-             :input buffer :object-id oid :poa-spec poa-spec)))
+             :input buffer :giop-version giop-1-0 :object-id oid :poa-spec poa-spec)))
     (dolist (a args)
       (marshal-any-value a buffer))
     (poa-dispatch poa request)

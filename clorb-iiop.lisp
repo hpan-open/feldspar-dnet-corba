@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.39 2005/02/11 22:47:38 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.40 2005/02/15 21:08:33 lenst Exp $
 
 
 (in-package :clorb)
@@ -15,7 +15,7 @@
   :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" 
             "CloseConnection" "MessageError"))
 
-(DEFINE-ENUM OMG.ORG/GIOP:MSGTYPE_1_1
+(DEFINE-ENUM GIOP:MSGTYPE_1_1
   :ID "IDL:omg.org/GIOP/MsgType_1_1:1.0"
   :NAME "MsgType_1_1"
   :MEMBERS ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply"
@@ -73,7 +73,7 @@
   :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST))
             ("request_id" OMG.ORG/CORBA:TC_ULONG)
             ("response_expected" OMG.ORG/CORBA:TC_BOOLEAN)
-            ("object_key" (create-sequence-tc NIL OMG.ORG/CORBA:TC_OCTET))
+            ("object_key" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
             ("operation" OMG.ORG/CORBA:TC_STRING)
             ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL))))
 
@@ -156,7 +156,7 @@
       (error "Unknown version")
       1))
 (defun giop-version-minor (version)
-  (case version (:giop_1_0 0) (:giop_1_1 1) (:giop_1_2 2)))
+  (case version (:giop_1_0 0) (:giop_1_1 1) (:giop_1_2 2) (otherwise 9999)))
 
 (defconstant giop-1-0 :giop_1_0)
 (defconstant giop-1-1 :giop_1_1)
@@ -189,18 +189,39 @@
                  (iiop-profile-port profile)
                  (coerce (iiop-profile-key profile) 'list))))
 
+(defmethod profile-component ((profile iiop-profile) tag)
+  (cdr (assoc tag (iiop-profile-components profile))))
+
 (defmethod decode-ior-profile ((tag (eql 0)) encaps)
   (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
 
 
 (defun unmarshal-iiop-componets (buffer)
-  (let ((len (unmarshal-ulong buffer)))
+  ;; Try handle profiles without components such as IIOP 1.0, 
+  ;; this shouldn't realy be called for those but any way
+  (let ((len (if (< (buffer-in-pos buffer) (buffer-length buffer))
+               (unmarshal-ulong buffer)
+               0)))
     (loop repeat len collect 
           (let ((tag (unmarshal-ulong buffer)))
             (cond ((= tag IOP:TAG_ORB_TYPE)
                    (cons tag (with-encapsulation buffer (unmarshal-ulong buffer))))
                   (t 
                    (cons tag (unmarshal-osequence buffer))))))))
+
+
+(defun marshal-iiop-components (components buffer)
+  (marshal-ulong (length components) buffer)
+  (loop for (tag . component) in components do
+        (marshal-ulong tag buffer)
+        (cond ((= tag IOP:TAG_ORB_TYPE) 
+               (marshal-add-encapsulation
+                (lambda (buffer) (marshal-ulong component buffer))
+                buffer))
+              (t
+               (marshal-add-encapsulation
+                (lambda (buffer) (marshal-osequence component buffer))
+                buffer)))))
 
 
 (defun unmarshal-iiop-profile-body (buffer)
@@ -215,6 +236,7 @@
                    (unmarshal-iiop-componets buffer)))))
 
 
+
 (defmethod raw-profiles ((objref CORBA:Proxy))
   (or (object-raw-profiles objref)
       (setf (object-raw-profiles objref)
@@ -225,10 +247,14 @@
                           (lambda (buffer)
                             (let ((version (iiop-profile-version p)))
                               (marshal-octet (iiop-version-major version) buffer)
-                              (marshal-octet (iiop-version-minor version) buffer))
-                            (marshal-string (iiop-profile-host p) buffer)
-                            (marshal-ushort (iiop-profile-port p) buffer)
-                            (marshal-osequence (iiop-profile-key p) buffer))
+                              (marshal-octet (iiop-version-minor version) buffer)
+                              (marshal-string (iiop-profile-host p) buffer)
+                              (marshal-ushort (iiop-profile-port p) buffer)
+                              (marshal-osequence (iiop-profile-key p) buffer)
+                              (if (> (iiop-version-minor version) 0)
+                                (marshal-iiop-components 
+                                 (iiop-profile-components p)
+                                 buffer))))
                           (the-orb objref))))
                  (object-profiles objref)))))
 
@@ -249,7 +275,10 @@
 (defun connection-start-request (conn req-id service-context response-expected
                                           effective-profile operation)
   (let ((buffer (get-work-buffer (the-orb conn))))
-    (marshal-giop-header :request buffer)
+    (marshal-giop-header :request buffer 
+                         (if (> (iiop-version-minor (iiop-profile-version effective-profile))
+                                0)
+                           giop-1-1 giop-1-0))
     (marshal-service-context service-context buffer)
     (marshal-ulong req-id buffer)
     (marshal-octet (if response-expected 1 0) buffer)
@@ -267,11 +296,52 @@
   (when req
     (connection-add-client-request conn req)))
 
-(defun connection-send-reply (conn buffer req)
-  (marshal-giop-set-message-length buffer)
-  (connection-send-buffer conn buffer)
-  (when req
-    (connection-remove-server-request conn req)))
+
+;;;; Connection Reply Handling
+
+(defun connection-reply (conn giop-version reply-type request-id status
+                                 service-context result-func result-arg)
+  (let* ((orb (the-orb conn))
+         (buffer (get-work-buffer orb)))
+    (setf (buffer-giop-version buffer) giop-version)
+    (marshal-giop-header reply-type buffer giop-version)
+    (ecase reply-type
+      (:reply
+       (marshal-service-context service-context buffer) 
+       (marshal-ulong request-id buffer)
+       (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer))
+      (:locatereply
+       (marshal-ulong request-id buffer)
+       (marshal-ulong (ecase status
+                        (:unknown_object 0)
+                        (:object_here 1)
+                        (:location_forward 2))
+                      buffer)))
+    (when result-func (funcall result-func result-arg buffer))
+    (mess 3 "#~D send ~S ~S" request-id reply-type status)
+    (marshal-giop-set-message-length buffer)
+    (connection-send-buffer conn buffer)))
+
+
+(defun server-close-connection (conn)
+  ;; Do a server side close connection
+  (unless (connection-write-buffer conn)
+    ;; No pending send, send a close connection message
+    (let* ((orb (the-orb conn))
+           (buffer (get-work-buffer orb)))
+      (marshal-giop-header :closeconnection buffer)
+      (marshal-giop-set-message-length buffer)
+      (connection-send-buffer conn buffer))
+    (connection-destroy conn)))
+
+(defun connection-message-error (conn &optional (version giop-1-0))
+  (let* ((orb (the-orb conn))
+         (buffer (get-work-buffer orb)))
+    (marshal-giop-header :messageerror buffer version)
+    (marshal-giop-set-message-length buffer)
+    (connection-send-buffer conn buffer))
+  (connection-error conn)
+  (connection-destroy conn))
 
 
 ;;;; IIOP - Response handling
@@ -283,18 +353,21 @@
 
 (defun unmarshal-giop-header (buffer)
   (with-in-buffer (buffer)
-    (unless (loop for c in '#.(mapcar #'char-code '(#\G #\I #\O #\P))
+    (if (loop for c in '#.(mapcar #'char-code '(#\G #\I #\O #\P))
 		  always (eql c (get-octet)))
-      (error "Not a GIOP message: ~/net.cddr.clorb::stroid/" octets))
-    (let ((major (get-octet))
-          (minor (get-octet))
-          (flags (get-octet))
-          (msgtype (aref message-types (get-octet))))
-      (setf (buffer-byte-order buffer) (logand flags 1))
-      (values msgtype
-              (if (> minor 0)
+      (let ((major (get-octet))
+            (minor (get-octet))
+            (flags (get-octet))
+            (msgtype (get-octet)))
+        (setf (buffer-byte-order buffer) (logand flags 1))
+        (values (if (> msgtype (length message-types))
+                  :unknown
+                  (aref message-types msgtype))
+                (if (> minor 0)
                   (logbitp 1 flags))
-              (make-giop-version major minor)))))
+                (make-giop-version major minor)))
+      (progn (warn "Not a GIOP message: ~/net.cddr.clorb::stroid/" octets)
+             (values :unknown)))))
 
 
 (defun marshal-giop-header (type buffer &optional (version giop-1-0) fragmented)
