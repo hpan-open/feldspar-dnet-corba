@@ -89,7 +89,8 @@
 (defmacro ensure-exception (code exception &rest pattern)
   `(handler-case
      (progn ,code
-            (ensure nil "should raise exception"))
+            (ensure nil "~S should raise exception"
+                    ',code))
      (,exception (exc)
                  (ensure-pattern* exc ,@pattern))
      (t (exc)

@@ -8,6 +8,7 @@
 (defun register-ir-class (def-kind class)
   (setf (get def-kind 'ir-class) class))
 
+#+unused-functions
 (defun get-ir-class (def-kind)
   (or (get def-kind 'ir-class)
       (error "No class defined for definition kind ~A" def-kind)))
@@ -15,8 +16,11 @@
 
 ;;;; Generics
 
-(defgeneric addto (container contained)
-  (:documentation "Add a contained to a container"))
+(defgeneric moveto (contained container new-name new-version)
+  (:documentation "Move the contained object to the container,
+with new-name and new-version. Checks that the name does not collied 
+with the contents of container and check the container allows the type 
+of contained."))
 
 
 ;;;; Base Clases
@@ -137,6 +141,14 @@
    :kind (op:def_kind obj)
    :value (describe-contained obj)))
 
+(define-method "MOVE" ((obj contained) to-container new-name new-version)
+  (check-type to-container CORBA:Container)
+  (check-type new-name string)
+  (check-type new-version string)
+  (unless (eql (op:containing_repository obj)
+               (op:containing_repository to-container))
+    (error 'CORBA:BAD_PARAM :minor 4))
+  (moveto to-container obj new-name new-version))
 
 
 ;;;; Container
@@ -153,27 +165,37 @@
   (dolist (c (contents obj)) (slot-updated c)))
 
 
-(defmethod addto ((c container) (object contained))
-  (let ((repository (op:containing_repository c))
-        (id (op:id object))
-        (name (op:name object)))
-
+(defun addto (container object)
+  "Add a contained object to a container"
+  (let ((repository (op:containing_repository container))
+        (id (op:id object)))
     ;; A BAD_PARAM exception is raised with minor code 2 if an object with
     ;; the specified id already exists in the Repository.
     (when (gethash id (idmap repository))
       (error 'CORBA:BAD_PARAM :minor 2))
-    
-    ;; A BAD_PARAM exception with minor code 3 is raised if the specified
-    ;; name already exists within this Container and multiple versions are
-    ;; not supported.
-    (when (member name (contents c) :key #'op:name :test #'string-equal)
-      (error 'corba:bad_param :minor 3))
+    (moveto container object (op:name object) (op:version object))
+    (setf (gethash id (idmap repository)) object)))
 
+
+(defmethod moveto ((c container) (object contained) new-name new-version)
+  ;; A BAD_PARAM exception with minor code 3 is raised if the specified
+  ;; name already exists within this Container and multiple versions are
+  ;; not supported.
+  (when (member new-name (contents c) :key #'op:name :test #'string-equal)
+    (error 'corba:bad_param :minor 3))
+  (with-slots (defined_in containing_repository name version) 
+              object
+    (let ((old-container defined_in))
+      (when old-container
+        (setf (contents old-container) (delete object (contents old-container)))))
     (setf (contents c) (nconc (contents c) (list object)))
-    (setf (gethash id (idmap repository)) object)
-    (setf (slot-value object 'containing_repository) repository)
-    (setf (slot-value object 'defined_in) c))
+    (setf containing_repository (op:containing_repository c))
+    (setf defined_in c)
+    (setf name new-name)
+    (setf version new-version)
+    (slot-updated object))
   object)
+
 
 (define-method contents ((obj container) limit-type exclude-inherit)
   (declare (ignore exclude-inherit))
@@ -838,7 +860,8 @@
   :attributes ((members)))
 
 
-(defmethod addto :before ((c struct-def) (object contained))
+(defmethod moveto :before ((c struct-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
@@ -873,7 +896,8 @@
                (members))
   :def_kind :dk_union)
 
-(defmethod addto :before ((c union-def) (object contained))
+(defmethod moveto :before ((c union-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
@@ -925,7 +949,8 @@
   :attributes ((members)))
 
 
-(defmethod addto :before ((c exception-def) (object contained))
+(defmethod moveto :before ((c exception-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
@@ -1207,7 +1232,8 @@
 (defmethod initialize-instance :before ((def Value-Def) &key supported_interfaces)
   (check-only-one-non-abstract supported_interfaces))
 
-(defmethod addto :before ((c Value-Def) (object contained))
+(defmethod moveto :before ((c Value-Def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
   (typecase object 
     ((or Operation-Def ValueMember-Def Attribute-Def
          Typedef-Def Constant-Def Exception-Def))

@@ -69,6 +69,42 @@
         (ensure-pattern* sub-obj 'op:absolute_name "::xmod::foo"))))
   
   
+  (define-test "Contained Move" ()
+    (let ((container1 (op:create_module repository "IDL:mod1:1.0" "mod1" "1.0"))
+          (container2 (op:create_module repository "IDL:mod2:1.0" "mod2" "1.0")))
+      (let ((obj (op:create_native container1 "IDL:n:1.0" "n" "1.0")))
+        (op:create_native container2 "IDL:n2:1.0" "n" "1.0")
+        ;; The move operation atomically removes this object from its
+        ;; current Container, and adds it to the Container specified
+        ;; by new_container
+        (op:move obj container2 "nn" "1.0")
+        (ensure-repository "mod2::nn" 
+                           (pattern 'identity obj 'op:defined_in container2))
+        ;; must satisfy the following conditions:
+        ;; - It must be in the same Repository. If it is not, then
+        ;; BAD_PARAM exception is raised with minor code 4.
+        (ensure-exception
+         (op:move obj (make-instance 'repository) "foo" "1.0")
+         CORBA:BAD_PARAM 'op:minor 4)
+        ;; - It must be capable of containing this object's type (see
+        ;; Section 10.4.4, "Structure and Navigation of the Interface
+        ;; Repository," on page 10-7). If it is not, then BAD_PARAM
+        ;; exception is raised with minor code 4.
+        (let ((struct (op:create_struct repository "IDL:s:1.0" "s" "1.0" nil)))
+          (ensure-exception
+           (op:move obj struct "nn" "1.0")
+           CORBA:BAD_PARAM 'op:minor 4))
+        ;; - It must not already contain an object with this object's
+        ;; name (unless multiple versions are supported by the IR). If
+        ;; this condition is not satisfied, then BAD_PARAM exception
+        ;; is raised with minor code 3.
+        (op:create_native container1 "IDL:n3:1.0" "n" "1.0")
+        (ensure-exception
+         (op:move obj  container1 "n" "1.0")
+         CORBA:BAD_PARAM 'op:minor 3))))
+  
+
+
   (define-test "Container"
     (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
            (obj (op:create_enum module "IDL:mod/foo:1.0" "my-enum" "1.0" '("fie" "fum")))
