@@ -1,5 +1,5 @@
 ;;; idef-macros --- interface definition macros
-;; $Id: idef-macros.lisp,v 1.3 2001/06/10 22:17:40 lenst Exp $
+;; $Id: idef-macros.lisp,v 1.4 2002/10/08 18:03:54 lenst Exp $
 
 (in-package :clorb)
 
@@ -8,6 +8,8 @@
 
 (defvar *idef-repository*
     (make-instance 'repository))
+
+(pushnew '*idef-repository* *repositories*)
 
 (defun lookup-name (name)
   (lookup-name-in *idef-repository* name))

@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.8 2002/10/05 11:10:11 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.9 2002/10/08 18:03:54 lenst Exp $
 
 (in-package :clorb)
 
@@ -32,7 +32,7 @@
   string)
 
 ;;;; MCL Has old style (?) make-load-form
-#+MCL
+#+(and mcl (not openmcl))
 (require "ANSI-MAKE-LOAD-FORM")
 
 (defmacro define-slot-dumper (class)

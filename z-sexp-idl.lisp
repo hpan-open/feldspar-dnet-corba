@@ -1,8 +1,10 @@
 (in-package :clorb)
 
 (defparameter *idl-directory*
-    (or #+mcl   #3P"Macintosh HD:Users:lenst:src:hacks:idldump:work:"
-        #+allegro  #P"/home/lenst/src/hacks/idldump/work/"))
+    (or #+(or clisp openmcl) #P"/Users/lenst/src/hacks/idldump/work/"
+        #+(and mcl (not openmcl))  #3P"Macintosh HD:Users:lenst:src:hacks:idldump:work:"
+        #+allegro  #P"/home/lenst/src/hacks/idldump/work/"
+        ))
 
 (defun get-idl-sexp (file)
   (let ((path (merge-pathnames file *idl-directory*))
@@ -141,6 +143,8 @@
 (dx (FORWARD_DCL (name id version))
   (op:create_interface *container* id name version  nil))
 
+(dx (CONST_DCL type (name id version) value)
+  (omg.org/features:create_constant *container* id name version type value))
 
 
 (dx (TYPE_INTEGER 'unsigned-flag 'base-type)
@@ -200,5 +204,5 @@
 (unless (fboundp 'describe-repo)
   (load "CLORB:SRC;describe-repo"))
 (describe-repo *container*)
-(doseq (x (op:contents *container* :dk_all nil)) (pprint (op:describe x)))
+(doseq (x (op:contents *container* :dk_all nil)) (pprint (omg.org/features:describe x)))
 ||#

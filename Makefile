@@ -1,4 +1,8 @@
-sources=ChangeLog *.lisp *.system TODO Makefile *.idl .cvsignore
+msources = ChangeLog *.lisp *.system TODO  *.idl 
+usources = Makefile .cvsignore
+sources  = $(msources) $(usources)
+
+
 all:
 
 clean:
@@ -6,16 +10,16 @@ clean:
 
 tomcl:
 	mv CVS MCVS
-	tomcl $(sources)
+	tomcl $(msources)
 
 frommac:
 	mv MCVS CVS
-	frommac $(sources)
+	frommac $(msources)
 
 shadow:
 	mkdir shadow
 	(cd shadow; ln -s ../MCVS CVS)
 	cp $(sources) shadow
-	(cd shadow; frommac $(sources))
+	(cd shadow; frommac $(msources))
 	sleep 1
 	touch shadow/before-cvs
