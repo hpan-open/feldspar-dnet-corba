@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.2 2001/02/13 21:22:09 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.3 2001/07/02 16:46:48 lenst Exp $
 
 (in-package :clorb)
 
@@ -106,15 +106,9 @@
                        *poa-current*)
                   (poa-current-object-id *poa-current*)
                 (op::servant_to_id poa servant))))
-    (op::create_reference_with_id 
+    (op:create_reference_with_id
      poa oid
      (primary-interface servant oid poa))))
-
-;;; Implicit activation is implemented by this method that allows a
-;;; servant to be used as an object reference when calling corba
-;;; methods.
-(defmethod marshal-ior ((servant servant) buffer)
-  (marshal-ior (op:_this servant) buffer))
 
 
 ;;;; Auto-Dynamic servant (CLORB sepecific)
