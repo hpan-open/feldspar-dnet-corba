@@ -532,7 +532,7 @@
    :defined_in (or (op:defined_in module) "")
    :version (op:version module)))
 
-;;; interface ConstantDef : Contained {
+;;;; interface ConstantDef : Contained {
 ;;;   readonly attribute TypeCode type;
 ;;;   attribute IDLType type_def;
 ;;;   attribute any value; };
@@ -573,12 +573,16 @@
                     (op:contents def :dk_operation nil))
    :attributes (map 'list #'describe-contained
                     (op:contents def :dk_attribute nil))
-   :base_interfaces (map 'list #'subject-id
-                         (op:base_interfaces def))
+   :base_interfaces (map 'list #'subject-id (op:base_interfaces def))
    :type (op:type def) ))
 
 (defmethod describe-contained ((def interface-def))
-  (op:describe_interface def))
+  (CORBA:InterfaceDescription
+   :name (op:name def)
+   :id   (subject-id def)
+   :defined_in (subject-id (op:defined_in def))
+   :version (op:version def)
+   :base_interfaces (map 'list #'subject-id (op:base_interfaces def))))
 
 (define-method contents ((obj interface-def) limit-type exclude-inherit)
   (if exclude-inherit
@@ -587,6 +591,15 @@
             (loop for x in (coerce (op:base_interfaces obj) 'list)
                 append (op:contents x limit-type nil)))))
 
+
+(defun check-unique-name (container name)
+  (when (op:lookup_name container name 1 :dk_all nil)
+    (error 'omg.org/corba:bad_param)))
+
+(define-method (setf op:base_interfaces) :before (value (self interface-def))
+  (loop for obj in (contents self) do
+        (loop for base in value do
+              (check-unique-name base (op:name obj)))))
 
 
 ;;;  AttributeDef create_attribute
@@ -598,6 +611,7 @@
   (check-type version string)           ; VersionSpec
   (check-type type IDLType)
   (check-type mode CORBA:AttributeMode)
+  (check-unique-name self name)
   (addto self (make-instance 'attribute-def
                 :id id :name name :version version
                 :type_def type :mode mode)))
@@ -616,6 +630,7 @@
   (check-type params CORBA:ParDescriptionSeq)
   (check-type exceptions CORBA:ExceptionDefSeq)
   (check-type contexts CORBA:ContextIdSeq)
+  (check-unique-name self name)
   (addto self (make-instance 'operation-def
                 :id id :name name :version version
                 :result_def result :mode mode
