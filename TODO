@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.21 2005/02/26 20:22:13 lenst Exp $
+ $Id: TODO,v 1.22 2005/03/11 16:48:13 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -9,9 +9,8 @@ TODO                        -*- indented-text -*-
 
 - 3.5 typedefs Flags, Identifier? Are all names in CORBA package? YES
 
-- 3.9.1 (corba:funcall op obj z) ~= (clorb:invoke obj op z)
-But lots of variantions possible in operation name. And also
-exceptions should be returned not raised.
+- 3.9.1 (corba:funcall op obj z)
+Lots of variantions possible in operation name. 
 
 
 * IDL Compiler

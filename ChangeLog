@@ -1,3 +1,24 @@
+2005-03-11  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idlparser.lisp (<literal>): only <number_literal> for all
+	the numeric literals
+	(<identifier>): handle _ escaped identifiers
+
+	* clorb-idllexer.lisp (hex-char-p, hex-char, hex-escape)
+	(oct-char, oct-escape, escaped-char, string-literal-1): new functions
+	(string-literal): parse escaped characters and adjacent strings
+	(char-literal): parse excaped character
+	(decimal-char-p, parse-fixed): new funcs
+	(number-token): parse octal, hex and fixed. make all floats
+	double-float
+
+2005-02-28  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idlparser.lisp (<identifier>): better error reporting,
+	allow leading underscore and remove it from result.
+
+	* test-idlcomp.lisp ("idlcomp"): new test "escaping identifiers"
+
 2005-02-25  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-poa.lisp (PortableServer:POA): new slot executing-requests

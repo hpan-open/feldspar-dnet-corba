@@ -10,5 +10,6 @@ import:
 	cp ~/src/lisp/net/cddr/redpas/{package,lexer,parsys}.lisp .
 
 export:
-	-mkdir orig
-	cp {package,testsuite,pattern}.lisp orig/
+	test -d orig
+#cvs -d ~/lib/cvsroot co -d orig lisp/net/cddr/redpas
+	cp {package,lexer,parsys}.lisp orig/
