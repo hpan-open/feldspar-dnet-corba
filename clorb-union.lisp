@@ -1,5 +1,5 @@
 ;;;; clorb-union.lisp -- CORBA Union support
-;; $Id: clorb-union.lisp,v 1.2 2002/10/05 11:16:33 lenst Exp $
+;; $Id: clorb-union.lisp,v 1.3 2002/10/05 13:51:00 lenst Exp $
 
 (in-package :clorb)
 
@@ -25,7 +25,8 @@
                      (setq label (arbritary-value discriminator-type)))
                 collect (list label name typecode))))
     (make-typecode :tk_union id name
-                   discriminator-type default-index massaged-members)))
+                   discriminator-type default-index 
+                   (coerce massaged-members 'vector))))
 
 (defvar *union-registry*
   (make-hash-table :test #'equal))
