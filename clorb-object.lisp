@@ -247,6 +247,9 @@
 (define-method _create_request ((obj CORBA:Object)
                                 ctx operation arg_list result req_flags)
   (declare (ignorable req_flags ctx))
+  (check-type operation string)
+  (check-type arg_list sequence)
+  (check-type result CORBA:NamedValue)
   (if result
       (setf (op:arg_modes result) ARG_OUT)
     (setq result (CORBA:NamedValue :arg_modes ARG_OUT
