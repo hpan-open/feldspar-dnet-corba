@@ -24,13 +24,14 @@ POA-ids are numbers and are mapped by the ORB to a POA. There should
 be no need to store the actual path to the POA in the object key.
 |#
 
-(defconstant +transient-ior-magic+   #16R4C43)
-(defconstant +persistent-ior-magic1+ #16R6C63)
-(defconstant +persistent-ior-magic2+ #16R6C43)
+(defconstant +transient-ior-magic+   #x4C43)
+(defconstant +persistent-ior-magic1+ #x6C63)
+(defconstant +persistent-ior-magic2+ #x6C43)
 
 (defvar *instance-id* (random (expt 2 31) (make-random-state t)))
 
 (defun decode-object-key-from-buffer (buffer)
+  "Returns: type poa-spec object-id"
   (let* ((magic (unmarshal-ushort buffer)))
     (cond
       ((eql magic +transient-ior-magic+)
@@ -61,6 +62,7 @@ be no need to store the actual path to the POA in the object key.
        (values :transient 0 (buffer-octets buffer))))))
 
 (defun decode-object-key (octets)
+  "Returns: type poa-spec object-id"
   (let ((buffer (make-buffer :octets octets)))
     (decode-object-key-from-buffer buffer)))
 
