@@ -36,7 +36,7 @@
 
 
 (defparameter *x-files*
-  '(;"test-suite"
+  '("test-suite"
     ;; Experimental
     "orb-export"
     "orb-structs"
