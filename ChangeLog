@@ -1,3 +1,49 @@
+Mon Jul  2 18:23:53 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-srvreq.lisp: modified for new IO-system
+
+	* clorb-srv.lisp: Old adaptor class and methods removed. Support
+	for new IO-system.
+
+	* clorb-servant.lisp: remove marshal-ior method
+
+	* clorb-orb.lisp: moved orb-wait to clorb-iiop. Removed the
+	adaptor generics.
+
+	* clorb-macros.lisp (define-operation): new
+	(define-deferred): new
+
+	* clorb-trie.lisp (trie-get): fix type declaration
+
+	* clorb-object.lisp (request-funcall): request-invoke renamed to
+	request-funcall 
+	(CORBA:NamedValue): moved here
+	(CORBA:Request): moved here
+
+	* clorb-iiop.lisp: New file. Connection handling, IIOP
+	request/response handling. IO event handling (orb-wait).
+
+	* clorb-client.lisp: all code moved to clorb-iiop
+
+	* clorb-any.lisp (any-value): add CORBA:struct, move CORBA:Object
+
+Sun Jul  1 19:40:55 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-request.lisp: Move to clorb-object
+
+	* clorb-object.lisp (CORBA:Request): Add connection slot
+
+2001-06-29  Lennart Staflin  <lennarts@manamind.no>
+
+	* clorb-marshal.lisp (marshal-ior): rewrite as a ordinary defun
+
+	* clorb-poa.lisp (object-key-id): remove
+
+Fri Jun 22 22:23:53 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-request.lisp (add_out_arg): OMGBUG
+	has name, how does this differ from add_named_out_arg
+
 Wed Jun 20 20:36:58 2001  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-orb.lisp (string-to-object): removed orb from name and arglist

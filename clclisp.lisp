@@ -1,4 +1,7 @@
 
+(setq CLOS::*GF-WARN-ON-REPLACING-METHOD*       nil)
+(setq CLOS::*WARN-IF-GF-ALREADY-CALLED*         nil)
+
 ;;(require :make "~/src/lisp/defsystem")
 ;;(mk:oos :clorb :compile) 
 (load "clorb-pkgdcl")
@@ -15,31 +18,23 @@
 
 ;;(op:object_to_string *orb* cl-user::root)
 
-(defun run ()
-  (handler-case
-      (progn
-        (clorb::close-connections)
-        (op:list (clorb::get-ns) 100))
-   (condition (c)
-     (format t "~&Condition: ~A~%" c))))
+(defun hh ()
+  (cl-user::setup-hello :file "hello.ior")
+  (cl-user::hello-client :file "hello.ior"))
 
-(in-package :clorb)
-(export 'clients)
-(defun clients ()
-  (client-streams-raw (adaptor *the-orb*)))
+(defun hhn ()
+  (cl-user::setup-hello :name "hello")
+  (cl-user::hello-client :name "hello"))
+
+
 
 (import '(cl-user::setup-pns
           cl-user::hello-client
           cl-user::setup-hello
-          cl-user::run-hello))
+          cl-user::run-hello)
+        :clorb)
 
-(defun show-error ()
-  (let ((s (car (get-connections))))
-    (loop for byte = (read-byte s nil nil)
-          for i to 100
-          while byte
-          do (if (< 31 byte 127)
-                 (princ (code-char byte))
-                 (format t "<~X>" byte)))
-    (close s)))
+
+
+
 
