@@ -25,10 +25,12 @@
     "clorb-exceptions"
     "clorb-value"
     "clorb-iop"
+    "clorb-pi-base"
     "clorb-object"
     "clorb-io"
     "clorb-ifr-base"
     "clorb-iiop"
+    "clorb-pi-impl"
     "clorb-orb"
     ;;("clorb-opdef" t)
     ;;"clorb-iir"
