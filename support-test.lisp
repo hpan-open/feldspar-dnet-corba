@@ -163,6 +163,9 @@
 
 ;;; Testing functions
 
+(defclass null-servant (portableserver:servant) ())
+(defmethod interface-name ((self null-servant)) 'CORBA:Object)
+
 (defun test-object (orb &optional (version (make-iiop-version 1 0)))
   "Create a proxy object connected to the testing output connection.
 Requests sent to this object will end up in *test-sink-stream*."
@@ -239,7 +242,7 @@ Requests sent to this object will end up in *test-sink-stream*."
 (defun test-write-request (&key
                               (desc *test-request-desc*)
                               (orb *the-orb*)
-                              buffer message-type message
+                              buffer message-type message fragmented
                               (giop-version giop-1-0))
   (unless buffer
     (setq buffer (get-work-buffer orb)))
@@ -256,7 +259,8 @@ Requests sent to this object will end up in *test-sink-stream*."
            ((eql giop-version giop-1-1)
             (giop:messageheader_1_1 :magic "GIOP" 
                                     :giop_version (giop:version :major 1 :minor 1)
-                                    :flags (buffer-byte-order buffer)
+                                    :flags (logior (buffer-byte-order buffer)
+                                                   (if fragmented 2 0))
                                     :message_type message-type
                                     :message_size 0)))
      buffer))

@@ -35,10 +35,6 @@
     request))
 
 
-(defclass null-servant (portableserver:servant) ())
-(defmethod interface-name ((self null-servant)) 'CORBA:Object)
-
-
 ;; ==========================================================================
 
 (defclass mock-activator (PORTABLESERVER:SERVANTACTIVATOR)
