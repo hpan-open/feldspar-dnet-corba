@@ -331,9 +331,9 @@
 
 (define-method create_alias ((self container)
                              id name version original_type)
-  (addto  self (make-instance 'alias-def
-                 :id id :name name :version version
-                 :original_type_def original_type)))
+  (addto self (make-instance 'alias-def
+                :id id :name name :version version
+                :original_type_def original_type)))
 
 
 ;;;  InterfaceDef create_interface (
@@ -832,18 +832,28 @@
 ;;  TypeCode type;
 ;;  IDLType type_def;
 
-(define-ir-class struct-def (corba:StructDef typedef-def)
+(define-ir-class struct-def (corba:StructDef typedef-def container)
   :id "IDL:omg.org/CORBA/StructDef:1.0"
   :def_kind :dk_struct
   :attributes ((members)))
+
+
+(defmethod addto :before ((c struct-def) (object contained))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (error 'CORBA:BAD_PARAM :minor 4))))
+
 
 (defmethod op:members :before ((obj struct-def) &rest x)
   (declare (ignore x))
   (doseq (m (slot-value obj 'members))
     (setf (op:type m) (op:type (op:type_def m)))))
 
+
 (defmethod idltype-tc ((def struct-def))
   (create-struct-tc (op:id def) (op:name def) (simple-struct-members (op:members def))))
+
 
 ;;;; interface UnionDef : TypedefDef
 ;;;   readonly attribute TypeCode discriminator_type;
@@ -857,11 +867,17 @@
 ;;;   IDLType type_def;
 ;;; typedef sequence <UnionMember> UnionMemberSeq;
 
-(define-ir-class union-def (CORBA:UnionDef typedef-def)
+(define-ir-class union-def (CORBA:UnionDef typedef-def container)
   :id "IDL:omg.org/CORBA/UnionDef:1.0"
   :attributes ((discriminator_type_def)
                (members))
   :def_kind :dk_union)
+
+(defmethod addto :before ((c union-def) (object contained))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (error 'CORBA:BAD_PARAM :minor 4))))
 
 (define-method discriminator_type ((obj union-def))
   (op:type (op:discriminator_type_def obj)))
@@ -903,19 +919,29 @@
 ;;;  readonly attribute TypeCode type;
 ;;;  attribute StructMemberSeq members;
 
-(define-ir-class exception-def (corba:ExceptionDef contained irtypecode-mixin)
+(define-ir-class exception-def (corba:ExceptionDef contained container irtypecode-mixin)
   :id "IDL:omg.org/CORBA/ExceptionDef:1.0"
   :def_kind :dk_exception
   :attributes ((members)))
+
+
+(defmethod addto :before ((c exception-def) (object contained))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (error 'CORBA:BAD_PARAM :minor 4))))
+
 
 (defmethod op:members :before ((obj exception-def) &rest x)
   (declare (ignore x))
   (doseq (m (slot-value obj 'members))
     (setf (op:type m) (op:type (op:type_def m)))))
 
+
 (defmethod idltype-tc ((obj exception-def))
   (create-exception-tc (op:id obj) (op:name obj)
                        (simple-struct-members (op:members obj))))
+
 
 (defmethod describe-contained ((obj exception-def))
   (CORBA:ExceptionDescription

@@ -5,11 +5,11 @@
    (repository (make-instance 'repository))
    (a-ulong (op:get_primitive repository :pk_ulong))
    (a-string (op:get_primitive repository :pk_string)))
-
+  
   (define-test "General"
     (ensure-typep :dk_constant 'CORBA:DefinitionKind))
-
-
+  
+  
   (define-test "get_canonical_typecode"
     (let* ((mylong 
             (op:create_alias repository "IDL:mylong:1.0" "mylong" "1.0"
@@ -27,8 +27,8 @@
         (ensure-typecode
          (op:get_canonical_typecode repository (create-sequence-tc 0 ntc-mylong))
          (op:type (op:original_type_def myseq))))))
-
-
+  
+  
   (define-test "Contained"
     (let* ((name "foo")
            (id "IDL:foo:1.0")
@@ -67,20 +67,48 @@
                          'op:type (pattern 'op:name new-name))
         (setf (op:name module) "xmod")
         (ensure-pattern* sub-obj 'op:absolute_name "::xmod::foo"))))
-
-
+  
+  
   (define-test "Container"
-      (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
-             (obj (op:create_enum module "IDL:mod/foo:1.0" "my-enum" "1.0" '("fie" "fum")))
-             (obj2 (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
-        (ensure-repository
-         "mod" module   "foo" obj2   "mod::my-enum" obj   "::mod::my-enum" obj 
-         "mod" (def-pattern :dk_module
-                 'identity (repository-pattern "my-enum" obj  
-                                               "::mod::my-enum" obj "::foo" obj2 )))
-        (ensure-equalp (op:lookup module "fie") nil)))
-
-
+    (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
+           (obj (op:create_enum module "IDL:mod/foo:1.0" "my-enum" "1.0" '("fie" "fum")))
+           (obj2 (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
+      (ensure-repository
+       "mod" module   "foo" obj2   "mod::my-enum" obj   "::mod::my-enum" obj 
+       "mod" (def-pattern :dk_module
+               'identity (repository-pattern "my-enum" obj  
+                                             "::mod::my-enum" obj "::foo" obj2 )))
+      (ensure-equalp (op:lookup module "fie") nil)))
+  
+  
+  (define-test "StructDef" 
+    (let* ((id "IDL:foo/Struct:1.1") (name "aStruct") (version "1.1")
+           (members (list (CORBA:StructMember :name "aa"  :type_def a-string)
+                          (CORBA:StructMember :name "bb"  :type_def a-ulong )))
+           (obj (op:create_Struct repository id name version members)))
+      (ensure-pattern obj (def-pattern :dk_Struct
+                            'op:id id  'op:version version
+                            'op:members (sequence-pattern (pattern 'op:name "aa"
+                                                                   'op:type_def a-string
+                                                                   'op:type corba:tc_string )
+                                                          (pattern 'op:name "bb" ))
+                            'op:type (pattern 'op:kind :tk_Struct
+                                              'op:member_count (length members))))
+      ;; Setting the members attribute also updates the type attribute. When setting the
+      ;; members attribute, the type member of the StructMember structure should be set
+      ;; to TC_void.
+      (setf (op:members obj) (list (car members)))
+      (ensure-pattern* (op:type obj)
+                       'op:member_count 1 '(op:member_name * 0) "aa")
+      ;; A StructDef used as a Container may only contain StructDef, UnionDef, or
+      ;; EnumDef definitions.
+      (op:create_enum obj "IDL:foo/Struct/aenum:1.0" "aenum" "1.0" '("A_A" "A_B"))
+      (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
+      (ensure-exception
+       (op:create_alias obj "IDL:foo/Struct/all:1.0" "all" "1.0" a-ulong)
+       CORBA:BAD_PARAM 'op:minor 4)))
+  
+  
   (define-test "UnionDef"
     (let* ((id "IDL:foo/Union:1.1") (name "aunion") (version "1.1")
            (desc-type a-ulong)
@@ -93,12 +121,12 @@
       (ensure-pattern obj (def-pattern :dk_union
                             'op:id id  'op:version version
                             'op:members (sequence-pattern (pattern 'op:name "aa"
-                                                              'op:label (pattern 'any-value 1)
-                                                              'op:type_def a-string
-                                                              'op:type corba:tc_string )
-                                                     (pattern 'op:label (pattern 'any-typecode CORBA:tc_octet 'any-value 0)
-                                                              'op:type_def a-ulong )
-                                                     (pattern 'op:name "bb" ))
+                                                                   'op:label (pattern 'any-value 1)
+                                                                   'op:type_def a-string
+                                                                   'op:type corba:tc_string )
+                                                          (pattern 'op:label (pattern 'any-typecode CORBA:tc_octet 'any-value 0)
+                                                                   'op:type_def a-ulong )
+                                                          (pattern 'op:name "bb" ))
                             'op:type (pattern 'op:kind :tk_union
                                               'op:member_count (length members)
                                               'op:default_index 1)
@@ -107,8 +135,16 @@
       (setf (op:discriminator_type_def obj)
             (op:get_primitive repository :pk_ushort))
       (ensure-equalp (op:kind (op:discriminator_type obj))
-                     :tk_ushort)))
-
+                     :tk_ushort)
+      ;; A UnionDef used as a Container may only contain StructDef, UnionDef, or
+      ;; EnumDef definitions.
+      (op:create_enum obj "IDL:foo/Union/aenum:1.0" "aenum" "1.0" '("A_A" "A_B"))
+      (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
+      (ensure-exception
+       (op:create_alias obj "IDL:foo/Union/all:1.0" "all" "1.0" a-ulong)
+       CORBA:BAD_PARAM 'op:minor 4)))
+  
+  
   (define-test "EnumDef"
     (let ((obj (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
       (ensure-eql (op:lookup repository "foo") obj)
@@ -119,7 +155,8 @@
       (setf (op:members obj) '("a" "b" "c"))
       (let ((tc (op:type obj)))
         (ensure-equalp (op:member_count tc) 3))))
-
+  
+  
   (define-test "AliasDef"
     (let* ((name "Fie") (ver "1.1")
            (id (format nil "IDL:~A:~A" name ver))
@@ -135,7 +172,8 @@
       (ensure-pattern repository (repository-pattern name alias))
       (setf (op:original_type_def alias) a-ulong)
       (ensure-pattern* alias 'op:type (pattern 'op:content_type CORBA:tc_ulong))))
-
+  
+  
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
       (ensure-pattern obj (def-pattern :dk_sequence 
@@ -146,7 +184,8 @@
       (ensure-typecode (op:element_type obj) :tk_string)
       (setf (op:bound obj) 10)
       (ensure-typecode (op:type obj) (create-sequence-tc 10 CORBA:tc_string))))
-
+  
+  
   (define-test "ArrayDef"
     (let ((obj (op:create_array repository 10 a-string)))
       (ensure-equalp (op:def_kind obj) :dk_array)
@@ -157,7 +196,8 @@
       (ensure-equalp (op:kind (op:element_type obj)) :tk_ulong)
       (setf (op:length obj) 11)
       (ensure-typecode (op:type obj) (create-array-tc 11 corba:tc_ulong))))
-
+  
+  
   (define-test "ExceptionDef"
     (let* ((members (list (CORBA:StructMember :name "a"
                                               :type CORBA:tc_void :type_def a-string)
@@ -172,7 +212,7 @@
                      'op:type (pattern 'op:kind :tk_except 
                                        'op:member_count (length members))
                      'op:members (sequence-pattern (pattern 'op:type corba:tc_string)
-                                              (pattern 'op:type corba:tc_ulong))
+                                                   (pattern 'op:type corba:tc_ulong))
                      'op:describe (struct-pattern
                                    'struct-class-name 'CORBA:Contained/Description
                                    'op:kind :dk_exception
@@ -185,7 +225,14 @@
       (ensure-equalp (length (op:members obj)) (1- (length members)))
       (ensure-equalp (op:member_count (op:type obj)) (1- (length members)))
       (ensure-equalp (op:kind (op:member_type (op:type obj) 0)) :tk_ulong)
-      (ensure-eql (op:member_count (op:type obj)) (1- (length members)))))
+      (ensure-eql (op:member_count (op:type obj)) (1- (length members)))
+      ;; An ExceptionDef used as a Container may only contain StructDef, UnionDef, or
+      ;; EnumDef definitions.
+      (op:create_enum obj "IDL:my/Exception/aenum:1.0" "aenum" "1.0" '("A_A" "A_B"))
+      (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
+      (ensure-exception
+       (op:create_alias obj "IDL:my/Exception/all:1.0" "all" "1.0" a-ulong)
+       CORBA:BAD_PARAM 'op:minor 4)))
   
 
   (define-test "AttributeDef"
