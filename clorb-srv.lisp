@@ -18,7 +18,7 @@
              (slot-value exc 'types)
              (handler-case
                  (map 'list #'second
-                      (third (typecode-params 
+                      (third (typecode-params
                               (get-typecode (exception-id exc)))))
               (error () (error 'unknown)))))
    (cons (exception-id exc)
@@ -32,14 +32,14 @@
 
 (defclass clorb-adaptor ()
   ((orb :initarg :orb  :accessor adaptor-orb)
-   (listner-socket 
+   (listner-socket
     :initarg :listner
     :initform nil :accessor listner-socket)
    (client-streams :initform nil :accessor client-streams-raw)))
 
 (defun setup-server (&optional (orb (ORB_init)))
   (setq *server-socket* (open-passive-socket *port*))
-  (let ((adaptor (make-instance 'clorb-adaptor 
+  (let ((adaptor (make-instance 'clorb-adaptor
                    :orb orb
                    :listner *server-socket*)))
     (setf (adaptor orb) adaptor)))
@@ -47,6 +47,12 @@
 (defmethod listner-sockets ((adaptor clorb-adaptor))
   (if (listner-socket adaptor)
       (list (listner-socket adaptor))))
+
+(defmethod listner-host ((adaptor clorb-adaptor))
+  (passive-socket-host *server-socket*))
+
+(defmethod listner-port ((adaptor clorb-adaptor))
+  (passive-socket-port *server-socket*))
 
 (defun srv-handle-socket (adaptor socket &optional allow-blocking)
   (let ((conn (accept-connection-on-socket socket allow-blocking)))
@@ -88,7 +94,7 @@
 
 
 (defun get-message (stream)
-  (let ((sreq (make-server-request 
+  (let ((sreq (make-server-request
                :stream stream
                :buffer (get-work-buffer))))
     (when (read-request sreq stream)
@@ -98,26 +104,26 @@
 
 (defun poa-demux (sreq)
   (with-slots (object-key operation) sreq
-    (multiple-value-bind (reftype poaid oid) 
+    (multiple-value-bind (reftype poa oid)
         (decode-object-key-poa object-key)
       (setf (server-request-oid sreq) oid)
-      (let ((poa (gethash poaid *poa-map*)))
-        (cond
-         ((and reftype poa)
-          (setf (server-request-poa sreq) poa)
-          (mess 3 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
-          ;; Check if POA is active, holding, discarding...
-          (poa-invoke poa sreq))
-         (t
-          (set-request-exception 
-           sreq (make-condition 'CORBA:OBJECT_NOT_EXIST))
-          (send-response sreq)))))))
+      (cond
+        ((and reftype poa)
+         (setf (server-request-poa sreq) poa)
+         (mess 3 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
+         ;; Check if POA is active, holding, discarding...
+         (poa-invoke poa sreq))
+        (t
+         (set-request-exception
+          sreq (make-condition 'CORBA:OBJECT_NOT_EXIST))
+         (send-response sreq))))))
 
 (defun root-POA (&optional (orb (orb_init)))
   (unless (adaptor orb)
     (setup-server orb))
   (unless *root-POA*
-    (setq *root-poa* (create-POA nil "root" nil nil)))
+    (setq *root-poa* (create-POA nil "root" nil nil))
+    (setf (the-orb *root-poa*) orb))
   *root-POA*)
 
 (eval-when (:load-toplevel :execute)
