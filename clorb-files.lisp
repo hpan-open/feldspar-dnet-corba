@@ -76,6 +76,7 @@
   '("clorb-objkey"
     "clorb-servant"
     "clorb-trie"
+    "clorb-aom"
     "clorb-poa-base"
     "clorb-poa"
     "clorb-srv"
