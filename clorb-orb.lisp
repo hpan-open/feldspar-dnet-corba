@@ -517,7 +517,7 @@
     (let ((directory '())
           (start 0))
       (cond ((string-starts-with path "/")
-             (push :absolute directory)
+             (setq directory (reverse (home-volume-prefix)))
              (incf start))
             (t
              (push :relative directory)))

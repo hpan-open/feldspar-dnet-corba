@@ -830,3 +830,14 @@ Returns select result to be used in getting status for streams."
           (mapcar #'external-namestring include-directories)
           defines
           (external-namestring file)))
+
+
+(defun home-volume-prefix ()
+  "The directory prefix for the home volume.
+Usually :ABSOLUTE but for MCL there is also a volume name. 
+This is needed when translating from file:-URLs."
+  (%SYSDEP "home-volume-prefix"
+           #+Digitool 
+           (subseq (pathname-directory (truename "home:")) 0 2)
+           ;; default
+           '(:ABSOLUTE)))
