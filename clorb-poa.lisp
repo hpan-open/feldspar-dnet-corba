@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.28 2004/02/03 17:17:07 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.29 2004/06/09 21:13:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -340,17 +340,17 @@ When destroy is called the POA behaves as follows:
 
 ...
 
-¥ The POA calls destroy on all of its immediate descendants.
+* The POA calls destroy on all of its immediate descendants.
 
-¥ After all descendant POAs have been destroyed and their servants
+* After all descendant POAs have been destroyed and their servants
 etherealized, the POA continues to process requests until there are no
 requests executing in the POA. At this point, apparent destruction of the
 POA has occurred.
 
-¥ After destruction has become apparent, the POA may be re-created via
+* After destruction has become apparent, the POA may be re-created via
 either an AdapterActivator or a call to create_POA.
 
-¥ If the etherealize_objects parameter is TRUE, the POA has the RETAIN
+* If the etherealize_objects parameter is TRUE, the POA has the RETAIN
 policy, and a servant manager is registered with the POA, the etherealize
 operation on the servant manager is called for each active object in the
 Active Object Map. The apparent destruction of the POA occurs before any
@@ -358,13 +358,13 @@ calls to etherealize are made. Thus, for example, an etherealize method
 that attempts to invoke operations on the POA receives the
 OBJECT_NOT_EXIST exception.
 
-¥ If the POA has an AdapterActivator installed, any requests that would
+* If the POA has an AdapterActivator installed, any requests that would
 have caused unknown_adapter to be called cause a TRANSIENT exception with
 standard minor code 4 to be raised instead.
 
 The wait_for_completion parameter is handled as follows:
 ...
-¥ If wait_for_completion is FALSE, the destroy operation destroys the POA and
+* If wait_for_completion is FALSE, the destroy operation destroys the POA and
 its children but waits neither for active requests to complete nor for etherealization
 to occur. If destroy is called multiple times before destruction is complete
 (because there are active requests), the etherealize_objects parameter applies
@@ -377,7 +377,7 @@ individual call (some callers may choose to block, while others may not).
 
 (define-method destroy ((poa PortableServer:POA) etherealize-objects wait-for-completion)
 #|
-¥ If wait_for_completion is TRUE and the current thread is in an invocation
+* If wait_for_completion is TRUE and the current thread is in an invocation
 context dispatched from some POA belonging to the same ORB as this POA, the
 BAD_INV_ORDER system exception with standard minor code 3 is raised and
 POA destruction does not occur.
@@ -630,43 +630,99 @@ POA destruction does not occur.
 ;;;; Request Handling
 ;; ----------------------------------------------------------------------
 
+#|
+(defun dispatch-request (orb req objkey)
+  (decode-object-key objkey)
+  (if numberp poa=..)
+  (poa-locate *root-poa* poa-spec) => poa poa-spec'
+  (if poa-spec' 
+    (poa-enqueue poa req)
+    (poa-invoke poa ...)))
+
+(poa-dequeue poa) => req
+req => poa-spec
+(if pos-spec (poa-locate poa poa-spec) ..)
+(else poa-invoke)
+
+(progn
+  (setq poa *root-POA*)
+  (loop for n in poaid 
+        while poa
+        do (setq poa (find-requested-poa poa n t t))))
+
+
+(defun poa-dispatch (poa req poa-spec)
+  (cond (poa-spec
+         (let ((next-poa
+                (handler-case
+                  (find-requested-poa poa (car poa-spec) t t)
+                  (CORBA:TRANSIENT () (poa-enqueue poa req) nil)
+                  (CORBA:SystemException (exc) (server-request-systemexception-reply req exc) nil))))
+           (when next-poa
+             (setf (request-poa-spec req) (cdr poa-spec))
+             (poa-dispatch next-poa req (cdr poa-spec)))))
+        (t (poa-execute poa req))))
+
+(defun poa-execute (poa req)
+  (case (poa-state poa)
+    (case state
+      (hold (enq req))
+      (discard (request-respond req TRANSIENT))
+      (inactive (request-respond req OBJ_ADAPTER ?))
+      (active (poa-invoke poa req)))))
+
+
+(defun poa-enqueue (poa req)
+  (cond (poa-spec                       ; other poa to locate
+         (find-poa-child )
+         (if found (poa-enqueue ..))
+         (if not found but there is a poa manager
+             (case state
+               (hold (enq req))
+               (discard (request-respond req TRANSIENT))
+               (active (call poa-manager))
+               (inactive (request-respond req OBJ_ADAPTER ?)))
+             (request-respond req corba:object_not_exist)))
+        (t
+)))
+
+
+|#
+
 (defun poa-invoke (poa oid operation buffer request)
   (unless (eq :active (poa-effective-state poa))
-    (raise-system-exception 'CORBA:TRANSIENT 0 :completed_no))
-  (let (;(orb (the-orb poa))
-        (servant (trie-get oid (POA-active-object-map poa)))
-        (cookie nil)
-        (topost nil))
-    (cond (servant)
-          ((poa-has-policy poa :use_servant_manager)
-           (cond ((poa-has-policy poa :retain)
-                  (setq servant
-                        (op:incarnate (POA-servant-manager poa) oid poa))
-                  (mess 2 "~A incarnated ~A for '~/clorb:stroid/'"
-                        poa servant oid))
-                 (t
-                  (multiple-value-setq (servant cookie)
-                    (op:preinvoke (POA-servant-manager poa)
-                                  oid poa operation))
-                  (setq topost t)))
+    (raise-system-exception 'CORBA:TRANSIENT 1 :completed_no))
+  (flet ((check-servant (servant) 
            (unless (typep servant 'PortableServer:Servant)
              (raise-system-exception 'corba:obj_adapter 2 :completed_no))
-           (unless topost
-             (op:activate_object_with_id poa oid servant)))
-          ((poa-has-policy poa :use_default_servant)
-           (setq servant (POA-default-servant poa)))
-          (t
-           (raise-system-exception 'CORBA:OBJECT_NOT_EXIST
-                                   :completed :completed_no)))
-    (let ((*poa-current* (make-poa-current poa oid servant)))
-      (cond (topost
-             (unwind-protect
-               (servant-invoke servant operation buffer request)
-               (op:postinvoke (POA-servant-manager poa)
-                              oid poa operation cookie servant)))
+           servant))
+    (let (;(orb (the-orb poa))
+          (servant (trie-get oid (POA-active-object-map poa)))
+          (cookie nil)
+          (postinvoke (lambda ())))
+      (cond (servant)
+            ((poa-has-policy poa :use_servant_manager)
+             (cond ((poa-has-policy poa :retain)
+                    (setq servant (check-servant (op:incarnate (POA-servant-manager poa) oid poa)))
+                    (mess 2 "~A incarnated ~A for '~/clorb:stroid/'" poa servant oid)
+                    (op:activate_object_with_id poa oid servant))
+                   (t
+                    (multiple-value-setq (servant cookie)
+                      (op:preinvoke (POA-servant-manager poa) oid poa operation))
+                    (check-servant servant)
+                    (setq postinvoke (lambda ()
+                                       (op:postinvoke (POA-servant-manager poa)
+                                                      oid poa operation cookie servant))))))
+            ((poa-has-policy poa :use_default_servant)
+             (or (setq servant (POA-default-servant poa))
+                 (raise-system-exception 'CORBA:OBJ_ADAPTER 3 :completed_no)))
             (t
-             (servant-invoke servant operation buffer request))))
-    (when request
+             (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))
+      (let ((*poa-current* (make-poa-current poa oid servant)))
+        (setf (request-state request) :exec)
+        (unwind-protect
+          (servant-invoke servant operation buffer request)
+          (funcall postinvoke)))
       (server-request-respond request))))
 
 
