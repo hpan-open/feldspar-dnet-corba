@@ -185,31 +185,23 @@
 
 
 (defun connection-working-p (conn)
-  (let ((desc (connection-io-descriptor conn)))
-    (or (null desc)
-        (io-descriptor-working-p desc))))
+  (io-descriptor-working-p (connection-io-descriptor conn)))
 
 
 (defun connection-init-read (conn continue-p n callback)
   (setf (connection-read-callback conn) callback)
   (let ((desc (connection-io-descriptor conn)))
-    (if desc
-        (let* ((buffer (if continue-p
-                           (connection-read-buffer conn)
-                           (get-work-buffer)))
-               (octets (buffer-octets buffer))
-               (start (fill-pointer octets)))
-          (unless continue-p
-            (setf (connection-read-buffer conn) buffer))
-          (when (< (array-total-size octets) n)
-            (adjust-array octets n))
-          (setf (fill-pointer octets) n)
-          (io-descriptor-set-read desc octets start n))
-
-        ;; If no io-descriptor, assume complete
-        (if continue-p
-            (funcall callback conn)
-            (setf (connection-read-buffer conn) nil)))))
+    (let* ((buffer (if continue-p
+                     (connection-read-buffer conn)
+                     (get-work-buffer)))
+           (octets (buffer-octets buffer))
+           (start (fill-pointer octets)))
+      (unless continue-p
+        (setf (connection-read-buffer conn) buffer))
+      (when (< (array-total-size octets) n)
+        (adjust-array octets n))
+      (setf (fill-pointer octets) n)
+      (io-descriptor-set-read desc octets start n))))
 
 
 (defun write-done (conn)
@@ -222,8 +214,7 @@
   (setf (connection-write-callback conn) #'write-done)
   (let ((desc (connection-io-descriptor conn))
         (octets (buffer-octets buffer)))
-    (when desc
-      (io-descriptor-set-write desc octets 0 (length octets)))))
+    (io-descriptor-set-write desc octets 0 (length octets))))
 
 
 ;;; Connection events
@@ -433,22 +424,9 @@
   (lambda (desc)
     (io-descriptor-destroy desc)))
 
-(defvar *shortcut-in* (make-instance 'connection))
-
-(defvar *shortcut-out* (make-instance 'connection))
-
-(defun shortcut-transfer (from to)
-  (when (and (connection-write-buffer from)
-             (null (connection-read-buffer to)))
-    (setf (connection-read-buffer to)
-          (connection-write-buffer from))
-    (connection-write-ready from)
-    (connection-read-ready to)
-    t))
-
 
 (defun orb-wait (&optional wait-func &rest wait-args)
-  (if *running-orb* 
+  (if *running-orb*
     (if wait-func
       (loop until (apply wait-func wait-args) do (orb-work))
       (orb-work))
@@ -459,32 +437,28 @@
 
 (defun orb-work ()
   (declare (optimize (debug 3)))
-  (or ;; Check special shortcut connection
-   (shortcut-transfer *shortcut-out* *shortcut-in*)
-   (shortcut-transfer *shortcut-in* *shortcut-out*)
-   ;; normal processing
-   (multiple-value-bind (event desc) (io-driver)
-     (when event
-       (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
-     (let ((conn (gethash desc *desc-conn*)))
-       (case event
-         (:read-ready
-          ;;(io-descriptor-set-read desc nil 0 0)
-          (connection-read-ready conn))
-         (:write-ready
-          (io-descriptor-set-write desc nil 0 0)
-          (connection-write-ready conn))
-         (:new
-          (funcall *new-connection-callback* desc))
-         (:connected
-          ;; Not implemented yet..; for outgoing connections setup
-          nil)
-         (:error
-          (mess 4 "Error: ~A" (io-descriptor-error desc))
-          (io-descriptor-destroy desc)
-          (connection-error conn))
-         ((nil)
-          (mess 1 "time out")))))))
+  (multiple-value-bind (event desc) (io-driver)
+    (when event
+      (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
+    (let ((conn (gethash desc *desc-conn*)))
+      (case event
+        (:read-ready
+         ;;(io-descriptor-set-read desc nil 0 0)
+         (connection-read-ready conn))
+        (:write-ready
+         (io-descriptor-set-write desc nil 0 0)
+         (connection-write-ready conn))
+        (:new
+         (funcall *new-connection-callback* desc))
+        (:connected
+         ;; Not implemented yet..; for outgoing connections setup
+         nil)
+        (:error
+         (mess 4 "Error: ~A" (io-descriptor-error desc))
+         (io-descriptor-destroy desc)
+         (connection-error conn))
+        ((nil)
+         (mess 1 "time out"))))))
 
 
 
@@ -515,12 +489,6 @@ Where host is a string and port an integer.")
       (push holder (cdr host-list)))
     holder))
 
-(defun setup-shortcut-out (host port &optional (conn-out *shortcut-out*))
-  (let ((holder (get-connection-holder host port)))
-    (let ((conn (cdr holder)))
-      (when conn (connection-destroy conn)))
-    (setf (cdr holder) conn-out)
-    (setup-outgoing-connection conn-out)))
 
 (defun get-connection (orb host port)
   (let* ((holder (get-connection-holder host port))
@@ -531,6 +499,7 @@ Where host is a string and port an integer.")
       (when conn (setup-outgoing-connection conn))
       (setf (cdr holder) conn))
     conn))
+
 
 (defun get-object-connection (proxy)
   ;; get the connection to use for a proxy object.

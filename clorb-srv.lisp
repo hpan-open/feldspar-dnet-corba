@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.21 2003/12/19 13:03:27 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.22 2004/01/14 17:11:19 lenst Exp $	
 
 (in-package :clorb)
 
@@ -32,7 +32,9 @@
       nil)))
 
 
+
 ;;;; Server proper
+
 
 (defun setup-server (&optional (orb (CORBA:ORB_init)))
   (multiple-value-bind (port host)
@@ -46,25 +48,27 @@
     (setq *root-poa* (create-POA nil "root" nil nil orb)))
   (setup-default-poa orb))
 
+
 (defun setup-incoming-connection (conn)
   (connection-init-read conn nil *iiop-header-size* #'poa-message-handler))
 
-(defun setup-shortcut-in (&optional (conn-in *shortcut-in*))
-  (setup-incoming-connection conn-in))
 
 (defun setup-shortcut ()
   (let ((orb (CORBA:ORB_init)))
-    (setup-shortcut-out (orb-host orb) (orb-port orb))
-    (setup-shortcut-in)))
+    (setq *io-loopback-p*
+          (lambda (host port)
+            (and (equal host (orb-host orb))
+                 (= port (orb-port orb)))))))
+
 
 (defun shortcut-off ()
-  (let* ((orb (CORBA:ORB_init))
-         (holder (get-connection-holder (orb-host orb) (orb-port orb))))
-    (setf (cdr holder) nil)))
+  (setq *io-loopback-p* nil))
+
 
 (defun poa-connection-handler (desc)
   (let ((conn (make-associated-connection *the-orb* desc)))
     (setup-incoming-connection conn)))
+
 
 (defun poa-message-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
