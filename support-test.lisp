@@ -99,5 +99,8 @@
      (t (exc)
         (net.cddr.luna::tc-report "Should raise ~A. Got: ~A" ',exception exc))))
 
+(defun std-minor (minor)
+  (logior omg.org/corba::omgvmcid minor))
+
 (defmacro ensure-repository (&rest args)
   `(ensure-pattern repository (repository-pattern ,@args)))
