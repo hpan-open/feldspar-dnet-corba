@@ -83,6 +83,24 @@
 
 
 
+;;;; GIOP (un)marshal extras
+
+(defun marshal-giop-set-message-length (buffer)
+  (with-out-buffer (buffer)
+    (let ((len pos))
+      (setf pos 8)
+      (marshal-ulong (- len 12) buffer)
+      (setf pos len))))
+
+
+(defun marshal-service-context (ctx buffer)
+  (marshal-sequence ctx #'marshal-tagged-component buffer))
+
+(defun unmarshal-service-context (buffer)
+  (unmarshal-sequence-m (buffer) 
+    (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
+	                :context_data (unmarshal-osequence buffer))))
+
 ;;;; Utils
 
 (defun marshal-any-value (any buffer)
@@ -263,34 +281,39 @@
   '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
               :CLOSECONNECTION :MESSAGEERROR))
 
+(defun make-iiop-version (major minor)
+  (or (if (eql major 1)
+        (case minor 
+          (0 :iiop_1_0) (1 :iiop_1_1)))
+      :iiop_unknown_version))
+  
+
 (defun unmarshal-giop-header (buffer)
   (unless (loop for c in '(#\G #\I #\O #\P)
 		always (eql c (unmarshal-char buffer)))
     (error "Not a GIOP message: ~/net.cddr.clorb::stroid/"
            (buffer-octets buffer)))
-  (let* ((major (unmarshal-octet buffer))
-	 (minor (unmarshal-octet buffer))
-         (iiop-version (cons major minor))
-	 (byte-order (unmarshal-octet buffer))
-	 (msgtype (aref +message-types+ (unmarshal-octet buffer))))
+  (let ((major (unmarshal-octet buffer))
+        (minor (unmarshal-octet buffer))
+        (byte-order (unmarshal-octet buffer))
+        (msgtype (aref +message-types+ (unmarshal-octet buffer))))
     (setf (buffer-byte-order buffer) byte-order)
-    (values msgtype iiop-version)))
+    (values msgtype (make-iiop-version major minor))))
 
 (defun marshal-giop-header (type buffer)
-  (loop for c across "GIOP"
-	do (marshal-octet (char-code c) buffer))
-  (marshal-octet 1 buffer)				;Version 
-  (marshal-octet 0 buffer)
-  (marshal-octet 1 buffer)				;byte-order
-  (marshal-octet (cond ((numberp type) type)
-		       ((eq type 'request) 0)
-		       ((eq type 'reply) 1)
-		       (t 
-                        (let ((n (position type +message-types+)))
-                          (or n (error "Message type ~S" type)))))
-                 buffer)
-  ;; Place for message length to be patched in later
-  (marshal-ulong 0 buffer))
+  (with-out-buffer (buffer)
+    #.(cons 'progn (loop for c across "GIOP" collect `(put-octet ,(char-code c))))
+    (put-octet 1)				;Version 
+    (put-octet 0)
+    (put-octet 1)				;byte-order
+    (put-octet (cond ((numberp type) type)
+                     ((eq type 'request) 0)
+                     ((eq type 'reply) 1)
+                     (t 
+                      (let ((n (position type +message-types+)))
+                        (or n (error "Message type ~S" type))))))
+    ;; Place for message length to be patched in later
+    (incf pos 4)))
 
 
 (defun get-response-0 (conn)

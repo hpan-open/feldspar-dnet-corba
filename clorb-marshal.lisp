@@ -3,40 +3,6 @@
 (in-package :clorb)
 
 
-;;; should be in buffer:
-
-(defmacro with-out-buffer ((buffer &key (resize 400)) &body body)
-  "Open upp buffer.
-In body: 
-- buffer     the buffer,
-- octets     the octet vector,
-- start-pos  start pos in octets for this work,
-- pos        current pos in octets (setf-able),
-- (align n)  align output to n octets (n must be litteral),
-- (put-octet n)  output octet n. "
-  `(let* ((buffer ,buffer)
-          (start-pos (buffer-start-pos buffer))
-          (octets (buffer-octets buffer)))
-     (declare (ignorable start-pos octets)
-              (type buffer-index start-pos))
-     (macrolet ((put-octet (n)
-                  `(vector-push-extend ,n octets ,',resize))
-                (align (n) 
-                  `(let ((skip (- ,n (logand (the buffer-index (- (fill-pointer octets) start-pos))
-                                             (- ,n 1)))))
-                     (declare (fixnum skip))
-                     (when (< skip ,n)
-                       (dotimes (x skip)
-                         (declare (fixnum x))
-                         (vector-push-extend 0 octets ,',resize))))))
-       (symbol-macrolet ((pos (fill-pointer octets)))
-         ,@body))))
-
-(defun buffer-pos (buffer)
-  (fill-pointer (buffer-octets buffer)))
-
-
-
 (defun marshal-octet (n buffer)
   (declare (type buffer buffer)
            (optimize (speed 3) (debug 0)))
@@ -182,7 +148,7 @@ In body:
        (loop for c across s do (put-octet (char-code c))))
       (vector
        (loop for c across s do (put-octet c)))
-      (cons
+      (list
        (loop for c in s do (put-octet c))))))
 
 
@@ -283,16 +249,10 @@ In body:
 (defmethod marshal-object ((object t) buffer)
   (marshal-object (op:_this object) buffer))
 
-
-
 (defun marshal-any (arg buffer)
   (let ((tc (any-typecode arg)))
     (marshal-typecode tc buffer)
     (marshal (any-value arg) tc buffer)))
-
- 
-
-
 
 
 (defgeneric marshal (arg tc buffer))
@@ -324,16 +284,3 @@ In body:
      for tc in types
      do (marshal val tc buffer)))
 
-
-;;;; GIOP extras
-
-(defun marshal-giop-set-message-length (buffer)
-  (with-out-buffer (buffer)
-    (let ((len pos))
-      (setf pos 8)
-      (marshal-ulong (- len 12) buffer)
-      (setf pos len))))
-
-
-(defun marshal-service-context (ctx buffer)
-  (marshal-sequence ctx #'marshal-tagged-component buffer))

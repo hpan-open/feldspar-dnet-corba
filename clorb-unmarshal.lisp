@@ -7,9 +7,8 @@
 (defun unmarshal-octet (buffer)
   (declare (type buffer buffer)
            (optimize speed (debug 0)))
-  (let ((pos (buffer-position buffer)))
-    (setf (buffer-position buffer) (1+ pos))
-    (aref (buffer-octets buffer) pos)))
+  (with-in-buffer (buffer)
+    (get-octet)))
 
 (defun unmarshal-char (buffer)
   (code-char (unmarshal-octet buffer)))
@@ -17,6 +16,8 @@
 (defun unmarshal-bool (buffer)
   (/= (unmarshal-octet buffer) 0))
 
+
+#+unused-functions
 (defun unmarshal-align (n buffer)
   (declare (type (integer 0 100) n)
            (type buffer buffer)
@@ -25,33 +26,17 @@
         (logand (- n (logand (the buffer-index (buffer-rel-pos buffer)) (- n 1))) (- n 1))))
 
 
-(defmacro with-encapsulation (buffer &body body)
-  `(with-sub-buffer (,buffer (unmarshal-ulong ,buffer))
-     (setf (buffer-byte-order ,buffer) (unmarshal-octet ,buffer))
-     ,@body))
 
-(defun unmarshal-encapsulation (encaps thunk)
-  (if (typep encaps 'buffer)
-      (with-encapsulation encaps
-        (funcall thunk))
-    (let ((buffer (make-buffer :octets encaps)))
-      (setf (buffer-byte-order buffer) (unmarshal-octet buffer))
-      (funcall thunk buffer))))
-
-(defmacro unmarshal-number (size signed buffer &optional (align size))
-  (let ((code1 `(the corba:octet (unmarshal-octet buffer)))
+(defmacro %unmarshal-number (size signed buffer &optional (align size))
+  (let ((code1 `(get-octet))
         (code2 nil)
         (code nil))
     (loop for c from 1 below size 
-          do (setf code1
-                   `(logior ,code1
-                            (ash (the corba:octet (unmarshal-octet buffer))
-                                 ,(* c 8)))))
+          do (setf code1 `(logior ,code1 (ash (get-octet) ,(* c 8)))))
     (setf code2 `(logior
                   ,@(loop for c from (1- size) downto 1 
-                          collect
-                          `(ash (the corba:octet (unmarshal-octet buffer)) ,(* c 8)))
-                  (the corba:octet (unmarshal-octet buffer))))
+                          collect `(ash (get-octet) ,(* c 8)))
+                  (get-octet)))
     
     (setf code `(if (= (buffer-byte-order buffer) 1)
                   ,code1 ,code2))
@@ -60,33 +45,33 @@
                     (if (>= n ,(expt 2 (1- (* size 8))))
                       (- n ,(expt 2 (* size 8)))
                       n))))
-    `(let ((buffer ,buffer))
-       (unmarshal-align ,align buffer)
+    `(with-in-buffer (,buffer)
+       (align ,align)
        ,code)))
 
 (defun unmarshal-ushort (buffer)
   (declare (optimize speed))
-  (the CORBA:short
-    (unmarshal-number 2 nil buffer)))
+  (the CORBA:ushort
+    (%unmarshal-number 2 nil buffer)))
 
 (defun unmarshal-short (buffer)
   (declare (optimize speed))
   (the CORBA:Short
-    (unmarshal-number 2 t buffer)))
+    (%unmarshal-number 2 t buffer)))
 
 (defun unmarshal-ulong (buffer)
   (declare (optimize speed))
   (the CORBA:ULong
-    (unmarshal-number 4 nil buffer)))
+    (%unmarshal-number 4 nil buffer)))
 
 (defun unmarshal-long (buffer)
-  (unmarshal-number 4 t buffer))
+  (%unmarshal-number 4 t buffer))
 
 (defun unmarshal-longlong (buffer) 
-  (unmarshal-number 8 t buffer))
+  (%unmarshal-number 8 t buffer))
 
 (defun unmarshal-ulonglong (buffer)
-  (unmarshal-number 8 nil buffer))
+  (%unmarshal-number 8 nil buffer))
 
 
 (defun ieee-integer-to-float (raw float-type-zero sign-bit expn-bits fraction-bits bias)
@@ -108,12 +93,12 @@
                          31 8 23 127))
 
 (defun unmarshal-double (buffer)
-  (ieee-integer-to-float (unmarshal-number 8 nil buffer) 
+  (ieee-integer-to-float (%unmarshal-number 8 nil buffer) 
                          (coerce 0 'corba:double)
                          63 11 52 1023))
 
 (defun unmarshal-longdouble (buffer)
-  (ieee-integer-to-float (unmarshal-number 16 nil buffer 8) 
+  (ieee-integer-to-float (%unmarshal-number 16 nil buffer 8) 
                          (coerce 0 'corba:longdouble)
                          127 15 112 16383))
 
@@ -138,48 +123,57 @@
 (defun unmarshal-string (buffer)
   (declare (optimize (speed 3) (safety 1) (space 0))
            (type buffer buffer))
+  (check-type buffer buffer "a buffer")
   (let* ((len (unmarshal-ulong buffer))
-         (str (make-string (- len 1)))
-         (octets (buffer-octets buffer)))
-    (loop for pos from (buffer-position buffer)
-          for i from 0 below (1- len)
-          do (setf (aref str i) (code-char (aref octets pos))))
-    (incf (buffer-position buffer) len)
+         (str (make-string (- len 1))))
+    (with-in-buffer (buffer :check nil)
+      (loop for i from 0 below (1- len)
+            do (setf (aref str i) (code-char (get-octet))))
+      (get-octet))
     str))
 
 
 (defun unmarshal-osequence (buffer)
   (let ((len (unmarshal-ulong buffer)))
-    (subseq (buffer-octets buffer)
-	    (buffer-position buffer)
-	    (incf (buffer-position buffer) len))))
+    (with-in-buffer (buffer :check nil)
+      (subseq octets pos (incf pos len)))))
+
+
+(defmacro with-encapsulation (buffer &body body)
+  `(with-sub-buffer (,buffer (unmarshal-ulong ,buffer))
+     (setf (buffer-byte-order ,buffer) (unmarshal-octet ,buffer))
+     ,@body))
+
+(defun unmarshal-encapsulation (encaps thunk)
+  (if (typep encaps 'buffer)
+      (with-encapsulation encaps
+        (funcall thunk))
+    (let ((buffer (make-buffer :octets encaps)))
+      (setf (buffer-byte-order buffer) (unmarshal-octet buffer))
+      (funcall thunk buffer))))
+
 
 (defvar *indirection-record* nil)
 
 (defun unmarshal-typecode (buffer)
   (let* ((start (buffer-abs-pos buffer))
          (tki (unmarshal-ulong buffer))
-	 (tk (if (= tki #16rFFFFFFFF)
-                 :indirection
+	 (tk (if (= tki #xFFFFFFFF)
+               :indirection
                (svref TCKind tki))))
     (if (eq tk :indirection)
-        (let ((abs-pos (buffer-abs-pos buffer))
-              (indirection (unmarshal-long buffer)))
-          (incf abs-pos indirection)
-          (mess 1 "Indirection: ~S abs-pos: ~S" indirection abs-pos)
-          (or
-           (loop for (pos tc) on *indirection-record* by #'cddr
-               do (mess 1 "Searching ~S" pos)
-               when (= pos abs-pos)
-               return tc)
-           (error 'CORBA:MARSHAL)))
-      (let* ((typecode (make-typecode tk))
-             (*indirection-record*
-              (list* start typecode *indirection-record*)))
-        (setf (typecode-params typecode)
-              (unmarshal-spec (get tk 'tk-params) buffer))
-        
-        typecode))))
+      (let ((abs-pos (buffer-abs-pos buffer))
+            (indirection (unmarshal-long buffer)))
+        (incf abs-pos indirection)
+        (mess 1 "Indirection: ~S abs-pos: ~S" indirection abs-pos)
+        (or (cdr (assoc abs-pos (car *indirection-record*)))
+            (error 'CORBA:MARSHAL)))
+      (let ((*indirection-record* (or *indirection-record* (list nil))))
+        (let ((typecode (make-typecode tk)))
+          (push (cons start typecode) (car *indirection-record*))
+          (setf (typecode-params typecode)
+                (unmarshal-spec (get tk 'tk-params) buffer))
+          typecode)))))
 
 (defun unmarshal-spec (pspec buffer &optional top-level)
   (cond ((null pspec) nil)
@@ -271,13 +265,11 @@
 (defmethod decode-ior-profile ((tag (eql 0)) encaps)
   (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
 
-
-
-;;; Enum
-
-(defun unmarshal-enum (tc buffer)
-  (let ((index (unmarshal-ulong buffer)))
-    (elt (tc-keywords tc) index)))
+(defmethod decode-ior-profile ((tag (eql 1)) encaps)
+  ;; A multi component profile
+  (unmarshal-encapsulation encaps
+                           (lambda (buffer)
+                             (unmarshal-sequence #'unmarshal-tagged-component buffer))))
 
 
 
@@ -287,8 +279,7 @@
 
 (defmethod unmarshal ((type CORBA:TypeCode) buffer)
   (declare (optimize (speed 2)))
-  (let ((kind (typecode-kind type))
-        (params (typecode-params type)))
+  (let ((kind (typecode-kind type)))
     (ecase kind
       ((:tk_octet) (unmarshal-octet buffer))
       ((:tk_char) (unmarshal-char buffer))
@@ -296,7 +287,6 @@
       ((:tk_ushort) (unmarshal-ushort buffer))
       ((:tk_short) (unmarshal-short buffer))
       ((:tk_ulong) (unmarshal-ulong buffer))
-      ((:tk_enum) (unmarshal-enum type buffer))
       ((:tk_long) (unmarshal-long buffer))
       ((:tk_longlong) (unmarshal-longlong buffer))
       ((:tk_ulonglong) (unmarshal-ulonglong buffer))
@@ -305,23 +295,7 @@
       ((:tk_longdouble) (unmarshal-longdouble buffer))
       ((:tk_string) (unmarshal-string buffer))
       ((:tk_any) (unmarshal-any buffer))
-      ((:tk_sequence)
-       (let ((eltype (car params)))
-	 (if (or (eq eltype :tk_octet)
-		 (and (consp eltype)
-		      (eq (car eltype) :tk_octet)))
-           (unmarshal-osequence buffer)
-	   (unmarshal-sequence-m (buffer) (unmarshal eltype buffer)))))
-      ((:tk_array)
-       (let ((tc (first params))
-             (len (second params)))
-         (let ((arr (make-array len)))
-           (loop for i below len 
-                 do (setf (aref arr i) (unmarshal tc buffer)))
-           arr)))
-      ((:tk_alias) (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
-      ((:tk_objref) (unmarshal-object buffer (first params)))
       ((:tk_typecode) (unmarshal-typecode buffer)))))
 
 
@@ -330,10 +304,3 @@
   (mapcar #'(lambda (tc) (unmarshal tc buffer))
           typecodes))
 
-
-;;;; GIOP extras
-
-(defun unmarshal-service-context (buffer)
-  (unmarshal-sequence-m (buffer) 
-    (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
-	                :context_data (unmarshal-osequence buffer))))
