@@ -1,3 +1,21 @@
+2005-04-05  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-idllexer.lisp ("IDL Lexer"): new fixed point literals
+
+	* test-idlcomp.lisp ("idlcomp"): fixed point constant and fixed
+	point constant arithmetic
+
+	* clorb-idlparser.lisp (<const_dcl>): accept "const fixed" with
+	fixed literal made by make-idl-fixed and friends.
+	(<const_type>): new list of allowed types
+	(add, sub): handle fixed point arithmetic
+	(<number_literal>): added fixed point
+
+	* clorb-idllexer.lisp (idl-fixed-p): new func
+	(idl-fixed-values): new func
+	(make-idl-fixed): new func
+	(parse-fixed): return fixed repr made make make-idl-fixed
+
 2005-03-25  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* test-typecode.lisp ("Typecodes"): added testcases for checking
