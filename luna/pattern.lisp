@@ -122,12 +122,15 @@
     (match pattern object)))
   
 (defun match-keys (keys list)
-  (let ((seen '()))
+  (let ((seen '()) (allow-other-keys nil))
+    (when (eql (car keys) '&allow-other-keys)
+      (setf allow-other-keys (pop keys)))
     (when (oddp (length list))
       (fail-match list "odd key-value list"))
     (loop for (key value) on list by #'cddr
           do (let ((spec (assoc key keys)))
-               (unless spec (fail-match key "illegal key"))
+               (unless (or spec allow-other-keys)
+                 (fail-match key "illegal key"))
                (when (member key seen) (fail-match key "duplicated key"))
                (push key seen)
                (when (cddr spec)
