@@ -40,7 +40,12 @@
          (pushnew 'clorb::sb-bsd-sockets *features*))
         (t
          #+cmu (pushnew 'clorb::cmucl-sockets *features*)
-         #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own"))))
+         #+sbcl
+         (progn
+           (require :sb-bsd-sockets)
+           (pushnew 'clorb::sb-bsd-sockets *features*)           
+           (unless (find-package "SB-BSD-SOCKETS")
+             (error "We need the SOCKETS library; SBCL doesn't have its own")           )))))
 
 
 (defmacro %sysdep (desc &rest forms)
@@ -81,7 +86,7 @@
                                :format :binary :reuse-address t)
 
    #+clisp 
-   (if port (socket-server port) (socket-server))
+   (if port (ext:socket-server port) (ext:socket-server))
 
    #+clorb::cmucl-sockets 
    (ext:create-inet-listener port)
@@ -119,7 +124,7 @@
    "localhost"
 
    #+clisp
-   (socket-server-host socket)
+   (ext:socket-server-host socket)
 
    #+(and digitool (not use-acl-socket))
    (let ((host (ccl::stream-local-host (listener-stream socket))))
@@ -153,7 +158,7 @@
    (second socket)
 
    #+clisp
-   (if socket (socket-server-port socket) *port*)
+   (if socket (ext:socket-server-port socket) *port*)
 
    #+(or Allegro use-acl-socket)
    (socket:local-port socket)
@@ -195,7 +200,7 @@
      (error "Dummy TCP cannot connect")
 
      #+clisp 
-     (socket-connect port host :element-type type) 
+     (ext:socket-connect port host :element-type type) 
 
      #+clorb::cmucl-sockets
      (system:make-fd-stream (ext:connect-to-inet-socket host port)
@@ -282,11 +287,11 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (setf (sb-bsd-sockets:non-blocking-mode socket) before)))
 
    #+clisp 
-   (when (socket-wait socket (if blocking 10 0))
-     (let* ((conn (socket-accept socket 
+   (when (ext:socket-wait socket (if blocking 10 0))
+     (let* ((conn (ext:socket-accept socket 
                                  :element-type '(unsigned-byte 8))))
        (mess 4 "Accepting connection from ~A"
-             (socket-stream-peer conn))
+             (ext:socket-stream-peer conn))
        conn))
 
    #+(or allegro use-acl-socket)
@@ -373,7 +378,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    "close a listener socket"
 
    #+clisp 
-   (socket-server-close socket)
+   (ext:socket-server-close socket)
 
    ;; default
    (close socket)))
@@ -547,7 +552,7 @@ Returns select result to be used in getting status for streams."
      (mess 1 "Selecting ~A" select)
      (let ((select-list (select-value select)))
        (when select-list
-         (setf (select-value select) (socket:socket-status select-list 60))))
+         (setf (select-value select) (ext:socket-status select-list 60))))
      (mess 1 "Select result ~A" (select-value select))
      select)
 
