@@ -63,7 +63,7 @@
    #+db-sockets
    (let ((s (sockets:make-inet-socket :stream :tcp)))
      (setf (sockets:sockopt-reuse-address s) t)
-     (sockets:socket-bind s #(0 0 0 0) port)
+     (sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sockets:socket-listen s 5)
      s)
    #+allegro
@@ -88,12 +88,18 @@
 
 
 (defun passive-socket-port (socket)
+  (declare (ignorable socket))
   (%SYSDEP
    "Get the port of socket"
    #+clisp
    (socket-server-port socket)
    #+Allegro
    (socket:local-port socket)
+   #+db-sockets
+   (multiple-value-bind (adr port)
+       (sockets:socket-name socket)
+     (declare (ignore adr))
+     port)
    ;; Default
    *port* ))
 
@@ -122,7 +128,6 @@
 
    #+mcl
    (ccl::open-tcp-stream host port :element-type '(unsigned-byte 8))))
-
 
 
 (defun accept-connection-on-socket (socket &optional (blocking nil))
@@ -233,6 +238,7 @@ False if, e.g., the peer has closed."
    (close socket)))
 
 
+
 (defun wait-for-input-on-streams (server-sockets streams)
   "SERVER-SOCKETS is a list of UNCONNECTED-SOCKETs.  
 STREAMS is a list whose elements are STREAMs. Wait for a while,
@@ -247,6 +253,29 @@ Return
   (%SYSDEP 
    "wait for for input on streams and sockets"
 
+   #+(and sbcl unix) 
+   (let ((all-waitable (mapcar #'sb-sys:fd-stream-fd streams)))
+     (dolist (socket server-sockets)
+       (push (sockets:socket-file-descriptor socket) all-waitable))
+     (let ((rset 0) (maxn 0))
+       (dolist (n all-waitable)
+         (incf rset (ash 1 n))
+         (setq maxn (max n maxn)))
+       (mess 2 "Selecting set ~A" rset)
+       (multiple-value-bind (result readable wset xset)
+           (sb-unix:unix-select (1+ maxn) rset 0 0 10)
+         (mess 2 "Select return ~A ~A" result readable)
+         (block findit
+           (dolist (socket server-sockets)
+             (when (logbitp (sockets:socket-file-descriptor socket)
+                            readable)
+               (return-from findit (values :server socket))))
+           (dolist  (stream streams)
+             (when (logbitp (sb-sys:fd-stream-fd stream)
+                            readable)
+               (return-from findit (values :stream stream))))
+           nil))))
+   
    #+allegro 
    (let ((all-waitable streams))
      (dolist (socket server-sockets)
@@ -265,12 +294,12 @@ Return
                 nil))))
        (if (not ready)
            nil
-         (if (member (car ready) streams)
-             (values :stream (car ready))
-           (values :server
-                   (loop for s in server-sockets
-                       when (eql (car ready) (socket:socket-os-fd s)) 
-                       return s))))))
+           (if (member (car ready) streams)
+               (values :stream (car ready))
+               (values :server
+                       (loop for s in server-sockets
+                             when (eql (car ready) (socket:socket-os-fd s)) 
+                             return s))))))
    
    ;; Default
    (progn (sleep 0.01)
