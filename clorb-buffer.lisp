@@ -46,6 +46,8 @@
            (type buffer buffer))
   (- (buffer-in-pos buffer) (buffer-start-pos buffer)))
 
+(defun buffer-length (buffer)
+  (length (buffer-octets buffer)))
 
 
 (defmacro with-in-chunking ((chunking) &body body)

@@ -3,6 +3,11 @@
 (in-package :clorb)
 
 
+(defun marshal-void (x buffer)
+  (declare (ignore x buffer))
+  nil)
+
+
 (defun marshal-octet (n buffer)
   (declare (type buffer buffer)
            (optimize (speed 3) (debug 0)))
@@ -251,28 +256,6 @@
 
 (defmethod marshal-object ((object t) buffer)
   (marshal-object (op:_this object) buffer))
-
-
-(defgeneric marshal (arg tc buffer))
-
-(defmethod marshal (arg (type CORBA:TypeCode) buffer)
-  (let ((kind (typecode-kind type)))
-    (ecase kind
-      ((:tk_octet) (marshal-octet arg buffer))
-      ((:tk_char) (marshal-char arg buffer))
-      ((:tk_boolean) (marshal-bool arg buffer))
-      ((:tk_ushort) (marshal-ushort arg buffer))
-      ((:tk_short) (marshal-short arg buffer))
-      ((:tk_ulong) (marshal-ulong arg buffer))
-      ((:tk_long) (marshal-long arg buffer))
-      ((:tk_longlong) (marshal-longlong arg buffer))
-      ((:tk_ulonglong) (marshal-ulonglong arg buffer))
-      ((:tk_float) (marshal-float arg buffer))
-      ((:tk_double) (marshal-double arg buffer))
-      ((:tk_longdouble) (marshal-longdouble arg buffer))
-      ((:tk_string) (marshal-string arg buffer))
-      ((:tk_typecode) (marshal-typecode arg buffer))
-      ((:tk_null)))))
 
 
 (defun marshal-multiple (values types buffer)

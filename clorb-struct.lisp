@@ -128,80 +128,43 @@ of fields can be defaulted (numbers and strings)."
 ;;;; Struct marshalling
 
 
-(defgeneric struct-read (symbol buffer))
-
-(defgeneric struct-write (obj symbol buffer))
-
-
-(defmethod struct-read ((symbol symbol) buffer)
-  (unmarshal-struct-2 symbol (symbol-typecode symbol) buffer))
-
-
-(defmethod unmarshal ((tc struct-typecode) buffer)
-  (let* ((symbol (typecode-symbol tc)))
-    (unmarshal-struct-2 symbol tc buffer)))
-
-
-(defun unmarshal-struct-2 (symbol tc buffer)
-  (let* ((constructor
-          (if symbol 
-            symbol
-            (lambda (&rest fields) (make-generic-struct tc fields)))))
-    (apply constructor
-           (loop for key across (tc-keywords tc) 
-                 for member-tc in (tc-member-types tc)
-                 collect key
-                 collect (unmarshal member-tc buffer)))))
-
-
 (defmethod compute-unmarshal-function ((tc struct-typecode))
   (let ((constructor (typecode-symbol tc)))
-    (if (null constructor)
-      (lambda (buffer) (unmarshal tc buffer))
-      (let ((keys (tc-keywords tc))
-            (unmarshallers
-             (loop for i from 0 below (op:member_count tc)
-                   collect (unmarshal-function (op:member_type tc i)))))
-        (declare (simple-vector keys))
-        (case (length keys)
-          (2 (let ((k1 (elt keys 0))
-                   (k2 (elt keys 1))
-                   (m1 (first unmarshallers))
-                   (m2 (second unmarshallers)))
-               (lambda (buffer)
-                 (funcall constructor
-                          k1 (funcall m1 buffer)
-                          k2 (funcall m2 buffer)))))
-          (t (lambda (buffer)
-               (apply constructor
-                      (loop for key across keys and fun in unmarshallers
-                            collect key collect (funcall fun buffer))))))))))
-
-
-(defmethod struct-write (obj (symbol symbol) buffer)
-  (marshal obj (symbol-typecode symbol) buffer))
-
-
-(defmethod marshal (struct (typecode struct-typecode) buffer)
-  (loop for tc in (tc-member-types typecode)
-        for feature in (tc-feature-symbols typecode)
-        do (marshal (slot-value struct feature) tc buffer)))
-
-(defmethod marshal ((struct generic-struct) (typecode struct-typecode) buffer)
-  (loop for tc in (tc-member-types typecode)
-        for name across (tc-keywords typecode)
-        do (marshal (struct-get struct name) tc buffer)))
+    (unless constructor
+      (setq constructor
+            (lambda (&rest fields) (make-generic-struct tc fields))))
+    (let ((keys (tc-keywords tc))
+          (unmarshallers
+           (mapcar #'unmarshal-function (tc-member-types tc))))
+      (declare (simple-vector keys))
+      (case (length keys)
+        (2 (let ((k1 (elt keys 0))
+                 (k2 (elt keys 1))
+                 (m1 (first unmarshallers))
+                 (m2 (second unmarshallers)))
+             (lambda (buffer)
+               (funcall constructor
+                        k1 (funcall m1 buffer)
+                        k2 (funcall m2 buffer)))))
+        (t (lambda (buffer)
+             (apply constructor
+                    (loop for key across keys and fun in unmarshallers
+                       collect key collect (funcall fun buffer)))))))))
 
 
 (defmethod compute-marshal-function ((tc struct-typecode))
   (let ((features nil)
-        (marshallers nil))
+        (marshallers nil)
+        (names (tc-keywords tc)))
     (loop for i from 0 below (op:member_count tc)
-          do (push (feature (op:member_name tc i)) features)
-          (push (marshal-function (op:member_type tc i)) marshallers))
+       do (push (feature (op:member_name tc i)) features)
+       (push (marshal-function (op:member_type tc i)) marshallers))
     (setf features (mapcar #'fdefinition (nreverse features))
           marshallers (nreverse marshallers))
-    (case (length features)
+    (case (let ((class-name (typecode-symbol tc)))
+            (if (and class-name (find-class class-name))
+                (length features)
+                :generic))
       (2 (let ((f1 (first features))
                (f2 (second features))
                (m1 (first marshallers))
@@ -209,9 +172,19 @@ of fields can be defaulted (numbers and strings)."
            (lambda (struct buffer)
              (funcall m1 (funcall f1 struct) buffer)
              (funcall m2 (funcall f2 struct) buffer))))
+      (:generic
+       (lambda (struct buffer)
+         (typecase struct
+           (generic-struct
+            (loop for marshal in marshallers for name across names
+               do (funcall marshal (struct-get struct name) buffer)))
+           (t 
+            (loop for accessor in features and marshal in marshallers
+               do (funcall marshal (funcall accessor struct) buffer))))))
       (t (lambda (struct buffer)
-           (loop for accssor in features and marshal in marshallers
-                 do (funcall marshal (funcall accssor struct) buffer)))))))
+           (loop for accessor in features and marshal in marshallers
+              do (funcall marshal (funcall accessor struct) buffer)))))))
+  
 
 
 ;;; clorb-struct.lisp ends here

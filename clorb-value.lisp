@@ -268,8 +268,10 @@
     (marshal-record value #'marshal-value-1 buffer)))
 
 
-(defmethod marshal (value (tc-formal value-typecode) buffer)
-  (marshal-value value buffer (op:id tc-formal)))
+(defmethod compute-marshal-function ((tc-formal value-typecode))
+  (let ((id (op:id tc-formal)))
+    (lambda (value buffer)
+      (marshal-value value buffer id))))
 
 
 
@@ -391,8 +393,11 @@
                                         buffer)))
         value))))
 
-(defmethod unmarshal ((tc-formal value-typecode) buffer)
-  (unmarshal-value buffer (op:id tc-formal)))
+
+(defmethod compute-unmarshal-function ((tc-formal value-typecode))
+  (let ((id (op:id tc-formal)))
+    (lambda (buffer)
+      (unmarshal-value buffer id))))
 
 
 
@@ -434,34 +439,41 @@
            (defun ,symbol (value) (make-instance ',symbol :data value))))))
 
 
-(defmethod marshal (box (tc value_box-typecode) buffer)
-  (marshal-record box
-                  (lambda (box buffer)
-                    (let ((chunking (not (zerop *chunking-level*))))
-                      (end-chunk buffer)
-                      (marshal-value-header (op:id tc) chunking buffer)
-                      (marshal-value-state chunking
-                                           (list (box-data box))
-                                           (list (op:content_type tc))
-                                           buffer)))
-                  buffer))
+(defmethod compute-marshal-function ((tc value_box-typecode))
+  (let ((id (op:id tc))
+        (el-type (op:content_type tc)))
+    (lambda (box buffer)
+      (marshal-record box
+                      (lambda (box buffer)
+                        (let ((chunking (not (zerop *chunking-level*))))
+                          (end-chunk buffer)
+                          (marshal-value-header id chunking buffer)
+                          (marshal-value-state chunking
+                                               (list (box-data box))
+                                               (list el-type)
+                                               buffer)))
+                      buffer))))
 
-(defmethod unmarshal ((tc value_box-typecode) buffer)
-  (unmarshal-record
-   (lambda (tag)
-     (multiple-value-bind (chunked repoid)
-                          (without-chunking (buffer)
-                            (unmarshal-value-header tag buffer))
-       (assert (or (null repoid)
-                   (equal (car (mklist repoid)) (op:id tc))))
-       (let ((initargs (unmarshal-value-state
-                        chunked nil '(:data) (list (op:content_type tc)) buffer)))
-         (typecase (second initargs)
-           ((or number character)
-            (apply #'make-instance (or (ifr-id-symbol (op:id tc)) 'value-box)
-                   initargs))
-           (t (second initargs))))))
-   buffer :chunk-tag))
+
+(defmethod compute-unmarshal-function ((tc value_box-typecode))
+  (let ((id (op:id tc))
+        (el-type (op:content_type tc)))
+    (lambda (buffer)
+      (unmarshal-record
+       (lambda (tag)
+         (multiple-value-bind (chunked repoid)
+             (without-chunking (buffer)
+               (unmarshal-value-header tag buffer))
+           (assert (or (null repoid)
+                       (equal (car (mklist repoid)) id)))
+           (let ((initargs (unmarshal-value-state
+                            chunked nil '(:data) (list el-type) buffer)))
+             (typecase (second initargs)
+               ((or number character)
+                (apply #'make-instance (or (ifr-id-symbol id) 'value-box)
+                       initargs))
+               (t (second initargs))))))
+       buffer :chunk-tag))))
 
 
 
@@ -494,24 +506,26 @@
        (or (string= interface-id ,id) (call-next-method))) ))
   
 
-(defmethod marshal (obj (tc abstract_interface-typecode) buffer)
-  (assert (or (null obj) (op:_is_a obj (op:id tc))))
-  (etypecase obj
-    (CORBA:Proxy
-     (marshal-bool t buffer)
-     (marshal-object obj buffer))
-    ((or NULL CORBA:ValueBase)
-     (marshal-bool nil buffer)
-     (marshal-value obj buffer))
-    ;; this is doubtful as the spec says requires that
-    ;; "the object is already registered with the ORB/OA"
-    (CORBA:Object
-     (marshal-bool t buffer)
-     (marshal-object obj buffer))))
+(defmethod compute-marshal-function ((tc abstract_interface-typecode))
+  (lambda (obj buffer)
+    (assert (or (null obj) (op:_is_a obj (op:id tc))))
+    (etypecase obj
+      (CORBA:Proxy
+       (marshal-bool t buffer)
+       (marshal-object obj buffer))
+      ((or NULL CORBA:ValueBase)
+       (marshal-bool nil buffer)
+       (marshal-value obj buffer))
+      ;; this is doubtful as the spec says requires that
+      ;; "the object is already registered with the ORB/OA"
+      (CORBA:Object
+       (marshal-bool t buffer)
+       (marshal-object obj buffer)))))
 
 
-(defmethod unmarshal ((tc abstract_interface-typecode) buffer)
-  (let ((case-label (unmarshal-bool buffer)))
-    (if case-label
-      (unmarshal-object buffer (op:id tc))
-      (unmarshal-value buffer))))
+(defmethod compute-unmarshal-function ((tc abstract_interface-typecode))
+  (lambda (buffer)
+    (let ((case-label (unmarshal-bool buffer)))
+      (if case-label
+          (unmarshal-object buffer (op:id tc))
+          (unmarshal-value buffer)))))

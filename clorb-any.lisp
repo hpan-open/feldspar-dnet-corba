@@ -118,20 +118,11 @@
     (marshal-typecode tc buffer)
     (marshal (any-value arg) tc buffer)))
 
-
-(defmethod marshal (any (tc any-typecode) buffer)
-  (marshal-any any buffer))
-
-
 (defun unmarshal-any (buffer)
   (let ((tc (unmarshal-typecode buffer)))
     (if *explicit-any*
         (corba:any :any-typecode tc :any-value (unmarshal tc buffer))
       (unmarshal tc buffer))))
-
-
-(defmethod unmarshal ((tc any-typecode) buffer)
-  (unmarshal-any buffer))
 
 
 (defun marshal-any-value (any buffer)

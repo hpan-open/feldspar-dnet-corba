@@ -100,24 +100,22 @@
 
 (defgeneric tc-members (tc))
 
+(defgeneric tc-unalias (tc)
+  (:documentation "Return orignial type code")
+  (:method ((tc t)) tc))
 
-(defgeneric compute-marshal-function (tc))
-(defgeneric compute-unmarshal-function (tc))
+
+
+;;;; Marshal / UnMarshal
 
 
-(defmacro old-with-cache-slot ((object slot &key (dont-cache-types nil) (cache-types t))
-                           &body body)
-  (let ((objvar (gensym)))
-    `(let ((,objvar ,object))
-       (if (slot-boundp ,objvar ',slot)
-         (slot-value ,objvar ',slot)
-         (let ((new-value (progn ,@body)))
-           (typecase new-value
-             ,@(if dont-cache-types
-                 `((,dont-cache-types new-value)))
-             (,cache-types (setf (slot-value ,objvar ',slot) new-value))
-             ,@(if (not (eql cache-types t))
-                 `((t new-value)))))))))
+(defgeneric compute-marshal-function (tc)
+  (:method ((tc CORBA:TypeCode))
+           (error "Marshalling of ~S not implementd" (op:kind tc))))
+
+(defgeneric compute-unmarshal-function (tc)
+  (:method ((tc CORBA:TypeCode))
+           (error "Unmarshalling of ~S not implementd" (op:kind tc))))
 
 
 (defun marshal-function (tc)
@@ -127,6 +125,42 @@
 (defun unmarshal-function (tc)
   (with-cache-slot (tc unmarshal-func)
     (compute-unmarshal-function tc)))
+
+
+(defun marshal (obj tc buffer)
+  (funcall (marshal-function tc) obj buffer))
+
+(defun unmarshal (tc buffer)
+  (funcall (unmarshal-function tc) buffer))
+
+
+(defun marshal-function-cache (tc)
+  (let ((cache (list nil)))
+    (setf (car cache)
+          (lambda (v buffer)
+            (let ((fun (marshal-function tc)))
+              (setf (car cache) fun)
+              (funcall fun v buffer))))
+    cache))
+
+(defmacro %jit-marshal (v tc buffer)
+  `(funcall (car ,(list 'load-time-value `(marshal-function-cache ,tc)))
+            ,v ,buffer))
+
+
+(defun unmarshal-function-cache (tc)
+  (let ((cache (list nil)))
+    (setf (car cache)
+          (lambda (buffer)
+            (let ((fun (unmarshal-function tc)))
+              (setf (car cache) fun)
+              (funcall fun buffer))))
+    cache))
+
+(defmacro %jit-unmarshal (tc buffer)
+  `(funcall (car ,(list 'load-time-value `(unmarshal-function-cache ,tc)))
+            ,buffer))
+
 
 
 ;;;; PIDL interface to TypeCode

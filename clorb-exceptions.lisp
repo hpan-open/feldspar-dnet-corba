@@ -143,13 +143,14 @@ Members on form: (name TypeCode)"
   (map 'list
        (lambda (member) (funcall (feature (first member)) exc))
        (tc-members (any-typecode exc))))
-
+#+unused-functions
 (defun id-exception-class (id)
   (ifr-id-symbol id))
 
 
 ;;;; Marshalling support for exceptions
 
+#+unused-functions
 (defun exception-read (symbol buffer)
   "Read an exception of type indicated by SYMBOL from BUFFER."
   (let ((reader (get symbol 'exception-read)))
@@ -164,38 +165,6 @@ Members on form: (name TypeCode)"
                   :completed (unmarshal (symbol-typecode 'CORBA:completion_status) 
                                         buffer)))
 
-(defmethod unmarshal ((typecode except-typecode) buffer)
-  (let* ((id (op:id typecode))
-         (class (id-exception-class id))
-         (initargs 
-          (loop for tc in (tc-member-types typecode)
-                for key across (tc-keywords typecode)
-                collect key
-                collect (unmarshal tc buffer))))
-    (if class
-      (apply #'make-condition class initargs)
-      (make-condition 'unknown-user-exception
-                      :id id :values initargs))))
-
-(defun unmarshal-userexception (id typecode buffer)
-  (let* ((class (id-exception-class id))
-         (initargs 
-          (loop for tc in (tc-member-types typecode)
-                for key across (tc-keywords typecode)
-                collect key
-                collect (unmarshal tc buffer))))
-    (if class
-      (apply #'make-condition class initargs)
-      (make-condition 'unknown-user-exception
-                      :id id :values initargs))))
-
-
-(defmethod marshal (arg (tc except-typecode) buffer)
-  (marshal-string (op:id tc) buffer)
-  (loop for type in (tc-member-types tc)
-        for feature in (tc-feature-symbols tc)
-        do (marshal (funcall feature arg) type buffer)))
-
 
 (defmethod compute-marshal-function ((tc except-typecode))
   (let ((features (tc-feature-symbols tc))
@@ -207,15 +176,21 @@ Members on form: (name TypeCode)"
             for m in mfuns
             do (funcall m (funcall f v) buffer))))) 
 
-(defmethod compute-unmarshal-function ((tc except-typecode))
-  (let ((ufuns (mapcar #'unmarshal-function (tc-member-types tc)))
-        (keys  (tc-keywords tc))
-        (id    (op:id tc)))
-    (let ((class (id-exception-class id)))
-      (if class
-        (lambda (buffer)
-          (apply #'make-condition class (loop for u in ufuns for key across keys
-                                              collect key collect (funcall u buffer))))
-        (lambda (buffer) 
-          (declare (ignore buffer))
-          (system-exception 'corba:no_implement))))))
+
+(defmethod compute-unmarshal-function ((typecode except-typecode))
+  (let* ((id (op:id typecode))
+         (constructor (typecode-symbol typecode))
+         (keys (tc-keywords typecode))
+         (unmarshallers
+          (mapcar #'unmarshal-function (tc-member-types typecode))))
+    (declare (simple-vector keys))
+    (unless constructor
+      (setq constructor
+            (lambda (&rest initargs)
+              ;; FIXME: alt (system-exception 'corba:no_implement)
+              (make-condition 'unknown-user-exception
+                              :id id :values initargs))))
+    (lambda (buffer)
+      (apply constructor
+             (loop for key across keys and fun in unmarshallers
+                collect key collect (funcall fun buffer))))))

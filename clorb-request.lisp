@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.13 2004/06/09 21:13:53 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.14 2005/02/07 18:38:35 lenst Exp $
 
 (in-package :clorb)
 
@@ -281,7 +281,7 @@
          (let ((tc (find id (request-exceptions req)
                          :key #'op:id :test #'equal)))
          (setf (request-exception req) 
-               (cond (tc (unmarshal-userexception id tc buffer))
+               (cond (tc (unmarshal tc buffer))
                      (t
                       (setf (request-status req) :system_exception)
                       (system-exception 'corba:unknown 1 :completed_yes))))))
@@ -381,16 +381,16 @@
   (loop for nv in (request-paramlist req)
         when (/= 0 (logand ARG_IN (op:arg_modes nv)))
         do (let ((any (op:argument nv)))
-             (jit-marshal (any-value any)
-                          (any-typecode any)
-                          buffer))))
+             (marshal (any-value any)
+                      (any-typecode any)
+                      buffer))))
 
 
 (defun dii-input-func (req buffer)
   (loop for nv in (request-paramlist req)
         when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
         do (let ((any (op:argument nv)))
-             (setf (any-value any) (jit-unmarshal (any-typecode any) buffer)))))
+             (setf (any-value any) (unmarshal (any-typecode any) buffer)))))
 
 
 (defun dii-error-handler (condition)

@@ -11,7 +11,9 @@
 
 (define-typecode void-typecode
   :kind :tk_void
-  :constant corba:tc_void)
+  :constant corba:tc_void
+  :marshal 'marshal-void
+  :unmarshal 'unmarshal-void)
 
 (define-typecode short-typecode
   :kind :tk_short
@@ -134,42 +136,47 @@
   :cdr-syntax (:tk_ushort :tk_short)
   :params (fixed_digits fixed_scale))
 
-
-(defmethod marshal (arg (tc fixed-typecode) buffer)
-  (let ((digits (op:fixed_digits tc))
-        (scale  (op:fixed_scale tc)))
-    (unless (typep arg `(fixed ,digits ,scale))
-      (error 'type-error :datum arg :expected-type `(fixed ,digits ,scale)))
-    (multiple-value-bind (scaled rest)
-                         (floor (* (abs arg) (expt 10 scale)))
-      (unless (zerop rest)
-        (warn "Fixed<~D,~D> precision loss in ~S" digits scale arg))
-      (let ((marshal-digits digits))
-        (when (evenp digits) (incf marshal-digits))
-        (let ((string (format nil "~v,'0D~A"
-                              marshal-digits scaled 
-                              (if (< arg 0) "D" "C"))))
-          (with-out-buffer (buffer)
-            (do ((i 0 (+ i 2)))
-                ((> i marshal-digits))
-              (put-octet (logior (* (digit-char-p (char string i) 16) 16)
-                                 (digit-char-p (char string (+ i 1)) 16))))))))))
           
+(defmethod compute-marshal-function ((tc fixed-typecode))
+  (let* ((digits (op:fixed_digits tc))
+         (scale  (op:fixed_scale tc))
+         (type-spec `(fixed ,digits ,scale))
+         (multiplier (expt 10 scale)))
+    (lambda (arg buffer)
+      (unless (typep arg type-spec)
+        (error 'type-error :datum arg :expected-type type-spec))
+      (multiple-value-bind (scaled rest)
+          (floor (* (abs arg) multiplier))
+        (unless (zerop rest)
+          (warn "Fixed<~D,~D> precision loss in ~S" digits scale arg))
+        (let ((marshal-digits digits))
+          (when (evenp digits) (incf marshal-digits))
+          (let ((string (format nil "~v,'0D~A"
+                                marshal-digits scaled 
+                                (if (< arg 0) "D" "C"))))
+            (with-out-buffer (buffer)
+              (do ((i 0 (+ i 2)))
+                  ((> i marshal-digits))
+                (put-octet (logior (* (digit-char-p (char string i) 16) 16)
+                                   (digit-char-p (char string (+ i 1)) 16)))))))))))
 
-(defmethod unmarshal ((tc fixed-typecode) buffer)
-  (let ((scale  (op:fixed_scale tc)))
-    (let ((n 0))
-      (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
-        (with-in-buffer (buffer)
-          (loop
-            (let ((octet (get-octet)))
-              (accumulate (ash octet -4))
-              (let ((digit (logand octet #xF)))
-                (if (< digit 10) 
-                  (accumulate digit)
-                  (progn (when (= digit #xD) (setf n (- n)))
-                         (return))))))))
-      (/ n (expt 10 scale)))))
+
+(defmethod compute-unmarshal-function ((tc fixed-typecode))
+  (let* ((scale  (op:fixed_scale tc))
+         (multiplier (expt 10 scale)))
+    (lambda (buffer)
+      (let ((n 0))
+        (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
+          (with-in-buffer (buffer)
+            (loop
+               (let ((octet (get-octet)))
+                 (accumulate (ash octet -4))
+                 (let ((digit (logand octet #xF)))
+                   (if (< digit 10) 
+                       (accumulate digit)
+                       (progn (when (= digit #xD) (setf n (- n)))
+                              (return))))))))
+        (/ n multiplier)))))
 
 
 
@@ -181,25 +188,6 @@
   :cdr-syntax (complex :tk_typecode :tk_ulong)
   :params (content_type length))
 
-(defmethod marshal (arg (tc sequence-typecode) buffer)
-  (let ((el-type (op:content_type tc))
-        (max-length (op:length tc))
-        (length (length arg)))
-    (when (and (not (zerop max-length))
-               (> length max-length))
-      (raise-system-exception 'CORBA:MARSHAL))
-    (marshal-ulong length buffer)
-    (map nil #'marshal arg (repeated el-type) (repeated buffer))))
-
-(defmethod unmarshal ((tc sequence-typecode) buffer)
-  (let ((eltype (op:content_type tc)))
-    (typecase eltype
-      (octet-typecode (unmarshal-osequence buffer))
-      (t (unmarshal-sequence-m (buffer) (unmarshal eltype buffer))))))
-
-
-(defgeneric tc-unalias (tc)
-  (:method ((tc t)) tc))
 
 (defmethod compute-marshal-function ((tc sequence-typecode))
   (let ((member-tc (tc-unalias (op:content_type tc))))
@@ -232,7 +220,7 @@
              (funcall member-unmarshal buffer))))))))
 
 
-
+
 ;;;; Strings
 
 (define-typecode string-typecode
@@ -248,6 +236,7 @@
   :params (length)
   :constant (corba:tc_wstring 0))
 
+
 (defmethod compute-marshal-function ((tc string-typecode))
   (let ((max-length (op:length tc)))
     (if (zerop max-length)
@@ -257,7 +246,7 @@
           (error 'CORBA:MARSHAL))
         (marshal-string string buffer)))))
 
-
+
 ;;;; Array
 
 (define-typecode array-typecode
@@ -265,24 +254,25 @@
   :cdr-syntax (complex :tk_typecode :tk_ulong)
   :params (content_type length))
 
-(defmethod marshal (arg (tc array-typecode) buffer)
-  (let ((el-type (op:content_type tc))
-        (max-length (op:length tc))
-        (length (length arg)))
-    (unless (= length max-length)
-      (raise-system-exception 'CORBA:MARSHAL))
-    (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
-(defmethod unmarshal ((tc array-typecode) buffer)
+(defmethod compute-marshal-function ((tc array-typecode))
+  (let ((max-length (op:length tc))
+        (element-marshal (marshal-function (op:content_type tc))))
+    (lambda (arg buffer)
+      (let ((length (length arg)))
+        (unless (= length max-length)
+          (raise-system-exception 'CORBA:MARSHAL))
+        (map nil element-marshal arg (repeated buffer))))))
+
+(defmethod compute-unmarshal-function ((tc array-typecode))
   (let ((eltype (op:content_type tc))
         (len (op:length tc)))
-    (let ((arr (make-array len)))
-      ;; (map-into arr #'unmarshal (repeated eltype) (repeated buffer))
-      (dotimes (i len)
-        (setf (aref arr i) (unmarshal eltype buffer)))
-      arr)))
-
-
+    (let ((unmarshal-function (unmarshal-function eltype)))
+      (lambda (buffer)
+        (let ((arr (make-array len)))
+          (dotimes (i len)
+            (setf (aref arr i) (funcall unmarshal-function buffer)))
+          arr)))))
 
 
 
@@ -296,11 +286,6 @@
   :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object")
   :marshal 'marshal-object)
 
-(defmethod marshal (arg (tc objref-typecode) buffer)
-  (marshal-object arg buffer))
-
-(defmethod unmarshal ((tc objref-typecode) buffer)
-  (unmarshal-object buffer (op:id tc)))
 
 (defmethod compute-unmarshal-function ((tc objref-typecode))
   (let ((id (op:id tc)))
@@ -318,24 +303,6 @@
   :params (id name :members)
   :cdr-syntax (complex :tk_string :tk_string (sequence :tk_string))
   :member-params member_name)
-
-(defmethod marshal (arg (enum-tc enum-typecode) buffer)
-  (declare (optimize speed))
-  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
-  (let ((symbols (tc-keywords enum-tc)))
-    (declare (simple-vector symbols))
-    (marshal-ulong 
-     (if (integerp arg)
-         arg
-       (or (position arg symbols)
-           (error 'type-error 
-                  :datum arg 
-                  :expected-type (concatenate 'list '(member) symbols))))
-     buffer)))
-
-(defmethod unmarshal ((tc enum-typecode) buffer)
-  (let ((index (unmarshal-ulong buffer)))
-    (svref (tc-keywords tc) index)))
 
 
 (defmethod compute-marshal-function ((tc enum-typecode))
@@ -377,57 +344,11 @@
 (defmethod tc-unalias ((tc alias-typecode))
   (tc-unalias (op:content_type tc)))
 
-(defmethod marshal (arg (tc alias-typecode) buffer) 
-  (marshal arg (op:content_type tc) buffer))
-
-(defmethod unmarshal ((tc alias-typecode) buffer)
-  (unmarshal (op:content_type tc) buffer))
-
 (defmethod compute-marshal-function ((tc alias-typecode))
   (marshal-function (op:content_type tc)))
 
 (defmethod compute-unmarshal-function ((tc alias-typecode))
   (unmarshal-function (op:content_type tc)))
-
-
-
-;;;; compute-[un]marshal-function
-
-;; Base case (use old):
-(defmethod compute-marshal-function ((tc CORBA:TypeCode))
-   (lambda (v b) (marshal v tc b)))
-
-(defmethod compute-unmarshal-function ((tc CORBA:TypeCode))
-  (lambda (b) (unmarshal tc b)))
-
-
-;;;; Marshal / UnMarshal
-
-(defun jit-marshal (v tc buffer)
-  (funcall (marshal-function tc) v buffer))
-
-(defun marshal-function-cache (tc)
-  (let ((cache (list nil)))
-    (setf (car cache)
-          (lambda (v buffer)
-            (let ((fun (marshal-function tc)))
-              (setf (car cache) fun)
-              (funcall fun v buffer))))
-    cache))
-
-(defmacro %jit-marshal (v tc buffer)
-  `(funcall (car (load-time-value (marshal-function-cache ,tc)))
-            ,v ,buffer))
-
-(defun jit-unmarshal (tc buffer)
-  (funcall (unmarshal-function tc) buffer))
-
-(defmacro %jit-unmarshal (tc buffer)
-  `(funcall (let ((.cache. (load-time-value (list nil))))
-              (or (car .cache.)
-                  (setf (car .cache.) (unmarshal-function ,tc))))
-            ,buffer))
-
 
 
 
