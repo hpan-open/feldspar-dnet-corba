@@ -62,7 +62,6 @@
                (make-instance ',name 
                  ,@(loop for key in names as val in slots
                          collect key collect val )))
-             (defmethod type-id ((s ,name)) ,id)
              ,@getters1 ,@getters2 ,@setters
              (defmethod fields ((s ,name))
                (loop for f in ',names

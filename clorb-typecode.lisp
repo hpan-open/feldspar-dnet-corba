@@ -383,10 +383,6 @@
 
 ;;;; Convenience ?
 
-#+unused-functions
-(defun tcp-member-symbols (params)
-  (map 'vector #'key (tcp-members params)))
-
 (defun tc-keywords (tc)
   (unless (slot-boundp tc 'keywords)
     (setf (slot-value tc 'keywords)

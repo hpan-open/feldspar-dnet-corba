@@ -41,9 +41,11 @@
 (defun opdef-inparams (opdef)
   (opdef-params-with-mode opdef '(:param_in :param_inout)))
 
+#+unused-defuns
 (defmethod opdef-inparam-typecodes ((opdef opdef))
   (mapcar #'op:type (opdef-inparams opdef)))
 
+#+unused-defuns
 (defun opdef-outparams (opdef)
   (nconc
    (if (eq (typecode-kind (opdef-result opdef)) :tk_void)
@@ -51,5 +53,6 @@
      (list (make-param "" :param_out (opdef-result opdef))))
    (opdef-params-with-mode opdef '(:param_out :param_inout))))
 
+#+unused-defuns
 (defmethod opdef-outparam-typecodes ((opdef opdef))
   (mapcar #'op:type (opdef-outparams opdef)))

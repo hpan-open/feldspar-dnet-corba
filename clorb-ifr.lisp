@@ -647,6 +647,7 @@
       unless (eq (op:mode param) :param_out)
       collect (op:type param)))
 
+#+unused-defuns
 (defmethod opdef-outparam-typecodes ((opdef operation-def))
   (let ((real-params
          (loop for param in (op:params opdef)

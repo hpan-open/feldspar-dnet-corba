@@ -18,20 +18,14 @@
   struct)
 
 
-(defgeneric type-id (struct))
+(defgeneric type-id (struct)
+  (:method ((struct CORBA:struct))
+           (symbol-ifr-id (class-name (class-of struct)))))
+
 (defgeneric fields (struct))
 
 
-;; old:
-#+unused-defuns
-(defun struct-typecode (id name &rest fields)
-  (make-typecode :tk_struct
-                 id
-                 (string (or name ""))
-                 (coerce (loop for (name type) on fields by #'cddr
-                             collect (list (string name) type))
-                         'vector)))
-
+
 ;;;; Generic struct
 
 (defclass generic-struct (CORBA:struct)
