@@ -2,9 +2,7 @@
 
 (in-package :cl-user)
 
-(import '(corba:define-method
-          clorb:define-user-exception
-          clorb:define-corba-struct))
+(import '(corba:define-method))
 
 
 
@@ -16,10 +14,6 @@
 
 (defvar *naming-seqno* 0)
 
-
-
-;;;; NamingContext Servant
-
 (defconstant +naming-context-id+
   "IDL:omg.org/CosNaming/NamingContext:1.0")
 (defconstant +name-component-id+
@@ -27,145 +21,6 @@
 (defconstant +binding-id+
   "IDL:omg.org/CosNaming/Binding:1.0")
 
-
-;;; Define the skeleton classes
-
-(defpackage "COSNAMING" (:use)
-  (:export
-   "BINDING"
-   "BINDINGITERATOR" "BINDINGITERATOR-PROXY" "BINDINGITERATOR-SERVANT"
-   "BINDINGLIST" "BINDINGTYPE" "ISTRING" "NAME" "NAMECOMPONENT"
-   "NAMINGCONTEXT" "NAMINGCONTEXT-PROXY" "NAMINGCONTEXT-SERVANT"
-   "NAMINGCONTEXT/ALREADYBOUND"
-   "NAMINGCONTEXT/CANNOTPROCEED" "NAMINGCONTEXT/INVALIDNAME"
-   "NAMINGCONTEXT/NOTEMPTY" "NAMINGCONTEXT/NOTFOUND"
-   "NAMINGCONTEXT/NOTFOUNDREASON"))
-
-(defclass COSNAMING:NAMINGCONTEXT (CORBA:Object) NIL)
-
-(defclass COSNAMING:BINDINGITERATOR (CORBA:Object) NIL)
-
-(define-user-exception COSNAMING:NAMINGCONTEXT/NOTEMPTY
-    :ID "IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0")
-
-(define-user-exception COSNAMING:NAMINGCONTEXT/ALREADYBOUND
-    :ID "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0")
-
-(define-user-exception COSNAMING:NAMINGCONTEXT/INVALIDNAME
-    :ID "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0")
-
-(define-user-exception COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
-    :ID "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
-    :SLOTS ((CXT :INITARG :CXT)
-            (REST_OF_NAME :INITARG :REST_OF_NAME)))
-
-(define-user-exception COSNAMING:NAMINGCONTEXT/NOTFOUND
-    :ID "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
-    :SLOTS ((WHY :INITARG :WHY)
-            (REST_OF_NAME :INITARG :REST_OF_NAME)))
-
-(deftype COSNAMING:NAMINGCONTEXT/NOTFOUNDREASON ()
-  '(MEMBER :MISSING_NODE :NOT_CONTEXT :NOT_OBJECT))
-
-(deftype COSNAMING:BINDINGLIST NIL 'SEQUENCE)
-
-(define-corba-struct COSNAMING:BINDING
-    :ID "IDL:omg.org/CosNaming/Binding:1.0"
-    :MEMBERS ((BINDING_NAME NIL)
-              (BINDING_TYPE NIL)))
-
-(deftype COSNAMING:BINDINGTYPE NIL
-  '(MEMBER :NOBJECT :NCONTEXT))
-
-(deftype COSNAMING:NAME NIL 'SEQUENCE)
-
-(define-corba-struct COSNAMING:NAMECOMPONENT
-    :ID "IDL:omg.org/CosNaming/NameComponent:1.0"
-    :MEMBERS ((ID "")
-              (KIND "")))
-
-(deftype COSNAMING:ISTRING NIL 'OMG.ORG/CORBA:STRING)
-
-
-(defclass COSNAMING:NAMINGCONTEXT-SERVANT (clorb:auto-servant
-                                           COSNAMING:NAMINGCONTEXT)
-  ())
-(defmethod clorb:servant-interface-id ((obj COSNAMING:NamingContext-Servant))
-  +naming-context-id+)
-
-(defclass cosnaming:bindingiterator-servant (clorb:auto-servant
-                                             COSNAMING:BINDINGITERATOR)
-  ())
-(defmethod clorb:servant-interface-id ((obj COSNAMING:Bindingiterator-Servant))
-  "IDL:omg.org/CosNaming/BindingIterator:1.0")
-
-
-
-(defclass COSNAMING:BINDINGITERATOR-PROXY
-    (COSNAMING:BINDINGITERATOR OMG.ORG/CORBA:PROXY)
-  NIL)
-
-(clorb::register-proxy-class "IDL:omg.org/CosNaming/BindingIterator:1.0"
-    'COSNAMING:BINDINGITERATOR-PROXY)
-
-(defmethod OMG.ORG/FEATURES:DESTROY
-    ((OBJ COSNAMING:BINDINGITERATOR-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "destroy" ARGS) )
-
-(defmethod OMG.ORG/FEATURES:NEXT_N
-    ((OBJ COSNAMING:BINDINGITERATOR-PROXY) &REST ARGS)
-    (APPLY 'CLORB:INVOKE OBJ "next_n" ARGS))
-
-(defmethod OMG.ORG/FEATURES:NEXT_ONE
-    ((OBJ COSNAMING:BINDINGITERATOR-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "next_one" ARGS))
-
-
-(defclass COSNAMING:NAMINGCONTEXT-PROXY
-    (COSNAMING:NAMINGCONTEXT OMG.ORG/CORBA:PROXY) NIL)
-
-(clorb::register-proxy-class "IDL:omg.org/CosNaming/NamingContext:1.0"
-                      'COSNAMING:NAMINGCONTEXT-PROXY)
-
-(defmethod OMG.ORG/FEATURES:LIST
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "list" ARGS))
-
-(defmethod OMG.ORG/FEATURES:DESTROY
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "destroy" ARGS))
-
-(defmethod OMG.ORG/FEATURES:BIND_NEW_CONTEXT
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "bind_new_context" ARGS))
-
-(defmethod OMG.ORG/FEATURES:NEW_CONTEXT
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "new_context" ARGS))
-
-(defmethod OMG.ORG/FEATURES:UNBIND
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "unbind" ARGS))
-
-(defmethod OMG.ORG/FEATURES:RESOLVE
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "resolve" ARGS))
-
-(defmethod OMG.ORG/FEATURES:REBIND_CONTEXT
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "rebind_context" ARGS))
-
-(defmethod OMG.ORG/FEATURES:BIND_CONTEXT
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "bind_context" ARGS))
-
-(defmethod OMG.ORG/FEATURES:REBIND
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "rebind" ARGS))
-
-(defmethod OMG.ORG/FEATURES:BIND
-    ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) &REST ARGS)
-  (APPLY 'CLORB:INVOKE OBJ "bind" ARGS))
 
 
 
@@ -233,9 +88,7 @@
   (let ((new-id (format nil "~A" (get-universal-time))))
     (op:create_reference_with_id (op:_default_POA self)
                                  (portableserver:string-to-oid new-id)
-                                 +naming-context-id+)))
-
-
+                                 (clorb:servant-interface-id self))))
 
 (defun pns-path (nc name-component)
   (merge-pathnames
@@ -431,9 +284,25 @@
     (op:set_servant_manager *naming-poa* (make-instance 'naming-manager))))
 
 
+#|
 (setup-naming-poa)
 (setq root
       (op:create_reference_with_id
        *naming-poa*
        (portableserver:string-to-oid "root")
        +naming-context-id+))
+|#
+
+(defun setup-pns ()
+  (setup-naming-poa)
+  (with-open-file (out clorb::*name-service*
+                       :direction :output
+                       :if-exists :supersede)
+    (princ
+     (op:object_to_string (CORBA:ORB_init)
+                          (op:create_reference_with_id
+                           *naming-poa*
+                           (portableserver:string-to-oid "root")
+                           +naming-context-id+))
+     out)))
+
