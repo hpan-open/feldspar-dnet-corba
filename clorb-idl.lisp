@@ -8,7 +8,7 @@
 
 (defvar *default-idl-compiler*)
 
-(defun CORBA:IDL (file &key print)
+(defun CORBA:IDL (file &key print (eval t) (redefine t))
   (let ((repository (make-instance 'repository)))
     (load-repository *default-idl-compiler* repository file)
     (let* ((target (make-instance 'code-target :dynamic-stubs nil))
@@ -19,6 +19,7 @@
         (when print 
           (terpri)
           (pprint x))
-        (eval x))
+        (when eval
+          (eval x)))
       (when print (terpri)))
     repository))

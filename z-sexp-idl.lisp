@@ -236,9 +236,9 @@
 (setq *default-idl-compiler* (make-instance 'libidl-compiler))
 
 
+#||
 (setq *container* (make-instance 'repository))
 ;(process-list (get-idl-sexp "trader"))
-#||
 (process-list (get-idl-sexp "PortableServer.idl"))
 
 (process-list (get-idl-sexp "x-04.idl"))

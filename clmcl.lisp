@@ -7,7 +7,6 @@
 (import '(§ §§§ %) :clorb)
 (load "CLORB:SRC;CLORB-FILES")
 (clorb:reload)
-(load "CLORB:SRC;z-sexp-idl")
 
 (setq clorb:*port*  4711)
 
@@ -127,3 +126,7 @@
   (defun pfoo (&optional (n 100))
     (dotimes (i n)
       (op:list ns 100))))
+
+
+(defparameter +calculator.idl+
+  #P"Macintosh HD:Users:lenst:src:corba:interfaces:Calculator.idl")

@@ -27,7 +27,7 @@
 ;;;; Enum
 
 (defmacro define-enum (symbol &key id name members)
-  (let ((keys (mapcar #'lispy-name members)))
+  (let ((keys (mapcar #'key members)))
     `(progn (deftype ,symbol () '(member ,@keys))
             (set-symbol-id/typecode ',symbol ,id
                                     (make-typecode :tk_enum ,id ,name
@@ -39,7 +39,7 @@
   (loop
       for member in members
       for slot = (car member)
-      for field = (lispy-name (symbol-name slot))
+      for field = (key (symbol-name slot))
       collect field into names
       collect slot into slots
       collect (list* slot :initarg field :initform (second member)
@@ -84,7 +84,7 @@
      (set-symbol-typecode 
       ',symbol
       (create-struct-tc ,id ,name
-                          (list ,@(loop for (name type nil) in members 
+                          (list ,@(loop for (name type) in members 
                                         collect `(list ,name ,type)))))
      ,(if read
         (destructuring-bind ((buffer) &rest forms) read
@@ -161,7 +161,7 @@ Members: (name typecode)*"
   (loop
     for member in members
     for slot-name = (string (car member))
-    for initarg = (lispy-name slot-name)
+    for initarg = (key slot-name)
     for slot = (feature slot-name)
     collect (list slot :initarg initarg) into slot-defs
     collect `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI

@@ -6,13 +6,14 @@
   ((packages :initform nil)
    (symbols  :initform nil)
    (defs     :initform nil)
-   (dynamic-stubs :initform nil
-                  :initarg :dynamic-stubs
-                  :accessor target-dynamic-stubs)
+   (dynamic-stubs
+    :initarg :dynamic-stubs
+    :initform nil
+    :reader target-dynamic-stubs)
    (dynamic-servant
     :initarg :dynamic-servant
     :initform nil
-    :reader target-dynamic-servant )
+    :reader target-dynamic-servant)
    (struct-marshal
     :initarg :struct-marshal
     :initform t
@@ -299,7 +300,7 @@
          (in-params (loop for p in params unless (eq :param_out (op:mode p)) collect p))
          (out-params (loop for p in params unless (eq :param_in (op:mode p)) collect p)))
     (unless (eq :tk_void (op:kind (op:result opdef)))
-      (push (omg.org/corba:parameterdescription
+      (push (corba:parameterdescription
              :type_def (op:result_def opdef))
             out-params))
     `(define-method ,(string-upcase (op:name opdef))
@@ -362,28 +363,27 @@
 
 (defmethod target-code ((sdef CORBA:StructDef) target)
   (let ((sym (scoped-target-symbol target sdef)))
-    `(progn
-       (define-struct ,sym
-         :id ,(op:id sdef)
-         :name ,(op:name sdef)
-         :members ,(map 'list
-                        (lambda (smember)
-                          (list (op:name smember)
-                                (target-typecode (op:type_def smember) target)
-                                (feature (op:name smember))))
-                        (op:members sdef))
-         ,@(if (target-struct-marshal target)
-             `(
-               :read ((buffer) 
-                      (,sym
-                       ,@(loop for member in (coerce (op:members sdef) 'list)
-                               collect (lispy-name (op:name member))
-                               collect (target-unmarshal (op:type_def member) target 'buffer))))
-               :write ((obj buffer)
-                       ,@(loop for member in (coerce (op:members sdef) 'list)
-                               collect (target-marshal (op:type_def member) target
-                                                       `(,(feature (op:name member)) obj)
-                                                       'buffer)))))))))
+    `(define-struct ,sym
+       :id ,(op:id sdef)
+       :name ,(op:name sdef)
+       :members ,(map 'list
+                      (lambda (smember)
+                        (list (op:name smember)
+                              (target-typecode (op:type_def smember) target)
+                              (feature (op:name smember))))
+                      (op:members sdef))
+       ,@(if (target-struct-marshal target)
+           `(
+             :read ((buffer) 
+                    (,sym
+                     ,@(loop for member in (coerce (op:members sdef) 'list)
+                             collect (key (op:name member))
+                             collect (target-unmarshal (op:type_def member) target 'buffer))))
+             :write ((obj buffer)
+                     ,@(loop for member in (coerce (op:members sdef) 'list)
+                             collect (target-marshal (op:type_def member) target
+                                                     `(,(feature (op:name member)) obj)
+                                                     'buffer))))))))
 
 
 (defmethod target-code ((enum CORBA:EnumDef) target)
@@ -444,7 +444,7 @@
 (defmethod target-marshal ((alias CORBA:AliasDef) target obj buffer)
   (target-marshal (op:original_type_def alias) target obj buffer))
 
-(defmethod target-marshal ((def omg.org/corba:primitivedef) target obj buffer)
+(defmethod target-marshal ((def corba:primitivedef) target obj buffer)
   (declare (ignore target))
   (let ((func (case (op:kind def)
                 (:pk_string 'marshal-string)
@@ -458,7 +458,7 @@
       `(,func ,obj ,buffer)
       (call-next-method))))
 
-(defmethod target-marshal ((seqdef omg.org/corba:sequencedef) target obj buffer)
+(defmethod target-marshal ((seqdef corba:sequencedef) target obj buffer)
   (let ((el-marshal (target-marshal (op:element_type_def seqdef) target 'obj 'buffer)))
     (cond ((equal el-marshal '(marshal-octet obj buffer))
            `(marshal-osequence ,obj ,buffer))
@@ -470,7 +470,7 @@
           (t
            `(marshal-sequence ,obj (lambda (obj buffer) ,el-marshal) ,buffer)))))
 
-(defmethod target-marshal ((def omg.org/corba:structdef) target obj buffer)
+(defmethod target-marshal ((def corba:structdef) target obj buffer)
   `(struct-write ,obj ',(scoped-target-symbol target def) ,buffer))
 
 
@@ -479,7 +479,7 @@
 (defmethod target-unmarshal ((def CORBA:IRObject) target buffer)
   `(unmarshal ,(target-typecode def target) ,buffer))
 
-(defmethod target-unmarshal ((def omg.org/corba:primitivedef) target buffer)
+(defmethod target-unmarshal ((def corba:primitivedef) target buffer)
   (declare (ignore target))
   (let ((func (case (op:kind def)
                 (:PK_STRING 'unmarshal-string)
@@ -496,7 +496,7 @@
 (defmethod target-unmarshal ((alias CORBA:AliasDef) target buffer)
   (target-unmarshal (op:original_type_def alias) target buffer))
 
-(defmethod target-unmarshal ((seqdef omg.org/corba:sequencedef) target buffer)
+(defmethod target-unmarshal ((seqdef corba:sequencedef) target buffer)
   (let ((el-unmarshal (target-unmarshal (op:element_type_def seqdef) target 'buffer)))
     (cond ((equal el-unmarshal '(unmarshal-octet buffer))
            `(unmarshal-osequence ,buffer))
@@ -758,9 +758,8 @@
       (write (pprint-pop)))))
 
 
-(set-pprint-dispatch '(cons (member define-user-exception define-corba-struct
-                                    define-struct define-union define-enum
-                                    define-alias
+(set-pprint-dispatch '(cons (member define-user-exception define-struct
+                                    define-union define-enum define-alias
                                     static-call))
                      'pprint-def-and-keys)
 
@@ -780,6 +779,8 @@
 (gen-stub-file (vsns-get "ir") "clorb:x-ifr-base.lisp")
 (gen-stub-file (vsns-get "file.i") "clorb:x-file.lisp")
 
+
+(gen-stub-file (lookup-name "PortableServer") "clorb:y-portableserver.lisp" )
 
 (load "clorb:src;file-idl")
 (gen-stub-file (lookup-name "poa") "clorb:x-file.lisp" :package-def t :dynamic-stubs nil)

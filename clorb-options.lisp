@@ -18,7 +18,7 @@ Should be an URL that can be accepted by op:string_to_object.")
 
 (defparameter *log-level* 2)
 
-(defparameter *explicit-any* nil
+(defparameter *explicit-any* t
   "Flag, if true, CORBA::Any will be unmarshaled to an ANY struct.
 If false, the any is automaticaly translated to its value.")
 

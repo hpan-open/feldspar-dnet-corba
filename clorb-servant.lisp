@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.10 2002/10/28 18:38:59 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.11 2002/11/20 16:42:05 lenst Exp $
 
 (in-package :clorb)
 
@@ -27,27 +27,24 @@
 ;; To support the Object interface:
 ;;  op:_non_existent, op:_is_a, op:_get_interface
 
-(defclass Servant (CORBA:Object) ())
+(defclass PortableServer:Servant (CORBA:Object) ())
 
-(define-method _default_POA ((servant servant))
+(define-method _default_POA ((servant PortableServer:servant))
   (root-POA))
 
-(define-method _non_existent ((servant servant))
+(define-method _non_existent ((servant PortableServer:servant))
   nil)
 
-(define-method _is_a ((servant servant) logical-type-id)
-  (object-is-a servant logical-type-id))
-
-(defmethod primary-interface ((servant servant) oid poa)
+(defmethod primary-interface ((servant PortableServer:servant) oid poa)
   (declare (ignore oid poa))
   (object-id servant))
 
-(defmethod servant-invoke ((servant Servant) operation input handler)
+(defmethod servant-invoke ((servant PortableServer:Servant) operation input handler)
   (declare (ignore operation input handler))
   (error 'omg.org/corba:bad_operation
          :completed :completed_no))
 
-(defmethod servant-invoke :around ((servant Servant) operation input handler)
+(defmethod servant-invoke :around ((servant PortableServer:Servant) operation input handler)
   (cond ((string= operation "_locate") nil)
         ((string= operation "_is_a")
          (let ((output (funcall handler :no_exception)))
@@ -68,7 +65,7 @@
 
 ;;;; Class: DynamicImplementation
 
-(defclass DynamicImplementation (Servant)
+(defclass PortableServer:DynamicImplementation (PortableServer:Servant)
   ())
 
 ;; IDL/Lisp 6.3 DynamicImplementation
@@ -76,15 +73,15 @@
 ;;  op:invoke SERVANT SERVERREQUEST
 ;;  op:primary_interface SERVANT OID POA
 
-(define-method invoke ((servant DynamicImplementation) sreq)
+(define-method invoke ((servant PortableServer:DynamicImplementation) sreq)
   (declare (ignore sreq))
   (error 'CORBA:NO_IMPLEMENT))
 
-(define-method primary_interface ((servant DynamicImplementation) oid poa)
+(define-method primary_interface ((servant PortableServer:DynamicImplementation) oid poa)
   (declare (ignore oid poa))
   (error 'CORBA:NO_IMPLEMENT))
 
-(defmethod servant-invoke ((servant DynamicImplementation) operation input handler)
+(defmethod servant-invoke ((servant PortableServer:DynamicImplementation) operation input handler)
   (let ((req (make-instance 'CORBA:ServerRequest
                :operation operation 
                :input input )))
@@ -108,7 +105,7 @@
 
 
 
-(defmethod primary-interface ((servant DynamicImplementation) oid poa)
+(defmethod primary-interface ((servant PortableServer:DynamicImplementation) oid poa)
   (op:primary_interface servant oid poa))
 
 

@@ -84,9 +84,6 @@
                    (values :initarg :values :reader unknown-exception-values)))
 
 
-(defun feature (name)
-  (intern (string-upcase name) :op))
-
 (defmethod all-fields ((exc userexception))
   (map 'list
        (lambda (member) (funcall (feature (first member)) exc))

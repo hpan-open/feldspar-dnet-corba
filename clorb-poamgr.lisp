@@ -1,23 +1,27 @@
 ;;;; clorb-poamgr.lisp --- POA Manager
-;; $Id: clorb-poamgr.lisp,v 1.3 2002/05/29 05:10:34 lenst Exp $
+;; $Id: clorb-poamgr.lisp,v 1.4 2002/11/20 16:42:06 lenst Exp $
 
 (in-package :clorb)
 
 ;;; interface POAManager
 
-(defclass POAManager ()
+(defclass PortableServer:POAManager (CORBA:Object)
   ((state :initform :holding)))
 
 
-;;; exception AdapterInactive{};
-
-(define-user-exception POAManager/AdapterInactive
-    :id "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0")
-
 ;;; enum State {HOLDING, ACTIVE, DISCARDING, INACTIVE}
-(defparameter +valid-states+ '(:holding :active :discarding :inactive))
-(deftype POAManager/State ()
-  `(member ,@+valid-states+))
+(DEFINE-ENUM OMG.ORG/PORTABLESERVER:POAMANAGER/STATE
+ :ID "IDL:omg.org/PortableServer/POAManager/State:1.0"
+ :NAME "State"
+ :MEMBERS ("HOLDING" "ACTIVE" "DISCARDING" "INACTIVE"))
+
+
+;;; exception AdapterInactive{};
+(DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POAMANAGER/ADAPTERINACTIVE
+ :ID "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0"
+ :NAME "AdapterInactive"
+ :MEMBERS NIL)
+
 
 (defun POAManager-new-state (pm new-state)
   (with-slots (state) pm
@@ -28,32 +32,32 @@
 
 ;;; void activate()
 ;;;	raises(AdapterInactive);
-(define-method activate ((pm POAManager))
+(define-method activate ((pm PortableServer:POAManager))
   (POAManager-new-state pm :active))
 
 
 ;;; void hold_requests(in boolean wait_for_completion)
 ;;;     raises(AdapterInactive);
-(define-method hold_requests ((pm POAManager) wait_for_completion)
+(define-method hold_requests ((pm PortableServer:POAManager) wait_for_completion)
   (POAManager-new-state pm :holding))
 
 
 ;;; void discard_requests(in boolean wait_for_completion)
 ;;;        raises(AdapterInactive);
-(define-method discard_requests ((pm POAManager) wait_for_completion)
+(define-method discard_requests ((pm PortableServer:POAManager) wait_for_completion)
   (POAManager-new-state pm :discarding))
 
 
 ;;; void deactivate(	in boolean etherealize_objects,
 ;;;                     in boolean wait_for_completion)
 ;;;        raises(AdapterInactive);
-(define-method deactivate ((pm POAManager) etherealize_objects 
-                                           wait_for_completion)
+(define-method deactivate ((pm PortableServer:POAManager) etherealize_objects 
+                           wait_for_completion)
   (POAManager-new-state pm :inactive))
 
 
 ;;; State get_state ()
-(define-method get_state ((pm POAManager))
+(define-method get_state ((pm PortableServer:POAManager))
   (slot-value pm 'state))
 
 

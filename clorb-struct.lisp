@@ -99,7 +99,7 @@ of fields can be defaulted (numbers and strings)."
   (cdr (assoc field (fields struct))))
 
 (defmethod struct-get ((struct CORBA:struct) (field string))
-  (struct-get struct (lispy-name field)))
+  (struct-get struct (key field)))
 
 #+unused-functions
 (defun default-from-type (typecode)

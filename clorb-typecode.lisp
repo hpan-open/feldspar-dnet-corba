@@ -146,8 +146,11 @@
     (cons   (values (car type) (cdr type)))
     (t      (values (typecode-kind type) (typecode-params type)))))
 
+(defun feature (name)
+  (intern (string-upcase name) :op))
 
-(defun lispy-name (string)
+(defun key (string)
+  (check-type string string)
   (cond ((symbolp string)
 	 string)
 	(t
@@ -365,7 +368,7 @@
 
 #+unused-functions
 (defun tcp-member-symbols (params)
-  (map 'vector #'lispy-name (tcp-members params)))
+  (map 'vector #'key (tcp-members params)))
 
 (defun tc-keywords (tc)
   (unless (slot-boundp tc 'keywords)
@@ -373,11 +376,11 @@
           (map 'vector 
                (ecase (typecode-kind tc)
                  ((:tk_struct :tk_except)
-                  (lambda (m) (lispy-name (first m))))
+                  (lambda (m) (key (first m))))
                  ((:tk_union)
-                  (lambda (m) (lispy-name (second m))))
+                  (lambda (m) (key (second m))))
                  ((:tk_enum)
-                  #'lispy-name))
+                  #'key))
                (tc-members tc))))
   (slot-value tc 'keywords))
 

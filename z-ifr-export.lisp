@@ -102,7 +102,7 @@
 
 ;;;;
 
-(defclass servant-wrapper (dynamicimplementation)
+(defclass servant-wrapper (PortableServer:dynamicimplementation)
   ((orb
     :initarg :orb
     :initform (orb_init)
@@ -196,7 +196,7 @@
 (defvar *z-rep* (make-instance 'repository))
 (defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
                   (op:create_poa rootpoa "IFWRAP"
-                                 (op:the_poamanager rootpoa)
+                                 nil
                                  '(:use-default-servant
                                    :user-id
                                    :transient))))
@@ -205,7 +205,7 @@
                       :poa *z-poa*))
 
 (op:set_servant *z-poa* *z-serv*)
-
+(omg.org/features:activate (omg.org/features:the_poamanager *z-poa*))
 (rebind (make-remote *z-serv* *z-rep*) "zrep")
 
 ;;(idef-read (idef-write *idef-repository*) *z-rep*)
