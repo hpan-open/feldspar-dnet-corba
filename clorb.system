@@ -5,7 +5,7 @@
 (make:defsystem "clorb"
     :source-extension "lisp"
     ;:source-pathname #.(translate-logical-pathname #p"src:clorb;")
-    :source-pathname #p"Mac Home:clorb:"
+    ;:source-pathname #p"Mac Home:clorb:"
     ;:binary-pathname "bin/"
     :components ((:file "clorb-pkgdcl")
                  (:file "clorb-macros"  :depends-on ("clorb-pkgdcl"))

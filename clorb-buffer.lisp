@@ -38,7 +38,7 @@
             (,old-pos   (buffer-position ,buffervar))
             (,old-byteorder (buffer-byte-order ,buffervar)))
        (unwind-protect
-           (progn 
+           (progn
              (setf (buffer-start-pos ,buffervar) (buffer-position ,buffervar))
              ,@body)
          (setf (buffer-start-pos ,buffervar) ,old-start)
@@ -46,8 +46,8 @@
          (setf (buffer-byte-order ,buffervar) ,old-byteorder)))))
 
 (defun get-work-buffer ()
-  (make-buffer 
-   :octets (make-array 200 
+  (make-buffer
+   :octets (make-array 200
                        :adjustable t
                        :fill-pointer 0
                        :element-type 'CORBA:octet)))

@@ -65,7 +65,7 @@
                   (setf max-num (max max-num el)
                         min-num (min min-num el)))
                  (t (setf non-integer t))))
-    (cond ((not non-string) 
+    (cond ((not non-string)
            corba:tc_string)
           ((not non-integer)
            (if (< min-num 0)

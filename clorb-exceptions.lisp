@@ -13,10 +13,10 @@
 
 (define-condition corba:systemexception (error corba:exception)
   ((minor :initform 0
-	  :initarg :minor 
+	  :initarg :minor
 	  :reader system-exception-minor)
    (completed :initform :completed_maybe
-	      :initarg :completed 
+	      :initarg :completed
               :type CORBA::completion_status
 	      :reader system-exception-completed))
   (:report report-systemexception)
@@ -34,7 +34,7 @@
       :id "IDL:omg.org/CORBA/UserException:1.0"))
 
 
-(macrolet 
+(macrolet
     ((define-system-exceptions (&rest excnames)
          `(progn
             ,@(loop for name in excnames collect
@@ -76,4 +76,3 @@
   (format stream
           "User Exception (~A) ~_~S"
           (exception-id exc) (userexception-values exc)))
-

@@ -73,7 +73,7 @@
   (gethash id *typecode-repository*))
 
 (defun add-typecode (typecode &optional (force t))
-  (add-typecode-with-id (op::id typecode) typecode force))
+  (add-typecode-with-id (op:id typecode) typecode force))
 
 (defun add-typecode-with-id (id typecode &optional (force t))
   (or (if (not force) (gethash id *typecode-repository*))
@@ -116,7 +116,7 @@
                             :result corba:tc_boolean
                             :raises '())
                 (make-opdef :name "_interface"
-                            :result  corba:tc_objref)
+                            :result corba:tc_objref)
                 (make-opdef :name "_non_existent"
                             :result corba:tc_boolean))))
 
@@ -126,13 +126,13 @@
 ;;;; Using real IR
 
 (defun get-ir ()
-  (op::resolve_initial_references 
+  (op:resolve_initial_references
    (orb_init) "InterfaceRepository"))
 
 (defun ir-lookup-id (id)
   (multiple-value-bind (result req)
       (op:_create_request
-       (get-ir) nil "lookup_id" 
+       (get-ir) nil "lookup_id"
        (list
         (CORBA:NamedValue
          :name "id"
@@ -157,9 +157,9 @@
 
 (defun opdef-from-attrdef (irdef)
   (let ((name (get-attribute irdef "_get_name" CORBA:tc_string))
-        (mode (get-attribute irdef "_get_mode" 
+        (mode (get-attribute irdef "_get_mode"
                              (get-typecode "IDL:omg.org/CORBA/AttributeMode:1.0")))
-        (type (simplify-type 
+        (type (simplify-type
                (get-attribute irdef "_get_type" CORBA:tc_TypeCode))))
     (mess 3 " attribute ~A ~A" name mode)
     (cons (make-opdef
@@ -174,7 +174,7 @@
 
 (defun opdef-from-ir (irdef)
   (let ((parseq (get-typecode "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"))
-        (name (get-attribute irdef "_get_name" CORBA:tc_string)) 
+        (name (get-attribute irdef "_get_name" CORBA:tc_string))
 	(result (get-attribute irdef "_get_result" CORBA:tc_typecode)))
     (mess 3 " operation ~A" name)
     (make-opdef
@@ -190,7 +190,7 @@
 (defun ir-contents (container limit-type exclude-inherit)
   (let* ((cseq (get-typecode "IDL:omg.org/CORBA/ContainedSeq:1.0")))
     (multiple-value-bind (result req)
-        (op:_create_request 
+        (op:_create_request
          container nil "contents" nil
          (CORBA:NamedValue
           :argument (CORBA:Any :any-typecode cseq)
@@ -216,11 +216,11 @@
     (make-interface
      :id id
      :inherit
-     (or (map 'list 
+     (or (map 'list
            #'interface-from-def-cached
            (get-attribute def "_get_base_interfaces" idseq))
          (list *object-interface*))
-     :operations 
+     :operations
      (nconc (mapcan #'opdef-from-attrdef (coerce (ir-contents def 2 t) 'list))
             (map 'list #'opdef-from-ir (ir-contents def 7 t))))))
 
@@ -228,5 +228,5 @@
   (when (stringp def)
     (mess 3 "Getting type ~A" def)
     (setq def (ir-lookup-id def)))
-  (simplify-type 
+  (simplify-type
    (get-attribute def "_get_type" CORBA:tc_typecode)))

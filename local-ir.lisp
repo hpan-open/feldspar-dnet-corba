@@ -30,15 +30,15 @@
 
 ;;;; Base Clases
 
-(defmacro define-ir-class (name supers 
-                           &rest args 
+(defmacro define-ir-class (name supers
+                           &rest args
                            &key id def_kind &allow-other-keys)
   (setq args
     (loop for x on args by #'cddr
         unless (member (car x) '(:id :def_kind))
         nconc (list (car x) (cadr x))))
   `(progn (define-corba-class ,name ,supers ,@args)
-          ,@(if def_kind 
+          ,@(if def_kind
                 `((define-method def_kind ((x ,name)) ,def_kind)
                   (register-ir-class ,def_kind ',name)))
           ,@(if id
@@ -58,9 +58,8 @@
   :defaults ())
 
 (defgeneric idltype-tc (idltype)
-  (:documentation 
-   "Compute the TypeCode that for an IDLType from the 
-attributes other than type."))
+  (:documentation
+   "Compute the TypeCode for an IDLType from the attributes other than type."))
 
 (define-method op:type ((def IDLType))
   (unless (slot-boundp def 'type)
@@ -73,7 +72,7 @@ attributes other than type."))
 
 (define-ir-class Contained (irobject)
   :id "IDL:omg.org/CORBA/Contained:1.0"
-  :attributes ((id :readonly 
+  :attributes ((id :readonly
                    :initarg :subject-id
                    :accessor subject-id)
                (name "")
@@ -88,7 +87,7 @@ attributes other than type."))
     (format stream "~A" (slot-value obj 'name))))
 
 (defmethod addto :after (r (c contained))
-  (setf (slot-value c 'containing_repository) 
+  (setf (slot-value c 'containing_repository)
     (op:containing_repository r))
   c)
 
@@ -100,14 +99,14 @@ attributes other than type."))
     (setf (slot-value obj 'absolute_name)
       (let ((parent-name (op:absolute_name (op:defined_in obj))))
         (if parent-name
-            (concatenate 'string 
+            (concatenate 'string
               parent-name "::" (op:name obj))
           (op:name obj)))))
   (slot-value obj 'absolute_name))
 
-(define-method op::describe ((obj contained))
+(define-method op:describe ((obj contained))
   (make-struct "IDL:omg.org/CORBA/Contained/Description:1.0"
-               :kind (op::def_kind obj)
+               :kind (op:def_kind obj)
                :value (describe-contained obj)))
 
 (defmethod default-repoid ((obj contained) &optional prefix)
@@ -128,7 +127,7 @@ attributes other than type."))
 
 (define-ir-class Container (irobject)
   :id "IDL:omg.org/CORBA/Container:1.0"
-  :slots ((contents :initarg :contents 
+  :slots ((contents :initarg :contents
                     :initform '()
                     :accessor contents))
   :defaults ())
@@ -138,29 +137,29 @@ attributes other than type."))
   (setf (contents c)
     (cons object
           (delete-if (lambda (old)
-                       (or (equalp (op::name old) (op::name object))
-                           (equal (op::id old) (op::id object))))
+                       (or (equalp (op:name old) (op:name object))
+                           (equal (op:id old) (op:id object))))
                      (contents c))))
   (setf (slot-value object 'defined_in) c)
   object)
 
-(define-method op::contents ((obj container) limit-type exclude-inherit)
+(define-method op:contents ((obj container) limit-type exclude-inherit)
   (declare (ignore exclude-inherit))
   ;; exclude-inherit only aplicable for operations???
   (loop for contained in (contents obj)
       when (and (or (eql limit-type :dk_all)
-                    (eql limit-type (op::def_kind contained))))
+                    (eql limit-type (op:def_kind contained))))
       collect contained))
 
-(define-method op::lookup_name
+(define-method op:lookup_name
     ((obj container) search-name levels-to-search limit-type  exclude-inherit)
-  (loop for contained in (op::contents obj limit-type exclude-inherit)
-      when (equal search-name (op::name contained))
+  (loop for contained in (op:contents obj limit-type exclude-inherit)
+      when (equal search-name (op:name contained))
       collect contained))
 
-(define-method op::lookup ((obj container) search_name)
+(define-method op:lookup ((obj container) search_name)
   (loop for contained in (op:contents obj :dk_all nil)
-      when (equal search_name (op::name contained))
+      when (equal search_name (op:name contained))
       do (return contained)))
 
 
@@ -294,10 +293,10 @@ attributes other than type."))
 
 (define-method lookup_id ((container Repository) search-id)
   (block lookup
-    (let ((content-stack 
+    (let ((content-stack
            (list (contents container))))
       (loop while content-stack
-          do (map nil (lambda (obj) 
+          do (map nil (lambda (obj)
                         (if (equal (op:id obj) search-id)
                             (return-from lookup obj)
                           (if (typep obj 'container)
@@ -351,7 +350,7 @@ attributes other than type."))
     :bound bound
     :element_type_def element-type
     :type (make-sequence-typecode (op:type element-type) bound)))
-  
+
 
 ;;;  ArrayDef create_array
 ;;;     (in unsigned long length,in IDLType element_type);
@@ -381,7 +380,7 @@ attributes other than type."))
   :defaults ())
 
 (defparameter *module-description*
-    (struct-typecode 
+    (struct-typecode
      "IDL:omg.org/CORBA/ModuleDescription:1.0"
      "ModuleDescription"
      "name" CORBA:tc_string             ; Identifier
@@ -393,10 +392,10 @@ attributes other than type."))
 
 (defmethod describe-contained ((module module-def))
   (make-struct *module-description*
-               :name (op::name module)
-               :id (op::id module)
-               :defined_in (or (op::defined_in module) "")
-               :version (op::version module)))
+               :name (op:name module)
+               :id (op:id module)
+               :defined_in (or (op:defined_in module) "")
+               :version (op:version module)))
 
 ;;; interface ConstantDef : Contained {
 ;;;   readonly attribute TypeCode type;
@@ -422,33 +421,33 @@ attributes other than type."))
 (defmethod idltype-tc ((idef interface-def))
   (make-typecode :tk_objref (subject-id idef) (op:name idef)))
 
-(define-method op::is_a ((def interface-def) interface-id)
+(define-method op:is_a ((def interface-def) interface-id)
   ;; FIXME: check base classes
   (equal (subject-id def) interface-id))
 
-(define-method op::describe_interface ((def interface-def))
+(define-method op:describe_interface ((def interface-def))
   (make-struct "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
-               :name (op::name def)
+               :name (op:name def)
                :id   (subject-id def)
-               :defined_in (subject-id (op::defined_in def)) 
+               :defined_in (subject-id (op:defined_in def))
                :version "1.0"
                :operations (map 'list
                              #'operation-description
-                             (op::contents def :dk_Operation nil)  )
-               :attributes (op::contents def :dk_Attribute nil)
+                             (op:contents def :dk_Operation nil)  )
+               :attributes (op:contents def :dk_Attribute nil)
                :base_interfaces (map 'list #'subject-id
-                                     (op::base_interfaces def))
-               :type (op::type def) ))
+                                     (op:base_interfaces def))
+               :type (op:type def) ))
 
 (defmethod describe-contained ((def interface-def))
-  (op::describe_interface def))
+  (op:describe_interface def))
 
-(define-method op::contents ((obj interface-def) limit-type exclude-inherit)
+(define-method op:contents ((obj interface-def) limit-type exclude-inherit)
   (if exclude-inherit
       (call-next-method)
     (append (call-next-method)
             (loop for x in (op:base_interfaces obj)
-                append (op::contents x limit-type nil)))))
+                append (op:contents x limit-type nil)))))
 
 (defmethod find-opdef ((interface interface-def) operation)
   "Find in INTERFACE the OPERATION and return the operation-def object."
@@ -457,10 +456,10 @@ attributes other than type."))
       (analyze-operation-name operation)
     (let ((def (op:lookup interface name)))
       (case type
-        (:setter 
+        (:setter
          (assert (eq (op:def_kind def) :dk_Attribute))
          (make-setter-opdef operation def))
-        (:getter 
+        (:getter
          (assert (eq (op:def_kind def) :dk_Attribute))
          (make-getter-opdef operation def))
         (otherwise
@@ -474,12 +473,12 @@ attributes other than type."))
     (let ((def (op:lookup interface name))
           (sym (intern (string-upcase name) :op)))
       (case type
-        (:setter 
+        (:setter
          (assert (eq (op:def_kind def) :dk_Attribute))
          (values (fdefinition (list 'setf sym))
                  (list (op:type def))
                  nil))
-        (:getter 
+        (:getter
          (assert (eq (op:def_kind def) :dk_Attribute))
          (values sym
                  nil
@@ -492,7 +491,7 @@ attributes other than type."))
 
 
 (defun analyze-operation-name (name)
-  (cond 
+  (cond
    ((< (length name) 6) name)
    ((string= name "_get_" :end1 5)
     (values (subseq name 5) :getter))
@@ -529,7 +528,7 @@ attributes other than type."))
 ;;;                                 in Identifier name,
 ;;;                                 in VersionSpec version,
 ;;;                                 in IDLType result,
-;;;                                 in OperationMode mode, 
+;;;                                 in OperationMode mode,
 ;;;                                 in ParDescriptionSeq params,
 ;;;                                 in ExceptionDefSeq exceptions,
 ;;;                                 in ContextIdSeq contexts            );
@@ -594,7 +593,7 @@ attributes other than type."))
       collect (op:type param)))
 
 (defmethod opdef-outparam-typecodes ((opdef operation-def))
-  (let ((real-params   
+  (let ((real-params
          (loop for param in (op:params opdef)
              unless (eq (op:mode param) :param_in)
              collect (op:type param)))
@@ -605,26 +604,26 @@ attributes other than type."))
 
 
 (defun operation-description (opdef)
-  ;;  struct OperationDescription 
+  ;;  struct OperationDescription
   (make-struct "IDL:omg.org/CORBA/OperationDescription:1.0"
-               ;;  Identifier name; 
-               :name (op::name opdef)
-               ;;  RepositoryId id; 
-               :id   (op::id opdef)
-               ;;  RepositoryId defined_in; 
-               :defined_in (op::id (op::defined_in opdef))
+               ;;  Identifier name;
+               :name (op:name opdef)
+               ;;  RepositoryId id;
+               :id   (op:id opdef)
+               ;;  RepositoryId defined_in;
+               :defined_in (op:id (op:defined_in opdef))
                ;;  VersionSpec version;
-               :version (op::version opdef)
-               ;;  TypeCode result; 
-               :result (op::result opdef)
-               ;;  OperationMode mode; 
-               :mode (op::mode opdef)
-               ;;  ContextIdSeq contexts; 
-               :contexts (op::contexts opdef)
+               :version (op:version opdef)
+               ;;  TypeCode result;
+               :result (op:result opdef)
+               ;;  OperationMode mode;
+               :mode (op:mode opdef)
+               ;;  ContextIdSeq contexts;
+               :contexts (op:contexts opdef)
                ;;  ParDescriptionSeq parameters;
                :parameters (op:params opdef)
                ;;  ExcDescriptionSeq exceptions;
-               :exceptions (op::exceptions opdef)))
+               :exceptions (op:exceptions opdef)))
 
 (defmethod describe-contained ((obj operation-def))
   (operation-description obj))
@@ -660,7 +659,7 @@ attributes other than type."))
   :defaults ())
 
 (defmethod idltype-tc ((def alias-def))
-  (make-typecode :tk_alias 
+  (make-typecode :tk_alias
                  (op:id def) (op:name def)
                  (op:type (op:original_type_def def))))
 
@@ -696,7 +695,7 @@ attributes other than type."))
          mlist)))
 
 (defmethod idltype-tc ((def struct-def))
-  (make-typecode :tk_struct 
+  (make-typecode :tk_struct
                  (op:id def)
                  (op:name def)
                  (map 'vector
@@ -769,7 +768,7 @@ attributes other than type."))
 (define-method type ((obj exception-def))
   (unless (slot-boundp obj 'type )
     (setf (slot-value obj 'type)
-      (make-typecode 
+      (make-typecode
        :tk_except
        (op:id obj)
        (op:name obj)
@@ -783,15 +782,15 @@ attributes other than type."))
 
 (defmethod describe-contained ((obj exception-def))
   (make-struct "IDL:omg.org/CORBA/ExceptionDescription:1.0"
-               ;;  Identifier name; 
+               ;;  Identifier name;
                :name (op:name obj)
-               ;;  RepositoryId id; 
+               ;;  RepositoryId id;
                :id (op:id obj)
-               ;;  RepositoryId defined_in; 
+               ;;  RepositoryId defined_in;
                :defined_in (op:id (op:defined_in obj))
                ;;  VersionSpec version;
                :version (op:version obj)
-               ;;  TypeCode type; 
+               ;;  TypeCode type;
                :type (op:type obj)))
 
 
@@ -870,7 +869,7 @@ attributes other than type."))
   (unless *ifr-servant*
     (setq *ifr-servant* (make-instance 'repository)))
   (with-open-file (out "/tmp/InterfaceRepository"
-                   :direction :output 
+                   :direction :output
                    :if-exists :supersede)
     (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 

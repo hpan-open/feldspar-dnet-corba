@@ -5,7 +5,7 @@
 
 ;;;; Basic types
 
-(deftype corba:boolean ()  
+(deftype corba:boolean ()
   'boolean)
 
 (deftype corba:char ()
@@ -43,7 +43,7 @@
 (deftype corba:ulonglong ()
   '(unsigned-byte 64))
 
-(deftype corba:float ()  
+(deftype corba:float ()
   'real)
 
 (deftype corba:double ()

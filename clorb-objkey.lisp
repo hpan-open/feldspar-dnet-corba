@@ -5,18 +5,18 @@ Layout for Object Key
 
 Transient ior:
 1. Magic number for transient IOR
-2. POA-id
+2. POA-id <UShort>
 3. Unique number for this server instance
 4. ObjectId
 
 Persistent ior (1):
 1. Magic number identifiying the IOR as a persistent IOR
-2. POA-id registered with a locator service
+2. POA-id registered with a locator service <UShort>
 3. ObjectId
 
 Persistent ior (2):
 1. Magic number identifiying the IOR as a persistent IOR
-2. POA level (1 if child of root poa)
+2. POA level <UShort> (1 if child of root poa)
 3. poa-name (one per level) as CDR string
 4. ObjectId
 
@@ -37,8 +37,8 @@ be no need to store the actual path to the POA in the object key.
        (let* ((poaid (unmarshal-ushort buffer))
               (uniq (unmarshal-ulong buffer)))
          (if (= uniq *instance-id*)
-             (values :transient 
-                     poaid 
+             (values :transient
+                     poaid
                      (subseq (buffer-octets buffer)
                              (buffer-position buffer)))
            (progn
@@ -46,7 +46,7 @@ be no need to store the actual path to the POA in the object key.
              nil))))
       ((eql magic +persistent-ior-magic1+)
        (values :persistent
-               (unmarshal-ushort buffer) 
+               (unmarshal-ushort buffer)
                (subseq (buffer-octets buffer)
                        (buffer-position buffer))))
       ((eql magic +persistent-ior-magic2+)
@@ -78,7 +78,7 @@ types will be converterd by this GF."))
   objid)
 
 (defmethod to-object-id ((objid integer))
-  ;; FIXME: if this is actually useful it should handle 
+  ;; FIXME: if this is actually useful it should handle
   ;;  more than ulong compatible integers?
   (let ((buf (get-work-buffer)))
     (marshal-ulong objid buf)
@@ -88,7 +88,7 @@ types will be converterd by this GF."))
   (let ((buf (make-buffer :octets objid)))
     (unmarshal-ulong buf)))
 
-(defun make-object-key (type poaid oid 
+(defun make-object-key (type poaid oid
                         &key (uniq *instance-id*) poa-name)
   ;; If poa-name use persistance v2
   (declare (optimize debug))
