@@ -1,3 +1,15 @@
+2001-05-17  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* idef-read.lisp (idef-read-part): added support for
+	define-constant syntax
+
+2001-05-15  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* idef-read.lisp (parse-type-in): added support for (string n) and
+	(wstring n) type specifications.
+
+	* local-ir.lisp (wstring-def): new class
+
 Tue Feb 13 22:13:45 2001  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* local-ir.lisp (addto): addto now returns the object added.
