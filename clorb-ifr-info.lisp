@@ -45,63 +45,10 @@
   
 
 
-
-(defclass ifr-info-target (code-target)
-  ())
-
-(defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef)
-                                   (target ifr-info-target))
-  (let ((desc (op:value (op:describe op))))
-    (assert (typep desc 'corba:operationdescription))
-    (make-progn* 
-     (call-next-method)
-     `(define-operation ,(scoped-target-symbol target op)
-        :id ,(op:id desc)
-        :name ,(op:name desc)
-        :defined_in ,(scoped-target-symbol target (op:defined_in op))
-        :version ,(op:version desc)
-        :result ,(target-typecode (op:result_def op) target)
-        :mode ,(op:mode desc)
-        :contexts ,(op:contexts desc)
-        :parameters ,(map 'list (lambda (param)
-                                  (list (op:name param) 
-                                        (op:mode param)
-                                        (target-typecode (op:type_def param) target)))
-                          (op:parameters desc))
-        :exceptions ,(map 'list #'scoped-target-symbol (repeated target) (op:exceptions op))))))
-
-
-(defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) 
-                                   (target ifr-info-target))
-  (let ((desc (op:value (op:describe attr))))
-    (make-progn*
-     (call-next-method)
-     `(define-attribute ,(scoped-target-symbol target attr)
-        :id ,(op:id desc)
-        :name ,(op:name desc)
-        :version ,(op:version desc)
-        :defined_in ,(scoped-target-symbol target (op:defined_in attr))
-        :mode ,(op:mode desc)
-        :type ,(target-typecode (op:type_def attr) target)))))
-
-
-
-;;(pprint (target-code (lookup-name "::CosNaming::NamingContext::resolve")
-;;                     (make-instance 'ifr-info-target)))
-
-
-(defclass new-stub-target (ifr-info-target static-stub-target)
-  ())
-
-(defclass new-all-target (ifr-info-target servant-target static-stub-target)
-  ())
-
-
 #|
 
 (CORBA:IDL "clorb:idl;interface_repository.idl" 
            :output "clorb:src;y-ifr-base.lisp" 
-           :target 'new-stub-target
            :package-decl nil
            :eval nil
            :exclude '("::CORBA::TypeCode")
@@ -109,7 +56,6 @@
 
 (CORBA:IDL "clorb:idl;CosNaming.idl" 
            :output "clorb:src;y-cosnaming.lisp" 
-           :target 'new-stub-target
            :package-decl t
            :eval nil
            :skeleton nil)

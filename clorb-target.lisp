@@ -27,7 +27,7 @@
    (only     :initarg :only      :initform nil  :reader target-only)
    (struct-marshal
     :initarg :struct-marshal
-    :initform t
+    :initform nil
     :reader target-struct-marshal )))
 
 
@@ -81,24 +81,27 @@
   (:method (target (obj CORBA:Repository))
            (declare (ignore target))
            nil))
-  
+
 
 (defun scoped-target-symbol-in (target name container)
   ;; used for subnames for non IDL-types, e.g. union members
   (multiple-value-bind (package-name symbol-name) (scoped-symbol-name container)
-    (make-target-symbol target 
+    (make-target-symbol target
                         (concatenate-name symbol-name name)
                         package-name)))
 
 
 (defun make-progn (l)
-  (cons 'progn
-        (loop for (x . more) on (loop for x in l
-                                      append (if (and (consp x) (eq 'progn (car x)))
-                                               (cdr x)
-                                               (list x)))
-              when (or x (not more))
-              collect x )))
+  (cond ((and l (null (cdr l)))
+         (car l))
+        (t 
+         (cons 'progn
+               (loop for (x . more) on (loop for x in l
+                                             append (if (and (consp x) (eq 'progn (car x)))
+                                                      (cdr x)
+                                                      (list x)))
+                     when (or x (not more))
+                     collect x )))))
 
 (defun make-progn* (&rest l)
   (make-progn l))
@@ -222,10 +225,10 @@
     ,(target-typecode (op:element_type_def x) target)))
 
 (defmethod target-typecode ((x CORBA:Contained) target)
-  `(%symbol-typecode ,(scoped-target-symbol target x)))
+  `(symbol-typecode ',(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ExceptionDef) target)
-  `(%symbol-typecode ,(scoped-target-symbol target x)))
+  `(symbol-typecode ',(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ArrayDef) target)
   `(create-array-tc ,(op:length x)
@@ -235,17 +238,21 @@
 
 ;;;; target-code methods
 
-(defmethod target-code ((x CORBA:Contained) target)
-  (declare (ignore target)))
+(defmethod target-code ((x CORBA:IRObject) target)
+  (declare (ignore target))
+  '(progn))
 
-(defmethod target-code ((mdef CORBA:Container) target)
-  (make-progn (map 'list (lambda (contained)
-                           (if (and (not (member contained (target-excludes target)))
-                                    (or (null (target-only target))
-                                        (member contained (target-only target))))
-                             (target-code contained target)))
-                   (sort (op:contents mdef :dk_All t)
-                         #'<  :key #'target-sort-key ))))
+
+(defmethod target-code :around ((mdef CORBA:Container) target)
+  (make-progn 
+   (cons (call-next-method)
+         (map 'list (lambda (contained)
+                      (if (and (not (member contained (target-excludes target)))
+                               (or (null (target-only target))
+                                   (member contained (target-only target))))
+                        (target-code contained target)))
+              (sort (op:contents mdef :dk_All t)
+                    #'<  :key #'target-sort-key )))))
 
 (defmethod target-sort-key ((def CORBA:InterfaceDef))
   (1+ (reduce #'max (map 'list #'target-sort-key (op:base_interfaces def))
@@ -255,9 +262,59 @@
 
 
 
+;; In some cases code depends on the container. I.e. an operation in a
+;; ValueType is different from an operation in an Interface
+
+(defgeneric target-code-contained (container def target))
+
+(defmethod target-code-contained ((c t) (op t) (target code-target))
+  nil)
+
+
+
+;;;; IFR info target 
+
+(defclass ifr-info-target (code-target)
+  ())
+
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef) (target ifr-info-target))
+  (let ((desc (op:value (op:describe op))))
+    (assert (typep desc 'corba:operationdescription))
+    (make-progn* 
+     (call-next-method)
+     `(define-operation ,(scoped-target-symbol target op)
+        :id ,(op:id desc)
+        :name ,(op:name desc)
+        :defined_in ,(scoped-target-symbol target (op:defined_in op))
+        :version ,(op:version desc)
+        :result ,(target-typecode (op:result_def op) target)
+        :mode ,(op:mode desc)
+        :contexts ,(op:contexts desc)
+        :parameters ,(map 'list (lambda (param)
+                                  (list (op:name param) 
+                                        (op:mode param)
+                                        (target-typecode (op:type_def param) target)))
+                          (op:parameters desc))
+        :exceptions ,(map 'list #'scoped-target-symbol (repeated target) (op:exceptions op))))))
+
+
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) (target ifr-info-target))
+  (let ((desc (op:value (op:describe attr))))
+    (make-progn*
+     (call-next-method)
+     `(define-attribute ,(scoped-target-symbol target attr)
+        :id ,(op:id desc)
+        :name ,(op:name desc)
+        :version ,(op:version desc)
+        :defined_in ,(scoped-target-symbol target (op:defined_in attr))
+        :mode ,(op:mode desc)
+        :type ,(target-typecode (op:type_def attr) target)))))
+
+
+
 ;;;; Stub Target
 
-(defclass stub-target (code-target)
+(defclass stub-target (ifr-info-target code-target)
   ())
 
 
@@ -267,10 +324,7 @@
 
 
 (defmethod target-code ((x CORBA:Contained) (target stub-target))
-  (declare (ignore target))
-  (warn "Can't generate code for ~A of kind ~S"
-        (op:name x)
-        (op:def_kind x)))
+  (declare (ignore target)) (call-next-method))
 
 
 (defmethod target-code ((x CORBA:AliasDef) (target stub-target))
@@ -293,20 +347,19 @@
 
 
 (defmethod target-code ((idef CORBA:InterfaceDef) (target stub-target))
-  (make-progn
-   (list 
-    (let ((bases (op:base_interfaces idef))
-          (class-symbol (scoped-target-symbol target idef))
-          (proxy-symbol (target-proxy-class-symbol target idef)))
-      `(define-interface ,class-symbol
-         ,(target-base-list target bases #'scoped-target-symbol 'CORBA:Object)
-         :proxy ,(list* proxy-symbol class-symbol
-                        (target-base-list target bases #'target-proxy-class-symbol 
-                                          'CORBA:Proxy))
-         :id ,(op:id idef)
-         :name ,(op:name idef)))
-    
-    (call-next-method))))
+  (make-progn*
+   (let ((bases (op:base_interfaces idef))
+         (class-symbol (scoped-target-symbol target idef))
+         (proxy-symbol (target-proxy-class-symbol target idef)))
+     `(define-interface ,class-symbol
+          ,(target-base-list target bases #'scoped-target-symbol 'CORBA:Object)
+        :proxy ,(list* proxy-symbol class-symbol
+                       (target-base-list target bases #'target-proxy-class-symbol
+                                         'CORBA:Proxy))
+        :id ,(op:id idef)
+        :name ,(op:name idef)))
+
+   (call-next-method)))
 
 
 (defun in-param-list (params)
@@ -315,43 +368,7 @@
         collect (param-symbol p)))
 
 
-(defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef)
-                                   (target static-stub-target))
-  (let* ((params (coerce (op:params opdef) 'list))
-         (in-params (loop for p in params unless (eq :param_out (op:mode p)) collect p))
-         (out-params (loop for p in params unless (eq :param_in (op:mode p)) collect p)))
-    (unless (eq :tk_void (op:kind (op:result opdef)))
-      (push (corba:parameterdescription
-             :type_def (op:result_def opdef))
-            out-params))
-    `(define-method ,(string-upcase (op:name opdef))
-                    ((obj ,(target-proxy-class-symbol target (op:defined_in opdef)))
-                     ,@(mapcar #'param-symbol in-params))
-       (static-call 
-        (,(op:name opdef) obj)
-        :output ((output)
-                 ,@(loop for param in in-params
-                         collect (target-marshal (op:type_def param) target
-                                                 (param-symbol param)
-                                                 'output)))
-        :input ((input)
-                ,@(loop for param in out-params
-                        collect (target-unmarshal (op:type_def param) target 'input)))
-        :exceptions ,(map 'list
-                          (lambda (edef) (scoped-target-symbol target edef))
-                          (op:exceptions opdef))))))
-
-
-
-;; In some cases code depends on the container.
-;; I.e. an operatin in a ValueType is different from an operatin in a Interface
-
-(defgeneric target-code-contained (container def target))
-
-(defmethod target-code-contained ((c t) (op t) (target stub-target))
-  nil)
-
-(defmethod target-code ((op CORBA:OperationDef) (target stub-target)) 
+(defmethod target-code ((op CORBA:OperationDef) (target stub-target))
   (target-code-contained (op:defined_in op) op target))
 
 (defmethod target-code ((op CORBA:AttributeDef) (target stub-target))
@@ -363,18 +380,34 @@
          (lisp-name (string-upcase att-name))
          (type-def (op:type_def attr))
          (class (target-proxy-class-symbol target (op:defined_in attr))))
-    `(progn
-       (define-method ,lisp-name ((obj ,class))
-         (static-call (,(getter-name att-name) obj)
-                      :input ((buffer) 
-                              ,(target-unmarshal type-def target 'buffer))))
-       ,@(if (eq (op:mode attr) :attr_normal)
-             `((define-method (setf ,lisp-name) (newval (obj ,class))
-                 (static-call (,(setter-name att-name) obj)
-                              :output ((buffer)
-                                       ,(target-marshal type-def target 'newval 'buffer)))))))))
+    (make-progn*
+     (call-next-method)
+     (if (eq (op:mode attr) :attr_normal)
+       `(define-method (setf ,lisp-name) (newval (obj ,class))
+          (static-call (,(setter-name att-name) obj)
+                       :output ((buffer)
+                                ,(target-marshal type-def target 'newval 'buffer)))))
+     `(define-method ,lisp-name ((obj ,class))
+        (static-call (,(getter-name att-name) obj)
+                     :input ((buffer)
+                             ,(target-unmarshal type-def target 'buffer)))))))
 
 
+(defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef) (target static-stub-target))
+  (let* ((params (coerce (op:params opdef) 'list))
+         (in-params (loop for p in params unless (eq :param_out (op:mode p)) collect p))
+         (out-params (loop for p in params unless (eq :param_in (op:mode p)) collect p)))
+    (unless (eq :tk_void (op:kind (op:result opdef)))
+      (push (corba:parameterdescription
+             :type_def (op:result_def opdef))
+            out-params))
+    (make-progn*
+     (call-next-method)
+     `(define-method ,(string-upcase (op:name opdef))
+                     ((obj ,(target-proxy-class-symbol target (op:defined_in opdef)))
+                      ,@(mapcar #'param-symbol in-params))
+        (%jit-call ,(scoped-target-symbol target opdef) obj
+                   ,@(mapcar #'param-symbol in-params))))))
 
 
 (defmethod target-code ((sdef CORBA:StructDef) (target stub-target))
@@ -389,7 +422,7 @@
                       (op:members sdef))
        ,@(if (target-struct-marshal target)
            `(
-             :read ((buffer) 
+             :read ((buffer)
                     (,sym
                      ,@(loop for member in (coerce (op:members sdef) 'list)
                              collect (key (op:name member))
@@ -417,7 +450,7 @@
        :defined_in ,(scoped-target-symbol target (op:defined_in exc))
        :members ,(map 'list
                       (lambda (smember)
-                        (list (op:name smember) 
+                        (list (op:name smember)
                               (target-typecode (op:type_def smember) target)))
                       (op:members exc)))))
 
@@ -472,9 +505,9 @@
             `(:members
               ,(loop for statedef in (contents def)
                      when (eq :dk_valuemember (op:def_kind statedef))
-                     collect `(,(op:name statedef) 
+                     collect `(,(op:name statedef)
                                ,(target-typecode (op:type_def statedef) target)
-                               ,(op:access statedef))))))    
+                               ,(op:access statedef))))))
      (call-next-method))))
 
 
@@ -500,7 +533,7 @@
           (proxy-symbol (target-proxy-class-symbol target def)))
       `(define-abstract-interface ,class-symbol
          ,(target-base-list target bases #'scoped-target-symbol 'corba:abstractbase)
-         :proxy ,(list* proxy-symbol (target-base-list target bases #'target-proxy-class-symbol 
+         :proxy ,(list* proxy-symbol (target-base-list target bases #'target-proxy-class-symbol
                                                        'CORBA:Proxy))
          :mixin ,(target-class-symbol target def "-MIXIN")
          :id ,(op:id def)
@@ -510,13 +543,13 @@
 
 ;;;; Marshalling
 
-;;; Marshal 
+;;; Marshal
 
 (defmethod target-marshal ((def CORBA:IRObject) target obj buffer)
-  `(marshal ,obj ,(target-typecode def target) ,buffer))
+  `(%jit-marshal ,obj ,(target-typecode def target) ,buffer))
 
-(defmethod target-marshal ((alias CORBA:AliasDef) target obj buffer)
-  (target-marshal (op:original_type_def alias) target obj buffer))
+(defmethod target-marshal ((def CORBA:Contained) target obj buffer)
+  `(%jit-marshal ,obj (symbol-typecode ',(scoped-target-symbol target def)) ,buffer))
 
 (defmethod target-marshal ((def corba:primitivedef) target obj buffer)
   (declare (ignore target))
@@ -537,21 +570,6 @@
       `(,func ,obj ,buffer)
       (call-next-method))))
 
-(defmethod target-marshal ((seqdef corba:sequencedef) target obj buffer)
-  (let ((el-marshal (target-marshal (op:element_type_def seqdef) target 'obj 'buffer)))
-    (cond ((equal el-marshal '(marshal-octet obj buffer))
-           `(marshal-osequence ,obj ,buffer))
-          ((and (eq 'obj (second el-marshal))
-                (eq 'buffer (third el-marshal))
-                (null (cdddr el-marshal)))
-           ;; i.e. (marshal-xx obj buffer)
-           `(marshal-sequence ,obj #',(first el-marshal) ,buffer))
-          (t
-           `(marshal-sequence ,obj (lambda (obj buffer) ,el-marshal) ,buffer)))))
-
-(defmethod target-marshal ((def corba:structdef) target obj buffer)
-  `(struct-write ,obj ',(scoped-target-symbol target def) ,buffer))
-
 (defmethod target-marshal ((def corba:interfacedef) target obj buffer)
   (declare (ignore target))
   `(marshal-object ,obj ,buffer))
@@ -560,7 +578,7 @@
 ;;; Unmarshal
 
 (defmethod target-unmarshal ((def CORBA:IRObject) target buffer)
-  `(unmarshal ,(target-typecode def target) ,buffer))
+  `(%jit-unmarshal ,(target-typecode def target) ,buffer))
 
 (defmethod target-unmarshal ((def corba:primitivedef) target buffer)
   (declare (ignore target))
@@ -582,20 +600,6 @@
 
 (defmethod target-unmarshal ((alias CORBA:AliasDef) target buffer)
   (target-unmarshal (op:original_type_def alias) target buffer))
-
-(defmethod target-unmarshal ((seqdef corba:sequencedef) target buffer)
-  (let ((el-unmarshal (target-unmarshal (op:element_type_def seqdef) target 'buffer)))
-    (cond ((equal el-unmarshal '(unmarshal-octet buffer))
-           `(unmarshal-osequence ,buffer))
-          ((and (eq 'buffer (second el-unmarshal))
-                (null (cddr el-unmarshal)))
-           ;; i.e. (unmarshal-xx buffer)
-           `(unmarshal-sequence #',(first el-unmarshal) ,buffer))
-          (t
-           `(unmarshal-sequence (lambda (buffer) ,el-unmarshal) ,buffer)))))
-    
-(defmethod target-unmarshal ((seqdef corba:structdef) target buffer)
-  `(struct-read ',(scoped-target-symbol target seqdef) ,buffer))
 
 (defmethod target-unmarshal ((def corba:interfacedef) target buffer)
   (declare (ignore target))
@@ -619,14 +623,8 @@
                 (target-base-list target bases #'target-servant-class-symbol
                                   'PortableServer:Servant))
         :attributes ,(servant-attribute-declaration idef))
-     `(defmethod servant-invoke ((servant ,class-symbol) operation input handler)
-        (declare (ignorable input))
-        (cond ,@(mapcan #'identity
-                        (map 'list
-                             (lambda (def) (target-invoke-static def target))
-                             (op:contents idef :dk_all t)))
-              (t 
-               (call-next-method)))))))
+     `(defmethod interface-name ((servant ,class-symbol))
+        ',(scoped-target-symbol target idef)))))
 
 
 (defun servant-attribute-declaration (idef)
@@ -638,66 +636,29 @@
        (op:contents idef :dk_attribute t)))
 
 
-(defun target-handle-exception-static (exc-def target)
-  `(,(scoped-target-symbol target exc-def)
-    (exc)
-    (declare (ignorable exc))
-    (let ((output (get-exception-response handler)))
-      (marshal-string ,(op:id exc-def) output)
-      ,@(map 'list 
-             (lambda (member) 
-               (target-marshal (op:type_def member) target
-                               (list (feature (op:name member)) 'exc)
-                               'output))
-             (op:members exc-def))
-      output )))
+(defmethod target-code ((op CORBA:OperationDef) (target servant-target))
+  (let ((class (target-servant-class-symbol target (op:defined_in op)))
+        (feature (feature (op:name op))))
+    (make-progn* 
+     (call-next-method)
+     `(defmethod ,feature ((self ,class) &rest -args-)
+        (declare (ignore -args-))
+        (raise-system-exception 'CORBA:NO_IMPLEMENT)))))
 
+#+ignore
+(defmethod target-code ((att CORBA:AttributeDef) (target servant-target))
+  (let ((class (target-servant-class-symbol target (op:defined_in att)))
+        (feature (feature (op:name att))))
+    (make-progn* 
+     (call-next-method)
+     (if (eql :attr_normal (op:mode att))
+       `(defmethod (setf ,feature) (val (self ,class))
+          (declare (ignore val))
+          (raise-system-exception 'CORBA:NO_IMPLEMENT)))
+     `(defmethod ,feature ((self ,class) &rest -args-)
+        (declare (ignore -args-))
+        (raise-system-exception 'CORBA:NO_IMPLEMENT)))))
 
-(defmethod target-invoke-static ((def CORBA:OperationDef) target)
-  (let ((params (coerce (op:params def) 'list))
-        (result (if (not (eq :tk_void (op:kind (op:result def))))
-                  '(result))))
-    (list
-     `((string= operation ,(op:name def))
-       (handler-case
-         (multiple-value-bind (,@result
-                               ,@(loop for p in params
-                                       unless (eq :param_in (op:mode p))
-                                       collect (param-symbol p)))
-                              (,(feature (op:name def)) servant
-                               ,@(loop for p in params
-                                       unless (eq :param_out (op:mode p))
-                                       collect (target-unmarshal (op:type_def p) target 'input)))
-           
-           (let ((output (get-normal-response handler)))
-             ,(if result
-                (target-marshal (op:result_def def) target (car result) 'output))
-             ,@(loop for p in params
-                     unless (eq :param_in (op:mode p))
-                     collect (target-marshal (op:type_def p) target (param-symbol p) 'output))
-             output))
-         ,@(map 'list
-                (lambda (exc-def) (target-handle-exception-static exc-def target))
-                (op:exceptions def )))))))
-
-(defmethod target-invoke-static ((def CORBA:AttributeDef) target)
-  (let ((name (op:name def)))
-    (list*
-     `((string= operation ,(getter-name name))
-       (let ((result (,(feature name) servant))
-             (output (get-normal-response handler)))
-         ,(target-marshal (op:type_def def) target 'result 'output)
-         output)) 
-     (if (eq :attr_normal (op:mode def))
-       (list `((string= operation ,(setter-name name))
-               (setf (,(feature name) servant)
-                     ,(target-unmarshal (op:type_def def) target 'input))
-               (get-normal-response handler)))))))
-
-
-(defmethod target-invoke-static ((def CORBA:IRObject) target)
-  (declare (ignore target))
-  nil)
 
 
 
@@ -705,18 +666,11 @@
 
 
 (defmethod target-code ((def corba:localinterfacedef) target)
-  (make-progn*
-   `(defclass ,(scoped-target-symbol target def) 
-      ,(let ((bases (op:base_interfaces def)))
-         (unless (zerop (length bases))
-           (target-base-list target bases #'scoped-target-symbol nil)))
-      ())
-   (make-progn
-    (map 'list 
-         (lambda (sub) (target-code-contained def sub target))
-         (sort (op:contents def :dk_All t)
-               #'<  :key #'target-sort-key )))))
-
+  `(defclass ,(scoped-target-symbol target def)
+     ,(let ((bases (op:base_interfaces def)))
+        (unless (zerop (length bases))
+          (target-base-list target bases #'scoped-target-symbol nil)))
+     ()))
 
 (defmethod target-code-contained ((container corba:localinterfacedef)
                                   (obj corba:operationdef)
@@ -766,7 +720,7 @@
 
 (defmethod target-ensure-packages ((target code-target))
   (make-always-eval
-   (make-progn 
+   (make-progn
     (loop for package in (slot-value target 'packages)
           unless (member package *stub-code-ignored-packages*)
           collect (make-target-ensure-package package target)))))
@@ -834,20 +788,20 @@
   (copy-pprint-dispatch))
 
 (let ((*print-pprint-dispatch* *target-pprint-dispatch*))
-  
+
   #-clisp
   (set-pprint-dispatch '(cons (member define-method))
                        (pprint-dispatch '(defmethod foo ()) ))
-  
+
   (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                       define-union define-enum define-alias
                                       define-value define-operation define-attribute
                                       static-call define-value-box))
                        #'pprint-def-and-keys)
-  
+
   (set-pprint-dispatch '(cons (satisfies struct-name-p))
                        #'pprint-apply-keys)
-  
+
   (set-pprint-dispatch '(cons (member define-interface define-abstract-interface))
                        #'pprint-def2-and-keys))
 

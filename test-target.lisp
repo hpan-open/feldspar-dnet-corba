@@ -77,29 +77,39 @@
       (ensure-pattern
        (target-code op1 static)
        (sexp-pattern 
-        `(define-method "OP1" ((&any omg.org/root::if1-proxy)) &any-rest)))
+        `(progn
+           (define-operation OMG.ORG/ROOT::IF1/OP1
+             :ID "IDL:if1/op1:1.0" :NAME "op1" 
+             :DEFINED_IN OMG.ORG/ROOT::IF1 :VERSION "1.0" 
+             :RESULT OMG.ORG/CORBA:TC_STRING 
+             :MODE :OP_NORMAL :CONTEXTS NIL :PARAMETERS NIL :EXCEPTIONS NIL )
+           (define-method "OP1" ((&any omg.org/root::if1-proxy)) &any-rest))))
       (ensure-pattern
        (target-code at1 static)
        (sexp-pattern 
-        `(progn (define-method "AT1" ((&any omg.org/root::if1-proxy)) &any-rest)
-                (define-method (SETF "AT1") (&any (&any OMG.ORG/ROOT::IF1-PROXY)) &any-rest))))))
+        `(progn
+           (DEFINE-ATTRIBUTE OMG.ORG/ROOT::IF1/AT1 :ID "IDL:if1/at1:1.0" :NAME "at1" 
+             :VERSION "1.0" :DEFINED_IN OMG.ORG/ROOT::IF1 :MODE :ATTR_NORMAL
+             :TYPE OMG.ORG/CORBA:TC_STRING)
+           (define-method (SETF "AT1") (&any (&any OMG.ORG/ROOT::IF1-PROXY)) &any-rest)
+           (define-method "AT1" ((&any omg.org/root::if1-proxy)) &any-rest))))))
 
 
   (define-test "Value"
     (let* ((abv (op:create_value repository
-                                               "IDL:abv:1.0" "abv" "1.0"
-                                               nil t  nil nil  nil nil nil))
+                                 "IDL:abv:1.0" "abv" "1.0"
+                                 nil t  nil nil  nil nil nil))
            (v (op:create_value repository
-                                             "IDL:v:1.0" "v" "1.0"
-                                             nil nil  nil nil  (list abv) nil nil))
+                               "IDL:v:1.0" "v" "1.0"
+                               nil nil  nil nil  (list abv) nil nil))
            (target (make-instance 'stub-target)))
-    (op:create_value_member v
-                                          "IDL:v/a:1.0" "a" "1.0"
-                                          v corba:public_member)
+      (op:create_value_member v
+                              "IDL:v/a:1.0" "a" "1.0"
+                              v corba:public_member)
       (ensure-pattern
        (target-code abv target)
        (sexp-pattern 
-        '(progn (define-value omg.org/root::abv &key
+        `(progn (define-value omg.org/root::abv &key
                   (:id :required "IDL:abv:1.0")
                   (:name :required "abv")
                   (:base_value :optional nil)
@@ -108,7 +118,8 @@
                   (:is_truncatable :optional nil)
                   (:supported_interfaces :optional nil)
                   (:abstract_base_values :optional nil)
-                  (:members :optional nil)))))
+                  (:members :optional nil))
+                &rest nil)))
       (ensure-pattern
        (target-code v target)
        (sexp-pattern
@@ -121,7 +132,7 @@
                   (:is_truncatable :optional nil)
                   (:supported_interfaces :optional nil)
                   (:abstract_base_values :required (omg.org/root::abv))
-                  (:members :optional (("a" (%symbol-typecode omg.org/root::v) ,corba:public_member))))
+                  (:members :optional (("a" (symbol-typecode 'omg.org/root::v) ,corba:public_member))))
                 &rest nil)))))
 
 
