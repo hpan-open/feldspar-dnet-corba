@@ -791,6 +791,38 @@
 ;; :ID "IDL:omg.org/CORBA/TypeCodeFactory:1.0"
 ;; :NAME "TypeCodeFactory")
 
+(defun check-tc-id (id)
+  "Check valid id for typecode.
+Should have form '<format>:<string>"
+  (unless (and (stringp id)
+               (let ((colon (position #\: id)))
+                 (and colon
+                      (not (find-if-not #'alpha-char-p  id :end colon)))))
+    (raise-system-exception 'CORBA:BAD_PARAM 16)))
+
+(defun check-tc-name (name &optional (minor 15))
+  (unless (and (stringp name)
+               (loop for c across name
+                     for i from 0
+                     always (or (eql c #\_)
+                                (if (zerop i)
+                                  (alpha-char-p c)
+                                  (alphanumericp c)))))
+    (raise-system-exception 'CORBA:BAD_PARAM minor)))
+
+(defun check-tc-member-names (names)
+  (loop for tail on names do
+        (check-tc-name (car tail) 17)
+        (when (member (car tail) (cdr tail) :test #'equal)
+          (raise-system-exception 'CORBA:BAD_PARAM 17))))
+
+
+(defun check-tc-content-type (type)
+  (unless (and (typep type 'CORBA:TypeCode)
+               (not (member (op:kind type)
+                       '(:tk_null :tk_void :tk_except t))))
+    (raise-system-exception 'CORBA:BAD_TYPECODE 2)))
+
 
 
 (define-method "CREATE_RECURSIVE_TC" ((obj corba:typecodefactory) id)
@@ -817,12 +849,14 @@
 
 
 (define-method "CREATE_ARRAY_TC" ((obj corba:typecodefactory) length element_type)
+  (check-tc-content-type element_type)
   (create-array-tc length element_type))
 
 ;; Deprecated
 ;;(DEFINE-METHOD "CREATE_RECURSIVE_SEQUENCE_TC" ((obj corba:typecodefactory) bound _OFFSET))
 
 (DEFINE-METHOD "CREATE_SEQUENCE_TC" ((obj corba:typecodefactory) bound element_type)
+  (check-tc-content-type element_type)
   (create-sequence-tc bound element_type))
 
 (define-method "CREATE_FIXED_TC" ((obj corba:typecodefactory) digits scale)
@@ -834,26 +868,41 @@
 (define-method "CREATE_STRING_TC" ((OBJ CORBA:TYPECODEFACTORY) bound)
   (create-string-tc bound))
 
+
+
 (define-method "CREATE_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (check-tc-id id)
+  (check-tc-name name)
   (fix-recursive-tc (create-interface-tc id name)))
 
 (define-method "CREATE_EXCEPTION_TC" ((obj corba:typecodefactory) id name members)
+  (check-tc-id id)
+  (check-tc-name name)
   (fix-recursive-tc (create-exception-tc id name (simple-struct-members members))))
 
 (define-method "CREATE_STRUCT_TC" ((obj corba:typecodefactory) id name members)
+  (check-tc-id id)
+  (check-tc-name name)
   (fix-recursive-tc (create-struct-tc id name (simple-struct-members members))))
 
 (defun simple-struct-members (members)
-  (map 'vector (lambda (m) (list (op:name m) (op:type m)))
+  (check-tc-member-names (map 'list 'op:name members))
+  (map 'vector (lambda (m) 
+                 (check-tc-content-type (op:type m))
+                 (list (op:name m) (op:type m)))
        members))
 
 
 (define-method "CREATE_UNION_TC" ((obj corba:typecodefactory) 
                                   id name discriminator-type members)
+  (check-tc-id id)
+  (check-tc-name name)
+  (check-tc-member-names (map 'list 'op:name members))
   (fix-recursive-tc
    (create-union-tc id name discriminator-type 
                     (map 'list
                          (lambda (member)
+                           (check-tc-content-type (op:type member))
                            (let* ((label (op:label member))
                                   (label-value (any-value label)))
                              (list (if (and (eq :tk_octet (any-typecode label))
@@ -865,21 +914,34 @@
                          members))))
 
 (define-method "CREATE_ALIAS_TC" ((obj corba:typecodefactory) id name typecode)
+  (check-tc-id id)
+  (check-tc-name name)
+  (check-tc-content-type typecode)
   (fix-recursive-tc (create-alias-tc id name typecode)))
 
 (define-method "CREATE_ENUM_TC" ((OBJ CORBA:TYPECODEFACTORY) id name members)
+  (check-tc-id id)
+  (check-tc-name name)
+  (check-tc-member-names (coerce members 'list))
   (fix-recursive-tc (create-enum-tc id name members)))
 
 
 (define-method "CREATE_ABSTRACT_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY)
                                                id name)
+  (check-tc-id id)
+  (check-tc-name name)
   (create-abstract-interface-tc id name))
 
 (define-method "CREATE_NATIVE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (check-tc-id id)
+  (check-tc-name name)
   (create-native-tc id name))
 
 (define-method "CREATE_VALUE_BOX_TC" ((OBJ CORBA:TYPECODEFACTORY)
                                       id name boxed_type)
+  (check-tc-id id)
+  (check-tc-name name)
+  (check-tc-content-type boxed_type)
   (fix-recursive-tc (create-value-box-tc id name boxed_type)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:VALUEMODIFIER
@@ -890,19 +952,25 @@
 
 (define-method "CREATE_VALUE_TC" ((OBJ CORBA:TYPECODEFACTORY)
                                       id name type_modifier concrete_base members)
+  (check-tc-id id)
+  (check-tc-name name)
   (fix-recursive-tc
    (create-value-tc id name type_modifier concrete_base
                     (simple-value-members members))))
 
 (defun simple-value-members (members)
+  (check-tc-member-names (map 'list 'op:name members))
   (map 'vector
        (lambda (member)
+         (check-tc-content-type (op:type member))
          (list (op:name member)
                (op:type member)
                (op:access member)))
        members))
 
 (define-method "CREATE_LOCAL_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (check-tc-id id)
+  (check-tc-name name)
   (create-local-interface-tc id name))
 
 
