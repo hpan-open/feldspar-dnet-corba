@@ -329,7 +329,7 @@ Return
                                       (ccl::opentransport-stream-connection-state s))
                                  '(:incon :dataxfer))))
          (return-from wait (values :server socket))))
-     ;;(sleep 0.5)
+     (sleep 0.01)
      nil)
 
    ;; Default
