@@ -1,4 +1,35 @@
-2003-09-27  Lennart Staflin  <lenst@lysator.liu.se>
+2003-10-08  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* support-test.lisp (ensure-exception): added
+
+	* idef-read.lisp:
+	don't create the same interface multiple times, even if it is
+	multiple times in the idef
+
+	* clorb-target.lisp (target-type): ValueBase primitive
+
+	* clorb-orb.lisp (OMG.ORG/CORBA:VALUEMODIFIER): new type
+	(simple-value-members): factor of create_value_tc
+
+	* clorb-opdef.lisp: removed unused functions
+
+	* clorb-object.lisp (CORBA::ValueBase): new class
+	(CORBA::AbstractBase): new class
+	(_is_equivalent, _is_nil, _hash, _is_a): defined on class t. To
+	handle local objects.
+
+2003-10-07  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-macros.lisp (define-operation): added documentation key
+	parameter.
+
+	* clorb-typecode.lisp: Added constants for ValueModifier and
+	TC_ValueBase
+	
+	* clorb-ifr.lisp: Implemented ValueDef, AbstraceInterfaceDef,
+	LocalInterfaceDef and NativeDef.
+
+2003-09-27 Lennart Staflin <lenst@lysator.liu.se>
 
 	* clorb-orb.lisp: Added support for -ORBPort init argument to
 	ORB_init.
