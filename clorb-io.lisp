@@ -245,15 +245,16 @@
    for cookies = '()
    do
    (dolist (desc *io-descriptions* nil)
-     (with-slots (stream read-buffer read-limit read-pos
-                         write-buffer write-pos write-limit) desc
-       (declare (type buffer-index read-limit read-pos
-                      write-limit write-pos))
+     (let ((stream (io-descriptor-stream desc)))
        (when stream
-         (let ((input (and read-buffer (< read-pos read-limit)))
-               (output (and write-buffer (< write-pos write-limit))))
+         (let ((input (and (io-descriptor-read-buffer desc)
+                           (< (io-descriptor-read-pos desc)
+                              (io-descriptor-read-limit desc))))
+               (output (and (io-descriptor-write-buffer desc)
+                            (< (io-descriptor-write-pos desc)
+                               (io-descriptor-write-limit desc)))))
            ;; SBCL has always an input buffer, empty that before doing select
-           #+sbcl
+           #+(or sbcl cmu18)
            (when (and input (socket-stream-listen stream))
              (let ((event (io-poll-desc desc :input)))
               (if event

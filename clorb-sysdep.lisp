@@ -318,7 +318,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 (%SYSDEP
  "make select obj"
 
- #+sbcl
+ #+(or sbcl cmu18)
  (defstruct SELECT
    (rset 0)
    (wset 0)
@@ -329,7 +329,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    (writepending nil))
  )
 
-#+sbcl
+#+(or sbcl cmu18)
 (defmacro %add-fd (select-obj fd-number set)
   (let ((sobj '#:sobj)
         (fd   '#:fd))
@@ -341,12 +341,13 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
       (setf (,set ,sobj) (logior (,set ,sobj) (ash 1 ,fd))))))
 
 
-#+sbcl
+#+(or sbcl cmu18)
 (defmacro %socket-file-descriptor (socket)
   (%SYSDEP
    "file descriptor for listener socket"
    #+clorb::db-sockets `(sockets:socket-file-descriptor ,socket)
    #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)) )
+   #+cmu18 socket))
 
 (defmacro select-add-listener (select-obj socket)
   (declare (ignorable select-obj socket))
@@ -356,7 +357,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clorb::clisp-new-socket-status
    `(length (push ,socket (select-value ,select-obj)))
 
-   #+sbcl
+   #+(or sbcl cmu18)
    `(%add-fd ,select-obj (%socket-file-descriptor ,socket) select-rset)
 
    #+allegro
@@ -388,6 +389,15 @@ status for stream."
 
    #+sbcl
    (let ((fd (sb-sys:fd-stream-fd stream)))
+     (declare (fixnum fd))
+     (when input
+       (%add-fd select fd select-rset))
+     (when output
+       (%add-fd select fd select-wset))
+     fd)
+
+   #+cmu18
+   (let ((fd (system:fd-stream-fd stream)))
      (declare (fixnum fd))
      (when input
        (%add-fd select fd select-rset))
@@ -443,6 +453,19 @@ Returns select result to be used in getting status for streams."
      (setf (select-wset select) wset)
      select)
 
+   #+cmu18
+   (multiple-value-bind (result rset wset xset)
+       (unix:unix-select (1+ (select-maxn select))
+                         (select-rset select)
+                         (select-wset select)
+                         0 20)
+     (declare (ignorable xset))
+     ;;FIXME: should perhaps use xset
+     (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
+     (setf (select-rset select) rset)
+     (setf (select-wset select) wset)
+     select)
+
    ;; Default
    select))
 
@@ -454,7 +477,7 @@ Returns select result to be used in getting status for streams."
     #+clisp
     (elt ,select-res (1- ,cookie))
 
-    #+sbcl
+    #+(or sbcl cmu18)
     (if (logbitp ,cookie (select-rset ,select-res))
         (if (logbitp ,cookie (select-wset ,select-res))
             :io
