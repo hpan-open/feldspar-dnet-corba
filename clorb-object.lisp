@@ -1,5 +1,5 @@
-;;;; clorb-object.lisp --- CORBA:Object
-;; $Id: clorb-object.lisp,v 1.1 2000/11/14 22:50:16 lenst Exp $
+;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
+;; $Id: clorb-object.lisp,v 1.2 2001/07/02 16:34:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -25,6 +25,7 @@
 ;;; _create_request in lisp mapping
 ;;;|     in Context	ctx,				
 ;;;|     in Identifier	operation,				
+
 ;;;|     in NVList	arg_list,				
 ;;;|     inout NamedValue result,				
 ;;;|     out Request	request,		
@@ -37,6 +38,27 @@
 ;;;| Object set_policy_overrides (in PolicyList policies,
 ;;;|             in SetOverrideType set_add);
 ;;; _set_policy_overrides
+
+
+
+;;;; CORBA:NamedValue
+
+(defconstant ARG_IN 1)
+(defconstant ARG_OUT 2)
+(defconstant ARG_INOUT 3)
+
+
+(define-corba-class CORBA:NamedValue ()
+  :attributes ((name) 
+               (argument) 
+               (arg_modes)))
+
+(defun CORBA:NamedValue (&key (name "") argument (arg_modes ARG_IN))
+  (make-instance 'CORBA:NamedValue 
+    :name name :argument argument :arg_modes arg_modes))
+
+
+;;;; CORBA:Object / CORBA:Proxy
 
 (defclass CORBA:Object ()
   ())
@@ -81,6 +103,166 @@
                       (coerce (object-key obj) 'list)))
        maximum))
 
+
+;;;| Status create_request (			
+;;; _create_request in lisp mapping
+;;;|     in Context	ctx,				
+;;;|     in Identifier	operation,				
+;;;|     in NVList	arg_list,				
+;;;|     inout NamedValue result,				
+;;;|     out Request	request,		
+;;;|     in Flags        req_flags    );
+
+(define-method _create_request ((obj CORBA:Object)
+                                ctx operation arg_list result req_flags)
+  (declare (ignorable req_flags))
+  (if result
+      (setf (op:arg_modes result) ARG_OUT)
+    (setq result (CORBA:NamedValue :arg_modes ARG_OUT
+                                   :argument (CORBA:Any))))
+  (values
+   result
+   (make-instance 'request
+     :target obj
+     :operation operation
+     :paramlist (cons result (copy-seq arg_list))
+     :ctx ctx)))
+
+
+;;;| boolean is_a (in string logical_type_id);
+;;; _is_a in lisp mapping (in clorb-request)
+
+(define-method _is_a ((obj object) interface-id)
+  (cond
+   ((equal interface-id (object-id obj)) t)
+   (t   
+    (multiple-value-bind (result req)
+      (op:_create_request
+       obj nil "_is_a"  
+       (list
+        (CORBA:NamedValue
+         :argument interface-id
+         :arg_modes ARG_IN))
+       (CORBA:NamedValue
+        :argument (CORBA:Any :any-typecode CORBA:tc_boolean)
+        :arg_modes ARG_OUT)
+       0)
+      (declare (ignore result))
+      (request-funcall req)))))
+
+
+;;;| boolean	non_existent();
+;;; _non_existent in lisp mapping
+
+(define-method _non_existent ((obj CORBA:Proxy))
+  ;;FIXME: Should perhaps send a "_non_existent" message to object ?
+  (= (locate obj) 0))
+
+
+;;; Deferred from Any
+
+(defmethod any-value ((obj CORBA:Object))
+  obj)
+
+
+
+;;;; CORBA:Request
+
+(define-corba-class CORBA:Request ()
+  :attributes 
+  ((target    nil :readonly  :reader request-target)
+   (operation nil :readonly  :reader request-operation)
+   ;;(arguments nil :readonly  :virtual)
+   ;;(result    nil :readonly  :virtual)
+   (ctx       nil))
+  ;; env exceptions contexts 
+  :slots 
+  ((paramlist :initform nil :initarg :paramlist
+              :accessor request-paramlist) ;result + arguments
+   (req-id :initform nil :accessor request-req-id)
+   (connection :initform nil :accessor request-connection)
+   (opdef :initform nil :initarg :opdef
+          :accessor request-opdef)
+   (reply :initform nil  :accessor request-reply)
+   (service-context :initform nil :accessor request-service-context)))
+
+(define-method result ((r request))
+  (first (request-paramlist r)))
+
+(define-method set_return_type ((r request) tc)
+  (setf (any-typecode (op:argument (first (request-paramlist r)))) tc))
+
+(define-method return_value ((r request))
+  (op:argument (first (request-paramlist r))))
+
+(define-method arguments ((r request))
+  (cdr (request-paramlist r)))
+
+
+(defun add-arg (req name mode &optional typecode value)
+  (let ((arg (CORBA:Any :any-typecode typecode
+                        :any-value value)))
+    (setf (request-paramlist req)
+      (nconc (request-paramlist req) 
+             (list (CORBA:NamedValue
+                    :name name
+                    :argument arg
+                    :arg_modes mode))))
+    arg))
+
+(define-method add_in_arg ((req request))
+  (add-arg req nil ARG_IN))
+
+(define-method add_named_in_arg ((req request) name)
+  (add-arg req name ARG_IN))
+
+(define-method add_inout_arg ((req request))
+  (add-arg req nil ARG_INOUT))
+
+(define-method add_named_inout_arg ((req request) name)
+  (add-arg req name ARG_INOUT))
+
+(define-method add_out_arg ((req request) &optional (name ""))
+  (add-arg req name ARG_OUT))
+
+(define-method add_named_out_arg ((req request) name)
+  (add-arg req name ARG_OUT))
+
+
+;;; void send_oneway ()
+(define-deferred send_oneway ((req request)))
+
+;;; void send_deferred ()
+(define-deferred send_deferred ((req request)))
+
+;;; void get_response ()
+(define-deferred get_response ((req request)))
+
+;;; boolean poll_response ()
+(define-deferred poll_response ((req request)))
+
+;;; void invoke ()
+(define-method invoke ((req request))
+  (op:send_deferred req)
+  (op:get_response req))
+
+(defun request-funcall (req)
+  (op:invoke req)
+  (let ((retval (any-value (op:argument (first (request-paramlist req))))))
+    (cond ((typep retval 'corba:exception)
+           ;;(signal retval)
+           (cerror "Ignore" retval)
+           ;; or error
+           retval)
+          (t
+           (values-list 
+            (loop for nv in (request-paramlist req)
+                  when (and (/= 0 (logand ARG_OUT (op:arg_modes nv)))
+                            (not (eql :tk_void 
+                                      (typecode-kind 
+                                       (any-typecode (op:argument nv))))))
+                  collect (any-value (op:argument nv))))))))
+
 
 ;;;; Registry for Proxy classes
 
@@ -92,6 +274,17 @@
 
 (defun register-proxy-class (id class)
   (setf (gethash id *proxy-classes*) class))
+
+(defun object-narrow (obj id)
+  "Return an equivalent proxy with class for the repository id."
+  (assert (op:_is_a obj id))
+  (make-instance (find-proxy-class id)
+    :id id
+    :host (object-host obj)
+    :port (object-port obj)
+    :key  (object-key obj)
+    :profiles (object-profiles obj)
+    :forward (object-forward obj)))
 
 
 ;;; clorb-object.lisp ends here
