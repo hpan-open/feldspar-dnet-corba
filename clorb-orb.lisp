@@ -135,21 +135,30 @@
   (values *the-orb* args))
 
 
+
 (defun process-orb-args (orb args)
   (let ((new-args '()))
-
     (loop while args do
-      (let ((option (pop args)))
-        (cond ((equal option "-ORBInitRef")
-               (process-opt-initial-reference orb (pop args)))
-              ((equal option "-ORBDefaultInitRef")
-               (setf (orb-default-initial-reference orb) (pop args)))
-              ((equal option "-ORBPort")
-               (setf (orb-port orb) (parse-arg-integer (pop args))))
-              ((string-starts-with option "-ORB")
-               (pop args))
-              (t (push option new-args)))))
-
+          (let ((arg (pop args)))
+            (if (string-starts-with arg "-ORB")
+              (let ((value nil))
+                (flet ((option-match (prefix)
+                         (when (string-starts-with arg prefix)
+                           (setq value (subseq arg (length prefix)))
+                           (setq value (string-left-trim " 	" value))
+                           (when (equal value "") 
+                             (setq value (pop args)))
+                           t)))
+                  (cond ((option-match "-ORBInitRef")
+                         (process-opt-initial-reference orb value))
+                        ((option-match "-ORBDefaultInitRef")
+                         (setf (orb-default-initial-reference orb) value))
+                        ((option-match "-ORBPort")
+                         (setf (orb-port orb) (parse-arg-integer value))) 
+                        (t (error 'CORBA:BAD_PARAM)))))
+              
+              (push arg new-args))))
+    
     (nreverse new-args)))
 
 #|
