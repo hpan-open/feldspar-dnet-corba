@@ -4,6 +4,7 @@
   (:use)
   (:nicknames "CORBA")
   (:export
+   ServerRequest
    "ALIASDEF" "ALIASDEF-PROXY" "ANY" "ANY-TYPECODE" "ANY-VALUE" "ARG_IN"
    "ARG_INOUT" "ARG_OUT" "ARRAYDEF" "ARRAYDEF-PROXY" "ATTRDESCRIPTIONSEQ"
    "ATTRIBUTEDEF" "ATTRIBUTEDEF-PROXY" "ATTRIBUTEDESCRIPTION" "ATTRIBUTEMODE"
@@ -66,6 +67,13 @@
    "TAG_POLICIES" "TAG_SEC_NAME" "TAG_SPKM_1_SEC_MECH" "TAG_SPKM_2_SEC_MECH"
    "TAG_SSL_SEC_TRANS" "TRANSACTIONSERVICE" "UNKNOWNEXCEPTIONINFO"))
 
+(defpackage "GIOP"
+  (:use)
+  (:export
+   "CANCELREQUESTHEADER" "LOCATEREPLYHEADER" "LOCATEREQUESTHEADER"
+   "LOCATESTATUSTYPE" "MESSAGEHEADER_1_0" "MESSAGEHEADER_1_1" "MSGTYPE_1_0"
+   "PRINCIPAL" "REPLYHEADER" "REPLYSTATUSTYPE" "REQUESTHEADER_1_0"
+   "REQUESTHEADER_1_1" "VERSION"))
 
 (defpackage "OMG.ORG/FEATURES"
   (:use)
@@ -150,7 +158,7 @@
   #+cmu
   (:shadowing-import-from "MOP"
               "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
-  (:export "STRUCT-TYPECODE" "STRUCT-GET" "MAKE-STRUCT" 
+  (:export "STRUCT-GET" "MAKE-STRUCT" 
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND"
            ;; Development tools
@@ -176,3 +184,10 @@
                 ;; NamedValue
                 "ARG_IN" "ARG_OUT" "ARG_INOUT" "CTX_RESTRICT_SCOPE"
                 "ANY" "ANY-VALUE" "ANY-TYPECODE"))
+
+(defpackage "NET.CDDR.CLORB.PERSISTENT-NAMING"
+  (:nicknames "PERSISTENT-NAMING")
+  (:use "COMMON-LISP")
+  (:export *naming-ior-file* *naming-base-path*
+           *naming-poa*
+           setup-pns setup-naming-poa))
