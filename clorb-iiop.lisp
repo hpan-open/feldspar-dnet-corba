@@ -332,16 +332,16 @@
   
 
 (defun unmarshal-giop-header (buffer)
-  (unless (loop for c in '(#\G #\I #\O #\P)
-		always (eql c (unmarshal-char buffer)))
-    (error "Not a GIOP message: ~/net.cddr.clorb::stroid/"
-           (buffer-octets buffer)))
-  (let ((major (unmarshal-octet buffer))
-        (minor (unmarshal-octet buffer))
-        (byte-order (unmarshal-octet buffer))
-        (msgtype (aref +message-types+ (unmarshal-octet buffer))))
-    (setf (buffer-byte-order buffer) byte-order)
-    (values msgtype (make-iiop-version major minor))))
+  (with-in-buffer (buffer)
+    (unless (loop for c in '#.(mapcar #'char-code '(#\G #\I #\O #\P))
+		  always (eql c (get-octet)))
+      (error "Not a GIOP message: ~/net.cddr.clorb::stroid/" octets))
+    (let ((major (get-octet))
+          (minor (get-octet))
+          (byte-order (get-octet))
+          (msgtype (aref +message-types+ (get-octet))))
+      (setf (buffer-byte-order buffer) byte-order)
+      (values msgtype (make-iiop-version major minor)))))
 
 (defun marshal-giop-header (type buffer)
   (with-out-buffer (buffer)
@@ -442,7 +442,7 @@
 
   (multiple-value-bind (event desc) (io-driver)
     (when event
-      (mess 2 "io-event: ~S ~S" event (type-of desc)))
+      (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
     (let ((conn (gethash desc *desc-conn*)))
       (case event
         (:read-ready

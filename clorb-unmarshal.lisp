@@ -7,7 +7,7 @@
 (defun unmarshal-octet (buffer)
   (declare (type buffer buffer)
            (optimize speed (debug 0)))
-  (with-in-buffer (buffer)
+  (with-in-buffer (buffer :check nil)
     (align 0)
     (get-octet)))
 
@@ -41,7 +41,7 @@
                     (if (>= n ,(expt 2 (1- (* size 8))))
                       (- n ,(expt 2 (* size 8)))
                       n))))
-    `(with-in-buffer (,buffer)
+    `(with-in-buffer (,buffer :check nil)
        (align ,align)
        ,code)))
 
@@ -56,7 +56,8 @@
     (%unmarshal-number 2 t buffer)))
 
 (defun unmarshal-ulong (buffer)
-  (declare (optimize speed))
+  (declare (optimize speed)
+           (type buffer buffer))
   (the CORBA:ULong
     (%unmarshal-number 4 nil buffer)))
 
@@ -119,7 +120,7 @@
 (defun unmarshal-string (buffer)
   (declare (optimize (speed 3) (safety 1) (space 0))
            (type buffer buffer))
-  (check-type buffer buffer "a buffer")
+  ;;(check-type buffer buffer "a buffer")
   (let* ((len (unmarshal-ulong buffer))
          (str (make-string (- len 1))))
     (with-in-buffer (buffer :check nil)
@@ -130,6 +131,8 @@
 
 
 (defun unmarshal-osequence (buffer)
+  (declare (type buffer buffer)
+           (optimize speed))
   (let ((len (unmarshal-ulong buffer))
         (result nil))
     (with-in-buffer (buffer :check nil)
@@ -137,7 +140,9 @@
         (let ((seg-len (if (or (not chunking-p) (zerop len))
                          len
                          (progn (align 0) (min len (- *chunk-end* pos))))))
-          (let ((segment (subseq octets pos (incf pos seg-len))))
+          (let ((segment (subseq octets pos 
+                                 (setf pos (the buffer-index (+ pos seg-len))))))
+
             (if result
               (setq result (concatenate 'vector result segment))
               (setq result segment)))
@@ -271,6 +276,7 @@
 
 (defmethod unmarshal ((type CORBA:TypeCode) buffer)
   (declare (optimize (speed 2)))
+  (check-type buffer buffer "a buffer")
   (let ((kind (typecode-kind type)))
     (ecase kind
       ((:tk_octet) (unmarshal-octet buffer))

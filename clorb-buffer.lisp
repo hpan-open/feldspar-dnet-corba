@@ -36,6 +36,8 @@
   (buffer-in-pos buffer))
 
 (defun buffer-rel-pos (buffer)
+  (declare (optimize speed)
+           (type buffer buffer))
   (- (buffer-in-pos buffer) (buffer-start-pos buffer)))
 
 
@@ -127,12 +129,13 @@ In body:
     (assert (< 0 size #x7FFFFFFF))
     (setf *chunk-end* (+ (buffer-in-pos buffer) size))))
 
-(defmacro with-in-buffer ((buffer &key (check t)) &body body)
+(defmacro with-in-buffer ((buffer &key (check nil)) &body body)
   `(progn
      ,@(if check `((check-type ,buffer buffer "a buffer")))
      (let ((buffer ,buffer))
        (declare (type buffer buffer))
        (let ((octets (buffer-octets buffer)))
+         (declare (type octets octets))
          (symbol-macrolet ((pos (buffer-in-pos buffer)))
            (macrolet 
              ((get-octet () 
@@ -146,10 +149,13 @@ In body:
                               (or (null *chunk-end*)
                                   (>= (buffer-in-pos buffer) *chunk-end*)))
                      (start-in-chunk buffer))
-                   (unless (zerop ,n)
-                     (incf pos (logand (- ,n (logand (the buffer-index (buffer-rel-pos buffer))
-                                                     (- ,n 1)))
-                                       (- ,n 1)))))))
+                   ,(unless (zerop n)
+                      `(setf pos
+                             (the buffer-index
+                               (+ pos (the fixnum (logand (- ,n (the (integer 0 ,n)
+                                                                  (logand (the buffer-index (buffer-rel-pos buffer))
+                                                                          (- ,n 1))))
+                                                          (- ,n 1))))))))))
              (prog1 (progn ,@body)
                (when (and chunking-p *chunk-end*
                           (>= (buffer-in-pos buffer) *chunk-end*))
