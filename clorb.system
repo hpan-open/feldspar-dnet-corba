@@ -4,8 +4,6 @@
 
 (make:defsystem "clorb"
     :source-extension "lisp"
-    ;:source-pathname #.(translate-logical-pathname #p"src:clorb;")
-    ;:source-pathname #p"Mac Home:clorb:"
     ;:binary-pathname "bin/"
     :components ((:file "clorb-pkgdcl")
                  (:file "clorb-macros"  :depends-on ("clorb-pkgdcl"))
@@ -38,13 +36,20 @@
                  (:file "dumpir"    :depends-on ("clorb-pkgdcl"))
                  (:file "test-suite")
                  ;; Experimental
+                 (:file "orb-export")
+                 (:file "orb-structs")
                  (:file "local-ir")
                  (:file "idef-read")
                  (:file "idef-write")
                  (:file "idef-macros")
                  ;; Services
-                 (:file "ns-server")
+                 ;;(:file "ns-server")
                  (:file "ec-server" :depends-on ("clorb-srv"))
+                 ;; Stubs/Skels
+                 (:file "cosnaming-idl")
+                 (:file "cosnaming-stub")
+                 (:file "cosnaming-skel")
+                 (:file "pns-server")
                  ;; Example
                  (:file "hello-server")
                  (:file "hello-client")
