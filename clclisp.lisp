@@ -1,5 +1,9 @@
 (in-package :cl-user)
 
+(setf (logical-pathname-translations "clorb")
+  '(("SRC;*.*"  "/Users/lenst/src/clorb/*.*")
+    ("*.*"      "CLORB:SRC;*.*" )))
+
 (setq CLOS::*GF-WARN-ON-REPLACING-METHOD*       nil)
 (setq CLOS::*WARN-IF-GF-ALREADY-CALLED*         nil)
 
@@ -11,7 +15,12 @@
 (clorb:load-ir)
 
 (setq clorb:*host* "localhost")
-(setq clorb::*name-service* "corbaloc::1.2@localhost:2001/NameService")
+;;(setq clorb::*name-service* "corbaloc::1.2@localhost:2001/NameService")
+(setq clorb::*name-service* "file:///tmp/NameService")
+(setq clorb::*host-translations*
+      '(("saturn" . "127.0.0.1"))
+      )
+
 
 (defvar *orb* (CORBA:ORB_init))
 (setf clorb::*running-orb* t)

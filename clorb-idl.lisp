@@ -18,4 +18,5 @@
           (terpri)
           (pprint x))
         (eval x))
-      (when print (terpri)))))
+      (when print (terpri)))
+    repository))

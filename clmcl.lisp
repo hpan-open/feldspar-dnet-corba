@@ -124,3 +124,7 @@
 
 (defun clorb::xir ()
   (map 'list #'op:name (op:contents (clorb::get-ir) :dk_all t)))
+
+
+(setq clorb::*host-translations*
+      '(("saturn" . "172.17.17.42")))

@@ -98,13 +98,16 @@
   (setq *io-descriptions*
         (delete desc *io-descriptions*)))
 
+(defvar *host-translations* '())
+
 (defun io-descriptor-connect (desc host port)
-  ;; FIXME:
-  (setq host (if (string= host "saturn") "10.0.1.2" host))
+  (setq host
+        (or (cdr (assoc host *host-translations* :test #'string=))
+            host))                 
   (setf (io-descriptor-stream desc)
         (open-active-socket host port))
   (mess 3 "connect to ~A:~A = ~A" host port (io-descriptor-stream desc))
-  (setf (io-descriptor-status desc) :connected))
+  (setf (io-descriptor-status desc) :connected))            
 
 
 (defun io-desc-read (desc)
@@ -181,7 +184,7 @@
      (when (and read-buffer (< read-pos read-limit)
                 (member status '(:input :io)))
        (handler-case
-         (when (listen stream)
+         (when (socket-stream-listen stream)
            (let ((n (read-octets-no-hang read-buffer read-pos
                                          read-limit stream)))
              (incf read-pos n)
