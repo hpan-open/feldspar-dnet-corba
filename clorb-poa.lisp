@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.7 2002/05/02 20:40:11 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.8 2002/05/24 10:06:48 lenst Exp $
 
 (in-package :clorb)
 
@@ -307,19 +307,29 @@
 ;;;; Reference creation operations
 ;; ----------------------------------------------------------------------
 
+;;   Object create_reference ( in CORBA::RepositoryId intf )
+;;	raises (WrongPolicy);
+
 (define-method create_reference ((poa POA) intf)
   (op:create_reference_with_id poa (generate-id poa) intf))
+
+;;    Object create_reference_with_id ( in ObjectId oid,
+;;				       in CORBA::RepositoryId intf )
+;;	raises (WrongPolicy);
 
 (define-method create_reference_with_id ((poa POA) oid intf)
   (make-instance (find-proxy-class intf)
    :id intf
-   :key (make-object-key (if (member :persistent (POA-policies poa))
-                             :persistent
-                           :transient)
-                         (poa-poaid poa) oid
-                         :poa-name (poa-name poa))
-   :host (orb-host (the-orb poa))
-   :port (orb-port (the-orb poa))))
+   :profiles (list
+              (make-iiop-profile
+               :version '(1 . 0)
+               :host (orb-host (the-orb poa))
+               :port (orb-port (the-orb poa))
+               :key (make-object-key (if (member :persistent (POA-policies poa))
+                                       :persistent
+                                       :transient)
+                                     (poa-poaid poa) oid
+                                     :poa-name (poa-name poa))))))
 
 
 ;; ----------------------------------------------------------------------
@@ -342,7 +352,8 @@
 ;;;     raises (ServantNotActive, WrongPolicy);
 
 (define-method servant_to_reference ((poa POA) servant)
-  (op:create_reference poa (op:servant_to_id poa servant)))
+  (let ((oid (op:servant_to_id poa servant)))
+    (op:create_reference_with_id poa oid (primary-interface servant oid poa))))
 
 ;;;   Servant reference_to_servant(in Object reference)
 ;;;     raises (ObjectNotActive, WrongAdapter, WrongPolicy);
