@@ -46,7 +46,8 @@
     "clorb-trie"
     "clorb-poa-base"
     "clorb-poa"
-    "clorb-srv"))
+    "clorb-srv"
+    "clorb-ifr-info"))
 
 (defparameter *dev-pre-files*
   '("luna;package"
@@ -61,8 +62,9 @@
     "idef-read"
     "idef-write"
     ("idef-macros" t)
+    "clorb-ifr-export"
     ;; Services
-    "cosnaming-idl"
+    ;;"cosnaming-idl"
     "cosnaming-skel"
     "pns-server"))
 
