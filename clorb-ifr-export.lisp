@@ -63,7 +63,10 @@
   (:method (x (obj sequence))
            (map 'list #'(lambda (o) (translate x o)) obj))
   (:method (x (obj CORBA:struct))
-           (map-struct (lambda (v) (translate x v)) obj)))
+           (map-struct (lambda (v) (translate x v)) obj))
+  (:method (x (obj CORBA:Any))
+           (CORBA:Any :any-typecode (corba:any-typecode obj)
+                      :any-value (translate x (corba:any-value obj)))))
 
 
 (defclass TRANSLATOR ()

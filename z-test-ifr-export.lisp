@@ -23,7 +23,12 @@
   
   (define-test "basic translate"
     (let ((ol (list 1 "fooo" '(1 2) '#(1 2))))
-      (ensure-equalp (translate nil ol) ol)))
+      (ensure-equalp (translate nil ol) ol)
+      (ensure-pattern*
+       (translate nil (CORBA:Any :any-value "foo" :any-typecode CORBA:tc_string ))
+       'identity (isa 'CORBA:Any)
+       'corba:any-typecode CORBA:tc_string
+       'corba:any-value "foo")))
 
   (define-test "servant-wrapper basic"
     (let* ((poa rootpoa)
