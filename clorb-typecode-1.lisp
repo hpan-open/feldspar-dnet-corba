@@ -183,10 +183,10 @@
     (otherwise `(elt (typecode-params ,x) ,i))))
 
 
-(defmacro define-typecode (class-name &key kind cdr-syntax params member-params constant )
+(defmacro define-typecode (class-name &key kind cdr-syntax params member-params constant extra-slots)
   `(progn
      (defclass ,class-name (CORBA:TypeCode)
-       ())
+       ,extra-slots)
      (setf (get ',kind 'tk-params) ',cdr-syntax)
      (setf (get ',kind 'tk-class) ',class-name)
      ,@(loop for param in params
@@ -308,3 +308,5 @@
     (setf (get symbol 'ifr-exceptions) exceptions))
   (when bases
     (setf (get symbol 'ifr-bases) bases)))
+
+
