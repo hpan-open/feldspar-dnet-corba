@@ -145,6 +145,8 @@
 
 
 
+(defparameter *connect-timeout* 120)
+
 (defun open-active-socket (host port &optional (binary t))
   "Open a TCP connection to HOST:PORT, and return the stream asociated with it"
   (let ((type (if binary '(unsigned-byte 8) 'base-char)))
@@ -179,7 +181,8 @@
       :format (if binary :binary :text))
      
      #+digitool
-     (ccl::open-tcp-stream host port :element-type type :connect-timeout 30))))
+     (ccl::open-tcp-stream host port :element-type type 
+                           :connect-timeout *connect-timeout*))))
 
 
 (defun accept-connection-on-socket (socket &optional (blocking nil))
