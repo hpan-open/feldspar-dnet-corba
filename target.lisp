@@ -234,10 +234,8 @@
                          unless (eq (op:mode p) :param_out)
                          collect (make-target-symbol target (op:name p) :clorb))))
         `(define-method ,lisp-name ((obj ,class) ,@args)
-           (multiple-value-bind (_result _request)
-                                (op:_create_request obj nil ,op-name nil nil 0)
-             (declare (ignore _result))
-             (op:set_return_type _request ,(target-typecode (op:result_def op) target))
+           (let ((_request
+                  (request-create obj ,op-name ,(target-typecode (op:result_def op) target))))
              ,@(loop for pd in params
                      for mode = (op:mode pd)
                      collect `(add-arg _request ,(op:name pd)
