@@ -201,16 +201,36 @@
        (digit-char-p c)))
 
 
+(defun idl-fixed-p (n)
+  (and (consp n)
+       (eql 'fixed (car n))))
+
+(defun idl-fixed-values (value)
+  "Values: digits scale number"
+  (values-list (cdr value)))
+
+(defun make-idl-fixed (digits scale number)
+  (when (> digits 31)
+    (psetq digits 31
+           scale (+ (- 31 digits) scale))
+    (let ((multiplier (expt 10 scale)))
+      (setq number (/ (truncate (* number multiplier)) multiplier))))
+  `(fixed ,digits ,scale ,number))
+
+
 (defun parse-fixed (string)
   (multiple-value-bind (n pos) 
                        (if (eql (char string 0) #\.)
                          (values 0 0) 
                          (parse-integer string :junk-allowed t))
     (if (> (length string) (1+ pos))
-      (let ((decimals (parse-integer string :start (1+ pos))))
-        (let ((multiplier (expt 10 (- (length string) pos 1))))
-          (/ (+ (* multiplier n) decimals) multiplier)))
-      n)))
+      (let ((decimals (parse-integer string :start (1+ pos)))
+            (scale    (- (length string) pos 1))) 
+        (let ((digits   (+ pos scale))
+              (multiplier (expt 10 scale)))
+          (make-idl-fixed digits scale 
+                          (/ (+ (* multiplier n) decimals) multiplier))))
+      (make-idl-fixed pos 0 n))))
 
 
 (defun number-token ()
