@@ -278,7 +278,10 @@
                             (marshal-string (iiop-profile-host p) buffer)
                             (marshal-ushort (iiop-profile-port p) buffer)
                             (marshal-osequence (iiop-profile-key p) buffer)))))
-                 (object-profiles objref)))))
+                 (object-profiles objref)))))
+
+
+
 ;;;; IIOP - Sending request
 
 (defun request-prepare (req object)
