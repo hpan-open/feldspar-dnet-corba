@@ -617,11 +617,8 @@ Returns select result to be used in getting status for streams."
     (%SYSDEP
      "read many octets without hanging"
      #+clisp
-     (loop for byte = (ext:read-byte-no-hang stream)
-           while byte do
-           (setf (aref seq read-pos) byte)
-           (incf read-pos)
-           until (= read-pos end))
+     (setq read-pos (ext:read-byte-sequence seq stream
+                                            :start start :end end :no-hang t))
      ;; Default
      (loop while (listen stream)
            do (setf (aref seq read-pos) (read-byte stream))
