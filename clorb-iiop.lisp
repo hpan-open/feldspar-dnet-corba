@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.40 2005/02/15 21:08:33 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.41 2005/02/23 19:20:06 lenst Exp $
 
 
 (in-package :clorb)
@@ -412,9 +412,7 @@
                ((:locatereply) #'get-response-locate-reply)
                ((:closeconnection)
                 (mess 3 "Connection closed")
-                ;; FIXME: should initiated cleaning up conn...
-                ;; all wating requests get some system exception
-                (connection-error conn)
+                (connection-close conn)
                 nil)
                ((:messageerror)
                 (mess 6 "CORBA: Message error")
@@ -470,7 +468,7 @@ Where host is a string and port an integer.")
   (connection-init-read conn nil +iiop-header-size+ #'get-response-0))
 
 
-(defun get-connection-holder (host port)
+(defun get-iiop-connection-holder (host port)
   ;; a cons cell where cdr is for connection
   (let* ((host-list				; A host-ports pair
 	  (assoc host *iiop-connections* :test #'equal))
@@ -485,8 +483,8 @@ Where host is a string and port an integer.")
     holder))
 
 
-(defun get-connection (orb host port)
-  (let* ((holder (get-connection-holder host port))
+(defun get-iiop-connection (orb host port)
+  (let* ((holder (get-iiop-connection-holder host port))
          (conn   (cdr holder)))
     (unless (and conn (connection-working-p conn))
       (when conn (connection-destroy conn))
@@ -498,7 +496,7 @@ Where host is a string and port an integer.")
 (defmethod profile-connection ((profile iiop-profile) orb)
   (let ((host (iiop-profile-host profile))
         (port (iiop-profile-port profile)))
-    (get-connection orb host port)))
+    (get-iiop-connection orb host port)))
 
 
 

@@ -66,7 +66,7 @@
         (test-read-request 
          :request-keys '((:response 1) (:operation "op") (:object-key #(17)))
          :args (list a1))
-        (test-write-response req '(224412))
+        (test-write-response :request req  :message '(224412))
         (orb-work orb nil t)
         (assert (op:poll_response req) () "should have gotten the response")
         (op:get_response req)
@@ -78,9 +78,9 @@
       (setf (response-func *test-out-conn*)
             (lambda (req)
               (test-read-request :args '("IDL:test:1.0"))
-              (test-write-response req 
-                                   (list (corba:any :any-typecode corba:tc_boolean
-                                                    :any-value t)))))
+              (test-write-response :request req 
+                                   :message (list (corba:any :any-typecode corba:tc_boolean
+                                                             :any-value t)))))
       (ensure-eql (corba:funcall "_is_a" obj "IDL:test:1.0") t)))
 
   (define-test "jit-call oneway"
@@ -100,7 +100,7 @@
       (setf (response-func *test-out-conn*)
             (lambda (req)
               (test-read-request :args '("hej"))
-              (test-write-response req '(9977 "jolly"))))
+              (test-write-response :request req :message '(9977 "jolly"))))
       (multiple-value-bind (r1 r2)
                            (%jit-call test-op-2 obj "hej")
         (ensure-equalp r1 9977)
@@ -113,7 +113,7 @@
       (setf (response-func *test-out-conn*)
             (lambda (req)
               (test-read-request :request-keys '((:operation "_get_at1")))
-              (test-write-response req '("jolly"))))
+              (test-write-response :request req :message '("jolly"))))
       (multiple-value-bind (r1) (%jit-get test-at-1 obj)
         (ensure-equalp r1 "jolly"))
       (setf (response-func *test-out-conn*) 
@@ -121,7 +121,7 @@
               (test-read-request 
                :request-keys '((:operation "_set_at1"))
                :args '("fnord")) 
-              (test-write-response req '())))
+              (test-write-response :request req)))
       (%jit-set test-at-1 obj "fnord")))
 
 
@@ -140,20 +140,31 @@
         (let ((octets (buffer-octets buffer)))
           (io-descriptor-set-write *test-response-desc* octets 0
                                    (length octets))))
-      (let ((buffer (get-work-buffer orb)))
-        (marshal-giop-header :FRAGMENT buffer giop-1-1 nil)
-        (dolist (any '(1 "hello"))
-          (marshal-any-value any buffer))
-        (marshal-giop-set-message-length buffer)
-        (let ((octets (buffer-octets buffer)))
-          (io-descriptor-set-write *test-response-desc* octets 0
-                                   (length octets))))
+      (orb-work orb nil t)
+      (test-write-response :orb orb
+                           :message-type :fragment :giop-version giop-1-1
+                           :message '(1 "hello") )
       (orb-work orb nil t)
       (ensure-pattern* req
                        'request-status :no_exception
                        'request-buffer (pattern 'unmarshal-short 1
                                                 'unmarshal-string "hello")) ))
 
+
+  (define-test "Close Connection"
+    (setup-test-out)
+    (let* ((obj (test-object orb))
+           (ret (CORBA:NamedValue :argument (CORBA:Any :any-typecode CORBA:tc_long))))
+      (multiple-value-bind (result req) (op:_create_request obj nil "op" nil ret 0)
+        (declare (ignore result))
+        (op:send_deferred req)
+        (test-read-request 
+         :request-keys '((:response 1) (:operation "op") (:object-key #(17))))
+        (test-write-response :orb orb :message-type :closeconnection)
+        (orb-work orb nil t)
+        (assert (op:poll_response req) () "should have gotten the response")
+        (op:get_response req)
+        (ensure-typep (corba:any-value (op:return_value req)) 'CORBA:TRANSIENT))))
 
 
 
