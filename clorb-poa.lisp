@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.39 2005/02/25 19:33:41 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.40 2005/02/26 20:24:01 lenst Exp $
 
 (in-package :clorb)
 
@@ -809,6 +809,9 @@ individual call (some callers may choose to block, while others may not).
   (let ((oid (request-object-id request))
         (operation (request-operation request))
         (buffer (request-input request)))
+    (when (and (poa-has-policy poa :single_thread_model)
+               (executing-requests poa))
+      (raise-system-exception 'CORBA:TRANSIENT 1 :completed_no))
     (push request (executing-requests poa))
     (setf (request-state request) :exec)
     (unwind-protect
