@@ -153,15 +153,19 @@
                    (make-pathname :name name :type "lisp"
                                   :directory (if dir (cons :relative dir)))
                    *source-pathname-defaults*))
+              (cf (if *binary-folder*
+                       (compile-file-pathname
+                        (merge-pathnames
+                         (make-pathname :name name :type "lisp"
+                                        :directory
+                                        (cons :relative
+                                              (if dir
+                                                  (cons *binary-folder* dir)
+                                                  (list *binary-folder*))))
+                         *source-pathname-defaults*))
+                      (compile-file-pathname sf)))
               (cf-tail (if *binary-folder*
-                           (list :output-file
-                                 (merge-pathnames
-                                  (make-pathname
-                                   :name nil :type #-sbcl nil #+sbcl "fasl"
-                                   :directory (list* :relative
-                                                     *binary-folder* dir))
-                                  *source-pathname-defaults*)) ))
-              (cf (apply #'compile-file-pathname sf cf-tail)))
+                           (list :output-file cf))))
          (when (or (not (probe-file cf))
                    (let ((dcf (file-write-date cf))
                          (dsf (file-write-date sf)))
