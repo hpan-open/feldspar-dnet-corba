@@ -6,4 +6,11 @@ clean:
 setmcl:
 	~/src/shtoys/SetMcl *.lisp
 
+prep-cvs:
+	perl -pe 's/\r/\n/g' < idl-scanner-parser.lisp > temp-file
+	if cmp -s idl-scanner-parser.lisp temp-file ; \
+	then rm temp-file; \
+	else mv temp-file idl-scanner-parser.lisp; fi
+
+
 
