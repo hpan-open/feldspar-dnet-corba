@@ -44,7 +44,8 @@
                  (let ((result (unmarshal typecode buffer)))
                    (ensure-equalp result (coerce float type)))))
           (dolist (float test-data)
-            (test-roundtrip float 'CORBA:float CORBA:tc_float)
+            (test-roundtrip (float float 1f0) 
+                            'CORBA:float CORBA:tc_float)
             (test-roundtrip float 'CORBA:double CORBA:tc_double)
             (test-roundtrip float 'CORBA:longdouble CORBA:tc_longdouble)))))
     

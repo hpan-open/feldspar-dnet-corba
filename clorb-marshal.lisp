@@ -80,7 +80,7 @@
       (let* ((len (integer-length frac))
              (shift (+ 1 (- fraction-bits len))))
         (unless (zerop shift)
-          (mess 2 "Shift=~D" shift))
+          (mess 1 "Shift=~D" shift))
         (logior (ash (if (< sign 0) 1 0) sign-bit)
                 (ash (+ expn (- shift) fraction-bits bias) fraction-bits)
                 (- (ash frac shift) (ash 1 fraction-bits)))))))
@@ -258,21 +258,21 @@
       ((:tk_any) (marshal-any arg buffer))
       ((:tk_octet) (marshal-octet arg buffer))
       ((:tk_char) (marshal-octet (char-code arg) buffer))
-      ((:tk_boolean bool) (marshal-bool arg buffer))
+      ((:tk_boolean) (marshal-bool arg buffer))
       ((:tk_ushort :tk_short) (marshal-ushort arg buffer))
-      ((:tk_ulong ulong) (marshal-ulong arg buffer))
+      ((:tk_ulong) (marshal-ulong arg buffer))
       ((:tk_long) (marshal-long arg buffer))
       ((:tk_enum) (marshal-enum arg type buffer))
       ((:tk_longlong :tk_ulonglong) (marshal-number arg 8 buffer))
-      ((:tk_float) (marshal-ulong (float-as-ieee-integer (float arg 1.0s0)
+      ((:tk_float) (marshal-ulong (float-as-ieee-integer (coerce arg 'corba:float)
                                                          31 23 127)
                                   buffer))
-      ((:tk_double) (marshal-number (float-as-ieee-integer (float arg 1.0d0)
+      ((:tk_double) (marshal-number (float-as-ieee-integer (coerce arg 'corba:double)
                                                            63 52 1023)
                                     8 buffer))
-      ((:tk_longdouble) (marshal-number (float-as-ieee-integer (float arg)
+      ((:tk_longdouble) (marshal-number (float-as-ieee-integer (coerce arg 'corba:longdouble)
                                                                127 112 16383)
-                16 buffer))
+                                        16 buffer))
       ((:tk_string string) (marshal-string arg buffer))
       ((osequence) (marshal-osequence arg buffer))
       ((:tk_objref object) (marshal-ior arg buffer))
@@ -294,8 +294,7 @@
       ((:tk_struct)
        (unless (typep arg 'CORBA:struct)
          (error 'CORBA:MARSHAL))
-       (doseq (el (tcp-members params))
-	      (marshal (struct-get arg (first el)) (second el) buffer)))
+       (struct-out arg type #'marshal buffer))
       ((:tk_union)
        (marshal-union arg params buffer))
       ((anon-struct)
@@ -308,8 +307,8 @@
 
 (defun marshal-multiple (values types buffer)
   (loop for val in values
-      for tc in types
-      collect (marshal val tc buffer)))
+     for tc in types
+     do (marshal val tc buffer)))
 
 
 ;;;; GIOP extras
