@@ -46,7 +46,8 @@
 (defvar *orb*
   (CORBA:ORB_init
    (list "-ORBPort" "4711"
-         "-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         "-ORBInitRef NameService=corbaloc::127.0.0.1:4744/NameService"
          #| "-ORBInitRef" "InterfaceRepository=" |#)))
 
 
