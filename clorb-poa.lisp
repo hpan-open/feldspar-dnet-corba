@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.34 2005/01/04 22:29:23 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.35 2005/02/06 22:34:10 lenst Exp $
 
 (in-package :clorb)
 
@@ -168,7 +168,7 @@
   (unless *poa-current* (error 'PortableServer:Current/NoContext))
   (poa-current-object-id *poa-current*))
 
-
+
 ;;;; interface POAManager
 
 (defclass PORTABLESERVER:POAMANAGER (corba:object)
@@ -259,6 +259,12 @@
 (define-method get_state ((pm PortableServer:POAManager))
   (slot-value pm 'state))
 
+
+;;; Printing poamanager
+(defmethod print-object ((pm PortableServer:POAManager) stream)
+  (print-unreadable-object (pm stream :type t :identity t)
+    (format stream "~S ~D" (slot-value pm 'state)
+            (length (managed-poas pm)))))
 
 
 
@@ -570,7 +576,7 @@ POA destruction does not occur.
    :ior-id intf 
    :profiles (list
               (make-iiop-profile
-               :version '(1 . 0)
+               :version (make-iiop-version 1 0)
                :host (orb-host (the-orb poa))
                :port (orb-port (the-orb poa))
                :key (make-object-key (if (poa-has-policy poa :persistent)

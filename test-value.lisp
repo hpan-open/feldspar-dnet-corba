@@ -202,7 +202,7 @@
           (abi (make-instance 'test-abint-1-proxy
                  :id ""
                  :the-orb *the-orb*
-                 :profiles (list (make-iiop-profile :version '(1 . 0)
+                 :profiles (list (make-iiop-profile :version (make-iiop-version  1 0)
                                                     :host "he" :port 98
                                                     :key (string-to-oid "hej"))))))
       (marshal v1 ab-tc buffer)

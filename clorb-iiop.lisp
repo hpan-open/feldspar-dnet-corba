@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.36 2004/12/28 00:03:11 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.37 2005/02/06 22:34:10 lenst Exp $
 
 
 (in-package :clorb)
@@ -114,16 +114,36 @@
     (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
 	                :context_data (unmarshal-osequence buffer))))
 
+
+;;;; Version
+
+(defun make-iiop-version (major minor)
+  (or (if (eql major 1)
+        (case minor 
+          (0 '(1 . 0))  (1 '(1 . 1)) (2 '(1 . 2))))
+      :iiop_unknown_version))
+
+(defun iiop-version-major (version) (car version))
+(defun iiop-version-minor (version) (cdr version))
+
+
+(defun make-giop-version (major minor)
+  (or (if (eql major 1)
+        (case minor 
+          (0 :giop_1_0) (1 :giop_1_1) (2 :giop_1_2)))
+      :giop_unknown_version))
+  
 
 
 ;;;; IIOP - Profiles
 
 
 (defstruct IIOP-PROFILE
-  (version '(1 . 0))
+  (version (make-iiop-version 1 0))
   (host    nil)
   (port    0    :type fixnum)
-  (key     nil))
+  (key     nil)
+  (components nil))
 
 
 (defmethod profile-short-desc ((profile IIOP-PROFILE) stream)
@@ -144,13 +164,28 @@
 (defmethod decode-ior-profile ((tag (eql 0)) encaps)
   (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
 
+
+(defun unmarshal-iiop-componets (buffer)
+  (let ((len (unmarshal-ulong buffer)))
+    (loop repeat len collect 
+          (let ((tag (unmarshal-ulong buffer)))
+            (cond ((= tag IOP:TAG_ORB_TYPE)
+                   (cons tag (with-encapsulation buffer (unmarshal-ulong buffer))))
+                  (t 
+                   (cons tag (unmarshal-osequence buffer))))))))
+
+
 (defun unmarshal-iiop-profile-body (buffer)
-  (make-iiop-profile
-   :version (cons (unmarshal-octet buffer) 
-                  (unmarshal-octet buffer))
-   :host (unmarshal-string buffer)
-   :port (unmarshal-ushort buffer)
-   :key (unmarshal-osequence buffer)))
+  (let ((major (unmarshal-octet buffer))
+        (minor (unmarshal-octet buffer)))
+    (make-iiop-profile
+     :version (make-iiop-version major minor)
+     :host (unmarshal-string buffer)
+     :port (unmarshal-ushort buffer)
+     :key (unmarshal-osequence buffer)
+     :components (if (> minor 0)
+                   (unmarshal-iiop-componets buffer)))))
+
 
 (defmethod raw-profiles ((objref CORBA:Proxy))
   (or (object-raw-profiles objref)
@@ -161,8 +196,8 @@
                          (marshal-make-encapsulation
                           (lambda (buffer)
                             (let ((version (iiop-profile-version p)))
-                              (marshal-octet (car version) buffer)
-                              (marshal-octet (cdr version) buffer))
+                              (marshal-octet (iiop-version-major version) buffer)
+                              (marshal-octet (iiop-version-minor version) buffer))
                             (marshal-string (iiop-profile-host p) buffer)
                             (marshal-ushort (iiop-profile-port p) buffer)
                             (marshal-osequence (iiop-profile-key p) buffer))
@@ -217,12 +252,6 @@
   '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
               :CLOSECONNECTION :MESSAGEERROR))
 
-(defun make-iiop-version (major minor)
-  (or (if (eql major 1)
-        (case minor 
-          (0 :iiop_1_0) (1 :iiop_1_1)))
-      :iiop_unknown_version))
-  
 
 (defun unmarshal-giop-header (buffer)
   (with-in-buffer (buffer)
@@ -234,7 +263,7 @@
           (byte-order (get-octet))
           (msgtype (aref message-types (get-octet))))
       (setf (buffer-byte-order buffer) byte-order)
-      (values msgtype (make-iiop-version major minor)))))
+      (values msgtype (make-giop-version major minor)))))
 
 (defun marshal-giop-header (type buffer)
   (with-out-buffer (buffer)

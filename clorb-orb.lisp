@@ -117,7 +117,7 @@
         (request-id client-request)))
 
 (defmethod has-received-other ((orb clorb-orb) client-request)
-  (mess 2 "#~S other: ~S" 
+  (mess 2 "#~S receive other: ~S" 
         (request-id client-request)
         (request-status client-request)))
 
@@ -695,7 +695,7 @@
       (parse-integer str :junk-allowed t)
     (assert (eq (char str pos) #\.))
     (let ((minor (parse-integer str :start (+ pos 1))))
-      (cons major minor))))
+      (make-iiop-version major minor))))
 
 
 

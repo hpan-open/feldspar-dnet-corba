@@ -170,7 +170,7 @@ Requests sent to this object will end up in *test-sink-stream*."
                :id "IDL:test:1.0"
                :the-orb orb
                :profiles (list (make-iiop-profile
-                                :version '(1 . 0)
+                                :version (make-iiop-version 1 0)
                                 :host "localhost"
                                 :port 9999
                                 :key #(17))))))
