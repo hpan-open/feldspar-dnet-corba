@@ -6,6 +6,7 @@
 (defun dii-call (obj)
   (multiple-value-bind (result req)
       (op:_create_request obj nil "foobar" nil nil 0)
+    (declare (ignore result))
 
     (op:set_return_type req CORBA:tc_long)
     
