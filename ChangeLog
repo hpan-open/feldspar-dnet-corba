@@ -1,3 +1,54 @@
+2002-05-24  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-opdef.lisp:
+	Moved ParameterDescription, ParameterMode to clorb-ifr-base.
+
+	* target.lisp:
+	Dispatch on the CORBA: classes, not on the local-ifr classes.
+
+	* local-ir.lisp:
+	New class hier based on the standard classes (i.e. CORBA:IORObject).
+
+	* idef-write.lisp:
+	Dispatch on the CORBA: classes, not on the local-ifr classes.
+
+	* idef-read.lisp: Unbouned strings should use PrimitiveDef.
+
+	* clorb-unmarshal.lisp:
+	Fixed macro. Use IOP package for service context.
+
+	* clorb-typecode.lisp: Some support for generated code.
+
+	* clorb-supp.lisp:
+	New fun ensure-corba-package to be used in generated code.
+
+	* clorb-poa.lisp: Make iiop-profiles for generated objrefs.
+
+	* clorb-orb.lisp: Added default initial reference.
+
+	* clorb-object.lisp: Removed opdef from CORBA:Request.
+
+	* clorb-marshal.lisp: Fixed objref marshalling to use iiop-profiles.
+
+	* clorb-macros.lisp: CORBA-class setters will call slot-updated gf.
+
+	* clorb-files.lisp:
+	Changed files. New fun to generate a package declaration from existing package.
+
+	* dii-example.lisp, dsi-example.lisp: package change
+
+	* test-suite.lisp:
+	Added debugging flag. Test suits can now have a variables section with
+	variables bound in every test case. Added a result object that allows
+	for aggregating several test suites.
+
+2002-05-24  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-suite.lisp (:clorb): added debugging flag. Test suits can
+	now have a variables section with variables bound in every test
+	case. Added a result object that allows for aggregating several
+	test suites.
+
 2002-03-21  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-unmarshal.lisp (iiop-profile): new struct
