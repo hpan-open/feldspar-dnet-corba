@@ -65,7 +65,13 @@
                          'op:absolute_name (format nil "::~A" new-name)
                          'op:type (pattern 'op:name new-name))
         (setf (op:name module) "xmod")
-        (ensure-pattern* sub-obj 'op:absolute_name "::xmod::foo"))))
+        (ensure-pattern* sub-obj 'op:absolute_name "::xmod::foo"))
+
+      ;; Destroy
+      (op:destroy sub-obj)
+      (ensure-pattern (op:contents module :dk_all t) (sequence-pattern))
+      (ensure (null (op:lookup_id repository sub-id)))))
+  
   
   
   (define-test "Contained Move" ()
@@ -107,13 +113,35 @@
   (define-test "Container"
     (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
            (obj (op:create_enum module "IDL:mod/foo:1.0" "my-enum" "1.0" '("fie" "fum")))
-           (obj2 (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
+           (obj2 (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum")))
+           (obj3 (op:create_alias module "IDL:mod/num:1.0" "num" "1.0"
+                                  (op:get_primitive repository :pk_long))))
       (ensure-repository
        "mod" module   "foo" obj2   "mod::my-enum" obj   "::mod::my-enum" obj 
        "mod" (def-pattern :dk_module
                'identity (repository-pattern "my-enum" obj  
                                              "::mod::my-enum" obj "::foo" obj2 )))
-      (ensure-equalp (op:lookup module "fie") nil)))
+      (ensure-equalp (op:lookup module "fie") nil)
+      (ensure-pattern (op:describe_contents module :dk_Enum t -1)
+                      (sequence-pattern (pattern 'op:kind :dk_enum
+                                                 'op:value (pattern 'op:name "my-enum")
+                                                 'op:contained_object obj)))
+      (ensure-pattern (op:describe_contents module :dk_All t -1)
+                      (sequence-pattern (pattern 'op:kind :dk_enum
+                                                 'op:value (pattern 'op:name "my-enum")
+                                                 'op:contained_object obj)
+                                        (pattern 'op:kind :dk_alias
+                                                 'op:value (pattern 'op:name "num")
+                                                 'op:contained_object obj3)))
+      (ensure-pattern (op:describe_contents module :dk_All t 1)
+                      (sequence-pattern (pattern 'op:kind :dk_enum
+                                                 'op:value (pattern 'op:name "my-enum")
+                                                 'op:contained_object obj)))
+      (op:destroy module)
+      (ensure (null (op:lookup_id repository "IDL:mod/foo:1.0")))
+      (ensure (null (op:lookup_id repository "IDL:mod/num:1.0")))))
+
+
   
   
   (define-test "StructDef" 
@@ -218,7 +246,8 @@
       (setf (op:element_type_def obj) a-string)
       (ensure-typecode (op:element_type obj) :tk_string)
       (setf (op:bound obj) 10)
-      (ensure-typecode (op:type obj) (create-sequence-tc 10 CORBA:tc_string))))
+      (ensure-typecode (op:type obj) (create-sequence-tc 10 CORBA:tc_string))
+      (op:destroy obj)))
   
   
   (define-test "ArrayDef"
