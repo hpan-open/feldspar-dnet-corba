@@ -42,20 +42,24 @@
     :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
 
 
-(defun ORB_init (&optional args (orbid ""))
+(defun ORB_init (&optional args (orbid "") set-init)
   (declare (ignore orbid))
+  (when (eq args t)
+    (setq args nil set-init t))
   (unless *the-orb*
     (setq *the-orb* (make-instance 'CORBA:ORB
                       :active t
                       :host *host*
                       :port *port*))
+    (setq set-init t)
+    (dolist (fn *orb-initializers*)
+      (funcall fn *the-orb*)))
+  (when set-init
     (when *name-service*
       (set-initial-reference *the-orb* "NameService" *name-service*))
     (when *interface-repository*
       (set-initial-reference *the-orb* "InterfaceRepository"
-                             *interface-repository*))
-    (dolist (fn *orb-initializers*)
-      (funcall fn *the-orb*)))
+                             *interface-repository*)))
   (setq args (process-orb-args *the-orb* args))
   (setf (orb-active *the-orb*) t)
   (values *the-orb* args))
