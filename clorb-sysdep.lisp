@@ -476,24 +476,25 @@ Returns select result to be used in getting status for streams."
 (defmacro select-stream-status (select-res cookie)
   `(%SYSDEP
     "get stream status"
-
+    
     #+clisp
     (elt ,select-res (1- ,cookie))
-
+    
     #+(or sbcl cmu18)
     (if (logbitp ,cookie (select-rset ,select-res))
-        (if (logbitp ,cookie (select-wset ,select-res))
-            :io
-            :input)
-        (if (logbitp ,cookie (select-wset ,select-res))
-            :output
-            nil))
+      (if (logbitp ,cookie (select-wset ,select-res))
+        :io
+        :input)
+      (if (logbitp ,cookie (select-wset ,select-res))
+        :output
+        nil))
     #+allegro
     (if (member ,cookie ,select-res)
-        :io :output)
-
+      :io :output)
+    
     ;; Default
-    :io))
+    (progn ,select-res ,cookie                       ; use but ignore
+           :io)))
 
 
 
