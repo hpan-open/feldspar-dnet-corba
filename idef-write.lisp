@@ -158,3 +158,17 @@ This guides the use of local or absolute names.")
              ,@idef))
         idef))))
 
+
+(defun idef-file (obj file &key default-prefix)
+  (let* ((idef (idef-write obj :default-prefix default-prefix)))
+    (with-open-file (output file :direction :output
+                            :if-exists :supersede)
+      (loop for x in (list '(in-package :clorb) 
+                           (cons 'idef-definitions idef))
+            do (pprint x output)))
+    (length idef)))
+
+#|
+(idef-file (op:lookup (vsns-get "ir") "CORBA") "clorb:src;ifr-idl.lisp" :default-prefix "omg.org")
+(idef-file (get-ir) "clorb:src;x-all-idl.lisp")
+|#
