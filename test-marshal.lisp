@@ -4,7 +4,7 @@
   (macrolet ((marshal-res (res &rest body)
                `(let ((buffer (get-work-buffer)))
                   ,@body
-                  (ensure-equalp (buffer-octets buffer) ',res))))
+                  (ensure-equalp (buffer-octets buffer) ,res))))
     
     (define-test "Ushort 1"
         (marshal-res #(88 1) (marshal-ushort 344 buffer) ))
@@ -13,6 +13,26 @@
         ;; ushort??  short would use the exact same marshaling code ...
         ;; but
         (marshal-res #(168 254) (marshal-ushort -344 buffer)))
+
+    (define-test "Float"
+      (let ((test-data '((1.25 #16R3fa00000 #16R3ff4000000000000)
+                         (12.5 #16R41480000 #16R4029000000000000)
+                         (1.1 #16R3f8ccccd #16R3ff199999999999a)
+                         (-1.125 #16Rbf900000 #16Rbff2000000000000)
+                         (-1.1 #16Rbf8ccccd #16Rbff199999999999a)
+                         (#.pi #16R40490fdb #16R400921fb54442d18)
+                         (0.0 #16R00000000 #16R0000000000000000))))
+        (flet ((integer-octets (integer bytes)
+                 (let ((octets (make-array bytes :element-type 'CORBA:Octet)))
+                   (loop for i below bytes do
+                     (setf (aref octets i)
+                           (ldb (byte 8 (* 8 i)) integer)))
+                   octets)))
+          (dolist (tuple test-data)
+            (marshal-res (integer-octets (second tuple) 4)
+                         (marshal (first tuple) CORBA:tc_float buffer))
+            (marshal-res (integer-octets (third tuple) 8)
+                         (marshal (first tuple) CORBA:tc_double buffer))))))
 
     (define-test "encapsulation"
         (marshal-res 

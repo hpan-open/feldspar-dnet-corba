@@ -72,6 +72,19 @@
            (optimize speed))
   (marshal-number n 4 buffer))
 
+(defun float-as-ieee-integer (number sign-bit fraction-bits bias)
+  (multiple-value-bind (frac expn sign)
+                       (integer-decode-float number)
+    (if (zerop frac)
+      (ash (if (< sign 0) 1 0) sign-bit)
+      (let* ((len (integer-length frac))
+             (shift (+ 1 (- fraction-bits len))))
+        (unless (zerop shift)
+          (format t "Shift=~D~%" shift))
+        (logior (ash (if (< sign 0) 1 0) sign-bit)
+                (ash (+ expn shift fraction-bits bias) fraction-bits)
+                (- (ash frac shift) (ash 1 fraction-bits)))))))
+
 (defun marshal-string (s buffer)
   (marshal-ulong (1+ (length s)) buffer)
   (loop for c across s
@@ -155,7 +168,7 @@
 
 
 (defparameter *nil-objref*
-  (make-instance 'CORBA:Proxy :id "" :profiles '() :key nil))
+  (make-instance 'CORBA:Proxy :id "" :raw-profiles '() :key nil))
 
 (defun marshal-ior (objref buffer)
   (declare (optimize speed))
@@ -164,9 +177,13 @@
     ((not (typep objref 'CORBA:Proxy))
      ;; Implicit activation is implemented by this
      (setq objref (op:_this objref))))
-  (unless (object-profiles objref)
+  (unless (object-raw-profiles objref)
+    ;; FIXME: this is not quite right.
+    ;;  - when there are IIOP profiles in profiles, make encapsulations of these
+    ;;  - if no iiop profiles, but objkey, make iiop profile
+    ;; (or let POA create profiles)
     (when (object-key objref)
-      (setf (object-profiles objref)
+      (setf (object-raw-profiles objref)
         (vector 
          (cons 0
                (marshal-make-encapsulation
@@ -180,8 +197,7 @@
                   (marshal-ushort (or (object-port objref) *port*) buffer)
                   (marshal-osequence (object-key objref) buffer))))))))
   (marshal-string (object-id objref) buffer)
-  (marshal-sequence (object-profiles objref)
-                    #'marshal-tagged-component buffer))
+  (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
 
 
 
@@ -199,7 +215,7 @@
     (marshal discriminant discriminant-type buffer)
     (marshal value (third member) buffer)))
 
-
+#+unused-defuns
 (defun construct-typecode-for-value (value)
   (etypecase value
     ;;((integer -32768 32766) ':tk_short)
@@ -246,6 +262,15 @@
       ((:tk_long) (marshal-long arg buffer))
       ((:tk_enum) (marshal-enum arg type buffer))
       ((:tk_longlong :tk_ulonglong) (marshal-number arg 8 buffer))
+      ((:tk_float) (marshal-ulong (float-as-ieee-integer (float arg 1.0s0)
+                                                         31 23 127)
+                                  buffer))
+      ((:tk_double) (marshal-number (float-as-ieee-integer (float arg 1.0d0)
+                                                           63 52 1023)
+                                    8 buffer))
+      ((:tk_longdouble) (marshal-number (float-as-ieee-integer (float arg)
+                                                               127 112 16383)
+                16 buffer))
       ((:tk_string string) (marshal-string arg buffer))
       ((osequence) (marshal-osequence arg buffer))
       ((:tk_objref object) (marshal-ior arg buffer))
