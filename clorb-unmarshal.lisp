@@ -89,12 +89,15 @@
 
 (defmacro unmarshal-sequence-m ((buffer &key (el-type t))
                                    &body el-read)
-  `(loop with buffer = ,buffer
-       with len = (unmarshal-ulong buffer) 
-       with r = (make-array len :element-type ,el-type)
-       for i from 0 below len
-       do (setf (svref r i) (progn ,@el-read))
-       finally (return r)))
+  (let ((len (gensym))
+        (r (gensym))
+        (i (gensym)))
+    `(loop with buffer = ,buffer
+           with ,len = (unmarshal-ulong buffer) 
+           with ,r = (make-array ,len :element-type ,el-type)
+           for ,i from 0 below ,len
+           do (setf (svref ,r ,i) (progn ,@el-read))
+           finally (return ,r))))
 
 (defun unmarshal-sequence (el-reader buffer &optional (el-type t))
   (unmarshal-sequence-m (buffer :el-type el-type)
@@ -151,11 +154,10 @@
             (let ((vals (unmarshal-multiple (cdr params) buffer)))
               (when (eq tk :tk_union)
                 (nconc vals
-                       (list (unmarshal-sequence-m
-                              (buffer :el-type t)
-                              (list (unmarshal (third vals) buffer)
-                                    (unmarshal-string buffer)
-                                    (unmarshal-typecode buffer))))))
+                       (list (unmarshal-sequence-m (buffer)
+                               (list (unmarshal (third vals) buffer)
+                                     (unmarshal-string buffer)
+                                     (unmarshal-typecode buffer))))))
               (setf (typecode-params typecode) vals))))
          (t
           (setf (typecode-params typecode) 
@@ -319,4 +321,6 @@
     (values msgtype iiop-version)))
 
 (defun unmarshal-service-context (buffer)
-  (unmarshal-sequence-m (buffer) (unmarshal-tagged-component buffer)))
+  (unmarshal-sequence-m (buffer) 
+    (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
+	                :context_data (unmarshal-osequence buffer))))
