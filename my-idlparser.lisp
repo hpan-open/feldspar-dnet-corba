@@ -68,8 +68,11 @@
 (defun <scoped_name>-lookup ()
   (let (name)
     (seq (-> (<scoped_name>) name)
-         (action (or (op:lookup *container* name)
-                     (error "Undefined name: ~A" name))))))
+         (action (let ((obj (or (op:lookup *container* name)
+                                (error "Undefined name: ~A" name))))
+                   (if (string= (op:absolute_name obj) "::CORBA::TypeCode")
+                     (op:get_primitive *the-repository* :pk_typecode)
+                     obj))))))
 
 
 
@@ -334,7 +337,7 @@
   (let (type decl)
     (seq (-> (<type_spec>) type)
          (-> (<declarators>) decl)
-         (action 
+         (action
            (loop for (name . array-spec) in decl
                  do (named-create *container* #'op:create_alias 
                                   name (convert-to-array type array-spec)))))))

@@ -3,6 +3,6 @@
 #define _TYPECODE_IDL_
 #pragma prefix "omg.org"
 module CORBA {
-interface TypeCode;
+  interface TypeCode;
 };
 #endif // _TYPECODE_IDL_
