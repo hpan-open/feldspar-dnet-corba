@@ -5,12 +5,13 @@
 (setq custom:*parse-namestring-ansi* t)
 
 (setf (logical-pathname-translations "clorb")
-  '(("SRC;**;*.*"  "/Users/lenst/src/clorb/**/*.*")
-    ("IDL;**;*.*"  "/Users/lenst/src/clorb/idl/**/*.*")
-    ("**;*.*"      "/Users/lenst/src/clorb/**/*.*" )))
+  `(("SRC;**;*.*"  ,(merge-pathnames "src/clorb/**/*.*"
+                                     (user-homedir-pathname)))
+    ("**;*.*"      ,(merge-pathnames "src/clorb/**/*.*"
+                                     (user-homedir-pathname)) )))
 
 (setf (logical-pathname-translations "PHOME")
-      '(("**;*.*"  "home:**;*.*")))
+      `(("**;*.*" ,(merge-pathnames "**/*.*" (user-homedir-pathname)))))
 
 
 (in-package "CLOS")

@@ -6,7 +6,8 @@
   (make-pathname :name nil :type nil :defaults *load-pathname*))
 
 
-(CORBA:IDL (merge-pathnames "hello.idl" *hello-defaults*))
+(CORBA:IDL (make-pathname :name "hello" :type "idl"
+                          :defaults *hello-defaults*))
 
 (load (merge-pathnames "hello-server" *hello-defaults*))
 (load (merge-pathnames "hello-client" *hello-defaults*))

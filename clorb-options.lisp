@@ -9,10 +9,13 @@ If nil, use default.")
 If nil, let implementation choose a port.")
 
 (defvar *clorb-pathname-defaults*
-  (make-pathname :name nil :type nil :version nil
-                 :defaults (or #+MCL ccl:*loading-file-source-file*
-                               *compile-file-pathname*
-                               *load-pathname* )))
+  (if (find-package "NET.CDDR.CLORB.SYSTEM")
+      (symbol-value (intern "*SOURCE-PATHNAME-DEFAULTS*"
+                            "NET.CDDR.CLORB.SYSTEM"))
+      (make-pathname :name nil :type nil :version nil
+                     :defaults (or #+MCL ccl:*loading-file-source-file*
+                                   *compile-file-pathname*
+                                   *load-pathname* ))))
 
 
 (defvar *default-include-directories*

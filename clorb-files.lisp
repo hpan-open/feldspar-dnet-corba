@@ -165,6 +165,7 @@
                          (> dsf dcf)
                          (> defs-date dcf))))
            (format t "~&;;;; Compiling ~A ~%" sf )
+           (ensure-directories-exist cf)
            (compile-file sf :output-file cf))
          (let ((dcf (file-write-date cf))
                (last (gethash base *load-dates*)))
