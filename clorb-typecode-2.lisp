@@ -5,6 +5,29 @@
 
 (defgeneric tc-members (tc))
 
+(defgeneric compact-params (tc)
+  (:method ((tc CORBA:TypeCode)) (typecode-params tc)))
+
+
+(eval-when (:compile-toplevel :execute)
+  (defun make-compact-params (class-name params member-params)
+    (let ((member-name-p (and (consp member-params) (find 'member_name member-params))))
+      (when (or (find 'name params) member-name-p)
+        `(defmethod compact-params ((tc ,class-name))
+           (let ((params (typecode-params tc)))
+             (list
+              ,@(loop for p in params and i from 0 collect
+                      (cond ((eql p 'name) "")
+                            ((and member-name-p (eql p :members))
+                             `(map 'vector
+                                   (lambda (member)
+                                     (list
+                                      ,@(loop for mp in member-params and j from 0
+                                              collect (cond ((eql mp 'member_name) "")
+                                                            (t `(elt member ,j))))))
+                                   (elt params ,i)))
+                            (t `(elt params ,i)))))))))))
+
 
 (defmacro tcp-elt (x i)
   (case i
@@ -37,7 +60,8 @@
              ((null member-params) nil)
              ((symbolp member-params)
               `((define-method ,member-params ((tc ,class-name) index)
-                 (elt (tc-members tc) index)))))     
+                 (elt (tc-members tc) index)))))
+     ,(make-compact-params class-name params member-params)
      ,@(if constant
          `((defparameter ,(if (consp constant) (car constant) constant)
              (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
@@ -126,21 +150,6 @@
   :params (id name)
   :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
 
-(define-typecode struct-typecode
-  :kind :tk_struct
-  :cdr-syntax (complex :tk_string :tk_string
-                       (sequence (:tk_string :tk_typecode)))
-  :params (id name :members)
-  :member-params (member_name member_type))
-
-
-(define-typecode union-typecode
-  :kind :tk_union
-  :cdr-syntax (complex :tk_string :tk_string :tk_typecode :tk_long     
-                       (sequence (2 :tk_string :tk_typecode)))
-  :params (id name discriminator_type default_index :members)
-  :member-params (member_label member_name member_type))
-
 
 (define-typecode enum-typecode
   :kind :tk_enum
@@ -148,11 +157,35 @@
   :cdr-syntax (complex :tk_string :tk_string (sequence :tk_string))
   :member-params member_name)
 
+(defmethod marshal (arg (enum-tc enum-typecode) buffer)
+  (declare (optimize speed))
+  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
+  (let ((symbols (tc-keywords enum-tc)))
+    (marshal-ulong 
+     (if (integerp arg)
+         arg
+       (or (position arg symbols)
+           (error 'type-error 
+                  :datum arg 
+                  :expected-type (concatenate 'list '(member) symbols))))
+     buffer)))
+
+
 
 (define-typecode sequence-typecode
   :kind :tk_sequence
   :cdr-syntax (complex :tk_typecode :tk_ulong)
   :params (content_type length))
+
+(defmethod marshal (arg (tc sequence-typecode) buffer)
+  (let ((el-type (op:content_type tc))
+        (max-length (op:length tc))
+        (length (length arg)))
+    (when (and (not (zerop max-length))
+               (> length max-length))
+      (error 'CORBA:MARSHAL))
+    (marshal-ulong length buffer)
+    (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
 
 (define-typecode string-typecode
@@ -173,17 +206,23 @@
   :cdr-syntax (complex :tk_typecode :tk_ulong)
   :params (content_type length))
 
+(defmethod marshal (arg (tc array-typecode) buffer)
+  (let ((el-type (op:content_type tc))
+        (max-length (op:length tc))
+        (length (length arg)))
+    (unless (= length max-length)
+      (error 'CORBA:MARSHAL))
+    (map nil #'marshal arg (repeated el-type) (repeated buffer))))
+
 
 (define-typecode alias-typecode
   :kind :tk_alias
   :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
   :params (id name content_type))
 
-(define-typecode except-typecode
-  :kind :tk_except
-  :cdr-syntax (complex :tk_string :tk_string (sequence (:tk_string :tk_typecode)))
-  :params (id name :members)
-  :member-params (member_name member_type))
+(defmethod marshal (arg (tc alias-typecode) buffer) 
+  (marshal arg (op:content_type tc) buffer))
+
 
 (define-typecode value-typecode
   :kind :tk_value
@@ -217,8 +256,6 @@
 
 
 
-
-
 
 ;;;; PIDL interface to TypeCode
 
@@ -227,6 +264,18 @@
 
 ;; exception BadKind
 (define-condition corba:typecode/badkind (corba:userexception) ())
+
+
+(defmacro ignore-badkind (form)
+  `(handler-case ,form 
+     (corba:typecode/badkind () nil)))
+
+
+(define-method get_compact_typecode ((tc corba:typecode))
+  (let ((params (compact-params tc)))
+    (if params
+      (map-typecode #'op:get_compact_typecode tc params)
+      tc)))
 
 
 (defmethod tc-members ((tc corba:typecode))

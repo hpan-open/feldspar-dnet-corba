@@ -70,17 +70,16 @@
   (slot-makunbound tc 'keywords)
   (change-class tc (class-of new-tc)))
 
-(defun map-typecode (func tc)
-  (let ((params (typecode-params tc)))
-    (if (null params)
-      tc
-      (labels ((transform (x)
-                 (typecase x
-                   (CORBA:TypeCode  (funcall func x))
-                   (sequence  (map 'vector #'transform x))
-                   (t  x))))
-        (apply #'make-typecode (typecode-kind tc)
-               (mapcar #'transform params))))))
+(defun map-typecode (func tc &optional (params (typecode-params tc)))
+  (if (null params)
+    tc
+    (labels ((transform (x)
+               (typecase x
+                 (CORBA:TypeCode  (funcall func x))
+                 (sequence  (map 'vector #'transform x))
+                 (t  x))))
+      (apply #'make-typecode (typecode-kind tc)
+             (mapcar #'transform params)))))
 
 (defun feature (name)
   (intern (string-upcase name) :op))
@@ -117,6 +116,7 @@
 (define-method kind ((tc corba:typecode))
   (typecode-kind tc))
 
+(define-feature get_compact_typecode)
 
 (define-feature id)
 

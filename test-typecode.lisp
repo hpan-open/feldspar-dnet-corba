@@ -209,5 +209,27 @@
 
 
 
+  (define-test "get_compact_typecode" ()
+    (let ((tc (create-sequence-tc
+               12 (create-alias-tc "IDL:alias:1.0" "alias"
+                                   (create-struct-tc
+                                    "IDL:struct:1.0" "struct"
+                                    (list (list "foo" CORBA:tc_long))) ))))
+      (let ((ctc (op:get_compact_typecode tc)))
+        (ensure-pattern*
+         ctc
+         'op:kind :tk_sequence
+         'op:length 12
+         'op:content_type
+         (pattern 'op:kind :tk_alias
+                  'op:id "IDL:alias:1.0"
+                  'op:name ""
+                  'op:content_type
+                  (pattern 'op:kind :tk_struct
+                           'op:id "IDL:struct:1.0"
+                           'op:name ""
+                           '(op:member_name * 0) ""
+                           '(op:member_type * 0) CORBA:tc_long ))) )))
 
-)
+
+  #|end-suite|#)
