@@ -78,11 +78,6 @@
   :cdr-syntax (complex :tk_string :tk_string)
   :params (id name))
 
-(define-typecode abstract_interface-typecode
-  :kind :tk_abstract_interface
-  :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
-
 (define-typecode local_interface-typecode
   :kind :tk_local_interface
   :cdr-syntax (complex :tk_string :tk_string)
@@ -220,6 +215,9 @@
   :cdr-syntax (complex :tk_string :tk_string)
   :params (id name)
   :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
+
+(defmethod marshal (arg (tc objref-typecode) buffer)
+  (marshal-object arg buffer))
 
 (defmethod unmarshal ((tc objref-typecode) buffer)
   (unmarshal-object buffer (op:id tc)))
