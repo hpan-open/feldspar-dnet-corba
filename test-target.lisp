@@ -18,6 +18,13 @@
       (ensure-pattern (target-code const-def (make-instance 'stub-target))
                       (sexp-pattern `(defconstant omg.org/root::a ,(eval-to 192))))))
   
+  (define-test "Fixed"
+    (let ((fixed-def (op:create_fixed repository 10 2))
+          (target (make-instance 'stub-target)))
+      (ensure (subtypep (target-type fixed-def target) 'rational))
+      (ensure-typecode (eval (target-typecode fixed-def target))
+                       (create-fixed-tc 10 2))))
+
   (define-test "struct"
     (let* ((members (list (CORBA:StructMember :name "a"
                                               :type_def (op:get_primitive repository :pk_long))))
@@ -72,7 +79,8 @@
              (:id :required "IDL:if1:1.0")
              (:name :required "if1")
              (:version :optional "1.0")
-             (:proxy :required (omg.org/root::if1-proxy omg.org/root::if1 corba:PROXY)))
+             (:proxy :required (omg.org/root::if1-proxy omg.org/root::if1 corba:PROXY))
+            (:defined_in :required nil))
            &any-rest)))
       (ensure-pattern
        (target-code op1 static)
