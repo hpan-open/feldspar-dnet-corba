@@ -257,6 +257,8 @@
             (openmcl-socket:remote-port conn))
     #+Digitool
     (values (let ((host (ccl::stream-remote-host conn)))
+              (ccl::tcp-addr-to-str host)
+              #+(or)
               (ccl::inet-host-name host))
             (ccl::stream-remote-port conn))
    
@@ -410,7 +412,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    "get IOR from http server"
    (with-open-stream (s (open-active-socket host port nil))
      (let ((crlf (coerce (vector #\Return #\Linefeed) 'string)))
-       (format s "GET /~A~A" path crlf)
+       (format s "GET ~A~A" path crlf)
        (force-output s)
        (let ((ior (read-line s)))
          (cond 
