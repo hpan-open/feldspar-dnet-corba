@@ -148,7 +148,7 @@ This guides the use of local or absolute names.")
 
 (defmethod gen-idef ((const corba:constantdef))
   `(define-constant ,(op:name const) ,(gen-iref (op:type_def const))
-     ,(op:value const)
+     ,(any-value (op:value const))
      ,@(contained-id-info const)))
 
 (defun idef-write (obj &key default-prefix)

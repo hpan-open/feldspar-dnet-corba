@@ -1,15 +1,14 @@
 #ifndef __ORB_IDL__
 #define __ORB_IDL__
 
-#include "ir.idl"
+#include "TypeCode.idl"
+#include "interface_repository.idl"
 
 #pragma prefix "omg.org"
 
 #define local
 
 module CORBA {
-    interface TypeCode {
-    };
 
     // interface for the Current object
     interface Current {

@@ -5,6 +5,12 @@
 
 module CORBA {
 
+    typedef short ValueModifier;                        // PIDL
+    const ValueModifier VM_NONE         = 0;
+    const ValueModifier VM_CUSTOM       = 1;
+    const ValueModifier VM_ABSTRACT     = 2;
+    const ValueModifier VM_TRUNCATABLE  = 3;
+
   interface TypeCodeFactory {
     
         // Type code creation operations
@@ -72,7 +78,6 @@ module CORBA {
             in TypeCode                 element_type
         );
 
-#ifdef CORBA_2_3
         TypeCode create_value_tc (
             in RepositoryId             id,
             in Identifier               name,
@@ -96,7 +101,6 @@ module CORBA {
             in RepositoryId             id,
             in Identifier               name
         );
-#endif
 
         TypeCode create_recursive_tc(
             in RepositoryId             id
