@@ -4,22 +4,14 @@
 
 (pushnew :clorb-dev *features*)
 
-
-;;(require :db-sockets)
-;;(require :asdf)
 (require :sb-bsd-sockets)
 
-(let* ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname)))
-       (clorb-fasl (merge-pathnames "fasl/" clorb-home)))
-  (ensure-directories-exist clorb-fasl)
+(let ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname))))
   (setf (logical-pathname-translations "CLORB")
-        `(("SRC;**;*.fasl" ,(merge-pathnames "**/*.fasl" clorb-fasl))
-          ("SRC;**;*.*"    ,(merge-pathnames "**/*.*" clorb-home))
-          ("**;*.*"        "CLORB:SRC;**;*.*" ))))
-
+        `(("SRC;**;*.*"    ,(merge-pathnames "**/*.*" clorb-home))
+          ("**;*.*"        ,(merge-pathnames "**/*.*" clorb-home)) )))
 
 (load "clorb:src;clorb-files")
-;;(setq net.cddr.clorb.system::*source-pathname-defaults* (pathname "clorb:src;"))
 (setq net.cddr.clorb.system::*binary-folder* "fasl")
 (net.cddr.clorb.system:reload)
 
@@ -32,7 +24,7 @@
          #| "-ORBInitRef" "InterfaceRepository=" |#)))
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port clorb::*the-orb*))
+(format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port *the-orb*))
 
 
 ;; Local variables:
