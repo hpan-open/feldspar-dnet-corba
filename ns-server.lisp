@@ -311,7 +311,7 @@
 (defun setup-pns ()
   (let ((poa
          (op:create_poa (root-POA) "pns" nil 
-                        '(:use-servant-manager :persistent :user-id))))
+                        '(:use_servant_manager :persistent :user_id))))
     (op:set_servant_manager poa (make-instance 'pns-manager))
     (op:activate (op:the_poamanager poa))
     (op:create_reference_with_id poa "root" +naming-context-id+)))

@@ -274,11 +274,14 @@
 
 (defun setup-naming-poa ()
   (let* ((orb (CORBA:ORB_init))
-         (rootPOA (op:resolve_initial_references orb "RootPOA")))
+         (rootPOA (op:resolve_initial_references orb "RootPOA"))
+         (policies
+          (list (op:create_lifespan_policy rootPOA :persistent)
+                (op:create_servant_retention_policy rootPOA :retain)
+                (op:create_id_assignment_policy rootPOA :user_id)
+                (op:create_request_processing_policy rootPOA :use_servant_manager))))
     (setq *naming-poa*
-          (op:create_POA rootPOA "Naming" (op:the_poamanager rootPOA)
-                         '(:retain :persistent
-                           :user-id :use-servant-manager)))
+          (op:create_POA rootPOA "Naming" (op:the_poamanager rootPOA) policies))
     (op:set_servant_manager *naming-poa* (make-instance 'naming-manager))))
 
 (defun setup-pns ()

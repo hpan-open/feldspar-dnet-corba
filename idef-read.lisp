@@ -44,7 +44,8 @@
   (destructuring-bind (name (&key bases id version) &rest forms) sexp
     (setq name (string name))
     (let ((idef (create-contained container 'interface-def
-                                  :name name :version version :id id)))
+                                  :name name :version version :id id
+                                  :base_interfaces '())))
       (idef-read-contents forms idef)
       (lambda ()
         (setf (op:base_interfaces idef)

@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defclass hello-servant (Servant)
+(defclass hello-servant (PortableServer:Servant)
   ())
 
 (define-method "GREET" ((s hello-servant))

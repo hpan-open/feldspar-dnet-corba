@@ -22,7 +22,7 @@
 (defun setup-locator-poa ()
   (setq *locator-poa*
     (op:create_poa (root-poa) "locator" (op:the_poamanager (root-poa))
-                   '(:use-servant-manager :persistent :user-id)))
+                   '(:use_servant_manager :persistent :user_id)))
   (op:set_servant_manager *locator-poa* (make-instance 'loc-manager)))
 
 

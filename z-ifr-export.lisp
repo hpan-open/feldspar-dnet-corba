@@ -197,8 +197,8 @@
 (defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
                   (op:create_poa rootpoa "IFWRAP"
                                  nil
-                                 '(:use-default-servant
-                                   :user-id
+                                 '(:use_default_servant
+                                   :user_id
                                    :transient))))
 (defvar *z-serv* (make-instance 'servant-wrapper
                       :orb *the-orb*

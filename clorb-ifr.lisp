@@ -581,7 +581,7 @@
   :id "IDL:omg.org/CORBA/OperationDef:1.0"
   :attributes ((result :readonly :virtual result)
                (result_def)
-               (params)
+               (params nil)
                (mode ':op_normal)
                (contexts nil)
                (exceptions nil))

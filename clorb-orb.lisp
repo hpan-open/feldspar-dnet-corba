@@ -196,7 +196,7 @@ Can be set to true globally for singel-process / development.")
     (cond
      ((null method) (error "Illegal object reference: ~A" str))
      ((string-equal method "corbaloc")
-      (cobaloc-to-object orb rest))
+      (corbaloc-to-object orb rest))
      ;; IOR:xx urls
      ((string-equal method "IOR")
       (unmarshal-encapsulation (decode-hex-string rest) #'unmarshal-ior))
@@ -254,7 +254,7 @@ Can be set to true globally for singel-process / development.")
   (values host port path)))
 
 
-(defun cobaloc-to-object (orb rest)
+(defun corbaloc-to-object (orb rest)
   (multiple-value-bind (addrs key)
                        (parse-corbaloc rest)
     (cond

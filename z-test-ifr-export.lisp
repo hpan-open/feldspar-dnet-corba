@@ -87,8 +87,8 @@
     (let* ((poa (handler-case 
                   (op:create_poa rootpoa "IFWRAP-TEST"
                                  (op:the_poamanager rootpoa)
-                                 '(:use-default-servant
-                                   :user-id
+                                 '(:use_default_servant
+                                   :user_id
                                    :transient))
                   (poa/adapteralreadyexists ()
                                             (op:find_poa rootpoa "IFWRAP-TEST" nil))))

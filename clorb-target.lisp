@@ -537,9 +537,9 @@
          :attributes
          (,@(map 'list
                  (lambda (attdef)
-                   (list (feature (op:name attdef))
-                         (if (eq (op:mode attdef) :attr_readonly)
-                           :readonly )))
+                   (list* (feature (op:name attdef))
+                          (if (eq (op:mode attdef) :attr_readonly)
+                            '(:readonly) )))
                  (op:contents idef :dk_attribute t)) ))
        ,(if (target-dynamic-servant target)
           (make-dynamic-servant idef target class-symbol)

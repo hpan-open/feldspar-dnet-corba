@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.12 2002/11/08 10:27:05 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.13 2003/01/16 22:57:56 lenst Exp $
 
 (in-package :clorb)
 
@@ -122,7 +122,8 @@
         (readonly nil)
         (slotopts nil)
         (virtual nil))
-    (when (not (keywordp (first attspec)))
+    (when (and attspec
+               (not (keywordp (first attspec))))
         (setf slotopts `(:initform ,(pop attspec))))
     (when (eq :readonly (first attspec))
         (setf readonly t)
