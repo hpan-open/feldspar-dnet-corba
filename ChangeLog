@@ -1,3 +1,29 @@
+2004-09-16  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-objkey.lisp (to-object-id): new method for general sequence
+
+	* test-poa.lisp: new test cases
+
+	* clorb-srv.lisp (poa-cancelrequest-handler): set :canceled state
+	on requests
+
+	* clorb-poa.lisp (wait-for-completion): new place holder GF
+	(PORTABLESERVER:POAMANAGER): new slot, managed-poas, tracks the
+	POAs managed by the POAManager
+	(in-invocation-context): new func
+	(poamanager-new-state): also handle wait-for-completion and
+	etheralize-objects 
+	(add-poa): new GF
+	(remove-poa): new GF
+	(start-etheralize): new func
+
+	* support-test.lisp (make-test-connection): new func
+	(setup-test-out): use new func
+	(setup-test-in): new func
+	(test-write-request): new func
+
+	* clorb-iiop.lisp: cleaning up some define-struct
+
 2004-06-09  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* luna/package.lisp: new exports
