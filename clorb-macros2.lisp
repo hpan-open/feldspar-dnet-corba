@@ -45,9 +45,6 @@
       collect (list* slot :initarg field :initform (second member)
                      (cddr member))
       into slot-defs
-      collect `(defmethod struct-get ((s ,name) (field (eql ,field)))
-                 (slot-value s ',slot))
-      into getters1
       collect `(define-method ,slot ((s ,name)) (slot-value s ',slot))
       into getters2
       collect `(define-method (setf ,slot) (val (s ,name))
@@ -62,7 +59,7 @@
                (make-instance ',name 
                  ,@(loop for key in names as val in slots
                          collect key collect val )))
-             ,@getters1 ,@getters2 ,@setters
+             ,@getters2 ,@setters
              (defmethod fields ((s ,name))
                (loop for f in ',names
                    for n in ',slots
@@ -79,12 +76,10 @@
      (define-corba-struct ,symbol 
        :members ,(loop for (nil nil slot-name) in members
                        collect (list slot-name nil)))
-     (set-symbol-ifr-id ',symbol ,id)
-     (set-symbol-typecode 
-      ',symbol
-      (create-struct-tc ,id ,name
-                          (list ,@(loop for (name type) in members 
-                                        collect `(list ,name ,type)))))
+     (set-symbol-id/typecode ',symbol ,id
+                             (create-struct-tc ,id ,name
+                                               (vector ,@(loop for (name type) in members 
+                                                             collect `(list ,name ,type)))))
      ,(if read
         (destructuring-bind ((buffer) &rest forms) read
           `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
@@ -177,10 +172,7 @@ Members: (name typecode)*"
           (make-condition ',symbol ,@initargs))
         (set-symbol-id/typecode ',symbol ,id
                                 (create-exception-tc ,id ,name (list ,@tc-members)))
-        (defmethod exception-name ((exc ,symbol)) ',symbol)
-        (defmethod userexception-values ((ex ,symbol))
-          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
-                          slot-defs)))))))
+        (defmethod exception-name ((exc ,symbol)) ',symbol)))))
 
 
 ;;;; Stub generation
@@ -203,6 +195,7 @@ Members: (name typecode)*"
               (return (values ,@(cdr input))))
              (:user_exception
               (process-exception ,input-buf ',exceptions))))))))
+
 
 ;;;; Interface
 

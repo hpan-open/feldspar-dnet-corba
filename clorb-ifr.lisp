@@ -748,8 +748,7 @@
 (defmethod (setf members) (mlist (sdef struct-def))
   (setf (member-list sdef)
     (map 'vector (lambda (smdef)
-                   (cons (struct-get smdef :name)
-                         (struct-get smdef :type_def)))
+                   (cons (op:name sdef) (op:type_def sdef)))
          mlist))
   (slot-makunbound sdef 'type))
 

@@ -391,6 +391,7 @@
   (ecase (op:kind tc)
     ((:tk_short :tk_long :tk_ushort :tk_ulong :tk_float :tk_double :tk_octet 
                 :tk_longlong :tk_ulonglong :tk_enum) 
+     ;; FIXME: enum ?? 
      0)
     ((:tk_boolean) nil)
     ((:tk_char :tk_wchar) #\Space)))

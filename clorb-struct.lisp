@@ -94,6 +94,9 @@ of fields can be defaulted (numbers and strings)."
                  collect (funcall fn (struct-get struct key))))))
 
 
+(defmethod struct-get ((struct corba:struct) (field symbol))
+  (funcall (feature (symbol-name field)) struct))
+
 (defmethod struct-get ((struct generic-struct) (field symbol))
   (cdr (assoc field (fields struct))))
 
