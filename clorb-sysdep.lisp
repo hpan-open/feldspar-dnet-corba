@@ -18,7 +18,7 @@
     (pushnew 'clorb::mcl-bsd *features*)
     (cond ((find-package "BSD"))
           ((find-package "NET.CDDR.PACKER")
-           (net.cddr.packer:require-package "BSD"))
+           (funcall (intern "REQUIRE-PACKAGE" "NET.CDDR.PACKER") "BSD"))
           (t
            (require "BSD")))))
   
@@ -160,7 +160,7 @@
    (second socket)
 
    #+clisp
-   (if socket (ext:socket-server-port socket) *port*)
+   (ext:socket-server-port socket)
 
    #+(or Allegro use-acl-socket)
    (socket:local-port socket)
@@ -354,7 +354,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
      (not (member state '(:outcon :dataxfer))))
 
    ;; Default, assume it is not closed
-   nil))
+   (null stream)))
 
 
 ;; Check if input is directly available on (socket) stream
@@ -800,3 +800,14 @@ Returns select result to be used in getting status for streams."
              (namestring pathname))
            ;; Default
            (namestring pathname)))
+
+
+(defun cpp-command-string (file include-directories &optional defines)
+  ;; FIXME: add support for defines
+  (format nil
+          #-MCL "cpp~{ -I'~A'~}~{ -D'~A'~} '~A'"
+          ;; apples /usr/bin/cpp is buggy
+          #+MCL "cpp~{ -I\"'~A'\"~}~{ -D'~A'~} \"'~A'\""
+          (mapcar #'external-namestring include-directories)
+          defines
+          (external-namestring file)))
