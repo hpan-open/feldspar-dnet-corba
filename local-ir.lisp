@@ -105,9 +105,9 @@
   (slot-value obj 'absolute_name))
 
 (define-method op:describe ((obj contained))
-  (make-struct "IDL:omg.org/CORBA/Contained/Description:1.0"
-               :kind (op:def_kind obj)
-               :value (describe-contained obj)))
+  (CORBA:Contained/Description
+   :kind (op:def_kind obj)
+   :value (describe-contained obj)))
 
 (defmethod default-repoid ((obj contained) &optional prefix)
   (let ((names (list ":" (op:version obj))))
@@ -391,11 +391,11 @@
 
 
 (defmethod describe-contained ((module module-def))
-  (make-struct *module-description*
-               :name (op:name module)
-               :id (op:id module)
-               :defined_in (or (op:defined_in module) "")
-               :version (op:version module)))
+  (CORBA:ModuleDescription
+   :name (op:name module)
+   :id (op:id module)
+   :defined_in (or (op:defined_in module) "")
+   :version (op:version module)))
 
 ;;; interface ConstantDef : Contained {
 ;;;   readonly attribute TypeCode type;
@@ -426,18 +426,18 @@
   (equal (subject-id def) interface-id))
 
 (define-method op:describe_interface ((def interface-def))
-  (make-struct "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
-               :name (op:name def)
-               :id   (subject-id def)
-               :defined_in (subject-id (op:defined_in def))
-               :version "1.0"
-               :operations (map 'list
-                             #'operation-description
-                             (op:contents def :dk_Operation nil)  )
-               :attributes (op:contents def :dk_Attribute nil)
-               :base_interfaces (map 'list #'subject-id
-                                     (op:base_interfaces def))
-               :type (op:type def) ))
+  (CORBA:InterfaceDef/FullInterfaceDescription
+   :name (op:name def)
+   :id   (subject-id def)
+   :defined_in (subject-id (op:defined_in def))
+   :version "1.0"
+   :operations (map 'list
+                    #'operation-description
+                    (op:contents def :dk_Operation nil)  )
+   :attributes (op:contents def :dk_Attribute nil)
+   :base_interfaces (map 'list #'subject-id
+                         (op:base_interfaces def))
+   :type (op:type def) ))
 
 (defmethod describe-contained ((def interface-def))
   (op:describe_interface def))
@@ -556,19 +556,19 @@
   (op:type (slot-value adef 'type_def)))
 
 (defmethod describe-contained ((adef attribute-def))
-  (make-struct "IDL:omg.org/CORBA/AttributeDescription:1.0"
-               ;; Identifier name
-               :name (op:name adef)
-               ;; RepositoryId id
-               :id (op:id adef)
-               ;; RepositoryId defined_in
-               :defined_in (subject-id (op:defined_in adef))
-               ;; VersionSpec version
-               :version (op:version adef)
-               ;; TypeCode type
-               :type (op:type adef)
-               ;; AttributeMode mode
-               :mode (op:mode adef)))
+  (CORBA:AttributeDescription
+   ;; Identifier name
+   :name (op:name adef)
+   ;; RepositoryId id
+   :id (op:id adef)
+   ;; RepositoryId defined_in
+   :defined_in (subject-id (op:defined_in adef))
+   ;; VersionSpec version
+   :version (op:version adef)
+   ;; TypeCode type
+   :type (op:type adef)
+   ;; AttributeMode mode
+   :mode (op:mode adef)))
 
 
 ;;;; OperationDef
@@ -605,25 +605,25 @@
 
 (defun operation-description (opdef)
   ;;  struct OperationDescription
-  (make-struct "IDL:omg.org/CORBA/OperationDescription:1.0"
-               ;;  Identifier name;
-               :name (op:name opdef)
-               ;;  RepositoryId id;
-               :id   (op:id opdef)
-               ;;  RepositoryId defined_in;
-               :defined_in (op:id (op:defined_in opdef))
-               ;;  VersionSpec version;
-               :version (op:version opdef)
-               ;;  TypeCode result;
-               :result (op:result opdef)
-               ;;  OperationMode mode;
-               :mode (op:mode opdef)
-               ;;  ContextIdSeq contexts;
-               :contexts (op:contexts opdef)
-               ;;  ParDescriptionSeq parameters;
-               :parameters (op:params opdef)
-               ;;  ExcDescriptionSeq exceptions;
-               :exceptions (op:exceptions opdef)))
+  (CORBA:OperationDescription
+   ;;  Identifier name;
+   :name (op:name opdef)
+   ;;  RepositoryId id;
+   :id   (op:id opdef)
+   ;;  RepositoryId defined_in;
+   :defined_in (op:id (op:defined_in opdef))
+   ;;  VersionSpec version;
+   :version (op:version opdef)
+   ;;  TypeCode result;
+   :result (op:result opdef)
+   ;;  OperationMode mode;
+   :mode (op:mode opdef)
+   ;;  ContextIdSeq contexts;
+   :contexts (op:contexts opdef)
+   ;;  ParDescriptionSeq parameters;
+   :parameters (op:params opdef)
+   ;;  ExcDescriptionSeq exceptions;
+   :exceptions (op:exceptions opdef)))
 
 (defmethod describe-contained ((obj operation-def))
   (operation-description obj))
@@ -636,8 +636,7 @@
   :defaults ())
 
 (defmethod describe-contained ((obj typedef-def))
-  (make-struct
-   "IDL:omg.org/CORBA/TypeDescription:1.0"
+  (CORBA:TypeDescription
    ;; Identifier name
    :name (op:name obj)
    ;; RepositoryId id
@@ -681,10 +680,10 @@
 (defmethod members ((sdef struct-def))
   (map 'vector
     (lambda (item)
-      (make-struct "IDL:omg.org/CORBA/StructMember:1.0"
-                   :name (car item)
-                   :type_def (cdr item)
-                   :type (op:type (cdr item))))
+      (CORBA:StructMember
+       :name (car item)
+       :type_def (cdr item)
+       :type (op:type (cdr item))))
     (member-list sdef)))
 
 (defmethod (setf members) (mlist (sdef struct-def))
@@ -781,17 +780,17 @@
 
 
 (defmethod describe-contained ((obj exception-def))
-  (make-struct "IDL:omg.org/CORBA/ExceptionDescription:1.0"
-               ;;  Identifier name;
-               :name (op:name obj)
-               ;;  RepositoryId id;
-               :id (op:id obj)
-               ;;  RepositoryId defined_in;
-               :defined_in (op:id (op:defined_in obj))
-               ;;  VersionSpec version;
-               :version (op:version obj)
-               ;;  TypeCode type;
-               :type (op:type obj)))
+  (CORBA:ExceptionDescription
+   ;;  Identifier name;
+   :name (op:name obj)
+   ;;  RepositoryId id;
+   :id (op:id obj)
+   ;;  RepositoryId defined_in;
+   :defined_in (op:id (op:defined_in obj))
+   ;;  VersionSpec version;
+   :version (op:version obj)
+   ;;  TypeCode type;
+   :type (op:type obj)))
 
 
 ;;;; PrimitiveDef
