@@ -60,7 +60,7 @@
                            (id (format nil "IDL:omg.org/CORBA/~A:1.0" namestr))
                            (sym (intern namestr :CORBA)))
                       `(progn
-                         (define-condition ,sym (corba:systemexception))
+                         (define-condition ,sym (corba:systemexception) ())
                          (defmethod exception-name ((exc ,sym)) ',sym)
                          (set-symbol-ifr-id ',sym ,id)
                          (setf (gethash ,id *system-execption-classes*) ',sym) ))))))
@@ -132,7 +132,7 @@ Members: (name typecode)*"
                              (lambda () (make-typecode :tk_except ,id ,name (list ,@tc-members))))
         (defmethod exception-name ((exc ,symbol)) ',symbol)
         (defmethod userexception-values ((ex ,symbol))
-          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
+          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',slot))
                           (append slots members)))))))) 
 
 

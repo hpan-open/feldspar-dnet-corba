@@ -2,7 +2,7 @@
 (in-package :clorb)
 
 (defparameter *principal*
-  #.(with-open-file (i "/tmp/orbit-lennarts/cookie")
+  #.(with-open-file (i "/tmp/orbit-lenst/cookie")
       (let* ((s (make-string 2048))      ;; FIXME: is it always <2k?
              (l (read-sequence s i)))
         (setf (elt s l) (code-char 0))   ;; extra \0 needed too ..

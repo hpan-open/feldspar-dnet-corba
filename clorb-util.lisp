@@ -24,7 +24,9 @@
                   '("IDL:omg.org/CORBA/BAD_OPERATION:1.0"
                     "IDL:CORBA/BAD_OPERATION:1.0" ; -dan / for ORBit
                     "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
-                    "IDL:omg.org/CORBA/INTF_REPOS:1.0")
+                    "IDL:omg.org/CORBA/INTF_REPOS:1.0"
+                    "IDL:omg.org/CORBA/OBJ_ADAPTER:1.0" ; mico
+                    )
                   :test #'equal)
           nil
         (error exc)))))

@@ -1,3 +1,4 @@
+(in-package :cl-user)
 
 (require :db-sockets)
 (load "clorb-pkgdcl")
@@ -21,6 +22,7 @@
   (cl-user::setup-hello :name "hello")
   (cl-user::hello-client :name "hello"))
 
+(import '(hh hhn) :clorb)
 
 ;; Local variables:
 ;; inferior-lisp-program: "sbcl"
