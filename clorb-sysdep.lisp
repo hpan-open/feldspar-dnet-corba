@@ -289,15 +289,16 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clorb::db-sockets
    (let ((before (sockets:non-blocking-mode socket)))
      (unwind-protect
-         (handler-case
-             (progn
-               (setf (sockets:non-blocking-mode socket) (not blocking))
-               (let ((k (sockets:socket-accept socket)))
-                 (setf (sockets:non-blocking-mode k) nil)
-                 (sockets:socket-make-stream k
-                                             :element-type '(unsigned-byte 8)
-                                             :input t :output t )))
-           (sockets::interrupted-error nil))
+          (handler-case
+              (progn
+                (setf (sockets:non-blocking-mode socket) (not blocking))
+                (let ((k (sockets:socket-accept socket)))
+                  (when k
+                    (setf (sockets:non-blocking-mode k) nil)
+                    (sockets:socket-make-stream k
+                                                :element-type '(unsigned-byte 8)
+                                                :input t :output t ))))
+            (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
 
    #+clorb::sb-bsd-sockets
@@ -307,10 +308,11 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
              (progn
                (setf (sb-bsd-sockets:non-blocking-mode socket) (not blocking))
                (let ((k (sb-bsd-sockets:socket-accept socket)))
-                 (setf (sb-bsd-sockets:non-blocking-mode k) nil)
-                 (sb-bsd-sockets:socket-make-stream k
-                                             :element-type '(unsigned-byte 8)
-                                             :input t :output t )))
+                 (when k
+                   (setf (sb-bsd-sockets:non-blocking-mode k) nil)
+                   (sb-bsd-sockets:socket-make-stream k
+                                                      :element-type '(unsigned-byte 8)
+                                                      :input t :output t ))))
            (sb-bsd-sockets:interrupted-error nil))
        (setf (sb-bsd-sockets:non-blocking-mode socket) before)))
 
