@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.30 2004/09/16 19:57:29 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.31 2004/09/17 19:52:45 lenst Exp $
 
 (in-package :clorb)
 
@@ -55,21 +55,22 @@
 
 
 ;;;; PortableServer::POA
-
+#|
+(active-servant-map
+           :initform (make-hash-table)
+           :reader poa-active-servant-map
+           :documentation "servant->id")
+:reader poa-active-object-map
+|#
 (define-corba-class PortableServer:POA ()
   :attributes ((the_name :readonly)
                (the_parent :readonly) 
                (the_POAManager :readonly) 
                (the_activator nil)
                (the_children nil :readonly))
-  :slots ((active-servant-map
-           :initform (make-hash-table)
-           :reader poa-active-servant-map
-           :documentation "servant->id")
-          (active-object-map 
-           :initform (make-trie)
-           :reader poa-active-object-map
-           :documentation "id->servant")
+  :slots ((active-object-map 
+           :initform (make-instance 'object-map)
+           :reader active-object-map)
           (servant-manager :initform nil :accessor poa-servant-manager)
           (default-servant :accessor poa-default-servant)
           (policies :initarg :policies :accessor poa-policies)
@@ -82,7 +83,7 @@
   (print-unreadable-object (p stream :type t)
     (format stream "~A ~D objects"
             (op:the_name p)
-            (dict-count (POA-active-object-map p)))))
+            (activation-count (active-object-map p)))))
 
 (defun poa-name (poa)
   (labels ((name-list (poa parent)
@@ -411,11 +412,13 @@ individual call (some callers may choose to block, while others may not).
   (when (and (poa-has-policy poa :retain)
              (poa-has-policy poa :use_servant_manager)
              (POA-servant-manager poa))
-    (maptrie (lambda (oid servant)
-               (op:etherealize (POA-servant-manager poa) 
-                               oid poa servant t 
-                               (not (null (gethash servant (poa-active-servant-map poa))))))
-             (POA-active-object-map poa))))
+    (map-activations 
+     (active-object-map poa)
+     (lambda (oid servant)
+       (op:etherealize (POA-servant-manager poa) 
+                       oid poa servant t 
+                       (not (null (servant-active-p (active-object-map poa)
+                                                    servant))))))))
 
 
 (define-method destroy ((poa PortableServer:POA) etherealize-objects wait-for-completion)
@@ -504,19 +507,25 @@ POA destruction does not occur.
 (define-method activate_object_with_id ((poa PortableServer:POA) id servant)
   (check-policy poa :retain)
   (setq id (to-object-id id))
-  (trie-set id (POA-active-object-map poa) servant)
-  (setf (gethash servant (POA-active-servant-map poa)) id))
+  (when (oid-servant (active-object-map poa) id)
+    (error (portableserver:poa/objectalreadyactive)))
+  (unless (poa-has-policy poa :multiple_id)
+    (when (servant-active-p (active-object-map poa) servant)
+      (error (portableserver:poa/servantalreadyactive))))
+  (add-activation (active-object-map poa) id servant)
+  id)
 
 (define-method deactivate_object ((poa PortableServer:POA) oid)
   (check-policy poa :retain)
   (setq oid (to-object-id oid))
-  (let ((servant (trie-get oid (POA-active-object-map poa))))
-    (trie-remove oid (POA-active-object-map poa))
-    ;; FIXME: what about multiple-id policy
-    (remhash servant (POA-active-servant-map poa))
-    (when (poa-has-policy poa :use_servant_manager)
-      (op:etherealize (POA-servant-manager poa) 
-                       oid poa servant nil nil))))
+  (let ((activation (remove-activation (active-object-map poa) oid)))
+    (unless activation
+      (error (portableserver:poa/ObjectNotActive)))
+    (let ((servant (cdr activation)))
+      (when (poa-has-policy poa :use_servant_manager)
+        (op:etherealize (POA-servant-manager poa) 
+                        oid poa servant nil
+                        (servant-active-p (active-object-map poa) servant))))))
 
 
 ;; ----------------------------------------------------------------------
@@ -554,17 +563,32 @@ POA destruction does not occur.
 ;;;; Identity Mapping Operations
 ;; ----------------------------------------------------------------------
 
+(defun in-servant-invocation-context (poa servant)
+  "Check if in an invocation context for servant (in POA)"
+  (and *poa-current*
+       (eql poa (poa-current-poa *poa-current*))
+       (eql servant (poa-current-servant *poa-current*))))
+
+
 ;;;   ObjectId servant_to_id(in Servant p_servant)
 ;;;     raises (ServantNotActive, WrongPolicy);
 
 (define-method servant_to_id ((poa PortableServer:POA) servant)
-  (multiple-value-bind (id flag)
-      (gethash servant (POA-active-servant-map poa))
-    (if flag
-	id
-	(let ((id (generate-id poa)))
-	  (op:activate_object_with_id poa id servant)
-	  id))))
+  (cond ((in-servant-invocation-context poa servant)
+         (op:_object_id servant))
+        ((and (poa-has-policy poa :unique_id)
+              (servant-oid (active-object-map poa) servant))) 
+        ((poa-has-policy poa :implicit_activation)
+         ;;(check-policy poa :retain) should have been checked when poa created
+         (let ((id (generate-id poa)))
+	   (op:activate_object_with_id poa id servant)
+	   id))
+        (t
+         (or (poa-has-policy poa :use_default_servant)
+             (progn (check-policy poa :retain)
+                    (or (poa-has-policy poa :unique_id)
+                        (check-policy poa :implicit_activation))))
+         (error (portableserver:poa/servantnotactive)))))
 
 ;;;   Object servant_to_reference(in Servant p_servant)
 ;;;     raises (ServantNotActive, WrongPolicy);
@@ -597,7 +621,12 @@ POA destruction does not occur.
 ;;;     raises (ObjectNotActive, WrongPolicy);
 
 (define-method id_to_servant ((poa PortableServer:POA) id)
-  (or (trie-get (to-object-id id) (POA-active-object-map poa))
+  (or (poa-has-policy poa :use_default_servant)
+      (check-policy poa :retain))
+  (setq id (to-object-id id))
+  (or (oid-servant (active-object-map poa) id)
+      (if (poa-has-policy poa :use_default_servant)
+        (op:get_servant poa))
       (error 'PortableServer:poa/objectnotactive)))
 
 ;;;   Object id_to_reference(in ObjectId oid)
@@ -738,7 +767,7 @@ req => poa-spec
              (raise-system-exception 'corba:obj_adapter 2 :completed_no))
            servant))
     (let (;(orb (the-orb poa))
-          (servant (trie-get oid (POA-active-object-map poa)))
+          (servant (oid-servant (active-object-map poa) oid))
           (cookie nil)
           (postinvoke (lambda ())))
       (cond (servant)
