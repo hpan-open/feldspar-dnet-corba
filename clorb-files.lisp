@@ -147,7 +147,7 @@
                            (list :output-file
                                  (merge-pathnames
                                   (make-pathname
-                                   :name nil :type nil
+                                   :name nil :type #-sbcl nil #+sbcl "fasl"
                                    :directory (list* :relative
                                                      *binary-folder* dir))
                                   *source-pathname-defaults*)) ))
