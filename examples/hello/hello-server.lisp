@@ -21,6 +21,11 @@
   (cond ((eql box1 box2) "They are the same")
         (t (format nil "~A and ~A" box1 box2))))
 
+(corba:define-method longs ((self hello-world) box1 box2)
+  (cond ((eql box1 box2) "They are the same")
+        ((or (null box1) (null box2)) "One or both is null")
+        (t (format nil "~A and ~A" box1 box2))))
+
 
 (defmethod print-object ((fox hello:fox) stream)
   (print-unreadable-object (fox stream :type t :identity t)
