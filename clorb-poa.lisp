@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.2 2001/06/03 20:48:56 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.3 2001/06/11 01:15:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -181,9 +181,12 @@
         for i from 0
         for g = (find p policy-groups :test #'member)
         do (cond (g (setq policy-groups (remove g policy-groups)))
-                 (t (error 'InvalidPolicy :index i))))
+                 (t (error 'POA/InvalidPolicy :index i))))
     (loop for g in policy-groups
         do (push (car g) policies)))
+  (when (and poa (find name (POA-children poa))
+            :key #'op:the_name :test #'equal)
+    (error 'POA/AdapterAlreadyExists))
   (let ((newpoa
          (make-instance 'POA
           :the_name name
@@ -197,6 +200,10 @@
     (register-poa newpoa)
     newpoa))
 
+;; POA create_POA(in string adapter_name,
+;;   in POAManager a_POAManager,
+;;   in CORBA::PolicyList policies)
+;; raises (AdapterAlreadyExists, InvalidPolicy);
 (define-method create_POA ((poa POA) adapter-name poamanager policies)
   (create-POA poa adapter-name poamanager policies))
 
