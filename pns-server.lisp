@@ -335,15 +335,18 @@
 
 (defvar *root-context* nil)
 
-(defun setup-pns ()
+(defun setup-pns (&key export)
   (let ((orb (CORBA:ORB_init)))
-    (unless *naming-poa* (setup-naming-poa))
+    (unless *naming-poa*
+      (setup-naming-poa))
     (unless *root-context*
       (setq *root-context*
             (op:create_reference_with_id
              *naming-poa*
              (portableserver:string-to-oid "root")
              (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
+    (when export
+      (setf (gethash "NameService" clorb::*boot-objects*) *root-context*))
     (when *naming-ior-file*
       (with-open-file (out *naming-ior-file*
                            :direction :output :if-exists :supersede)
