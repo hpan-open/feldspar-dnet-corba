@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.3 2001/02/13 22:21:57 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.4 2001/06/03 23:59:17 lenst Exp $
 
 (in-package :clorb)
 
@@ -41,8 +41,7 @@
     (setf (fill-pointer octets) 12)
     (setf (buffer-position buffer) 0)
     (let ((read-length
-           #+clisp (lisp:read-byte-sequence octets stream)
-           #-clisp (read-sequence octets stream)))
+           (read-sequence octets stream)))
       (when (< read-length (length octets))
         (break "not read enough")
         (close stream)
@@ -56,8 +55,7 @@
       (if (< (array-total-size octets) size)
           (adjust-array octets size))
       (setf (fill-pointer octets) size)
-      #+clisp (lisp:read-byte-sequence octets stream :start 12)
-      #-clisp (read-sequence octets stream :start 12)
+      (read-sequence octets stream :start 12)
       (mess 2 "Receive (~D)" size)
       t)))
 
@@ -163,8 +161,7 @@
                (marshal-ulong status buffer)
                (marshal-multiple values types buffer)))
         (marshal-giop-set-message-length buffer)
-        #+clisp (lisp:write-byte-sequence (buffer-octets buffer) stream)
-        #-clisp (write-sequence (buffer-octets buffer) stream)
+        (write-sequence (buffer-octets buffer) stream)
         (mess 3 "#~D reply type ~A status ~A (len ~D)" 
               req-id msg-type status (length (buffer-octets buffer)))
         (force-output stream)))))
