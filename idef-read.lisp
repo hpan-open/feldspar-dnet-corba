@@ -300,7 +300,7 @@
 (defun eval-expr-in (container expr)
   (cond ((stringp expr) 
          (let ((obj (lookup-name-in container expr)))
-           (assert (eq (omg.org/features:def_kind obj) :dk_constant))
+           (assert (eq (op:def_kind obj) :dk_constant))
            (any-value (op:value obj))))
         ((and (consp expr)
               (eq 'string (car expr)))

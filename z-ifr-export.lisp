@@ -204,7 +204,7 @@
                       :poa *z-poa*))
 
 (op:set_servant *z-poa* *z-serv*)
-(omg.org/features:activate (omg.org/features:the_poamanager *z-poa*))
+(op:activate (op:the_poamanager *z-poa*))
 (rebind (make-remote *z-serv* *z-rep*) "zrep")
 
 ;;(idef-read (idef-write *idef-repository*) *z-rep*)

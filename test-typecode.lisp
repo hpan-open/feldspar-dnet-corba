@@ -96,7 +96,7 @@
       (ensure-pattern (op:CREATE_ALIAS_TC factory "IDL:a:1.0" "a" CORBA:tc_ushort)
                       (pattern 'op:kind :tk_alias 'op:id "IDL:a:1.0" 'op:name "a" ))
       (ensure-pattern (op:CREATE_ENUM_TC factory "IDL:e:1.0" "e" '("A" "B"))
-                      (pattern 'op:kind :tk_enum 'op:name "e" 'omg.org/features:member_count 2))
+                      (pattern 'op:kind :tk_enum 'op:name "e" 'op:member_count 2))
       (ensure-pattern (op:create_union_tc factory "IDL:u:1.0" "u" omg.org/corba:tc_boolean
                                           (list (omg.org/corba:unionmember
                                                  :name "a" :type corba:tc_string
@@ -109,7 +109,7 @@
                                            (list (corba:structmember :name "a" :type  CORBA:tc_long)
                                                  (corba:structmember :name "b" :type CORBA:tc_long)))
                       (pattern 'op:kind :tk_struct 'op:name "s" 
-                               'omg.org/features:member_count 2))
+                               'op:member_count 2))
       
       (let ((recursive_tc (op:create_recursive_tc factory "IDL:V:1.0")))
         (let ((tc (op:create_struct_tc factory "IDL:V:1.0" "V" 

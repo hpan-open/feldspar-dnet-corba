@@ -926,7 +926,7 @@
                (scale 0)))
 
 (defmethod idltype-tc ((obj fixed-def))
-  (make-typecode :tk_fixed (omg.org/features:digits obj)
+  (make-typecode :tk_fixed (op:digits obj)
                  (op:scale obj)))
 
 

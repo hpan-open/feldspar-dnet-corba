@@ -64,7 +64,7 @@
   (unless def
     (fail-match def "Missing"))
   (unless (eq (def-kind pattern)
-              (omg.org/features:def_kind def))
+              (op:def_kind def))
     (fail-match def "Wrong definition kind"))
   (call-next-method))
 

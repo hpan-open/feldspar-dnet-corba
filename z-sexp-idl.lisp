@@ -163,7 +163,7 @@
 
 (dx (TYPE_WIDE_STRING bound)
   (if bound
-    (omg.org/features:create_wstring (the-repository) bound)
+    (op:create_wstring (the-repository) bound)
     (primitive :pk_wstring)))
 
 (dx (INTEGER 'n) n)
