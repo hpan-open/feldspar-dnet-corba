@@ -100,11 +100,21 @@
 
 ;;;; Request / Connection testing
 
+;;; Output, sending requests
 
 (defvar *test-sink-stream*)
 (defvar *test-response-desc*)
-(defvar *test-out-desc*)
+;;(defvar *test-out-desc*)                ; unused?
 (defvar *test-out-conn* nil)
+
+;;; Input, receiving requests
+
+(defvar *test-in-conn*)
+(defvar *test-response-sink*)
+(defvar *test-request-desc*)
+
+
+;;; Mock classes
 
 (defclass test-connection (connection)
   ((response-func :initarg response-func 
@@ -118,28 +128,44 @@
       (funcall fun req))))
 
 
+;;; Setup code
+
+(defun make-test-connection ()
+  (let ((desc (make-io-descriptor))
+        (i-stream (make-octet-stream "i-stream"))
+        (o-stream (make-octet-stream "o-stream")))
+    (let ((other (make-io-descriptor
+                  :stream (make-shortcut-stream (make-octet-stream "dummy") i-stream)
+                  :status :connected
+                  :shortcut-p desc)))
+      (setf (io-descriptor-stream desc) (make-shortcut-stream i-stream o-stream))
+      (setf (io-descriptor-shortcut-p desc) other)
+      (let ((conn (make-instance 'test-connection
+                    :orb (CORBA:ORB_init)
+                    :io-descriptor desc)))
+        (io-descriptor-associate-connection desc conn)
+        (values conn other o-stream)))))
+
+
 (defun setup-test-out ()
-  (setq *test-out-desc*
-        (let ((desc (make-io-descriptor)))
-          (let ((i-stream (make-octet-stream "i-stream"))
-                (o-stream (make-octet-stream "o-stream"))
-                (dummy (make-octet-stream "dummy")))
-            (let ((other (make-io-descriptor
-                          :stream (make-shortcut-stream dummy i-stream)
-                          :status :connected
-                          :shortcut-p desc)))
-              (setq *test-response-desc* other)
-              (setf (io-descriptor-stream desc) (make-shortcut-stream i-stream o-stream))
-              (setq *test-sink-stream* o-stream)
-              (setf (io-descriptor-shortcut-p desc) other)
-              desc))))
-  (setq *test-out-conn*
-        (make-instance 'test-connection
-          :orb (CORBA:ORB_init)
-          :io-descriptor *test-out-desc*))
-  (io-descriptor-associate-connection *test-out-desc* *test-out-conn*))
+  (multiple-value-setq (*test-out-conn* *test-response-desc* *test-sink-stream*)
+    (make-test-connection)))
+
+
+(defun setup-test-in ()
+  (multiple-value-setq (*test-in-conn* *test-request-desc* *test-response-sink*)
+    (make-test-connection))
+  (setup-incoming-connection *test-in-conn*))
+        
+
+
+
+
+;;; Testing functions
 
 (defun test-object (orb)
+  "Create a proxy object connected to the testing output connection.
+Requests sent to this object will end up in *test-sink-stream*."
   (let ((obj (make-instance 'CORBA:Proxy
                :id "IDL:test:1.0"
                :the-orb orb
@@ -204,3 +230,23 @@
     (marshal-giop-set-message-length buffer)
     (let ((octets (buffer-octets buffer)))
       (io-descriptor-set-write *test-response-desc* octets 0 (length octets)))))
+
+
+(defun test-write-request (&key
+                              (desc *test-request-desc*)
+                              (orb *the-orb*)
+                              buffer message-type message)
+  (check-type message-type integer)
+  (unless buffer
+    (setq buffer (get-work-buffer orb)))
+  (marshal-any-value (giop:messageheader_1_0 :magic "GIOP" 
+                                             :giop_version (giop:version :major 1 :minor 0)
+                                             :byte_order (buffer-byte-order buffer)
+                                             :message_type message-type
+                                             :message_size 0)
+                     buffer)
+  (loop for v in message do
+        (marshal-any-value v buffer))
+  (marshal-giop-set-message-length buffer)
+  (io-descriptor-set-write desc (buffer-octets buffer)
+                           0 (length (buffer-octets buffer))))
