@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.1 2000/11/14 22:50:25 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.2 2001/02/13 21:22:09 lenst Exp $
 
 (in-package :clorb)
 
@@ -142,55 +142,56 @@ be bound to the server-request.")
   (or (servant-interface-id servant)
       (op:id (servant-interface servant))))
 
-
 ;;; ----------------------------------------------------------------------
 
-(defmethod servant-get-method ((servant servant) operation)
-  (if (equal operation "_interface")
-      'op:_get_interface
-    (intern (string-upcase operation) :op)))
+(defun operation-symbol (string)
+  (intern (string-upcase string) :op))
 
-(defmethod servant-opdef ((servant auto-servant) operation)
-  (or (find-opdef *object-interface* operation)
-      (find-opdef (servant-interface servant) operation)))
-
-(defun server-request-decoded-args (sreq opdef)
-  (if (eq (server-request-argument sreq) :undecoded)
-      (setf (server-request-argument sreq)
-        (unmarshal-multiple
+(defun servant-opinfo (servant operation)
+  (let ((opdef       
+         (find-opdef *object-interface* operation)))
+    (if opdef 
+        (values 
+         (if (equal operation "_interface")
+             'op:_get_interface 
+           (operation-symbol operation))
          (opdef-inparam-typecodes opdef)
-         (server-request-buffer sreq))))
-  (server-request-argument sreq))
+         (opdef-outparam-typecodes opdef))
+      (find-opinfo (servant-interface servant) operation))))
 
-(defun set-request-result (sreq results 
-                           &optional (types nil types-p) 
-                           &key (status 0))
-  (setf (server-request-status sreq) status)
-  (setf (server-request-values sreq) results)
-  (unless types-p
-    (setf types (opdef-outparam-typecodes (server-request-opdef sreq))))
-  (setf (server-request-types sreq) types))
+(defmethod find-opinfo ((interface interface) operation)
+  (let ((opdef (find-opdef interface operation)))
+    (when opdef
+      (multiple-value-bind (name type)
+          (analyze-operation-name operation)
+        (values (case type
+                  (:setter 
+                   (fdefinition (list 'setf (operation-symbol name)))           )
+                  (:getter 
+                   (operation-symbol name))
+                  (otherwise
+                   (operation-symbol operation)))
+                (opdef-inparam-typecodes opdef)
+                (opdef-outparam-typecodes opdef))))))
 
-;;; ----------------------------------------------------------------------
 
 (defmethod servant-invoke ((servant auto-servant) sreq)
-  (let* ((operation (server-request-operation sreq))
-         (opdef (servant-opdef servant operation)))
+  (let* ((operation (server-request-operation sreq)))
     (mess 3 "servant-invoke ~S ~S" servant operation)
     (mess 1 "sreq: service-context=~S" (server-request-service-context sreq))
-    (unless opdef
-      (error 'CORBA:BAD_OPERATION :completed :COMPLETED_NO))
-    (let ((args (server-request-decoded-args sreq opdef))
-          (method (servant-get-method servant operation)))
-      (unless (fboundp method) (error 'CORBA:NO_IMPLEMENT))
-      (setf (server-request-opdef sreq) opdef)
-      (let* ((*current-server-request* sreq)
-             (res (multiple-value-list 
-                      (apply method servant args))))
-        (cond ((equal res '(defer))
-               (set-request-result sreq 'defer))
-              (t
-               (set-request-result sreq res)))))))
+    (multiple-value-bind (method inparams outparams)
+        (servant-opinfo servant operation)
+      (let ((args (unmarshal-multiple inparams (server-request-buffer sreq))))
+        (unless (or (functionp method)
+                    (fboundp method))
+          (error 'CORBA:NO_IMPLEMENT))
+        (let* ((*current-server-request* sreq)
+               (res (multiple-value-list
+                     (apply method servant args))))
+          (cond ((equal res '(defer))
+                 (set-request-result sreq 'defer))
+                (t
+                 (set-request-result sreq res outparams))))))))
 
 
 (define-method _get_interface ((servant auto-servant))
