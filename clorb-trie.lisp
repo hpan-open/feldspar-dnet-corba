@@ -19,7 +19,7 @@
 
 (defun trie-get (key trie &optional default)
   (declare (type sequence key)
-           (type cons trie))
+           (type (or null cons) trie))
   (map nil
     (lambda (subkey)
       (when trie
