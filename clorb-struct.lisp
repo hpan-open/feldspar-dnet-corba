@@ -1,26 +1,51 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.10 2002/09/23 13:33:45 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.11 2002/10/05 11:17:23 lenst Exp $
 
 (in-package :clorb)
+
+(defclass CORBA:struct ()
+  ()) 
+
+
+(defun create-struct-tc (id name members)
+  (check-type id string)
+  (check-type name string)
+  (make-typecode :tk_struct id name
+                 (coerce members 'vector)))
+
 
 (defvar *specialized-structs*
   (make-hash-table :test #'equal))
 
-(defclass CORBA:struct ()
-  ())
+(defun add-struct-class (class id)
+  (assert id)
+  (setf (gethash id *specialized-structs*) class))
 
-;; This is a bit dubious, but just for testing...
-(define-slot-dumper CORBA:struct)
+
+
+
 
 (defgeneric type-id (struct))
 (defgeneric fields (struct))
 
+
+;; old:
+(defun struct-typecode (id name &rest fields)
+  (make-typecode :tk_struct
+                 id
+                 (string (or name ""))
+                 (coerce (loop for (name type) on fields by #'cddr
+                             collect (list (string name) type))
+                         'vector)))
 
 ;;;; Generic struct
 
 (defclass generic-struct (CORBA:struct)
-  ((type-id :initarg :type-id :reader type-id)
+  ((typecode :initarg :typecode :reader generic-struct-typecode)
    (fields  :initarg :fields  :accessor fields)))
+
+(defmethod type-id ((struct generic-struct))
+  (op:id (generic-struct-typecode struct)))
 
 (defmethod print-object ((obj CORBA:struct) stream)
   (cond (*print-readably*
@@ -41,8 +66,7 @@
              (format stream "~{ ~_~{~W ~W~}~}" fields) )))
         (t
          (print-unreadable-object (obj stream :type t)
-           (format stream "~A~:{ ~S ~S~}"
-                   (type-id obj)
+           (format stream "~:{~S ~S~^ ~}"
                    (map 'list (lambda (pair) (list (car pair) (cdr pair)))
                         (fields obj)))))))
 
@@ -53,7 +77,10 @@
 NV-PAIRS is a list field names and field values.
 If ID is nil, then all fields must be supplied. Otherwise some types
 of fields can be defaulted (numbers and strings)."
-  (let ((class (gethash id-or-typecode *specialized-structs*)))
+  (let* ((id (if (stringp id-or-typecode) 
+              id-or-typecode
+              (op:id id-or-typecode)))
+         (class (gethash id *specialized-structs*)))
     (if class
         (apply #'make-instance class nv-pairs)
       (let* ((typecode (if (stringp id-or-typecode)
@@ -72,10 +99,10 @@ of fields can be defaulted (numbers and strings)."
                                        val))))
                      (tcp-members params)))))
         (make-instance 'generic-struct
-          :type-id (op::id typecode)
+          :typecode typecode
           :fields fields)))))
 
-
+#+unused-defuns
 (defun make-struct-internal (id nv-alist &optional nv-plist)
   "Make a CORBA structure of type ID.
 NV-PAIRS is a list field names and field values."
@@ -92,28 +119,36 @@ NV-PAIRS is a list field names and field values."
                         collect (cons name val)))))))
 
 
+(defun struct-in (typecode function arg)
+  (let* ((params (typecode-params typecode))
+         (id (tcp-id params))
+         (members (tcp-members params))
+         (class (gethash id *specialized-structs*)))
+    (if class
+      (apply #'make-instance class
+             (loop for (name tc) across members
+                   nconc (list (lispy-name name)
+                               (funcall function tc arg))))
+      (make-instance 'generic-struct
+        :typecode typecode
+        :fields (loop for (name tc) across members
+                      collect (cons (lispy-name name)
+                                    (funcall function tc arg)))))))
 
-;; Interface:
+
 (defmethod struct-get ((struct generic-struct) (field symbol))
   (cdr (assoc field (fields struct))))
 
 (defmethod struct-get ((struct CORBA:struct) (field string))
   (struct-get struct (lispy-name field)))
 
-(defun struct-typecode (id name &rest fields)
-  (make-typecode :tk_struct
-                 id
-                 (string (or name ""))
-                 (coerce (loop for (name type) on fields by #'cddr
-                             collect (list (string name) type))
-                         'vector)))
 
-
-(defmethod typecode ((obj CORBA:struct))
-  (get-typecode (type-id obj)))
+;;(defmethod typecode ((obj CORBA:struct))
+;;  (get-typecode (type-id obj)))
 
 
 (defun default-from-type (typecode)
+  ;; FIXME: similary to arbritary-value
   (ecase (typecode-kind typecode)
     ((:tk_ushort :tk_short :tk_ulong :tk_long :tk_float :tk_double
       :tk_octet :tk_longlong :tk_ulonglong :tk_longdouble)
@@ -129,14 +164,6 @@ NV-PAIRS is a list field names and field values."
 
 ;; Define methods for:
 ;; type-id, fields, struct-get
-
-;;; registry
-(defun add-struct-class (class id)
-  (unless id
-    (mess 3 "Null ID to add-struct-class")
-    (setq id (type-id (make-instance class))))
-  (setf (gethash id *specialized-structs*) class))
-
 
 ;;; Macrology
 
@@ -173,6 +200,21 @@ NV-PAIRS is a list field names and field values."
                    when (slot-boundp s n)
                    collect (cons f (slot-value s n))))
              (add-struct-class ',name ,id)))))
+
+(defmacro define-struct (symbol &key id (name "") members)
+  "  members = (name type slot-name)
+"
+  `(progn
+     (define-corba-struct ,symbol :id ,id 
+       :members ,(loop for (nil nil slot-name) in members
+                       collect (list slot-name nil)))
+     (set-symbol-ifr-id ',symbol ,id)
+     (set-symbol-typecode 
+      ',symbol
+      (lambda ()
+        (create-struct-tc ,id ,name
+                          (list ,@(loop for (name type nil) in members 
+                                        collect `(list ,name ,type))))))))
 
 
 ;;; clorb-struct.lisp ends here
