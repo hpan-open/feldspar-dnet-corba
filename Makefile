@@ -1,7 +1,7 @@
 all:
 
 clean:
-	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.bak
+	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.nfasl *.bak
 	$(MAKE) -C idlcomp clean
 	$(MAKE) -C luna clean
 

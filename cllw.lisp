@@ -2,12 +2,10 @@
   '(("src;**;*.*"  "~/src/clorb/**/*.*")
     ("**;*.*"      "~/src/clorb/**/*.*" )))
 
-(load "clorb:src;clorb-pkgdcl")
 (load "clorb:src;clorb-files")
-
 (pushnew :dummy-tcp *features*)
 
-(clorb::reload)
+(net.cddr.clorb.system::reload)
 
 (defvar *orb* (CORBA:ORB_init))
 

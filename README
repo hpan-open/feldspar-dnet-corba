@@ -12,24 +12,28 @@
 
 
 CLORB is an Object Request Broker implementing CORBA 2. It currently
-supports DII, DSI and the POA. The goal is to make the mapping follow
-the proposed mapping for LISP.
+supports IIOP 1.0, IDL, DII, DSI and the POA. The goal is to make the
+mapping follow the proposed mapping for LISP [1].
 
 It lacks:
 
    * Support for some basic types (fixed) (still :-)
-   * Support for value types
-
+   * Value Types
+   * DynAny
+   * CORBA Messaging
+   * Multithreading
+   * IIOP 1.1/1.2
+   
 CLORB is released under GNU Library General Public License see the
 file COPYING.
 
 
 Ports:
 
-   MCL 5        only tested with Max OS X
-   OpenMCL      seems to work
+   MCL 5        only tested with Max OS X native
+   OpenMCL      seems to work (Mac OS X)
    CMUCL        partially working (some test cases fail)
-   SBCL         minimal test on Mac OS X
+   SBCL         seems to work on Mac OS X and Debian GNU/Linux (i386)
    ACL 6.2      seems to work, but the trial version can't compile the IDL
                 compiler due to heap limitation
    --
@@ -37,14 +41,157 @@ Ports:
 
 
 
+[1] http://www.omg.org/technology/documents/formal/lisp_language_mapping.htm
+
+
+
+                     Compiling and Loading CLORB
+
+The file clorb-files.lisp contains code to compile and load CLORB.
+There is currently no other (current) system definition. I plan to
+use ASDF in a future release.
+
+clorb-files.lisp defines a package NET.CDDR.CLORB.SYSTEM and a
+function RELOAD (in that package) that will compile and load CLORB.
+It will load files relative to the directory from where clorb-files
+was loaded. 
+
+It is not necessary to setup any logical pathname hosts to load
+CLORB. But some extra features like test cases and examples might
+depend on the "CLORB" host. It should then be set up to map
+CLORB:SRC; to the main CLORB sources and allow relative directory
+references.
+
+When compiling and loading clorb some clorb specific features control
+the process. 
+
+Features to put on *features* to control what gets loaded
+
+    :clorb-dev          load some development specific code (test suite)
+
+    :no-idlcomp         don't load the IDL compiler
+
+    :use-my-idlparser   load alternative IDL compiler (requires non
+                        included package)
+
+Features to control what socket/tcp code gets used:
+
+    :use-acl-socket     use the ACL-SOCKET package in preference to
+                        native socket support (requires the acl
+                        compatibility package)
+
+    :dummy-tcp          don't include any socket code (can be used to
+                        test the rest of the code)
+
+
+Features that are automatically (?) determined (in clorb-sysdep):
+
+    clisp-ext 
+    clisp-new-socket-status 
+    clorb-mcl-bsd 
+    db-sockets 
+    sb-bsd-sockets 
+    cmucl-sockets 
+
+
+
+                         Initializing the ORB
+
+
+After CLORB has been loaded and before the ORB can be used it has to
+be initialized. This is done with the CORBA:ORB_init function.
+
+(CORBA:ORB_init arguments orb-id) => orb-object, arguments'
+
+Where arguments is a list of strings (as would ususally be passed to
+a command line program in Unix) and orb-id is a string identifying
+the particular orb (only one is supported pass "" for this). The
+function can be called more than once, and will return the same
+object. The argument list will be processed by every call.
+
+In the arguments list, items starting with "-ORB" will be recognized
+and removed (the item after will also be removed if it provides
+argument to the -ORB argument). The remaining arguments will be
+returned as a second return value. The recognized items are:
+
+    -ORBInitRef Name=IOR
+
+      This provides value for the initial references. A call to
+      op:resolve_initial_references with Name will return the object
+      references by the IOR.
+
+    -ORBDefaultInitRef IOR
+
+    -ORBPort port#
+
+      Specify the port that the Object adaptor will listen on.
+
+
+There are also some variables to consider. The *name-service* and
+*interface-repository* variables (in package CLORB) was used to
+provide IORs for resolve_initial_references to the NameService and
+InterfaceRepository respectively. They will be removed in a future
+version in preference to the method above (-ORBInitRef).
+
+The clorb:*log-level* controls the amount of logging done by CLORB.
+It should be an integer, lower value gives more logging.
+
+
+                     Loading/Compiling IDL files
+
+(CORBA:IDL pathname &key eval print) => repository
+
+Load and parse the IDL file referenced by PATHNAME. The interface
+repository containing the parsed IDL file is returned. The necessary
+code to use this interface is generated and loaded (unless the eval
+key is nil).
+
+
+
+                 Obtaining initial object references
+
+
+(op:list_initial_services orb) => list-of-names
+
+(op:resolve_initial_references orb "NameService") => object-reference
+
+(op:string_to_object orb "IOR") => object-reference
+
+The IOR could be on the IOR:xxx form or it could be a file or http
+URL, in that case the references resource is should contain an IOR.
+The IOR could also be a corbaloc IOR.
+
+
+
+
+                           Client Operation
+
+Initialize and get a refrence to the ORB object.
+
+    (defvar *orb* (CORBA:ORB_init))
+
+Load the IDL for the interface.
+
+    (corba:idl "clorb:idl;Random.idl")
+
+Obtain an object reference and call methods on the reference.
+
+    (let ((obj
+           (op:string_to_object *orb* "http://www.random.org/Random.ior")))
+      (op:lrand48 obj))
+
+
+[Unfortunately the CORBA server for random number where not answering
+the last time I tried it.]
+
 
 
                                 MCL 5
 
-MCL 5.0 is the current main development environment. I also use the
-BSD package [find good reference]. The networking code can either use
-OpenTransport directly or use the ACL-COMPAT code from portable
-allegro server [fix reference].
+MCL 5.0 is the current main development environment. You also need the
+BSD package <URL:http://babs.cs.umass.edu/~bburns/software/bsd.lisp>.
+The networking code can either use OpenTransport directly or use the
+ACL-COMPAT code from portable allegro server [fix reference].
 
 The file clmcl.lisp is what I have used during development to load
 the system.
@@ -53,8 +200,55 @@ I use some extra features:
 
   use-acl-socket  --  to use the socket code from acl-compat
 
-  use-my-idlparser  --  to also compile an alternative idl-compiler
 
+To load CLORB you need to do something like this:
+
+    (require 'bsd)
+    (load "CLORB:SRC;CLORB-FILES")
+    (net.cddr.clorb.system:reload)
+
+
+
+                                 SBCL
+
+Tried with version 0.8.4 on MacOS X, 0.8.4 on Debian GNU/Linux i386.
+
+The code has been quickly converted from using DB-SOCKETS to using
+SB-BSD-SOCKETS and needs more work. 
+
+This is what is needed to load CLORB in SBCL (for reference
+clsbcl.lisp is what I have used, but it contains some things that are
+dependent on my devlopment environment).
+
+
+(require :asdf)  ; prehaps not if you are using CLC
+
+(require :sb-bsd-sockets)
+
+(load "clorb-files")
+(net.cddr.clorb.system:reload)
+
+;; Initializing the ORB
+(defvar *orb* 
+  (CORBA:ORB_init
+   (list ;;"-ORBPort" "4712"
+         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         )))
+
+
+                               OpenMCL
+
+(require 'acl-socket)
+
+(load "clorb-files")
+(net.cddr.clorb.system:reload)
+
+;; Initializing the ORB
+(defvar *orb* 
+  (CORBA:ORB_init
+   (list ;;"-ORBPort" "4712"
+         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         )))
 
 
                          About the CMUCL port
@@ -89,179 +283,135 @@ have any socket code of its own at all.
 
 [...]
 
+                              Test Suite
+
+...
+
+
+
                        About the included files
 
 clorb-*.lisp
 
-        This is main part of the ORB.
+This is main part of the ORB.
 
 clorb-options.lisp
 
-        Some parameters that might need to be customized. Especially
-        host-name and how to find the Naming Service and Interface
-        Repository.
+Some parameters that might need to be customized. Especially
+host-name and how to find the Naming Service and Interface
+Repository.
 
-socket.lisp
-
-        System dependent code for socket handling.
-
-clorb-sysdcl.lisp
-
-        Is a defsystem declaration for ACL's defsystem.
-
-        Note: It uses the logical pathname "devl:". I use that defined as
-             "devl"      '(";**;*.fasl"  #p"bin/") '(";**;*.*" #p"./")
-        to get fasl files in a subdirectory.
-
-clorb.system
-
-        Is a system declaration for mk-defsystem.
-
-ns-server.lisp
-
-        An implementation of CosNaming
 
 pns-server.lisp
 
-        A new implementation of CosNaming, where the state is stored
-        in files (thus persistent).
+A new implementation of CosNaming, where the state is stored
+in files (thus persistent).
 
-ec-server.lisp
-
-        An implementation CosEventChannel
 
 dumpir.lisp
 
-        Code to save and restore the internal cache of the Interface
-        Repository objects. The file ir.dump is the saved cache. If
-        you don't have a Interface Repository running, you could try
-        loading this dump (with load-ir).
+Code to save and restore the internal cache of the Interface
+Repository objects. The file ir.dump is the saved cache. If
+you don't have a Interface Repository running, you could try
+loading this dump (with load-ir).
 
-local-ir.lisp
-
-        Interface Repository implementation. Mainly for use when
-        generating code. (Code generation is currently only
-        experimental). All Interface Repository objects can also
-        be CORBA objects this can be used by servants to tell clients
-        about their interface.
 
 idef-read.lisp
 idef-write.lisp
 
-        Read and write IDEF, an sexp version of IDL. These reads and
-        writes from the local Interface Repository implemention.
+Read and write IDEF, an sexp version of IDL. These reads and
+writes from the local Interface Repository implemention.
 
 idef-macros.lisp
-        Macro wrapper around idef-read to allow IDEF to be loaded from
-        file. Also macro for defining servant skeleton class for use
-        with the CLORB auto-servant class.
+Macro wrapper around idef-read to allow IDEF to be loaded from
+file. Also macro for defining servant skeleton class for use
+with the CLORB auto-servant class.
 
 cosevent-idl.lisp
 cosnaming-idl.lisp
 
-        IDEF version of standard IDL for CosEventChannel and
-        CosNaming. (generated by idef-write)
+IDEF version of standard IDL for CosEventChannel and
+CosNaming. (generated by idef-write)
 
 cosnaming-stub.lisp
 
-        The types, classes for CosNaming according to the OMG Lisp Mapping.
-        Proxy classes and operation methods.
-        (This partly hand created static stub.)
+The types, classes for CosNaming according to the OMG Lisp Mapping.
+Proxy classes and operation methods.
+(This partly hand created static stub.)
 
 cosnaming-skel.lisp
 
-        Servant classes for CosNaming.
+Servant classes for CosNaming.
 
 
-        (TEMPORARY until I have organized it better)
 
-orb-export.lisp
-
-        Export the interface repository symbols from the CORBA package.
-
-orb-structs.lisp
-
-        The interface repository structures correctly defined
-        according to the OMG Lisp Mapping.
-
-orb-stub.lisp
-
-        All interface repository types and proxies.
-        (mostly generated with gen-code)
-
-orb-idl.lisp
-
-        IDEF version of the interface repository IDL.
-
-
-        EXAMPLE CODE
+EXAMPLE CODE
 
 hello.idl
 hello-idl.lisp
 
-        Hello world interface definition.
+Hello world interface definition.
 
 hello-client.lisp
 
-        Hello World client
+Hello World client
 
 hello-server.lisp
 hello-dynserver.lisp
 
-        Hello World server, auto-servant version and DSI version.
+Hello World server, auto-servant version and DSI version.
 
 
 dii-example.lisp dsi-example.lisp clive.lisp
 
-        Example of using DSI (dynamic servant implementation) and DII
-        (dynamic invokation interface) using standard interfaces.
-        From a discussion on comp.lang.corba
+Example of using DSI (dynamic servant implementation) and DII
+(dynamic invokation interface) using standard interfaces.
+From a discussion on comp.lang.corba
 
 ec-factory-idl.lisp
 ec-factory-impl.lisp
 
-        Example of using the macros from idef-macros to define an
-        interface and then to implement it. The interface is to a
-        Factory object to create Event Channel objects using the
-        ec-server implementation.
+Example of using the macros from idef-macros to define an
+interface and then to implement it. The interface is to a
+Factory object to create Event Channel objects using the
+ec-server implementation.
 
 orbit.lisp
 
-        Set *principal* for communication with ORBit (GNOME) servers.
+Set *principal* for communication with ORBit (GNOME) servers.
 
 
-        EXPERIMENTAL CODE
+EXPERIMENTAL CODE
 
 code-gen.lisp
 
-        Generate code from interface repository.
-        Ex: (load "cosnaming-idl.lisp")
-            (eval (gen-code "CosNaming"))
-        defines (client) classes and stub-operations for the CosNaming
-        module.
+Generate code from interface repository.
+Ex: (load "cosnaming-idl.lisp")
+(eval (gen-code "CosNaming"))
+defines (client) classes and stub-operations for the CosNaming
+module.
 
 internalize.lisp
 
-        create local copy of interface repository objects
+create local copy of interface repository objects
 
 
-        BOOTSTRAP
+BOOTSTRAP
 
 loadup.lisp
 
-        Load IIR cache from an external interface repository
+Load IIR cache from an external interface repository
 
 make-proxies.lisp
 
-        Create stub code for all external symbols in the OP package.
+Create stub code for all external symbols in the OP package.
 
 extract-ops.lisp
 
 
 
-        TEST CASES
+TEST CASES
 
-test-suite.lisp
 test-marshal.lisp
 test-idef-read.lisp
 test-intern.lisp
@@ -269,7 +419,7 @@ test-intern.lisp
 
 
 
-                           Examples of use
+Examples of use
 
 Examples of creating server objects can be found in ns-server.lisp and
 ec-server.lisp.
@@ -279,30 +429,30 @@ Repository and a Naming Service.
 
 The file clorb-util.lisp defines some convenience functions:
 
-    (clorb:invoke OBJECT OPERATION &rest ARGS)  => RESULTS
+(clorb:invoke OBJECT OPERATION &rest ARGS)  => RESULTS
 or: (corba:funcall OPERATION OBJECT &rest ARGS) => RESULTS
 
-          Call OPERATION on OBJECT with argument ARGS.
-           OBJECT -- a CORBA object
-           OPERATION -- a string
-           ARGS -- all IN and INOUT arguments to the operation
-           RESULTS -- the result and all OUT and INOUT arguments
+Call OPERATION on OBJECT with argument ARGS.
+OBJECT -- a CORBA object
+OPERATION -- a string
+ARGS -- all IN and INOUT arguments to the operation
+RESULTS -- the result and all OUT and INOUT arguments
 
-  (clorb:resolve &rest NAMES)
-           Look up NAMES in the naming service.
+(clorb:resolve &rest NAMES)
+Look up NAMES in the naming service.
 
 
 Example: Calling the list operation on the root NamingContext
 
-    (let* ((orb (corba:orb_init))
-           (ns  (op:resolve_initial_references orb "NameService")))
-      (corba:funcall "list" ns 100))
+(let* ((orb (corba:orb_init))
+       (ns  (op:resolve_initial_references orb "NameService")))
+  (corba:funcall "list" ns 100))
 
 
 There is a hello world example included.The interface is defined in
 'hello.idl' (the file 'hello-idl.lisp' can be used to load the local
-Interface Repository, if you don't have a Interface Repository
-running). The server is defined in 'hello-server.lisp', this uses the
+                 Interface Repository, if you don't have a Interface Repository
+                 running). The server is defined in 'hello-server.lisp', this uses the
 CLORB specific auto-servant. There is a server using DSI in
 'hello-dynserver.lisp', this used only standard interfaces. The client
 is in 'hello-client.lisp'.
@@ -317,23 +467,23 @@ Example (this should work with ACL, CLISP and CMUCL):
 
 ;; Load CLORB
 ;; using ACL defsystem
- (load "clorb-sysdcl")
- (excl:load-system :clorb :compile t)
+(load "clorb-sysdcl")
+(excl:load-system :clorb :compile t)
 ;; or  Mkdefsys
-  (make:oos :clorb :compile)
+(make:oos :clorb :compile)
 
 ;; If you don't have a ir (or even if you do), load the internal ir cache
- (clorb::load-ir)
+(clorb::load-ir)
 
 
 > Running the server:
 
- (load "hello-idl.lisp")   ;; or feed hello.idl to the interface repository
- (run-hello :file "/tmp/hej")
+(load "hello-idl.lisp")   ;; or feed hello.idl to the interface repository
+(run-hello :file "/tmp/hej")
 
 
 > Running the client:
 
- (hello-client :file "/tmp/hej")
+(hello-client :file "/tmp/hej")
 "Hello World"
 
