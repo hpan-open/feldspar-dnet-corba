@@ -1,5 +1,7 @@
-(in-package :user)
+(in-package :cl-user)
 
+;;; Calling a method with the following signature:
+;;; long foobar(in long x, out long y);
 
 (defun dii-call (obj)
   (multiple-value-bind (result req)
