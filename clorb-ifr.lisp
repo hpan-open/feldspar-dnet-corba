@@ -267,7 +267,7 @@ of contained."))
     (setq max-return-objects most-positive-fixnum))
   (loop for c in (op:contents self limit-type exclude-inherited)
         repeat max-return-objects
-        collect (CORBA:Container/Description 
+        collect (CORBA:Container/Description
                  :contained_object c
                  :kind (op:def_kind c)
                  :value (describe-contained c))))
@@ -602,7 +602,7 @@ of contained."))
   (CORBA:ModuleDescription
    :name (op:name module)
    :id (op:id module)
-   :defined_in (or (op:defined_in module) "")
+   :defined_in (subject-id (op:defined_in module))
    :version (op:version module)))
 
 ;;;; interface ConstantDef : Contained
@@ -1191,7 +1191,7 @@ of contained."))
    ;; RepositoryId id
    :id (op:id def)
    ;; RepositoryId defined_in
-   :defined_in (op:id (op:defined_in def))
+   :defined_in (subject-id (op:defined_in def))
    ;; VersionSpec version
    :version (op:version def)
    ;; TypeCode type
