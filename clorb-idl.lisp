@@ -58,10 +58,19 @@
 
 
 #|
-(CORBA:IDL "clorb:idl;interface_repository.idl" 
+(CORBA:IDL "clorb:idl;interface-repository.idl" 
            :output "clorb:src;y-ifr-base.lisp" 
            :eval nil
            :exclude nil
-           :skeleton nil)
+           :skeleton nil )
+
+(CORBA:IDL "clorb:idl;interface-repository.idl" 
+           :output "clorb:src;y-ifr-base.lisp"
+           :pprint-dispatch nil
+           :eval nil
+           :exclude nil
+           :skeleton nil )
+
+
 |#
 ;;; clorb-idl.lisp ends here
