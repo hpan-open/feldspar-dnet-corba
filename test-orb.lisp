@@ -8,6 +8,8 @@
   (setf (slot-value orb 'resolve-name) namestr))
 
 
+
+
 (define-test "Test ORB Pseudo object"
   
   (define-test "Can't marshal local objects"
@@ -52,6 +54,18 @@
                                   'orb-port 98))
           (setf (orb-host orb) host
                 (orb-port orb) port)))))
+
+  
+  (define-test "object_to_string"
+    (let* ((orb (CORBA:ORB_init))
+           (obj (test-object orb))
+           (ior (op:object_to_string orb obj)))
+      (ensure (string-starts-with ior "IOR:"))
+      (ensure (evenp (length ior)))
+      (let ((obj2 (op:string_to_object orb ior)))
+        (ensure-pattern* obj2
+                         'proxy-id (proxy-id obj)
+                         'object-profiles (object-profiles obj)))))
   
   
   (define-test "Resolve corbaname URL"
@@ -64,6 +78,83 @@
                                                   'iiop-profile-port 2809
                                                   'iiop-profile-key (decode-objkey-vector "NameService"))))))
   
+
+  (define-test "DII- list creation"
+    (let ((orb (CORBA:ORB_init)))
+      (ensure-pattern 
+       (op:create_list orb 3)
+       (sequence-pattern
+        (isa 'CORBA:NamedValue)
+        (isa 'CORBA:NamedValue)
+        (isa 'CORBA:NamedValue)))
+      (let* ((p-string (make-instance 'primitive-def
+                         :kind :pk_string :type CORBA:tc_string))
+             (p-long   (make-instance 'primitive-def
+                         :kind :pk_long :type CORBA:tc_long))
+             (oper (make-instance 'operation-def
+                     :id "id" :name "op1" 
+                     :result_def p-string
+                     :params (list (corba:parameterdescription
+                                    :name "a" :type_def p-long :mode :param_in)
+                                   (corba:parameterdescription
+                                    :name "b" :type_def p-string :mode :param_inout))
+                     :mode :op_normal
+                     :contexts nil
+                     :exceptions nil )))
+        (ensure-pattern
+         (op:create_operation_list orb oper)
+         (sequence-pattern
+          (pattern 'op:name "a"
+                   'op:argument (pattern 'any-typecode CORBA:tc_long)
+                   'op:arg_modes CORBA:ARG_IN)
+          (pattern 'op:name "b"
+                   'op:argument (pattern 'any-typecode CORBA:tc_string)
+                   'op:arg_modes CORBA:ARG_INOUT))))))
+
+
+  (define-test "DII- send multiple requests"
+    (setup-test-out)
+    (let* ((orb (CORBA:ORB_init))
+           (obj (test-object orb))
+           (ops '("op1" "op2" "op3")))
+      (flet ((req-list ()
+               (loop for op in ops collect
+                     (let ((args nil)
+                           (result (CORBA:NamedValue :argument (CORBA:Any :any-typecode CORBA:tc_void))))
+                       (nth-value 1 (op:_create_request obj nil op args result 0)))))
+             (check-reqs (response)
+               (let ((actual-requests
+                      (loop repeat (length ops) collect
+                            (test-read-request :request-keys `((:response ,response))))))
+                 (ensure (null (set-difference ops (mapcar (lambda (r) (getf r :operation))
+                                                           actual-requests)
+                                               :test #'string=))))))
+        (op:send_multiple_requests_oneway orb (req-list))
+        (check-reqs 0)
+        (op:send_multiple_requests_deferred orb (req-list))
+        (check-reqs 1))))
+    
+  (define-test "DII- poll/get next response"
+    (setup-test-out)
+    (let* ((orb (make-instance 'test-orb))
+           (obj (test-object orb))
+           (req (nth-value 1 (op:_create_request obj nil "op" nil nil 0))))
+      (op:send_deferred req)
+      (test-write-response req nil)
+      (orb-work)
+      (ensure (op:poll_next_response orb) "response should be ready")
+      (let ((req1 (omg.org/features:get_next_response orb)))
+        (ensure-eql req1 req)
+        (ensure-eql (request-status req1) :returned))
+      (ensure-exception 
+       (op:poll_next_response orb)
+       CORBA:BAD_INV_ORDER 'op:minor (std-minor 11))
+      (ensure-exception 
+       (op:get_next_response orb)
+       CORBA:BAD_INV_ORDER 'op:minor (std-minor 11))))
+        
+      
+
   
   #|end|#)
   
