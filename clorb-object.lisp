@@ -68,6 +68,7 @@
   :id "IDL:omg.org/CORBA/Object:1.0"
   :name "Object")
 
+#+(or)  ;; defined by define-interface
 (defmethod object-id ((obj CORBA:Object))
   (or (some #'(lambda (x)
                 (let ((n (class-name x)))
