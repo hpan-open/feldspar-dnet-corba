@@ -102,7 +102,7 @@ of contained."))
                ;;(absolute_name "" :readonly)
                (containing_repository :readonly))
   :slots ((absolute_name :initarg :absolute_name)
-          (package-prefix :accessor package-prefix)))
+          (package-prefix :initform "" :accessor package-prefix)))
 
 (defmethod print-object ((obj contained) stream)
   (print-unreadable-object (obj stream :type t :identity t)
