@@ -91,7 +91,7 @@
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
     (when (eql (class-of o) (find-class 'corba:proxy))
-      (format stream "~S @" (object-id o)))
+      (format stream "~S @" (proxy-id o)))
     (let ((profile (loop with x = o
                          while (object-forward x)
                          do (setf x (object-forward x))
