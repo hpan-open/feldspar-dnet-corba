@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.32 2005/02/17 17:53:13 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.33 2005/02/23 19:18:47 lenst Exp $	
 
 (in-package :clorb)
 
@@ -16,7 +16,7 @@
 
 (defun setup-default-poa (orb)
   (setq *default-poa* 
-        (create-POA nil "_default_" (op:the_POAManager *root-poa*) 
+        (create-POA nil "_default_" (op:the_POAManager (root-poa)) 
                     '(:use_servant_manager :user_id)
                     orb
                     :poaid 0))
