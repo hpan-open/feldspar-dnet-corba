@@ -477,12 +477,16 @@
      (defclass ,mixin () ())
      (defclass ,symbol (,mixin ,@super) ())
      ,@(if proxy
-         `((defclass ,(car proxy) (,mixin ,@(cdr proxy)) ())
-           (register-proxy-class ,id ',(car proxy))))
+           `((defclass ,(car proxy) (,mixin ,@(cdr proxy)) ())
+             (register-proxy-class ,id ',(car proxy))))
      (defmethod object-id ((obj ,mixin))
        ,id)
+     #-clisp
      (defmethod object-is-a or ((obj ,mixin) interface-id)
-       (string= interface-id ,id))))
+                (string= interface-id ,id))
+     #+clisp
+     (defmethod object-is-a ((obj ,mixin) interface-id)
+       (or (string= interface-id ,id) (call-next-method))) ))
   
 
 (defmethod marshal (obj (tc abstract_interface-typecode) buffer)

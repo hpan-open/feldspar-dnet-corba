@@ -742,7 +742,7 @@ Returns select result to be used in getting status for streams."
 
    #+clisp 
    (with-output-to-string (out)
-     (let ((shell-stream (make-pipe-input-stream command)))
+     (let ((shell-stream (ext:make-pipe-input-stream command)))
        (loop for c = (read-char shell-stream nil nil)
            while c do (princ c out))
        (close shell-stream)))

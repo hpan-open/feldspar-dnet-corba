@@ -264,8 +264,21 @@
    :port (unmarshal-ushort buffer)
    :key (unmarshal-osequence buffer)))
 
-
-
+(defmethod raw-profiles ((objref CORBA:Proxy))
+  (or (object-raw-profiles objref)
+      (setf (object-raw-profiles objref)
+            (map 'list
+                 (lambda (p)
+                   (cons iop:tag_internet_iop
+                         (marshal-make-encapsulation
+                          (lambda (buffer)
+                            (let ((version (iiop-profile-version p)))
+                              (marshal-octet (car version) buffer)
+                              (marshal-octet (cdr version) buffer))
+                            (marshal-string (iiop-profile-host p) buffer)
+                            (marshal-ushort (iiop-profile-port p) buffer)
+                            (marshal-osequence (iiop-profile-key p) buffer)))))
+                 (object-profiles objref)))))
 ;;;; IIOP - Sending request
 
 (defun request-prepare (req object)

@@ -171,7 +171,7 @@
     for slot-name = (string (car member))
     for initarg = (key slot-name)
     for slot = (feature slot-name)
-    for getter-name = (make-symbol slot-name)
+    for getter-name = (intern (format nil "_~A" slot-name) :clorb)
     collect (list slot :initarg initarg :reader getter-name) into slot-defs
     collect `(define-method ,slot ((s ,symbol)) (,getter-name s))
     into getters
@@ -229,8 +229,12 @@
            (register-proxy-class ,id ',(car proxy))))
      (defmethod object-id ((obj ,symbol))
        ,id)
+     #-clisp
      (defmethod object-is-a or ((obj ,symbol) interface-id)
-       (string= interface-id ,id))))
+       (string= interface-id ,id))
+     #+clisp
+     (defmethod object-is-a ((obj ,symbol) interface-id)
+       (or (string= interface-id ,id) (call-next-method)))))
 
 
 (defmacro define-operation (symbol &key id name defined_in (version "1.0")

@@ -49,6 +49,41 @@
   (funcall (feature field) struct))
 
 
+;;;; Generic struct
+
+
+(defclass GENERIC-STRUCT (corba:struct)
+  ((typecode :initarg :typecode :reader generic-struct-typecode)
+   (fields  :initarg :fields  :accessor raw-fields)))
+
+(defmethod fields ((struct GENERIC-STRUCT))
+  (loop for (key val) on (raw-fields struct) by #'cddr
+        collect (cons key val)))
+
+
+(defmethod type-id ((struct generic-struct))
+  (op:id (generic-struct-typecode struct)))
+
+(defmethod any-typecode ((struct generic-struct))
+  (generic-struct-typecode struct))
+
+
+(defun make-generic-struct (typecode fields)
+  (make-instance 'generic-struct
+    :typecode typecode :fields fields))
+
+
+(defmethod struct-get ((struct generic-struct) (field symbol))
+  (getf (raw-fields struct) field))
+
+(defmethod struct-get ((struct generic-struct) (field string))
+  (struct-get struct (key field)))
+
+
+
+;;;; Struct creation and printing
+
+
 (defun make-struct (typecode &rest nv-pairs)
   "Make a CORBA structure of type.
 NV-PAIRS is a list field names and field values.
@@ -90,38 +125,6 @@ of fields can be defaulted (numbers and strings)."
 
 
 
-;;;; Generic struct
-
-
-(defclass GENERIC-STRUCT (corba:struct)
-  ((typecode :initarg :typecode :reader generic-struct-typecode)
-   (fields  :initarg :fields  :accessor raw-fields)))
-
-(defmethod fields ((struct GENERIC-STRUCT))
-  (loop for (key val) on (raw-fields struct) by #'cddr
-        collect (cons key val)))
-
-
-(defmethod type-id ((struct generic-struct))
-  (op:id (generic-struct-typecode struct)))
-
-(defmethod any-typecode ((struct generic-struct))
-  (generic-struct-typecode struct))
-
-
-(defun make-generic-struct (typecode fields)
-  (make-instance 'generic-struct
-    :typecode typecode :fields fields))
-
-
-(defmethod struct-get ((struct generic-struct) (field symbol))
-  (getf (raw-fields struct) field))
-
-(defmethod struct-get ((struct generic-struct) (field string))
-  (struct-get struct (key field)))
-
-
-
 ;;;; Struct marshalling
 
 
@@ -148,9 +151,9 @@ of fields can be defaulted (numbers and strings)."
             (lambda (&rest fields) (make-generic-struct tc fields)))))
     (apply constructor
            (loop for key across (tc-keywords tc) 
-                 for tc in (tc-member-types tc)
+                 for member-tc in (tc-member-types tc)
                  collect key
-                 collect (unmarshal tc buffer)))))
+                 collect (unmarshal member-tc buffer)))))
 
 
 (defmethod struct-write (obj (symbol symbol) buffer)

@@ -5,7 +5,7 @@
                (find-symbol "WORLD" "HELLO"))
     (load (load-time-value
            (make-pathname :name "loadup" :type nil
-                          :defaults *load-pathname*))))
+                          :defaults #.*load-pathname*))))
 
   (funcall 'setup-hello :file file :name name)
   (funcall 'hello-client :file file :name name))

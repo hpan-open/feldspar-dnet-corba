@@ -26,9 +26,9 @@
     "clorb-struct"
     "clorb-union"
     "clorb-exceptions"
-    "clorb-value"
     "clorb-iop"
     "clorb-object"
+    "clorb-value"
     "clorb-io"
     "clorb-ifr-base"
     "clorb-orb"
@@ -51,8 +51,8 @@
 
 (defparameter *dev-pre-files*
   '("luna;package"
-    "luna;testsuite"
-    "luna;pattern"))
+    "luna;pattern"
+    "luna;testsuite"))
 
 (defparameter *dev-post-files*
   '("support-test"))
