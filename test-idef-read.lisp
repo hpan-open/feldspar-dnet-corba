@@ -82,13 +82,19 @@
 
   (define-test "Read Attribute"
     (idef-read '((define-interface "I" ()
-                     (define-attribute "a" string)))
+                     (define-attribute "a" string
+                       :id "IDL:my/M/I/a:1.0" )
+                     (define-attribute "b" string :readonly t)))
                  r)
     (let* ((o (op:lookup (op:lookup r "I") "a") ))
       (ensure o "lookup name")
       (ensure-equalp (op:def_kind o) :dk_Attribute)
-      (ensure-equalp (op:mode o) :attr_normal  )
-      (ensure-equalp (op:kind (op:type_def o)) :pk_string)))
+      (ensure-equalp (op:mode o) :attr_normal )
+      (ensure-equalp (op:id o) "IDL:my/M/I/a:1.0")
+      (ensure-equalp (op:kind (op:type_def o)) :pk_string))
+    (let* ((o (op:lookup (op:lookup r "I") "b") ))
+      (ensure-equalp (op:mode o) :attr_readonly)
+      (ensure-equalp (op:id o) "IDL:I/b:1.0")))
 
   (define-test "Complex example"
       (idef-read 

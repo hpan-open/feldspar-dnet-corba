@@ -31,7 +31,7 @@
     (setq name (string name))
     (let ((module (op:lookup container name)))
       (unless module
-        (setq module (make-instance-in container 'module-def
+        (setq module (create-contained container 'module-def
                                        :name name
                                        :version version
                                        :id id)))
@@ -43,7 +43,7 @@
                            sexp container)
   (destructuring-bind (name (&key bases id version) &rest forms) sexp
     (setq name (string name))
-    (let ((idef (make-instance-in container 'interface-def
+    (let ((idef (create-contained container 'interface-def
                                   :name name :version version :id id)))
       (idef-read-contents forms idef)
       (lambda ()
@@ -57,7 +57,7 @@
 (defmethod idef-read-part ((op (eql 'define-type)) sexp container)
   (destructuring-bind (name typespec) sexp
     (setq name (string name))
-    (let ((alias (make-instance-in container 'alias-def :name name)))
+    (let ((alias (create-contained container 'alias-def :name name)))
       (lambda ()
         (setf (op:original_type_def alias)
           (parse-type-in container typespec))))))
@@ -67,10 +67,10 @@
   (destructuring-bind (name params &key result-type exceptions version id)
       sexp
     (setq name (string name))
-    (let ((op (make-instance-in container 'operation-def
+    (let ((op (create-contained container 'operation-def
                                 :name name :version version :id id)))
       (lambda ()
-        (setf (op:params op)
+        (setf (slot-value op 'params)
           (loop for p in params
               for type-def = (parse-type-in container (third p))
               collect (CORBA:ParameterDescription
@@ -78,9 +78,9 @@
                        :mode (first p)
                        :type CORBA:tc_void
                        :type_def type-def)))
-        (setf (op:result_def op)
+        (setf (slot-value op 'result_def)
           (parse-type-in container (or result-type 'void)))
-        (setf (op:exceptions op)
+        (setf (slot-value op 'exceptions)
           (mapcar #'(lambda (name)
                       (lookup-name-in container name))
                   exceptions))))))
@@ -89,7 +89,7 @@
 (defmethod idef-read-part ((op (eql 'define-enum)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (make-instance-in container 'enum-def
+    (create-contained container 'enum-def
                       :name name :members members
                       :version version :id id)
     nil))
@@ -97,7 +97,7 @@
 (defmethod idef-read-part ((op (eql 'define-struct)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'struct-def
+    (let ((def (create-contained container 'struct-def
                                  :name name :version version :id id)))
       (lambda ()
         (setf (member-list def)
@@ -109,7 +109,7 @@
 (defmethod idef-read-part ((op (eql 'define-union)) sexp container)
   (destructuring-bind (name discriminator-type members &key version id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'union-def
+    (let ((def (create-contained container 'union-def
                                  :name name :version version :id id)))
       (lambda ()
         (setf (op:discriminator_type_def def) (parse-type-in container discriminator-type))
@@ -124,7 +124,7 @@
 (defmethod idef-read-part ((op (eql 'define-exception)) sexp container)
   (destructuring-bind (name members &key version id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'exception-def
+    (let ((def (create-contained container 'exception-def
                                  :name name :version version :id id)))
       (lambda ()
         (setf (op:members def)
@@ -138,12 +138,13 @@
 
 
 (defmethod idef-read-part ((op (eql 'define-attribute)) sexp container)
-  (destructuring-bind (name type &key readonly) sexp
+  (destructuring-bind (name type &key readonly id) sexp
     (setq name (string name))
-    (let ((def (make-instance-in container 'attribute-def
-                                 :name name :mode (if readonly
-                                                      :ATTR_READONLY
-                                                    :ATTR_NORMAL))))
+    (let ((def (create-contained container 'attribute-def
+                                 :id id :name name 
+                                 :mode (if readonly
+                                         :ATTR_READONLY
+                                         :ATTR_NORMAL))))
       (lambda ()
         (setf (op:type_def def)
           (parse-type-in container type))))))
@@ -151,7 +152,7 @@
 
 (defmethod idef-read-part ((op (eql 'define-constant)) sexp container)
   (destructuring-bind (name type value &key id version) sexp
-    (let ((def (make-instance-in container 'constant-def 
+    (let ((def (create-contained container 'constant-def 
                                  :name name :value value
                                  :id id :version version)))
       (lambda ()
@@ -159,7 +160,7 @@
           (parse-type-in container type))))))
 
 
-(defun make-instance-in (container class &rest args
+(defun create-contained (container class &rest args
                          &key name version id
                          &allow-other-keys)
   (setq name (string name))

@@ -162,21 +162,21 @@ Members: (name typecode)*"
     for member in members
     for slot-name = (string (car member))
     for initarg = (lispy-name slot-name)
-    for slot = (intern (symbol-name initarg))  ; FIXME: or make-symbol ??
-    collect (list slot :initarg initarg)
-    into slot-defs
-    collect `(define-method ,initarg ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
+    for slot = (feature slot-name)
+    collect (list slot :initarg initarg) into slot-defs
+    collect `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
     into getters
-    collect `(list ,slot-name ,(second member)) 
-    into tc-members
+    collect `(list ,slot-name ,(second member)) into tc-members
+    collect slot into args
+    append (list initarg slot) into initargs
     finally
     (return
      `(progn
         (define-condition ,symbol (CORBA:UserException)
                           (,@slots ,@slot-defs))
         ,@getters
-        (defun ,symbol (&rest initargs)
-          (apply #'make-condition ',symbol initargs))
+        (defun ,symbol (&key ,@args)
+          (make-condition ',symbol ,@initargs))
         (set-symbol-id/typecode ',symbol ,id
                                 (make-typecode :tk_except ,id ,name (list ,@tc-members)))
         (defmethod exception-name ((exc ,symbol)) ',symbol)

@@ -310,6 +310,8 @@
   (case (typecode-kind tc)
     ((:tk_sequence :tk_array)
      (first (typecode-params tc)))
+    (:tk_alias
+     (third (typecode-params tc)))
     (:tk_string corba:tc_char)
     (:tk_wstring corba:tc_wchar)
     (otherwise

@@ -7,7 +7,7 @@
    (a-string (op:get_primitive repository :pk_string)))
 
   (define-test "General"
-    (ensure (typep :dk_Constant 'CORBA:DefinitionKind)))
+    (ensure-typep :dk_Constant 'CORBA:DefinitionKind))
 
   (define-test "Contained"
     (let* ((name "foo")
@@ -34,7 +34,9 @@
         (ensure-eql (op:containing_repository obj) repository)
         (ensure-eql (op:lookup_id repository sub-id) obj)
         (ensure-equalp (op:absolute_name obj)
-                       (concatenate 'string (op:absolute_name module) "::" name)))
+                       (concatenate 'string (op:absolute_name module) "::" name))
+        ;; FIXME: test void move (in Container new_container, in Identifier new_name, in VersionSpec new_version);
+        )
       (let ((new-id "IDL:foob:1.1"))
         (setf (op:id obj) new-id)
         (ensure-equalp (op:id obj) new-id)
@@ -103,14 +105,26 @@
       (let ((tc (op:type obj)))
         (ensure-equalp (op:member_count tc) 3))))
 
+  (define-test "AliasDef"
+    (let* ((name "Fie") (ver "1.1")
+           (id (format nil "IDL:~A:~A" name ver))
+           (alias (op:create_alias repository id name ver a-string)))
+      (let ((tc (op:type alias)))
+        (ensure-eql (op:kind tc) :tk_alias)
+        (ensure-eql (op:kind (op:content_type tc)) :tk_string))
+      (ensure-eql (op:original_type_def alias) a-string)
+      (setf (op:original_type_def alias) a-ulong)
+      (let ((tc (op:type alias)))
+        (ensure-typecode (op:content_type tc) :tk_ulong))))
+
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
       (ensure-equalp (op:def_kind obj) :dk_sequence)
       (ensure-equalp (op:bound obj) 0)
-      (ensure-equalp (op:kind (op:element_type obj)) :tk_ulong)
+      (ensure-typecode (op:element_type obj) :tk_ulong)
       ;; Write interface
       (setf (op:element_type_def obj) a-string)
-      (ensure-equalp (op:kind (op:element_type obj)) :tk_string)))
+      (ensure-typecode (op:element_type obj) :tk_string)))
 
   (define-test "ArrayDef"
     (let ((obj (op:create_array repository 10 a-string)))
@@ -162,8 +176,7 @@
         (ensure-typep (op:operations desc) 'sequence)
         (let ((attrs (op:attributes desc)))
           (ensure-equalp (length attrs) 1)
-          (ensure-typep (elt attrs 0) 'omg.org/corba:attributedescription)
-        ))))
+          (ensure-typep (elt attrs 0) 'omg.org/corba:attributedescription)))))
 
   (define-test "AttributeDef"
     (let* ((idef (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
@@ -206,11 +219,14 @@
       (setf (op:result_def obj) a-string)
       (ensure-equalp (op:kind (op:result obj)) :tk_string)
       (setf (op:mode obj) :op_normal)
-      #|should signal BAD_PARAM (setf (op:mode obj) :op_oneway) |# ))
+      (handler-case                     ; oneway can't have non void result
+        (progn (setf (op:mode obj) :op_oneway)
+               (ensure nil "Missing exception"))
+        (CORBA:BAD_PARAM (c) (ensure-eql (op:minor c) 31)))))
 
   (define-test "StringDef"
     (let ((obj (op:create_string repository 10)))
       (ensure-equalp (op:bound obj) 10)
-      (ensure-equalp (op:kind (op:type obj)) :tk_string)
-      ))
+      (ensure-typecode (op:type obj) (make-typecode :tk_string 10))))
+
 )

@@ -98,7 +98,7 @@
 (defmethod translate ((x remote-translator) (obj IRObject))
   (op:create_reference_with_id (the-poa x)
                                (integer-oid (object-index (objmap x) obj))
-                               (servant-interface-id obj)))
+                               (object-id obj)))
 
 ;;;;
 
@@ -122,6 +122,10 @@
 (define-method primary_interface ((self servant-wrapper) oid poa)
   (declare (ignore poa))
   (object-id (index-object (objmap self) (oid-integer oid))))
+
+(define-method _is_a ((self servant-wrapper) id)
+  (object-is-a (index-object (objmap self) (oid-integer (op:_object_id self)))
+               id))
 
 (defmethod local-translator ((self servant-wrapper))
   (if (slot-boundp self 'local-translator)
@@ -153,7 +157,7 @@
           (:setter
            (assert (eq (op:def_kind def) :dk_Attribute))
            (values (fdefinition (list 'setf sym)) :setter
-                   (list (corba:namedvalue (corba:any :any-typecode (op:type def))
+                   (list (corba:namedvalue :argument (corba:any :any-typecode (op:type def))
                                            :arg_modes ARG_IN))
                    CORBA:tc_void))
           (:getter
@@ -186,3 +190,22 @@
                                   :any-value result)))))
 
 
+
+;;;; Set up a real thingy
+
+(defvar *z-rep* (make-instance 'repository))
+(defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
+                  (op:create_poa rootpoa "IFWRAP"
+                                 (op:the_poamanager rootpoa)
+                                 '(:use-default-servant
+                                   :user-id
+                                   :transient))))
+(defvar *z-serv* (make-instance 'servant-wrapper
+                      :orb *the-orb*
+                      :poa *z-poa*))
+
+(op:set_servant *z-poa* *z-serv*)
+
+(rebind (make-remote *z-serv* *z-rep*) "zrep")
+
+;;(idef-read (idef-write *idef-repository*) *z-rep*)

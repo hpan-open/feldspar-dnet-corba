@@ -202,7 +202,7 @@
 
 (defun request-prepare (req object)
   (let* ((forward (or (object-forward object) object))
-         (conn (get-object-connection object)))
+         (conn (get-object-connection forward)))
     (setf (request-connection req) conn)    
     (setf (request-status req) nil)
     (setf (request-req-id req) (incf *request-id-seq*))

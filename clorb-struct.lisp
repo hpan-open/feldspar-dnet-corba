@@ -145,9 +145,9 @@ of fields can be defaulted (numbers and strings)."
 (defmethod struct-write (obj (symbol symbol) buffer)
   (marshal-struct obj (symbol-typecode symbol) buffer))
 
-(defun marshal-struct (struct tc buffer)
-  (loop for (nil tc) across (tc-members tc)
-        for name across (tc-keywords tc)
+(defun marshal-struct (struct typecode buffer)
+  (loop for (nil tc) across (tc-members typecode)
+        for name across (tc-keywords typecode)
         do (marshal (struct-get struct name) tc buffer)))
 
 

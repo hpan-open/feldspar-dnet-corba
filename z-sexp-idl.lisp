@@ -33,13 +33,15 @@
     (assert (probe-file idl-file))
     (when (probe-file sexp-file)
       (delete-file sexp-file))
-    (ccl:send-eval (format nil "/Users/lenst/src/hacks/idldump/main ~A > ~A"
+    (ccl:send-eval (format nil "#!/bin/sh~A/Users/lenst/src/hacks/idldump/main ~A > ~A"
+                           #\Newline
                            (pathname-unixname idl-file)
                            (pathname-unixname sexp-file))
                    "JGTaskEvaluator")
     (assert (probe-file sexp-file))
     (with-open-file (in sexp-file)
-      (let ((sexp (read in)))
+      (let ((sexp (let ((*package* (find-package :clorb)))
+                    (read in))))
          (when (symbolp sexp)
            (error "CORBA:IDL:~A ~A" sexp (read-line in)))
          sexp))))   

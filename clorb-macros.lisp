@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.11 2002/10/28 18:38:59 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.12 2002/11/08 10:27:05 lenst Exp $
 
 (in-package :clorb)
 
@@ -59,18 +59,21 @@
        `(eval-when (:execute :compile-toplevel :load-toplevel)
          (export ',opsym ,opkg))))))
 
-(defmacro define-method (name args &body body)
+(defmacro define-method (name &body body)
   (multiple-value-bind (opsym setf-form sym-expr)
       (opname-helper name)
-    (let ((doc-string
-           (if (and body (cdr body) (stringp (car body)))
-               (list (pop body)))))
+    (let* ((qualifiers (if (not (consp (car body)))
+                         (list (pop body))))
+           (args (pop body))
+           (doc-string
+            (if (and body (cdr body) (stringp (car body)))
+              (list (pop body)))))
       `(progn
         ,sym-expr
         ,(if setf-form
-             `(defmethod (setf ,opsym) ,args
+             `(defmethod (setf ,opsym) ,@qualifiers ,args
                ,@doc-string ,@body)
-             `(defmethod ,opsym (,(first args) &rest -args-)
+             `(defmethod ,opsym ,@qualifiers (,(first args) &rest -args-)
                ,@doc-string
                ,@(if (rest args) 
                   `((destructuring-bind ,(rest args) -args- 
@@ -78,6 +81,11 @@
                   `((declare (ignore -args-))
                     ,@body))))))))
 
+#+MCL 
+(when (boundp 'ccl:*fred-special-indent-alist*)
+  (pushnew '(define-method . ccl::defmethod-special-indent)
+           ccl:*fred-special-indent-alist*
+           :test #'equal))
 
 #||
 (define-method foo ((x symbol) y &key z)

@@ -82,7 +82,19 @@
                 (tc-report "~A fail"
                            (or description "ensure"))
                 (when *test-suite-debug*
-                  (break "Failed ensure")))))
+                  (break "Failed ensure"))))
+            (ensure-typecode (obj type)
+              (unless (typep obj 'CORBA:TypeCode)
+                (tc-report "~S should be a TypeCode" obj))
+              (typecase type
+                (symbol
+                 (unless (eql (op:kind obj) type)
+                   (tc-report "Wrong kind of typecode ~A. Should be ~A."
+                              obj type)))
+                (CORBA:Typecode
+                 (unless (op:equal obj type)
+                   (tc-report "Typecode ~A should be equal to ~A."
+                              obj type))))))
            
            (macrolet ((define-test (name &body body)
                         `(let* ,',vars

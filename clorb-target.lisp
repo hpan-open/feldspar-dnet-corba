@@ -370,8 +370,7 @@
                         (lambda (smember)
                           (list (op:name smember)
                                 (target-typecode (op:type_def smember) target)
-                                (make-target-symbol target (op:name smember)
-                                                    'clorb)))
+                                (feature (op:name smember))))
                         (op:members sdef))
          ,@(if (target-struct-marshal target)
              `(
@@ -538,7 +537,7 @@
          :attributes
          (,@(map 'list
                  (lambda (attdef)
-                   (list (intern (string-upcase (op:name attdef)) :clorb)
+                   (list (feature (op:name attdef))
                          (if (eq (op:mode attdef) :attr_readonly)
                            :readonly )))
                  (op:contents idef :dk_attribute t)) ))
@@ -652,7 +651,7 @@
                                                                      (:param_inout 'ARG_INOUT))))
                                    params) ))
         (multiple-value-bind (_res xx)
-                             (,(make-target-symbol target (op:name def) :op)
+                             (,(feature (op:name def))
                               ,@(remove nil
                                         (map 'list 
                                              (lambda (pd)

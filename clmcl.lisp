@@ -7,6 +7,7 @@
 (import '(§ §§§ %) :clorb)
 (load "CLORB:SRC;CLORB-FILES")
 (clorb:reload)
+(load "CLORB:SRC;z-sexp-idl")
 
 (setq clorb:*port*  4711)
 

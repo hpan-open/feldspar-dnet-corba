@@ -1,5 +1,4 @@
 ;;;; clorb-ifr.lisp -- An Interface Repository Implementation
-;; $Id: clorb-ifr.lisp,v 1.4 2002/10/28 18:29:01 lenst Exp $
 
 (in-package :clorb)
 
@@ -141,6 +140,9 @@
   :defaults ())
 
 (defmethod addto ((c container) (object contained))
+  ;; FIXME: this implements a move semantics, but when not used in move
+  ;; it should signal error if duplicated ID or NAME.
+  ;; Possibly make the behaviour optional: &key move
   (setf (slot-value object 'containing_repository)
         (op:containing_repository c))
   (let ((id (op:id object))
@@ -332,7 +334,10 @@
   :id "IDL:omg.org/CORBA/Repository:1.0"
   :def_kind :dk_Repository
   :slots ((idmap :initform (make-hash-table :test #'equal)
-                 :reader idmap)))
+                 :reader idmap)
+          (primitives-cache
+           :initform nil
+           :accessor primitives-cache )))
 
 
 ;;; Method to simplify computation of absolute_name
@@ -369,30 +374,34 @@
 ;;;  PrimitiveDef get_primitive (in PrimitiveKind kind);
 
 (define-method get_primitive ((container Repository) kind)
-  (make-instance 'primitive-def
-    :kind kind
-    :type (ecase kind
-            (:pk_null CORBA:tc_null)
-            (:pk_void CORBA:tc_void)
-            (:pk_short CORBA:tc_short)
-            (:pk_long CORBA:tc_long)
-            (:pk_ushort CORBA:tc_ushort)
-            (:pk_ulong CORBA:tc_ulong)
-            (:pk_float CORBA:tc_float)
-            (:pk_double CORBA:tc_double)
-            (:pk_boolean CORBA:tc_boolean)
-            (:pk_char CORBA:tc_char)
-            (:pk_octet CORBA:tc_octet)
-            (:pk_any CORBA:tc_any)
-            (:pk_TypeCode CORBA:tc_TypeCode)
-            ;;(:pk_Principal CORBA:tc_Principal)
-            (:pk_string CORBA:tc_string)
-            (:pk_objref CORBA:tc_objref)
-            (:pk_longlong CORBA:tc_longlong)
-            (:pk_ulonglong CORBA:tc_ulonglong)
-            (:pk_longdouble CORBA:tc_longdouble)
-            (:pk_wchar CORBA:tc_wchar)
-            (:pk_wstring CORBA:tc_wstring))))
+  (with-accessors ((cache primitives-cache)) container
+    (unless cache
+      (setf cache
+            (loop for (kind tc) 
+                  in '((:pk_null CORBA:tc_null)
+                       (:pk_void CORBA:tc_void)
+                       (:pk_short CORBA:tc_short)
+                       (:pk_long CORBA:tc_long)
+                       (:pk_ushort CORBA:tc_ushort)
+                       (:pk_ulong CORBA:tc_ulong)
+                       (:pk_float CORBA:tc_float)
+                       (:pk_double CORBA:tc_double)
+                       (:pk_boolean CORBA:tc_boolean)
+                       (:pk_char CORBA:tc_char)
+                       (:pk_octet CORBA:tc_octet)
+                       (:pk_any CORBA:tc_any)
+                       (:pk_TypeCode CORBA:tc_TypeCode)
+                       ;;(:pk_Principal CORBA:tc_Principal)
+                       (:pk_string CORBA:tc_string)
+                       (:pk_objref CORBA:tc_objref)
+                       (:pk_longlong CORBA:tc_longlong)
+                       (:pk_ulonglong CORBA:tc_ulonglong)
+                       (:pk_longdouble CORBA:tc_longdouble)
+                       (:pk_wchar CORBA:tc_wchar)
+                       (:pk_wstring CORBA:tc_wstring))
+                  collect (make-instance 'primitive-def :kind kind 
+                                         :type (symbol-value tc)))))
+    (find kind cache :key #'op:kind)))
 
 
 ;;;  StringDef create_string (in unsigned long bound);
@@ -499,14 +508,8 @@
   (if exclude-inherit
       (call-next-method)
     (append (call-next-method)
-            (loop for x in (op:base_interfaces obj)
+            (loop for x in (coerce (op:base_interfaces obj) 'list)
                 append (op:contents x limit-type nil)))))
-
-
-
-
-
-
 
 
 
@@ -582,11 +585,49 @@
                (mode ':op_normal)
                (contexts nil)
                (exceptions nil))
-  :def_kind :dk_Operation
-  :defaults ())
+  :def_kind :dk_Operation )
+
+(defun validate-operation-def (mode result params exceptions)
+  (when (eq mode :op_oneway)
+    (unless (and (eq :pk_void (op:type result))
+                 (zerop (length exceptions))
+                 (every (lambda (p)
+                          (eq :param_in (op:mode p)))
+                        params))
+      (error 'omg.org/corba:bad_param
+             :minor 31
+             :completed :completed_yes))))
+
+(defun validate-operation-def-change (def &key 
+                                            (mode (op:mode def))
+                                            (result (op:result_def def))
+                                            (params (op:params def))
+                                            (exceptions (op:exceptions def)))
+  (validate-operation-def mode result params exceptions))
+
+(defmethod initialize-instance :before ((def operation-def)
+                                        &key result_def mode params exceptions)
+  (validate-operation-def mode result_def params exceptions))
+
+(defmethod (setf op:result_def) :before (new (def operation-def)) 
+  (validate-operation-def-change def :result new))
+
+(defmethod (setf op:mode) :before (new (def operation-def))
+  (validate-operation-def-change def :mode new))               
+
+(defmethod (setf op:params) :before (new (def operation-def))
+  (validate-operation-def-change def :params new))               
+
+(defmethod (setf op:exceptions) :before (new (def operation-def))
+  (validate-operation-def-change def :exceptions new))               
 
 (defmethod result ((opdef operation-def))
   (op:type (slot-value opdef 'result_def)))
+
+(defmethod op:params :before ((opdef operation-def) &key)
+  (doseq (pd (slot-value opdef 'params))
+         (setf (op:type pd) (op:type (op:type_def pd)))))
+
 
 (defmethod opdef-inparam-typecodes ((opdef operation-def))
   (loop for param in (op:params opdef)
@@ -604,11 +645,6 @@
       (cons result real-params))))
 
 
-(defmethod op:params :before ((opdef operation-def) &rest x)
-  (declare (ignore x))
-  (doseq (pd (slot-value opdef 'params))
-         (setf (op:type pd)
-               (op:type (op:type_def pd)))))
 
 
 (defun operation-description (opdef)

@@ -21,7 +21,16 @@
       (loop for m in members 
             for i from 0 do
             (ensure-equalp (op:member_name tc i) m))))
-  
+
+  (define-test "Alias"
+    (let* ((id "IDL:alias:1.0")
+           (name "alias")
+           (tc (make-tc-alias id name corba:tc_long)))
+      (ensure-eql (op:kind tc) :tk_alias)
+      (ensure-equalp (op:id tc) id)
+      (ensure-equalp (op:name tc) name)
+      (ensure-equalp (op:content_type tc) corba:tc_long)))
+
   (define-test "Sequence"
     (let* ((el-type corba:tc_string)
            (seq-tc (make-sequence-typecode el-type 100)))

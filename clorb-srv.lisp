@@ -120,7 +120,8 @@
           (handler-case
             (setq buffer (poa-invoke poa oid "_locate" buffer handler)
                   status :object_here)
-            (systemexception () nil))))                             
+            (CORBA:TRANSIENT () (setq status :object_here))
+            (SystemException () nil))))
       (unless buffer
         (setq buffer (funcall handler status))))
     (marshal-giop-set-message-length buffer)
