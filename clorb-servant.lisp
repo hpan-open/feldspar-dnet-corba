@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.16 2004/02/03 17:17:07 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.17 2004/06/09 21:14:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -53,9 +53,14 @@
    (reply-status          :initform nil       :accessor reply-status)
    (reply-buffer          :initform nil       :accessor reply-buffer)))
 
+;; Request states:
+;; - :wait  -- not yet started executing servant code
+;; - :exec  -- executing
+;; - :finished -- response sent (if any)
+
 
 (defmethod create-server-request ((orb clorb-orb) &rest initargs)
-  (apply #'make-instance 'server-request 
+  (apply #'make-instance 'server-request
          :the-orb orb initargs))
 
 
@@ -101,6 +106,7 @@
     buffer))
 
 
+
 (defmethod get-normal-response ((req server-request))
   (get-request-response req :no_exception))
 
@@ -112,28 +118,46 @@
 
 
 (defun server-request-respond (req)
-  (let ((exception (request-exception req)))
-    (cond ((eq exception t)             ; locate request
-           nil)
-          (exception
-           (when (slot-boundp req 'exceptions)
-             (unless (find (exception-id exception) (request-exceptions req)
-                           :key #'op:id :test #'equal)
-               (raise-system-exception 'CORBA:UNKNOWN 0 :completed_yes)))
-           (marshal-any-value exception (get-exception-response req)))
-          (t 
-           (let ((buffer (get-normal-response req)))
-             (cond ((dsi-request-p req)
-                    (let ((res (request-result req)))
-                      (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
-                        (marshal-any-value res buffer)))
-                    (loop for param in (request-arguments req)
-                          unless (zerop (logand ARG_OUT (op:arg_modes param)))
-                          do (marshal-any-value (op:argument param) buffer)))
-                   (t
-                    (loop for v in (request-result req)
-                          for m in (request-out-funs req)
-                          do (funcall m v buffer)))))))))
+  (cond ((equal (request-operation req) "_locate")
+         ;;  locate request
+         ;; FIXME: ugly and could missfire
+         nil)
+        (t
+         (let ((exception (request-exception req)))
+           (cond (exception
+                  (when (slot-boundp req 'exceptions)
+                    (unless (find (exception-id exception) (request-exceptions req)
+                                  :key #'op:id :test #'equal)
+                      (raise-system-exception 'CORBA:UNKNOWN 0 :completed_yes)))
+                  (marshal-any-value exception (get-exception-response req)))
+                 (t 
+                  (let ((buffer (get-normal-response req)))
+                    (cond ((dsi-request-p req)
+                           (let ((res (request-result req)))
+                             (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
+                               (marshal-any-value res buffer)))
+                           (loop for param in (request-arguments req)
+                                 unless (zerop (logand ARG_OUT (op:arg_modes param)))
+                                 do (marshal-any-value (op:argument param) buffer)))
+                          (t
+                           (loop for v in (request-result req)
+                                 for m in (request-out-funs req)
+                                 do (funcall m v buffer)))))))))))
+
+
+(defun server-request-systemexception-reply (req condition)
+  (set-request-exception req condition)
+  (setf (request-status req) :system_exception)
+  (will-send-exception (the-orb req) req)
+  (send-reply (request-connection req)
+              (request-id req)
+              :system_exception
+              (reply-service-context req)
+              (lambda (exception buffer)
+                (marshal-string (exception-id exception) buffer)
+                (marshal-ulong  (system-exception-minor exception) buffer)
+                (%jit-marshal (system-exception-completed exception) CORBA::TC_completion_status buffer))
+              condition))
 
 
 
