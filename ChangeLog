@@ -1,3 +1,32 @@
+2005-03-25  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-typecode.lisp ("Typecodes"): added testcases for checking
+	parameters to typecode creation functions
+
+	* clorb-orb.lisp (check-tc-id, check-tc-name)
+	(check-tc-member-names, check-tc-content-type): new functions
+	for checking parameters to typecode creation functions
+	
+2005-03-23  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* examples/hello/idl.lisp: avoid logical pathnames
+
+	* clorb-sysdep.lisp (accept-connection-on-socket): fix bug when
+	called non blocking on sbcl
+
+	* clorb-request.lisp (client-request): added 'args' slot
+	(request-start-request): simplified interface
+	(do-static-call): added args parameter
+	(request-send): new request-start-request interface
+	(request-poll): new func
+	(request-wait-response): call request-poll
+	(request-get-response): move forward handling to request-poll
+	(compute-static-call, compute-static-set): use args parameter to
+	do-static-call
+	(poll_response): call request-poll
+
+	* clorb-iiop.lisp (locate): new request-start-request interface
+
 2005-03-11  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-idlparser.lisp (<literal>): only <number_literal> for all
