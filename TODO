@@ -1,9 +1,14 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.4 2001/07/01 20:29:31 lenst Exp $
+ $Id: TODO,v 1.5 2001/12/20 23:28:21 lenst Exp $
 
 + Final Lisp Mapping
 
-- corba:boolean changed to generalized boolean
+- 2.2 marshal should signal CORBA:MARSHAL on type errors.
+
+- 2.3.1 corba:boolean changed to generalized boolean
+
+- 2.3.1 spec error? "unsigned short" -> "corba:unsigned short"
+                    "unsigned long"  -> "corba:unsigned long"
 
 - 5.4 (deftype corba:environment() 'corba:exception)
 
