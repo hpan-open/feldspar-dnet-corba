@@ -1,4 +1,4 @@
-(in-package :clorb)
+(in-package :clorb) 
 
 (define-test-suite "Typecodes"
   (variables )
@@ -26,10 +26,9 @@
 
   (define-test "Sequence"
     (let* ((el-type corba:tc_string)
-           (seq-tc (create-sequence-tc 100 el-type)))
-      (ensure-equalp (op:kind seq-tc) :tk_sequence)
-      (ensure-equalp (op:length seq-tc) 100)
-      (ensure-equalp (op:content_type seq-tc) el-type)
+           (seq-tc (create-sequence-tc 100 el-type))) 
+      (ensure-pattern* seq-tc  'op:kind :tk_sequence  'op:length 100
+                       'op:content_type el-type)
       (ensure (not (op:equal el-type seq-tc)))))
 
   (define-test "Union"
@@ -43,12 +42,9 @@
            (id "IDL:my/Union:1.1")
            (name "Union")
            (tc (make-typecode :tk_union id name d-type 0 members)))
-      (ensure-equalp (op:kind tc) :tk_union)
-      (ensure-equalp (op:id tc) id)
-      (ensure-equalp (op:name tc) name)
-      (ensure-equalp (op:member_count tc) 3)
-      (ensure-equalp (op:discriminator_type tc) d-type)
-      (ensure-equalp (op:default_index tc) 0)
+      (ensure-pattern* tc  'op:kind :tk_union  'op:id id  'op:name name
+                       'op:member_count 3  'op:discriminator_type d-type  
+                       'op:default_index 0 )
       (loop for m in members and i from 0 do
             (ensure-equalp (op:member_name tc i) (second m))
             (ensure-equalp (op:member_type tc i) (third m))

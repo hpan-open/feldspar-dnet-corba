@@ -1,5 +1,10 @@
 (in-package :clorb)
 
+
+(defmacro ensure-repository (&rest args)
+  `(ensure-pattern repository (repository-pattern ,@args)))
+
+
 (define-test-suite "Local IFR test"
   (variables
    (repository (make-instance 'repository))
@@ -55,39 +60,36 @@
       (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
              (obj (op:create_enum module "IDL:mod/foo:1.0" "my-enum" "1.0" '("fie" "fum")))
              (obj2 (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
-        (ensure-equalp (op:lookup repository "mod") module)
-        (ensure-equalp (op:lookup repository "foo") obj2)
-        (ensure-equalp (op:lookup module "my-enum") obj)
-        (ensure-equalp (op:lookup repository "mod::my-enum") obj)
-        (ensure-equalp (op:lookup repository "::mod::my-enum") obj)
-        (ensure-equalp (op:lookup module "::mod::my-enum") obj)
-        (ensure-equalp (op:lookup module "::foo") obj2)
+        (ensure-repository
+         "mod" module   "foo" obj2   "mod::my-enum" obj   "::mod::my-enum" obj 
+         "mod" (def-pattern :dk_module
+                 'identity (repository-pattern "my-enum" obj  
+                                               "::mod::my-enum" obj "::foo" obj2 )))
         (ensure-equalp (op:lookup module "fie") nil)))
 
 
   (define-test "UnionDef"
-    (let* ((id "IDL:foo/Union:1.1")
-           (name "aunion") (version "1.1")
+    (let* ((id "IDL:foo/Union:1.1") (name "aunion") (version "1.1")
            (desc-type a-ulong)
-           (members (list (CORBA:UnionMember :name "aa"
-                                             :label 1
-                                             :type_def a-string)
-                          (CORBA:UnionMember :name "_def_"
+           (members (list (CORBA:UnionMember :name "aa"  :label 1  :type_def a-string)
+                          (CORBA:UnionMember :name "_def_"  :type_def a-ulong 
                                              :label (CORBA:Any :any-typecode CORBA:tc_octet
-                                                               :any-value 0)
-                                             :type_def a-ulong )
-                          (CORBA:UnionMember :name "bb"
-                                             :label 2
-                                             :type_def a-ulong)))
+                                                               :any-value 0))
+                          (CORBA:UnionMember :name "bb"  :label 2  :type_def a-ulong)))
            (obj (op:create_union repository id name version desc-type members)))
-      (ensure-equalp (op:id obj) id)
-      (ensure-equalp (op:version obj) version)
-      (ensure-equalp (length (op:members obj)) (length members))
-      (ensure-equalp (op:member_count (op:type obj))
-                     (length members))
-      (ensure-equalp (op:kind (op:discriminator_type obj))
-                     :tk_ulong)
-      (ensure-equalp (op:default_index (op:type obj)) 1)
+      (ensure-pattern obj (def-pattern :dk_union
+                            'op:id id  'op:version version
+                            'op:members (seq-pattern (pattern 'op:name "aa"
+                                                              'op:label (pattern 'any-value 1)
+                                                              'op:type_def a-string
+                                                              'op:type corba:tc_string )
+                                                     (pattern 'op:label (pattern 'any-typecode CORBA:tc_octet 'any-value 0)
+                                                              'op:type_def a-ulong )
+                                                     (pattern 'op:name "bb" ))
+                            'op:type (pattern 'op:kind :tk_union
+                                              'op:member_count (length members)
+                                              'op:default_index 1)
+                            'op:discriminator_type (pattern 'op:kind :tk_ulong)))
       ;; update
       (setf (op:discriminator_type_def obj)
             (op:get_primitive repository :pk_ushort))
@@ -119,8 +121,7 @@
          'op:original_type_def a-string ))
       (ensure-pattern repository (repository-pattern name alias))
       (setf (op:original_type_def alias) a-ulong)
-      (ensure-pattern alias
-                      (pattern 'op:type (pattern 'op:content_type CORBA:tc_ulong)))))
+      (ensure-pattern* alias 'op:type (pattern 'op:content_type CORBA:tc_ulong))))
 
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
@@ -141,26 +142,26 @@
 
   (define-test "ExceptionDef"
     (let* ((members (list (CORBA:StructMember :name "a"
-                                              :type CORBA:tc_void
-                                              :type_def a-string)
+                                              :type CORBA:tc_void :type_def a-string)
                           (CORBA:StructMember :name "b"
-                                              :type CORBA:tc_void
-                                              :type_def a-ulong)))
-           (obj (op:create_exception repository "IDL:my/Exception:1.0" "Exception"
-                                     "1.0" members)))
-      (let ((type (op:type obj)))
-        (ensure-equalp (op:kind type) :tk_except)
-        (ensure-equalp (op:member_count type) (length members)))
-      (let ((m (op:members obj)))
-        (ensure-equalp (length m) (length members))
-        (ensure-equalp (op:kind (op:type (elt m 0))) :tk_string)
-        (ensure-equalp (op:kind (op:type (elt m 1))) :tk_ulong))
-      (let ((desc (op:describe obj)))
-        (ensure-equalp (op:kind desc) :dk_exception)
-        (ensure-typep (op:value desc) 'CORBA:ExceptionDescription)
-        (setq desc (op:value desc))
-        (ensure-equalp (op:name desc) (op:name obj))
-        (ensure-equalp (op:id desc) (op:id obj)))
+                                              :type CORBA:tc_void :type_def a-ulong)))
+           (obj (op:create_exception repository "IDL:my/Exception:1.0" "Exception" "1.0" members)))
+      (ensure-repository
+       "Exception" (def-pattern :dk_exception
+                     'identity obj
+                     'op:name "Exception"
+                     'op:id "IDL:my/Exception:1.0"
+                     'op:type (pattern 'op:kind :tk_except 
+                                       'op:member_count (length members))
+                     'op:members (seq-pattern (pattern 'op:type corba:tc_string)
+                                              (pattern 'op:type corba:tc_ulong))
+                     'op:describe (struct-pattern
+                                   'struct-class-name 'CORBA:Contained/Description
+                                   'op:kind :dk_exception
+                                   'op:value (struct-pattern
+                                              'struct-class-name 'CORBA:ExceptionDescription
+                                              'op:name (op:name obj)
+                                              'op:id (op:id obj)))))
       ;; Write interface
       (setf (op:members obj) (cdr members))
       (ensure-equalp (length (op:members obj)) (1- (length members)))
@@ -182,19 +183,20 @@
           (ensure-equalp (length attrs) 1)
           (ensure-typep (elt attrs 0) 'omg.org/corba:attributedescription)))))
 
+
   (define-test "AttributeDef"
     (let* ((idef (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
            (obj (op:create_attribute idef "IDL:my/Att:1.1" "Att" "1.1"
                                      a-string :attr_readonly)))
-      (ensure-equalp (op:type_def obj) a-string)
-      (ensure-equalp (op:kind (op:type obj)) :tk_string)
-      (ensure-equalp (op:mode obj) :attr_readonly)
-      (let ((desc (op:describe obj)))
-        (ensure-equalp (op:kind desc) :dk_attribute)
-        (setq desc (op:value desc))
-        (ensure-typep desc 'CORBA:AttributeDescription))
+      (ensure-repository
+       "Interface::Att" (def-pattern :dk_attribute
+                          'op:name "Att"  'op:mode :attr_readonly
+                          'op:type_def a-string  'op:type corba:tc_string
+                          'op:describe (struct-pattern 'op:kind :dk_attribute 
+                                                       'op:value (struct-pattern 'struct-class-name'CORBA:AttributeDescription))))
       (setf (op:type_def obj) a-ulong)
       (ensure-equalp (op:kind (op:type obj)) :tk_ulong)))
+
 
   (define-test "OperationDef"
     (let* ((idef (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
@@ -211,14 +213,17 @@
            (exceptions '())
            (contexts '())
            (obj (op:create_operation idef id name version result mode params exceptions contexts)))
-      (ensure-equalp (op:kind (op:result obj)) :tk_ulong)
-      (let ((pds (op:params obj)))
-        (ensure-equalp (length pds) 1)
-        (ensure-equalp (op:kind (op:type (elt pds 0))) :tk_string))
-      (let ((desc (op:describe obj)))
-        (ensure-equalp (op:kind desc) :dk_operation)
-        (setq desc (op:value desc))
-        (ensure-typep desc 'CORBA:OperationDescription))
+      (ensure-repository
+       "Interface::Op1" (def-pattern :dk_operation
+                          'identity obj
+                          'op:result corba:tc_ulong
+                          'op:params (seq-pattern (pattern 'op:name "a"
+                                                           'op:type corba:tc_string))
+                          'op:describe (struct-pattern
+                                        'op:kind :dk_operation
+                                        'op:value (struct-pattern
+                                                   'struct-class-name 'CORBA:OperationDescription
+                                                   'op:name name 'op:id id))) )
       ;; Write interface
       (setf (op:result_def obj) a-string)
       (ensure-equalp (op:kind (op:result obj)) :tk_string)
@@ -228,11 +233,13 @@
                (ensure nil "Missing exception"))
         (CORBA:BAD_PARAM (c) (ensure-eql (op:minor c) 31)))))
 
-  (define-test "StringDef"
-    (let ((obj (op:create_string repository 10)))
-      (ensure-equalp (op:bound obj) 10)
-      (ensure-typecode (op:type obj) (make-typecode :tk_string 10))))
 
+  (define-test "StringDef"
+    (ensure-pattern* (op:create_string repository 10)
+                     'op:def_kind :dk_string
+                     'op:bound 10
+                     'op:type (make-typecode :tk_string 10)))
+  
 
   (define-test "FixedDef"
     (let ((obj (op:create_fixed repository 10 2)))

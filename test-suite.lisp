@@ -127,4 +127,7 @@
   `(define-test-suite "Temporary Suit"
      (variables ,@ *temporary-suite-variables*)
      (define-test ,name ,@body)))
-  
+
+
+(defmacro ensure-pattern* (obj &rest args)
+  `(ensure-pattern ,obj (pattern ,@args)))
