@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.26 2004/06/09 21:22:03 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.27 2004/09/16 20:00:57 lenst Exp $	
 
 (in-package :clorb)
 
@@ -171,8 +171,10 @@
       (mess 3 "#~D cancel" req-id)
       (loop for req in (connection-server-requests conn)
             when (eql req-id (request-id req))
-            ;; FIXME if still in :wait it could be thrown away?
-            do (return (setf (response-flags req) 0))))))
+            do (return 
+                (progn (setf (response-flags req) 0)
+                       (when (eql (request-state req) :wait)
+                         (setf (request-state req) :canceled)) ))))))
 
 
 
