@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.4 2002/05/24 10:06:17 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.5 2002/05/30 06:41:49 lenst Exp $
 
 (in-package :clorb)
 
@@ -187,14 +187,16 @@
    ;;(arguments nil :readonly  :virtual)
    ;;(result    nil :readonly  :virtual)
    (ctx       nil))
-  ;; env exceptions contexts 
+  ;; env  contexts 
   :slots 
   ((paramlist :initform nil :initarg :paramlist
               :accessor request-paramlist) ;result + arguments
    (req-id :initform nil :accessor request-req-id)
    (connection :initform nil :accessor request-connection)
    (reply :initform nil  :accessor request-reply)
-   (service-context :initform nil :accessor request-service-context)))
+   (service-context :initform nil :accessor request-service-context)
+   (exceptions :initform nil :accessor request-exceptions)))
+
 
 (define-method result ((r request))
   (first (request-paramlist r)))
@@ -238,6 +240,9 @@
 (define-method add_named_out_arg ((req request) name)
   (add-arg req name ARG_OUT))
 
+(defun add-exception (request typecode)
+  (push typecode (request-exceptions  request)))
+
 
 ;;; void send_oneway ()
 (define-deferred send_oneway ((req request)))
@@ -258,7 +263,7 @@
 
 (defun request-funcall (req)
   (op:invoke req)
-  (let ((retval (any-value (op:argument (first (request-paramlist req))))))
+  (let ((retval (any-value (op:return_value req))))
     (cond ((typep retval 'corba:exception)
            ;;(signal retval)
            (cerror "Ignore" retval)
@@ -295,6 +300,7 @@
     :key  (object-key obj)
     :profiles (object-profiles obj)
     :forward (object-forward obj)
+    :profiles (object-profiles obj)
     :raw-profiles (object-raw-profiles obj)))
 
 

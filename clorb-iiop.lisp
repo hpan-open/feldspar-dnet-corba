@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.5 2002/04/23 10:57:06 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.6 2002/05/30 06:41:49 lenst Exp $
 
 (in-package :clorb)
 
@@ -228,9 +228,9 @@
    do (orb-wait)))
 
 (defun corba-read-reply (req &optional
-                             (reply (request-reply req))
-                             (status (car reply))
-                             (buffer (cdr reply)))
+                                (reply (request-reply req))
+                                (status (car reply))
+                                (buffer (cdr reply)))
   (ecase status
     ((0)				; No Exception
      (loop for nv in (request-paramlist req)
@@ -240,20 +240,29 @@
      (setf (request-reply req) t))
     ((1)				; User Exception
      (let* ((id (unmarshal-string buffer))
-            (tc (get-typecode id))
+            (tc (request-exception-typecode req id))
             (retval (op:return_value req) ))
-       (setf (any-value retval) (unmarshal tc buffer)
-             (any-typecode retval) tc)))
-    
+       (if tc
+         (setf (any-value retval) (unmarshal tc buffer)
+               (any-typecode retval) tc)
+         (setf (any-value retval) (make-condition 'corba:unknown
+                                                  :completed :completed_yes)
+               (any-typecode retval) nil))))
     ((2)				; System Exception
      (let* ((id (unmarshal-string buffer))
 	    (minor (unmarshal-ulong buffer))
 	    (status (unmarshal CORBA::tc_completion_status buffer))
             (retval (op:return_value req)))
        (setf (any-value retval)
-             (make-condition 'corba:systemexception
+             (make-condition (gethash id *system-execption-classes*
+                                      'corba:systemexception)
                              :id id :minor minor :completed status)
              (any-typecode retval) nil)))))
+
+(defun request-exception-typecode (request id)
+  (find id (request-exceptions request)
+        :key #'op:id))
+
 
 ;;;; Event loop (orb-wait)
 
