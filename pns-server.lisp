@@ -6,7 +6,7 @@
 
 (defvar *naming-ior-file*  nil)
 (defvar *naming-base-path* (merge-pathnames
-                            (make-pathname :directory '(:relative "naming"))
+                            (make-pathname :type "obj" :directory '(:relative "naming"))
                             clorb::*clorb-pathname-defaults*))
 
 
@@ -97,6 +97,7 @@
   (assert (= 1 (length n)))
   (let ((orb (op:_orb nc))
         (name-component (elt n 0)))
+    ;; FIXME: if rebind, should check the type of (possibly) already existing binding
     (let ((path (pns-path nc name-component)))
       (ensure-directories-exist path)
       (handler-case
@@ -135,6 +136,7 @@
          (op:activate_object_with_id poa oid servant)
          servant)))))
 
+
 (defun pns-step (self n)
   (assert (> (length n) 1))
   (multiple-value-bind (type obj)
@@ -146,50 +148,54 @@
      (subseq n 1))))
 
 
+(defun pns-step-do (self n local remote)
+  (if (= 1 (length n))
+    (funcall local)
+    (multiple-value-bind (next name)
+                         (pns-step self n)
+      (funcall remote next name))))
+
+
 (define-method bind_context ((self naming-context) n nc)
-  (pns-bind self n nc :ncontext))
+  (unless nc
+    (error 'CORBA:BAD_PARAM))
+  (pns-step-do self n
+               (lambda () (pns-bind self n nc :ncontext))
+               (lambda (next name) (op:bind_context next name nc))))
 
 (define-method bind_new_context ((self naming-context) n)
-  (if (= 1 (length n))
-      (let ((nc (op:new_context self)))
-        (op:bind_context self n nc)
-        nc)
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:bind_new_context next name))))
+  (pns-step-do self n
+               (lambda ()
+                 (let ((nc (op:new_context self)))
+                   (op:bind_context self n nc)
+                   nc))
+               #'op:bind_new_context))
 
 (define-method bind ((self naming-context) n obj)
-  (if (= 1 (length n))
-      (pns-bind self n obj :nobject)
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:bind next name obj))))
-
+  (pns-step-do self n
+               (lambda () (pns-bind self n obj :nobject))
+               (lambda (next name) (op:bind next name obj))))
 
 (define-method rebind ((self naming-context) n obj)
-  (if (= 1 (length n))
-      (pns-bind self n obj :nobject t)
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:rebind next name obj))))
+  (pns-step-do self n
+               (lambda () (pns-bind self n obj :nobject t))
+               (lambda (next name) (op:rebind next name obj))))
 
 (define-method rebind_context ((self naming-context) n nc)
-  (if (= 1 (length n))
-      (pns-bind self n nc :ncontext t)
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:rebind_context next name nc))))
+  (unless nc
+    (error 'CORBA:BAD_PARAM))
+  (pns-step-do self n
+               (lambda () (pns-bind self n nc :ncontext t))
+               (lambda (next name) (op:rebind_context next name nc))))
 
 (define-method resolve ((self naming-context) n)
-  (if (= 1 (length n))
-      (multiple-value-bind (type obj)
-          (resolve1 self n)
-        (check-type type COSNAMING:BINDINGTYPE)
-        ;; FIXME: should it check? type = :NOBJECT
-        obj)
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:resolve next name))))
+  (pns-step-do self n
+               (lambda ()
+                 (multiple-value-bind (type obj) (resolve1 self n)
+                   (check-type type COSNAMING:BINDINGTYPE)
+                   ;; should it check? type = :NOBJECT [NO!]
+                   obj))
+               #'op:resolve))
 
 (define-method list ((self naming-context) how-many)
   (let* ((bindings
@@ -218,12 +224,10 @@
            :bindings rest)))))
 
 (define-method unbind ((self naming-context) n)
-  (if (= 1 (length n))
-      (let ((path (pns-path self (elt n 0))))
-        (delete-file path))
-      (multiple-value-bind (next name)
-          (pns-step self n)
-        (op:unbind next name))))
+  (pns-step-do self n
+               (lambda () (let ((path (pns-path self (elt n 0))))
+                            (delete-file path)))
+               #'op:unbind))
 
 
 
