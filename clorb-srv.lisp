@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.31 2005/02/15 21:08:45 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.32 2005/02/17 17:53:13 lenst Exp $	
 
 (in-package :clorb)
 
@@ -71,10 +71,16 @@
     (setup-incoming-connection conn)))
 
 
+(defun get-fragment-request (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (connection-add-fragment conn buffer +iiop-header-size+)
+    (setup-incoming-connection conn)))
+
+
 (defun poa-message-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
-    (multiple-value-bind (msgtype fragment version) (unmarshal-giop-header buffer)
-      (declare (ignore fragment))
+    (multiple-value-bind (msgtype fragmented version)
+                         (unmarshal-giop-header buffer)
       (setf (buffer-giop-version buffer) version)
       (let ((decode-fun
              (case msgtype
@@ -82,7 +88,10 @@
                ((:cancelrequest)   #'poa-cancelrequest-handler)
                ((:locaterequest)   #'poa-locaterequest-handler)
                ((:closeconnection) #'poa-closeconnection-handler)
-               ((:messageerror)    #'poa-messageerror-handler))))
+               ((:messageerror)    #'poa-messageerror-handler)
+               ((:fragment)        
+                (prog1 (if fragmented #'get-fragment-request #'get-fragment-last)
+                  (setq fragmented nil))))))
         (cond ((> (giop-version-minor version) 1)
                (connection-message-error conn giop-1-1))
               ((null decode-fun)
@@ -91,6 +100,9 @@
               (t
                (let ((size (unmarshal-ulong buffer)))
                  (mess 1 "Message type ~A size ~A" msgtype size)
+                 (when fragmented
+                   (connection-init-defragmentation conn decode-fun)
+                   (setq decode-fun #'get-fragment-request))
                  (if (zerop size)
                    (funcall decode-fun conn)
                    (connection-init-read conn t (+ size +iiop-header-size+) decode-fun)))))))))

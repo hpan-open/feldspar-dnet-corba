@@ -2,6 +2,13 @@
 (in-package :clorb)
 
 
+(setup-default-poa *the-orb*)
+(ignore-errors
+ (op:activate_object_with_id
+  *default-poa* (string-to-oid "_TEST_")
+  (make-instance 'null-servant)))
+
+
 (define-test-suite "Test Server Request Processing"
   (variables
    (*log-level* 5))
@@ -97,6 +104,83 @@
                      'giop:locatereplyheader
                      (pattern 'op:request_id 0
                               'op:locate_status :unknown_object))))
+
+
+
+  (define-test "Request response with argument"
+    (test-request-response
+     :request-type :request
+     :request (list (giop:requestheader_1_0
+                     :request_id 0
+                     :service_context nil
+                     :response_expected t
+                     :object_key (string-to-oid "_TEST_")
+                     :operation "_is_a"
+                     :requesting_principal #())
+                    "IDL:omg.org/CORBA/Object:1.0")
+     :response (list :message-type :reply
+                     'giop:replyheader
+                     (pattern 'op:request_id 0
+                              'op:reply_status :no_exception)
+                     corba:tc_boolean
+                     t)))
+    
+
+  (define-test "Fragmented request"
+    (setup-test-in)
+    (test-write-request
+     :message-type :request
+     :giop-version giop-1-1 :fragmented t
+     :message (list (giop:requestheader_1_1
+                     :request_id 0
+                     :service_context nil
+                     :response_expected t
+                     :reserved #(0 0 0)
+                     :object_key (string-to-oid "_TEST_")
+                     :operation "_is_a"
+                     :requesting_principal #())))
+    (test-write-request
+     :message-type :fragment
+     :giop-version giop-1-1
+     :message (list "IDL:omg.org/CORBA/Object:1.0"))
+    (orb-work *the-orb* nil t)
+    (test-read-response 
+     :message (list :message-type :reply
+                    'giop:replyheader
+                    (pattern 'op:request_id 0
+                             'op:reply_status :no_exception)
+                    corba:tc_boolean
+                    t)))
+
+  (define-test "Fragmented request 2"
+    ;; Break in the middle of the header
+    (setup-test-in)
+    (test-write-request
+     :message-type :request
+     :giop-version giop-1-1 :fragmented t
+     :message (list (CORBA:Any :any-typecode (SYMBOL-TYPECODE 'OMG.ORG/IOP:SERVICECONTEXTLIST)
+                               :any-value ())))
+    (test-write-request
+     :message-type :fragment
+     :giop-version giop-1-1
+     :message (list (CORBA:Any :any-typecode CORBA:tc_ulong
+                               :any-value 0)    ; request id
+                    (CORBA:Any :any-typecode corba:tc_boolean
+                               :any-value t)    ; response expected
+                    (CORBA:Any :any-typecode (CREATE-SEQUENCE-TC 0 OMG.ORG/CORBA:TC_OCTET)
+                               :any-value (string-to-oid "_TEST_"))                    
+                    (CORBA:Any :any-typecode OMG.ORG/CORBA:TC_STRING
+                               :any-value "_non_existent")
+                    (CORBA:Any :any-typecode (SYMBOL-TYPECODE 'OMG.ORG/GIOP:PRINCIPAL)
+                               :any-value ())))
+    (orb-work *the-orb* nil t)
+    (test-read-response 
+     :message (list :message-type :reply
+                    'giop:replyheader
+                    (pattern 'op:request_id 0
+                             'op:reply_status :no_exception)
+                    corba:tc_boolean
+                    nil)))
 
 
 #|end|# )
