@@ -5,8 +5,129 @@
 
 #pragma prefix "omg.org"
 
+#define local
+
 module CORBA {
-  interface TypeCode;
+    interface TypeCode {
+    };
+
+    // interface for the Current object
+    interface Current {
+    };
+
+    typedef sequence<any>                AnySeq;
+    typedef sequence<boolean>            BooleanSeq;
+    typedef sequence<char>               CharSeq;
+    typedef sequence<wchar>              WCharSeq;
+    typedef sequence<octet>              OctetSeq;
+    typedef sequence<short>              ShortSeq;
+    typedef sequence<unsigned short>     UShortSeq;
+    typedef sequence<long>               LongSeq;
+    typedef sequence<unsigned long>      ULongSeq;
+    typedef sequence<long long>          LongLongSeq;
+    typedef sequence<unsigned long long> ULongLongSeq;
+    typedef sequence<float>              FloatSeq;
+    typedef sequence<double>             DoubleSeq;
+    typedef sequence<string>             StringSeq;
+    typedef sequence<wstring>            WStringSeq;
+
+    typedef unsigned long PolicyType;
+
+    // Basic IDL definition
+    interface Policy {
+        readonly attribute PolicyType policy_type;
+        Policy copy();
+        void destroy();
+    };
+
+    typedef sequence <Policy> PolicyList;
+
+    typedef short PolicyErrorCode;
+    exception PolicyError {PolicyErrorCode reason;};
+
+    const PolicyErrorCode BAD_POLICY = 0;
+    const PolicyErrorCode UNSUPPORTED_POLICY = 1;
+    const PolicyErrorCode BAD_POLICY_TYPE = 2;
+    const PolicyErrorCode BAD_POLICY_VALUE = 3;
+    const PolicyErrorCode UNSUPPORTED_POLICY_VALUE = 4;
+
+};
+
+
+module IOP {
+    // Standard Protocol Profile tag values 
+    typedef unsigned long ProfileId;
+    const ProfileId TAG_INTERNET_IOP        = 0;
+    const ProfileId TAG_MULTIPLE_COMPONENTS = 1;
+
+    struct TaggedProfile {
+        ProfileId	     tag;
+        sequence <octet> profile_data;
+    };
+    // an Interoperable Object Reference is a sequence of
+    // object-specific protocol profiles, plus a type ID.
+    struct IOR {
+        string		     type_id;
+        sequence <TaggedProfile> profiles;
+    };
+    // Standard way of representing multicomponent profiles.
+    // This would be encapsulated in a TaggedProfile.
+    typedef unsigned long ComponentId;
+    struct TaggedComponent {
+        ComponentId	     tag;
+        sequence <octet> component_data;
+    };
+    typedef sequence <TaggedComponent> MultipleComponentProfile;
+
+    typedef unsigned long				ServiceId;
+    struct ServiceContext {
+        ServiceId					context_id;
+        sequence <octet>				context_data;
+    };
+
+    typedef sequence <ServiceContext> ServiceContextList;
+    const ServiceId TransactionService    = 0;
+    const ServiceId CodeSets              = 1;
+    const ServiceId ChainBypassCheck      = 2;
+    const ServiceId ChainBypassInfo       = 3;
+    const ServiceId LogicalThreadId       = 4;
+    const ServiceId BI_DIR_IIOP           = 5;
+    const ServiceId SendingContextRunTime = 6;
+    const ServiceId INVOCATION_POLICIES   = 7;
+    const ServiceId FORWARDED_IDENTITY    = 8;
+    const ServiceId UnknownExceptionInfo  = 9;
+
+
+    local interface Codec {
+        exception InvalidTypeForEncoding {};
+        exception FormatMismatch {};
+        exception TypeMismatch {};
+        CORBA::OctetSeq encode (in any data) 
+            raises (InvalidTypeForEncoding);
+        any decode (in CORBA::OctetSeq data)
+            raises (FormatMismatch);
+        CORBA::OctetSeq encode_value (in any data)
+            raises (InvalidTypeForEncoding);
+        any decode_value (
+            in CORBA::OctetSeq data, 
+            in CORBA::TypeCode tc)
+            raises (FormatMismatch, TypeMismatch);
+    };
+
+    typedef short EncodingFormat;
+    const EncodingFormat ENCODING_CDR_ENCAPS = 0;
+    struct Encoding {
+        EncodingFormat format;
+        octet major_version;
+        octet minor_version;
+    };
+
+    local interface CodecFactory {
+        exception UnknownEncoding {};
+        Codec create_codec (in Encoding enc) 
+            raises (UnknownEncoding);
+    };
+
 };
 
 #endif

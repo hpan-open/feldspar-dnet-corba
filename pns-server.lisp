@@ -3,8 +3,6 @@
 
 (in-package "NET.CDDR.CLORB.PERSISTENT-NAMING")
 
-(eval-when (:compile-toplevel :execute)
-  (import '(corba:define-method)))
 
 (defvar *naming-ior-file*  #P"/tmp/NameService")
 (defvar *naming-base-path* #P"/tmp/naming/foo.obj")
@@ -35,7 +33,7 @@
 
 (defvar *naming-poa* nil)
 
-(defclass naming-context (cosnaming:namingcontext-servant)
+(defclass naming-context (cosnaming:namingcontextext-servant)
   ((base :initarg :base :accessor nc-base)))
 
 (define-method _default_POA ((servant naming-context))
@@ -225,6 +223,57 @@
           (pns-step self n)
         (op:unbind next name))))
 
+
+
+;;;;  interface NamingContextExt : NamingContext {
+;;    typedef string StringName;
+;;    typedef string Address;
+;;    typedef string URLString;
+
+;;;    StringName to_string (in Name n)
+;;      raises(InvalidName);
+
+(define-method to_string ((self naming-context) n)
+  (with-output-to-string (*standard-output*) 
+    (let ((first t))
+      (map nil (lambda (nc)
+                 (unless first (princ "/"))
+                 (print-escape-name (op:id nc))
+                 (princ ".")
+                 (print-escape-name (op:kind nc))
+                 (setq first nil))
+           n))))
+
+(defun print-escape-name (string)
+  (loop for c across string
+        do (case c
+             ((#\/ #\. #\\)
+              (princ #\\)))
+        (princ c)))
+
+
+;;;    Name to_name (in StringName sn)
+;;      raises(InvalidName);
+
+(define-method to_name ((self naming-context) sn)
+  (clorb::ns-name sn))
+
+
+;;;    exception InvalidAddress {};
+
+;;;    URLString to_url (in Address addr, in StringName sn)
+;;      raises (InvalidAddress, InvalidName);
+
+;FIXME!
+
+;;;    Object resolve_str (in StringName n)
+;;      raises (NotFound, CannotProceed, InvalidName, AlreadyBound);
+
+(define-method resolve_str ((self naming-context) n)
+  (op:resolve self (clorb::ns-name n)))
+
+
+
 
 ;;;; BindingIterator Servant
 
@@ -284,18 +333,21 @@
           (op:create_POA rootPOA "Naming" (op:the_poamanager rootPOA) policies))
     (op:set_servant_manager *naming-poa* (make-instance 'naming-manager))))
 
+(defvar *root-context* nil)
+
 (defun setup-pns ()
   (unless *naming-poa* (setup-naming-poa))
+  (unless *root-context*
+    (setq *root-context*
+          (op:create_reference_with_id
+           *naming-poa*
+           (portableserver:string-to-oid "root")
+           (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
   (with-open-file (out *naming-ior-file*
                        :direction :output
                        :if-exists :supersede)
-    (princ
-     (op:object_to_string (CORBA:ORB_init)
-                          (op:create_reference_with_id
-                           *naming-poa*
-                           (portableserver:string-to-oid "root")
-                           (clorb::symbol-ifr-id 'cosnaming:namingcontext)))
-     out)))
+    (princ (op:object_to_string (CORBA:ORB_init) *root-context*)
+           out)))
 
 ;;(defmethod initialize-instance :after ((self naming-context) &key)
 ;;  (clorb::mess 3 "Naming Context base=~A" (nc-base self)))

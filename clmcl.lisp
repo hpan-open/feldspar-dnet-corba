@@ -129,4 +129,16 @@
 
 (gen-stub-file (lookup-name-in r "CORBA::TypeCodeFactory") "clorb:y-typecodefactory.lisp"  :package-def t)
 
+(corba:idl "clorb:idl;pi.idl" 
+           :eval nil :print t )
+
+
+(corba:idl "clorb:idl;orb.idl" :eval nil :print t :skeleton nil)
+
+
+(setf (gethash "NameService" clorb::*boot-objects*)
+      (clorb::get-ns))
+
+(op:string_to_object *orb* "corbaloc::10.0.1.2:4711/NameService")
+
 |#

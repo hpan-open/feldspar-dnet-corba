@@ -8,6 +8,8 @@
 (utils:gen-package-decl "OP")
 (utils:gen-package-decl "IOP")
 (utils:gen-package-decl "OMG.ORG/PORTABLESERVER")
+(utils:gen-package-decl "PORTABLEINTERCEPTOR")
+(utils:gen-package-decl "IOP_N")
 |#
 
 

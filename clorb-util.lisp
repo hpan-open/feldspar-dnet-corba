@@ -144,6 +144,7 @@ The list free operation is used to free the returned information.
              (setq escape nil))
             (t
              (case c
+               ((#\\) (setq escape t))
                ((#\/)
                 (push (CosNaming:NameComponent
                        :id (copy-seq id) :kind (copy-seq kind))
@@ -151,7 +152,6 @@ The list free operation is used to free the returned information.
                 (setf (fill-pointer id) 0)
                 (setf (fill-pointer kind) 0)
                 (setq part id))
-               ((#\\) (setq escape t))
                ((#\.) (setq part kind))
                (otherwise
                 (vector-push-extend c part))))))

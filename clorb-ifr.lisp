@@ -50,7 +50,7 @@
 (define-method type ((def irtypecode-mixin))
   ;; Get the typecode for an IDL construct.
   ;; The typecode is lazily constructed and recursive typecodes handled.
-  ;; The specific typcodes are handled ny the idltype-tc function.
+  ;; The specific typcodes are handled by the idltype-tc function.
   (cond ((slot-boundp def 'type)
          ;; Either the typecode is computed already or this is a recursive call
          ;; during computation.
