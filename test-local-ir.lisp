@@ -9,6 +9,26 @@
   (define-test "General"
     (ensure-typep :dk_constant 'CORBA:DefinitionKind))
 
+
+  (define-test "get_canonical_typecode"
+    (let* ((mylong 
+            (op:create_alias repository "IDL:mylong:1.0" "mylong" "1.0"
+                             a-ulong))
+           (myseq (op:create_alias repository "IDL:myseq:1.0" "myseq" "1.0"
+                                   (op:create_sequence repository 0 mylong))))
+      (let* ((ptc-mylong (create-alias-tc "" "" CORBA:tc_ulong))
+             (ntc-mylong (create-alias-tc "IDL:mylong:1.0" "" CORBA:tc_ulong))
+             (tc-myseq-ptc-mylong
+              (create-alias-tc "IDL:myseq:1.0" ""
+                               (create-sequence-tc 0 ptc-mylong))))
+        (ensure-typecode
+         (op:get_canonical_typecode repository tc-myseq-ptc-mylong)
+         (op:type myseq))
+        (ensure-typecode
+         (op:get_canonical_typecode repository (create-sequence-tc 0 ntc-mylong))
+         (op:type (op:original_type_def myseq))))))
+
+
   (define-test "Contained"
     (let* ((name "foo")
            (id "IDL:foo:1.0")

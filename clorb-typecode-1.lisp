@@ -34,9 +34,11 @@
    (t
     (print-unreadable-object (tc stream :type t :identity t)
       (let ((params (slot-value tc 'params)))
-        (when (stringp (ignore-errors (cadr params)))
-          (prin1 (cadr params) stream)))))))
-  
+        (let ((name (cadr params)))
+          (if (and (stringp name)
+                   (not (equal name "")))
+            (prin1 name stream)
+            (format stream "~@[~A~]~@[/~A~]" (car params) (cadr params)))))))))
 
 
 (eval-when (load eval)
@@ -68,6 +70,17 @@
   (slot-makunbound tc 'keywords)
   (change-class tc (class-of new-tc)))
 
+(defun map-typecode (func tc)
+  (let ((params (typecode-params tc)))
+    (if (null params)
+      tc
+      (labels ((transform (x)
+                 (typecase x
+                   (CORBA:TypeCode  (funcall func x))
+                   (sequence  (map 'vector #'transform x))
+                   (t  x))))
+        (apply #'make-typecode (typecode-kind tc)
+               (mapcar #'transform params))))))
 
 (defun feature (name)
   (intern (string-upcase name) :op))

@@ -452,6 +452,21 @@
   (gethash id (idmap rep)))
 
 
+;;; TypeCode get_canonical_typecode(in TypeCode tc);
+
+(define-method get_canonical_typecode ((container Repository) tc)
+  (flet ((reconstruct ()
+           (map-typecode (lambda (tc) (op:get_canonical_typecode container tc))
+                         tc)))
+    (handler-case
+      (let ((id (op:id tc)))
+        (let ((obj (op:lookup_id container id)))
+          (if obj
+            (op:type obj)
+            (reconstruct))))
+      (CORBA:TYPECODE/BADKIND () (reconstruct)))))
+
+
 
 ;;;  PrimitiveDef get_primitive (in PrimitiveKind kind);
 
