@@ -137,15 +137,15 @@
              thereis (and (eq tc rtc)
                           (eq (buffer-octets buffer) octets)
                           pos))))
-    (cond  
+    (cond
      (recursive-typecode-pos
       (marshal-ulong #16rFFFFFFFF buffer)
-      (marshal-long (- recursive-typecode-pos 
+      (marshal-long (- recursive-typecode-pos
                        (fill-pointer (buffer-octets buffer)))
                     buffer))
      (t
       (let ((*marshal-typecode-record*
-             (list* tc (buffer-octets buffer) 
+             (list* tc (buffer-octets buffer)
                     (fill-pointer (buffer-octets buffer))
                     *marshal-typecode-record*))
             (kind (typecode-kind tc))
@@ -156,10 +156,19 @@
                 ((eq 'complex (car pspec))
                  (marshal-add-encapsulation
                   (lambda (buffer)
-                    (marshal-multiple params (cdr pspec) buffer))
+                    (marshal-multiple params (cdr pspec) buffer)
+                    (when (eq kind :tk_union)
+                      (let ((label-tc (third params)))
+                        (marshal-sequence (fifth (typecode-params tc))
+                                          (lambda (el buffer)
+                                            (marshal (first el) label-tc buffer)
+                                            (marshal-string (second el) buffer)
+                                            (marshal-typecode (third el) buffer))
+                                          buffer))))
                   buffer))
                 (t
                  (marshal-multiple params pspec buffer)))))))))
+
 
 
 (defun marshal-tagged-component (component buffer)
