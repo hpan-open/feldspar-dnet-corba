@@ -1,3 +1,23 @@
+2005-02-03  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-value.lisp (value_box-typecode): sharing alias-typecode
+	gives wrong result for compute-marshal-function.
+
+	* clorb-macros2.lisp (define-interface): added defined_in version
+	keyword arguments. And use set-ifr-info.
+
+2005-02-01  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-pkgdcl.lisp ("OMG.ORG/IOP"): new exported symbols due to
+	constants added to the package
+
+2005-01-31  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-iop.lisp: added some ComponentID constants
+
+	* clorb-typecode-1.lisp (set-ifr-description, ifr-description):
+	change name of property from ifr-desc to ifr-description
+
 2005-01-03  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* test-poa.lisp (define-test "Identity mapping"): new test
