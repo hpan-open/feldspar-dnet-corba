@@ -67,7 +67,7 @@
   (handler-case
     (static-call ("_interface" obj)
                  :input ((buffer)
-                         (unmarshal (symbol-typecode 'corba:interfacedef) buffer)))
+                         (unmarshal (%symbol-typecode corba:interfacedef) buffer)))
     (CORBA:SystemException
      (exc)
      (if (member (exception-id exc)

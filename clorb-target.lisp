@@ -222,10 +222,10 @@
     ,(target-typecode (op:element_type_def x) target)))
 
 (defmethod target-typecode ((x CORBA:Contained) target)
-  `(symbol-typecode ',(scoped-target-symbol target x)))
+  `(%symbol-typecode ,(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ExceptionDef) target)
-  `(symbol-typecode ',(scoped-target-symbol target x)))
+  `(%symbol-typecode ,(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ArrayDef) target)
   `(create-array-tc ,(op:length x)
@@ -597,6 +597,9 @@
 (defmethod target-unmarshal ((seqdef corba:structdef) target buffer)
   `(struct-read ',(scoped-target-symbol target seqdef) ,buffer))
 
+(defmethod target-unmarshal ((def corba:interfacedef) target buffer)
+  (declare (ignore target))
+  `(unmarshal-object ,buffer ,(op:id def)))
 
 
 ;;;; Servants

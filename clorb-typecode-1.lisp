@@ -270,6 +270,10 @@
                    (list "" (symbol-name symbol))))
            typecode))))
 
+(defmacro %symbol-typecode (symbol)
+  `(load-time-value (symbol-typecode ',symbol)))
+
+
 (defun set-symbol-typecode (symbol typecode)
   ;; Set the typecode for a scoped symbol. Typecode can also be a function to compute the typecode.
   (typecode-smash (symbol-typecode symbol)
