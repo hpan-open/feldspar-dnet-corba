@@ -61,14 +61,14 @@
 (CORBA:IDL "clorb:idl;interface-repository.idl" 
            :output "clorb:src;y-ifr-base.lisp" 
            :eval nil
-           :exclude nil
+           :exclude '("::CORBA::TypeCode")
            :skeleton nil )
 
 (CORBA:IDL "clorb:idl;interface-repository.idl" 
            :output "clorb:src;y-ifr-base.lisp"
            :pprint-dispatch nil
            :eval nil
-           :exclude nil
+           :exclude '("::CORBA::TypeCode")
            :skeleton nil )
 
 (CORBA:IDL "clorb:idl;CosNaming.idl" 

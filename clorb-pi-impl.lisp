@@ -251,10 +251,26 @@ PortableInterceptor::TRANSPORT_RETRY
   (request-operation self))
 
 (define-method "ARGUMENTS" ((self server-request))
-  (raise-system-exception 'CORBA:no_resources))
+  (cond ((arguments-set-p self)
+         (map 'list (lambda (nv)
+                      (Dynamic:Parameter :argument (op:argument nv)
+                                         :mode (op:mode nv)))
+              (request-arguments self)))
+        ((slot-boundp self 'meta-args)
+         (loop with args = (request-args self)
+               for (nil mode tc) in (meta-args self)
+               collect (Dynamic:Parameter :argument (CORBA:Any :any-value
+                                                               (if (not (eql mode :param_out))
+                                                                 (pop args))
+                                                               :any-typecode tc)
+                                          :mode mode)))
+        (t (raise-system-exception 'CORBA:no_resources))))
 
 (define-method "EXCEPTIONS" ((self server-request))
-  (raise-system-exception 'CORBA:no_resources))
+  (cond ((slot-boundp self 'exceptions)
+         (request-exceptions self))
+        (t
+         (raise-system-exception 'CORBA:no_resources))))
 
 (define-method "CONTEXTS" ((self server-request))
   (raise-system-exception 'CORBA:no_resources))
@@ -263,7 +279,16 @@ PortableInterceptor::TRANSPORT_RETRY
   (raise-system-exception 'CORBA:no_resources))
 
 (define-method "RESULT" ((self server-request))
-  (raise-system-exception 'CORBA:NO_IMPLEMENT))
+  (cond ((not (slot-boundp self 'result))
+         (raise-system-exception 'corba:no_resources))
+        ((dsi-request-p self)
+         (request-result self))
+        (t 
+         (let ((type (request-result-type self)))
+           (CORBA:Any :any-typecode type
+                      :any-value (unless (typep type 'void-typecode)
+                                   (first (request-result self))))))))
+
 
 (define-method "RESPONSE_EXPECTED" ((self server-request))
   (response-expected self))
