@@ -4,7 +4,9 @@
                       #|:default-pathname "devl:"|#)
   
   (:definitions (:serial "clorb-pkgdcl" "clorb-macros") 
-      (:serial base services))
+      (:serial base 
+               server
+               x-files))
 
   (:module-group base
                  (:serial
@@ -27,30 +29,42 @@
                   "clorb-orb"
                   "clorb-request"
                   "clorb-iir"
+                  "clorb-util"
+                  "dumpir"))
+  
+  (:module-group server
+                 (:serial
+                  ;; server 
                   "clorb-objkey"
                   "clorb-srvreq"
                   "clorb-servant"
                   "clorb-trie"
                   "clorb-poamgr"
                   "clorb-poa"
-                  "clorb-srv"
-                  "clorb-util"
+                  "clorb-srv"))
+  
+  (:module-group x-files
+                 (:serial 
+                  "test-suite"
+                  "orb-export"
+                  "orb-structs"
                   "local-ir"
                   "idef-read"
                   "idef-write"
                   "idef-macros"
-                  "test-suite"))
-  
-  (:module-group services
-                 (:serial 
-                  "ns-server" 
+                  ;; Services
+                  "cosnaming-idl"
+                  "cosnaming-stub"
+                  "cosnaming-skel"
+                  "pns-server"
                   "ec-server"
-                  ;; "omniwrapper"
-                  "dumpir"))
+                  ;; Example
+                  "hello-idl"
+                  "hello-client" 
+                  "hello-server"))
   
   (:module-group examples
                  (:serial
-                  "hello-idl" "hello-client" "hello-server" "hello-dynserver"
-                  "dsi-example" "dii-example"))
-  
-)
+                  "hello-dynserver"
+                  "dsi-example" 
+                  "dii-example")))
