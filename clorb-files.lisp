@@ -20,7 +20,7 @@
            (multiple-value-bind (val good) (gethash key opts)
              (unless good (warn "Undefined load opt: ~S" key))
              val)))
-       (defun ,setter (&key ,@(loop for (nil def) in opts for var in vars 
+       (defun ,setter (&key ,@(loop for (nil def) in opts for var in vars
                                     collect `(,var ,def)))
          ,(format nil "Set load options~:{~%~A (~A) - ~A~}" opts)
          ,@(loop for (key) in opts for var in vars
@@ -66,6 +66,7 @@
     "clorb-iiop"
     "cosnaming-stub"
     "clorb-util"
+    "clorb-misc"
     "clorb-ifr"
     "clorb-target"
     "clorb-idl"
@@ -194,7 +195,7 @@
 (defun reload ()
   #+clorb-packer-luna   (packer:require-package :net.cddr.luna)
   #+clorb-packer-redpas (packer:require-package :net.cddr.redpas)
-  (compile-changed 
+  (compile-changed
    (append #-clorb-packer-luna   *luna-files*
            #-clorb-packer-redpas *redpas-files*
            *base-files*
@@ -228,3 +229,21 @@
                               x))
                         (symbol-value var)))))
   (format t ")~%"))
+
+
+(defun asdf-defsys ()
+  (format t "(defsystem :clorb~%")
+  (format t "  :depends-on ~S~%" '("redpas" "luna"))
+  (format t "  :components (~%")
+  (loop for file in (append *base-files* *server-files*
+                            *my-idlparser* *x-files*
+                            *dev-post-files*)
+        with depend = nil
+        do (destructuring-bind (file &optional dep-flag)
+                               (if (consp file)
+                                 file
+                                 (list file))
+             (format t "    (:file ~s :depends-on ~S)~%"
+                     file depend)
+             (when dep-flag (push file depend))))
+  (format t "))~%"))
