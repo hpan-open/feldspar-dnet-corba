@@ -40,7 +40,13 @@ Can be set to true globally for singel-process / development.")
     :accessor orb-default-initial-reference)))
 
 
+
 ;;;; Internal orb interface
+
+
+(defmethod the-orb ((orb CORBA:ORB))
+  orb)
+
 
 (defmethod create-client-request ((orb clorb-orb) &rest initargs)
   (apply #'make-instance 'client-request 
@@ -221,6 +227,21 @@ Can be set to true globally for singel-process / development.")
 
 
 
+;;; void register_initial_reference (in ObjectId id, in Object obj)
+;;;    raises (InvalidName);
+
+(define-method register_initial_reference ((orb clorb-orb) id obj)
+  (when (or (not (stringp id)) (equal id "")
+            (assoc id (orb-initial-references orb)
+                    :test #'string=))
+    (error (CORBA:ORB/InvalidName)))
+  (unless obj
+    (raise-system-exception 'CORBA:BAD_PARAM 24 :completed_no))
+  (set-initial-reference orb id nil obj))
+
+
+
+
 ;;;; Value factory operations
 
 ;;; ValueFactory register_value_factory(
@@ -248,23 +269,6 @@ Can be set to true globally for singel-process / development.")
 
 
 
-;;;; From "Portable Interceptors"
-
-
-;;; void register_initial_reference (in ObjectId id, in Object obj)
-;;;    raises (InvalidName);
-
-(define-method register_initial_reference ((orb CORBA:ORB) id obj)
-  (when (or (not (stringp id)) (equal id "")
-            (assoc id (orb-initial-references orb)
-                    :test #'string=))
-    (error (CORBA:ORB/InvalidName)))
-  (unless obj
-    (error 'CORBA:BAD_PARAM :minor 24))
-  (set-initial-reference orb id nil obj))
-
-
-
 ;;;; Initializing the ORB
 ;;; ORB CORBA:ORB_init (arg_list, orbid)
 
@@ -272,15 +276,17 @@ Can be set to true globally for singel-process / development.")
   (when (eq args t)
     (setq args nil set-init t))
   (let ((info nil))
-    (unless *the-orb*
-      (setq *the-orb* (make-instance *orb-class*
-                        :active t
-                        :host *host*
-                        :port *port*))
-      (setq set-init t)
-      (setq info (create-orb-init-info *the-orb* args orbid))
-      (dolist (fn *orb-initializers*)
-        (op:pre_init fn info)))
+    (cond ((null *the-orb*)
+           (setq *the-orb* (make-instance *orb-class*
+                             :active t
+                             :host *host*
+                             :port *port*))
+           (setq set-init t)
+           (setq info (create-orb-init-info *the-orb* args orbid))
+           (dolist (fn *orb-initializers*)
+             (op:pre_init fn info)))
+          ((not (typep *the-orb* *orb-class*))
+           (change-class *the-orb* *orb-class*)))
     (when set-init
       (when *name-service*
         (set-initial-reference *the-orb* "NameService" *name-service*))
@@ -294,12 +300,11 @@ Can be set to true globally for singel-process / development.")
         (op:post_init fn info))))
   (values *the-orb* args))
 
+
 (defmethod create-orb-init-info ((orb clorb-orb) args orbid)
-  (make-instance 'orb-init-info
-    :orb *the-orb*
-    :arguments args
-    :orb_id orbid
-    :codec_factory nil ))
+  (declare (ignore args orbid))
+  orb)
+
 
 (defun process-orb-args (orb args)
   (let ((new-args '()))
@@ -320,10 +325,8 @@ Can be set to true globally for singel-process / development.")
                          (setf (orb-default-initial-reference orb) value))
                         ((option-match "-ORBPort")
                          (setf (orb-port orb) (parse-arg-integer value))) 
-                        (t (error 'CORBA:BAD_PARAM)))))
-              
+                        (t (raise-system-exception 'CORBA:BAD_PARAM)))))
               (push arg new-args))))
-    
     (nreverse new-args)))
 
 #|
@@ -344,26 +347,6 @@ Can be set to true globally for singel-process / development.")
     (string (parse-integer arg))
     (t (error "Argument should be integer: ~A" arg))))
 
-
-
-;;; PortableInterceptor::ORBInitializer
-;;  local interface ORBInitializer {
-;;    void pre_init (in ORBInitInfo info);
-;;    void post_init (in ORBInitInfo info);
-
-(defclass orb-initializer (PortableInterceptor:ORBInitializer)
-  ())
-
-(define-method "PRE_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-(define-method "POST_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-
-
-(defun portableinterceptor:register_orb_initializer (init)
-  (pushnew init *orb-initializers*))
 
 
 
@@ -411,7 +394,7 @@ Can be set to true globally for singel-process / development.")
       (multiple-value-bind (host port path)
                            (parse-http-url rest)
         (let ((ior (http-get-ior host port path)))
-          (or ior (error 'omg.org/corba:bad_param))
+          (or ior (raise-system-exception 'CORBA:bad_param))
           (string-to-object orb ior))))
      (t
       (error "Unrecognized URL method: ~A" method)))))
@@ -801,40 +784,6 @@ Can be set to true globally for singel-process / development.")
 
 (define-method "CREATE_LOCAL_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
   (create-local-interface-tc id name))
-
-
-
-;;;; local interface ORBInitInfo {
-;;    readonly attribute CORBA::StringSeq arguments;
-;;    readonly attribute string orb_id;
-;;    readonly attribute IOP::CodecFactory codec_factory;
-
-(define-corba-class orb-init-info (PortableInterceptor:ORBInitInfo)
-  :attributes ((arguments :readonly)
-               (orb_id :readonly)
-               (codec_factory :readonly))
-  :slots ((proto-orb :initarg :orb :reader the-orb)))
-
-
-;;;    void register_initial_reference (in ObjectId id, in Object obj)
-;;      raises (InvalidName);
-
-(define-method register_initial_reference ((orbinfo orb-init-info) id obj)
-  (handler-case
-      (op:register_initial_reference (the-orb orbinfo) id obj)
-    (CORBA:ORB/InvalidName ()
-      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
-  
-
-;;;    void resolve_initial_references (in ObjectId id)
-;;      raises (InvalidName);
-
-(define-method resolve_initial_references ((orbinfo orb-init-info) id)
-  (handler-case
-      (op:resolve_initial_references (the-orb orbinfo) id)
-    (CORBA:ORB/InvalidName ()
-      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
-
 
 
 

@@ -3,6 +3,81 @@
 (in-package :clorb)
 
 
+;;;; ORB Subclass for PortableInterceptors
+
+(defclass pi-orb (clorb-orb)
+  ((client-request-interceptors :accessor client-request-interceptors
+                                :initform nil)
+   (server-request-interceptors :accessor server-request-interceptors
+                                :initform nil)))
+
+;; use pi-orb as orb class
+(when (not (subtypep *orb-class* 'pi-orb))
+  (setq *orb-class* 'pi-orb))
+
+
+
+;;;; local interface ORBInitInfo
+;;    readonly attribute CORBA::StringSeq arguments;
+;;    readonly attribute string orb_id;
+;;    readonly attribute IOP::CodecFactory codec_factory;
+
+(define-corba-class orb-init-info (PortableInterceptor:ORBInitInfo)
+  :attributes ((arguments :readonly)
+               (orb_id :readonly)
+               (codec_factory :readonly))
+  :slots ((proto-orb :initarg :orb :reader the-orb)))
+
+
+(defmethod create-orb-init-info ((orb pi-orb) args orbid)
+  (make-instance 'orb-init-info
+    :orb orb
+    :arguments args
+    :orb_id orbid
+    :codec_factory nil ))
+
+
+;;;    void register_initial_reference (in ObjectId id, in Object obj)
+;;      raises (InvalidName);
+
+(define-method register_initial_reference ((orbinfo orb-init-info) id obj)
+  (handler-case
+      (op:register_initial_reference (the-orb orbinfo) id obj)
+    (CORBA:ORB/InvalidName ()
+      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
+  
+
+;;;    void resolve_initial_references (in ObjectId id)
+;;      raises (InvalidName);
+
+(define-method resolve_initial_references ((orbinfo orb-init-info) id)
+  (handler-case
+      (op:resolve_initial_references (the-orb orbinfo) id)
+    (CORBA:ORB/InvalidName ()
+      (error (PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME)))))
+
+
+
+
+;;;; PortableInterceptor::ORBInitializer
+;;  local interface ORBInitializer {
+;;    void pre_init (in ORBInitInfo info);
+;;    void post_init (in ORBInitInfo info);
+
+(defclass orb-initializer (PortableInterceptor:ORBInitializer)
+  ())
+
+(define-method "PRE_INIT" ((init orb-initializer) info)
+  (declare (ignore info)))
+
+(define-method "POST_INIT" ((init orb-initializer) info)
+  (declare (ignore info)))
+
+
+(defun portableinterceptor:register_orb_initializer (init)
+  (pushnew init *orb-initializers*))
+
+
 
 ;;;; Request Classes 
 
@@ -53,23 +128,23 @@
       (assoc profile-id (raw-profiles target)))))
 
 (define-method "RECEIVED_EXCEPTION" ((self client-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "RECEIVED_EXCEPTION_ID" ((self client-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_EFFECTIVE_COMPONENT" ((self client-request) _ID)
   (DECLARE (IGNORE _ID))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_EFFECTIVE_COMPONENTS" ((self client-request) _ID)
   (DECLARE (IGNORE _ID))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_REQUEST_POLICY" ((self client-request)
                                      _TYPE)
   (DECLARE (IGNORE _TYPE))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (defmacro %add-service-context (req context-accessor service_context replace)
   `(let* ((service_context ,service_context)
@@ -80,7 +155,7 @@
                      :key #'op:context_id)))
      (when old
        (unless replace
-         (error 'omg.org/corba:bad_inv_order :minor 11 :completed :completed_no))
+         (raise-system-exception 'CORBA:bad_inv_order 11 :completed_no))
        (setf list (delete old list)))
      (setf (,context-accessor self) (cons service_context list))))
 
@@ -134,11 +209,11 @@ PortableInterceptor::TRANSPORT_RETRY
 
 (define-method "GET_SLOT" ((self client-request) _ID)
   (DECLARE (IGNORE _ID))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (defun get-service-context (id service-context-list)
   (or (find id service-context-list :key #'op:context_id)
-      (error 'omg.org/corba:bad_param :minor 23)))
+      (raise-system-exception 'CORBA:bad_param 23)))
 
 (define-method "GET_REQUEST_SERVICE_CONTEXT" ((self client-request) id)
   (get-service-context id (service-context-list self)))
@@ -158,32 +233,32 @@ PortableInterceptor::TRANSPORT_RETRY
   (request-operation self))
 
 (define-method "ARGUMENTS" ((self server-request))
-  (error 'omg.org/corba:no_resources))
+  (raise-system-exception 'CORBA:no_resources))
 
 (define-method "EXCEPTIONS" ((self server-request))
-  (error 'omg.org/corba:no_resources))
+  (raise-system-exception 'CORBA:no_resources))
 
 (define-method "CONTEXTS" ((self server-request))
-  (error 'omg.org/corba:no_resources))
+  (raise-system-exception 'CORBA:no_resources))
 
 (define-method "OPERATION_CONTEXT" ((self server-request))
-  (error 'omg.org/corba:no_resources))
+  (raise-system-exception 'CORBA:no_resources))
 
 (define-method "RESULT" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "RESPONSE_EXPECTED" ((self server-request))
   (response-expected self))
 
 (define-method "REPLY_STATUS" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "FORWARD_REFERENCE" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_SLOT" ((self server-request) ID)
   (DECLARE (IGNORE ID))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_REQUEST_SERVICE_CONTEXT" ((self server-request) id)
   (get-service-context id (service-context-list self)))
@@ -195,25 +270,25 @@ PortableInterceptor::TRANSPORT_RETRY
   (request-exception self))
 
 (define-method "OBJECT_ID" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "ADAPTER_ID" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "TARGET_MOST_DERIVED_INTERFACE" ((self server-request))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "GET_SERVER_POLICY" ((self server-request) _TYPE)
   (DECLARE (IGNORE _TYPE))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "SET_SLOT" ((self server-request) _ID _DATA)
   (DECLARE (IGNORE _ID _DATA))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "TARGET_IS_A" ((self server-request) _ID)
   (DECLARE (IGNORE _ID))
-  (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method "ADD_REPLY_SERVICE_CONTEXT" ((self server-request)
                                             service_context replace)
@@ -223,12 +298,6 @@ PortableInterceptor::TRANSPORT_RETRY
 
 
 ;;;; ORB Operations for interceptors
-
-(defclass pi-orb (clorb-orb)
-  ((client-request-interceptors :accessor client-request-interceptors
-                                :initform nil)
-   (server-request-interceptors :accessor server-request-interceptors
-                                :initform nil)))
 
 
 (defmethod create-client-request ((orb pi-orb) &rest initargs)
