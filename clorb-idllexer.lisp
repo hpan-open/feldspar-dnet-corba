@@ -1,3 +1,9 @@
+;;; clorb-idllexer.lisp -- A simple lexer for IDL
+;;
+;; The lexer uses clorb-idlcpp to preprocess using the system cpp and
+;; the net.cddr.redpas macros to do the lexical analysis.
+;;
+
 (in-package :clorb)
 
 
@@ -36,7 +42,7 @@
   (check-type file (or string pathname))
   (using-cpp-stream
    file
-   (lambda (cpp) 
+   (lambda (cpp)
      (let ((*current-cpp* cpp)
            (lexer (make-instance 'cppchar-lexer :cpp cpp)))
        (next-token lexer)
@@ -87,13 +93,13 @@
        (alt (seq #\*
                  (repeat (0) #'(lambda (ch) (char/= ch #\*)))
                  #\*
-                 (repeat (0) 
+                 (repeat (0)
                    #'(lambda (ch) (char/= ch #\/))
                    (repeat (0) #'(lambda (ch) (char/= ch #\*)))
                    #\*)
                  #\/
                  (action nil))
-            (seq #\/ 
+            (seq #\/
                  (seq* #'(lambda (ch) (char/= ch #\Newline)))
                  (action nil))
             (seq (action "/")))))
@@ -117,38 +123,132 @@
          (action (coerce (nreverse name) 'string)))))
 
 
-(defun string-literal ()
+(defun hex-char-p (c)
+  (and (characterp c)
+       (digit-char-p c 16)))
+
+(defun hex-char ()
+  (let ((ch (token *lexer*)))
+    (let ((n (hex-char-p ch)))
+      (if n (progn (match-token *lexer* ch) (action n))))))
+
+(defun hex-escape ()
+  (let ((result 0) n)
+    (loop repeat 2 while (-> (hex-char) n)
+          do (setq result (+ (* result 16) n)))
+    (action (code-char result))))
+
+(defun oct-char ()
+  (let ((ch (token *lexer*)))
+    (let ((n (and (characterp ch)
+                  (digit-char-p ch 8))))
+      (if n (progn (match-token *lexer* ch) (action n))))))
+
+(defun oct-escape (first-token)
+  (let ((result (digit-char-p first-token)) n)
+    (loop repeat 2 while (-> (oct-char) n)
+          do (setq result (+ (* result 8) n)))
+    (action (code-char result))))
+
+
+(defun escaped-char (terminator-char)
+  (block nil
+    (let ((token (token *lexer*)))
+      (when (or (eql token terminator-char)
+                (not (characterp token)))
+        (return nil))
+      (match-token *lexer* token)
+      (unless (eql token #\\) (return (values t token)))
+      (seq (-> #'characterp token)
+           (case token
+             ((#\n) (action #\newline))
+             ((#\t) (action #\tab))
+             ((#\v) (action (code-char 11)))
+             ((#\b) (action #\backspace))
+             ((#\r) (action #\return))
+             ((#\f) (action #\page))
+             ((#\a) (action #\bell))
+             ((#\x) (hex-escape))
+             ((#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7) (oct-escape token))
+             (otherwise (action token)))))))
+
+
+(defun string-literal-1 ()
   (let (ch chs)
     (seq #\"
-         (repeat (0)
-           (-> #'(lambda (c) (char/= c #\")) ch)
-           (push ch chs))
+         (seq* (-> (escaped-char #\") ch)
+               (push ch chs))
          #\"
-         (action (cons 'string (coerce (nreverse chs) 'string))))))
+         (action (coerce (nreverse chs) 'string)))))
+
+(defun string-literal ()
+  (let ((result nil) s)
+    (seq (-> (string-literal-1) result)
+         (seq* (action (whitespace))
+               (-> (string-literal-1) s)
+               (action (setq result (concatenate 'string result s))))
+         (action (cons 'string result)))))
+
 
 (defun char-literal ()
   (let (ch)
-    (seq #\' (-> #'identity ch) #\'
+    (seq #\' (-> (escaped-char #\') ch) #\'
          (action ch))))
 
+
+(defun decimal-char-p (c)
+  (and (characterp c)
+       (digit-char-p c)))
+
+
+(defun parse-fixed (string)
+  (multiple-value-bind (n pos) 
+                       (if (eql (char string 0) #\.)
+                         (values 0 0) 
+                         (parse-integer string :junk-allowed t))
+    (if (> (length string) (1+ pos))
+      (let ((decimals (parse-integer string :start (1+ pos))))
+        (let ((multiplier (expt 10 (- (length string) pos 1))))
+          (/ (+ (* multiplier n) decimals) multiplier)))
+      n)))
+
+
 (defun number-token ()
-  (let ((chars '()))
+  (let ((chars '())
+        (base nil))
     (macrolet ((c (&rest seq)
                  (let ((f '#:f) (c '#:c))
                    `(multiple-value-bind (,f ,c) (seq ,@seq)
                       (when ,f
                         (push ,c chars)
                         t)))))
-      (seq (opt (c #\-))
-           (repeat (1)
-             (c #'digit-char-p))
-           (opt (seq (c #\.)
-                     (repeat (0)
-                       (c #'digit-char-p))))
-           (opt (seq (c (alt #\e #\E #\d #\D))
-                     (repeat (1)
-                       (c #'digit-char-p))))
-           (action (read-from-string (coerce (nreverse chars) 'string)))))))
+      (seq (opt (seq (c #\0)
+                     (action (setq base 8))
+                     (opt (seq (alt #\x #\X)) 
+                          (action (setq base 16)))))
+           (if (eql base 16)
+             (seq+ (c #'hex-char-p))
+             (seq (seq* (c #'decimal-char-p))
+                  (opt (seq (c #\.) (seq* (c #'decimal-char-p))
+                            (action (setq base nil))))
+                  (alt (seq (alt #\e #\E)
+                            (action (push #\D chars)
+                                    (setq base nil))
+                            (opt (alt (c #\+) (c #\-)))
+                            (seq+ (c #'decimal-char-p)))
+                       (seq (alt #\d #\D)
+                            (action (setq base 'fixed)))
+                       (seq (and chars)))))
+           (action 
+             (let ((string (coerce (nreverse chars) 'string)))
+               (cond ((eql base 'fixed)
+                      (parse-fixed string))
+                     (base
+                      (parse-integer string :radix base))
+                     (t
+                      (let ((*read-default-float-format* 'double-float))
+                        (read-from-string string))))))))))
+
 
 (defun char-token ()
   (alt (seq #\: (alt (seq #\: (action "::"))
@@ -164,11 +264,11 @@
 
 
 #|
-(with-input-from-string (s "123.44 foo, ")
-  (let ((*lexer* (make-instance 'net.cddr.redpas:streamchar-lexer
-                   :stream s)))
-    (next-token *lexer*)
-    (number-token)
-    (idl-token)
-    (idl-token)))
+ (with-input-from-string (s "123.44 foo, ")
+   (let ((*lexer* (make-instance 'net.cddr.redpas:streamchar-lexer
+                                 :stream s)))
+     (next-token *lexer*)
+     (number-token)
+     (idl-token)
+     (idl-token)))
 |#
