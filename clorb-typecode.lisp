@@ -109,7 +109,7 @@
 ;; :tk_string   max      
 ;; :tk_wstring  max
 ;; :tk_array  
-;; :tk_fixed    :tk_ushort      :tk_short
+;; :tk_fixed    digits		scale
 
 ;;; Accessors for TypeCode parameters
 
@@ -151,10 +151,7 @@
 
 (defun key (string)
   (check-type string string)
-  (cond ((symbolp string)
-	 string)
-	(t
-         (intern (string-upcase string) :keyword))))
+  (intern (string-upcase string) :keyword))
 
 (macrolet
     ((make-tc-constants (&rest specs)
@@ -421,10 +418,9 @@
   (make-typecode :tk_objref id name))
 
 (defun create-exception-tc (id name members)
-  (make-typecode :tk_except id name 
-                 (map 'list (lambda (m)
-                              (list (op:name m) (op:type m)))
-                      members)))
+  "Create Exception TypeCode for interface repository ID and NAME, with MEMEBERS.
+Members on form: (name TypeCode)"
+  (make-typecode :tk_except id name members))
 
 (defun make-tc-alias (id name typecode)
   (make-typecode :tk_alias id name typecode))

@@ -150,13 +150,12 @@
 
 ;;;; Exceptions 
 
-(defmacro define-user-exception (symbol &key (name "") (id "") slots members)
+(defmacro define-user-exception (symbol &key (name "") (id "") members)
   "Syntax: scoped-symbol
 id: repo-id
 name: repo-name
 Slots: deprecated
 Members: (name typecode)*"
-  (assert (null slots))
   (loop
     for member in members
     for slot-name = (string (car member))
@@ -172,12 +171,12 @@ Members: (name typecode)*"
     (return
      `(progn
         (define-condition ,symbol (CORBA:UserException)
-                          (,@slots ,@slot-defs))
+                          (,@slot-defs))
         ,@getters
         (defun ,symbol (&key ,@args)
           (make-condition ',symbol ,@initargs))
         (set-symbol-id/typecode ',symbol ,id
-                                (make-typecode :tk_except ,id ,name (list ,@tc-members)))
+                                (create-exception-tc ,id ,name (list ,@tc-members)))
         (defmethod exception-name ((exc ,symbol)) ',symbol)
         (defmethod userexception-values ((ex ,symbol))
           (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))

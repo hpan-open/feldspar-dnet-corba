@@ -209,7 +209,7 @@
   (declare (ignore target))
   (if (zerop (op:bound x))
      `CORBA:tc_string
-     `(make-typecode :tk_string ,(op:bound x))))
+     `(create-string-tc  ,(op:bound x))))
 
 (defmethod target-typecode ((x CORBA:SequenceDef) target)
   `(create-sequence-tc
