@@ -35,6 +35,7 @@
 
 ;;;; Struct Macrology
 
+#+unused-macros
 (defmacro define-corba-struct (name &key members)
   (loop
       for member in members
@@ -66,28 +67,45 @@
                    when (slot-boundp s n)
                    collect (cons f (slot-value s n))))))))
 
-(defmacro define-struct (symbol &key id (name "") members
-                                 read write)
+(defmacro define-struct (symbol &key id (name "") members read write)
   "Define a CORBA structure with class, constructor, typecode etc.
-  members = ((name type slot-name)*)
+  members = ((name type)*)
   read = ((buffer) unmarshallingcode*)
   write = ((obj buffer) marshallingcode*)"
-  `(progn
-     (define-corba-struct ,symbol 
-       :members ,(loop for (nil nil slot-name) in members
-                       collect (list slot-name nil)))
-     (set-symbol-id/typecode ',symbol ,id
-                             (create-struct-tc ,id ,name
-                                               (vector ,@(loop for (name type) in members 
-                                                             collect `(list ,name ,type)))))
-     ,(if read
-        (destructuring-bind ((buffer) &rest forms) read
-          `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
-             ,@forms)))
-     ,(if write
-        (destructuring-bind ((obj buffer) &rest forms) write
-          `(defmethod struct-write (,obj (symbol (eql ',symbol)) ,buffer)
-             ,@forms)))))
+  (let* ((slot-names (mapcar #'first members))
+         (slots (mapcar #'feature slot-names))
+         (keys  (mapcar #'key slot-names)))
+    `(progn
+       (defclass ,symbol (corba:struct) 
+         ,(mapcar (lambda (slot key) (list slot :initarg key))
+                  slots keys))
+       (defun ,symbol (&key ,@slots)
+         (make-instance ',symbol 
+           ,@(mapcan #'list keys slots)))
+       ,@(mapcar (lambda (slot)
+                   `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)))
+                 slots)
+       ,@(mapcar (lambda (slot)
+                   `(define-method (setf ,slot) (val (s ,symbol))
+                      (setf (slot-value s ',slot) val)))
+                 slots)
+       (defmethod fields ((s ,symbol))
+         (loop for f in ',keys for n in ',slots
+               when (slot-boundp s n)
+               collect (cons f (slot-value s n))))
+       (set-symbol-id/typecode ',symbol ,id
+                               (create-struct-tc ,id ,name
+                                                 (vector ,@(loop for (name type) in members 
+                                                                 collect `(list ,name ,type)))))
+       ,(if read
+          (destructuring-bind ((buffer) &rest forms) read
+            `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
+               ,@forms)))
+       ,(if write
+          (destructuring-bind ((obj buffer) &rest forms) write
+            `(defmethod struct-write (,obj (symbol (eql ',symbol)) ,buffer)
+               ,@forms))))))
+        
 
 
 ;;;; Union macrology
