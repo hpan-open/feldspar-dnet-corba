@@ -412,6 +412,11 @@
 
 ;;;  WstringDef create_wstring (in unsigned long bound);
 
+(define-method create_wstring ((container Repository) bound)
+  (make-instance 'wstring-def
+    :bound bound))
+
+
 ;;;  SequenceDef create_sequence
 ;;;     (in unsigned long bound,in IDLType element_type);
 
@@ -465,8 +470,10 @@
   :id "IDL:omg.org/CORBA/ConstantDef:1.0"
   :attributes ((type_def)
                (value))
-  :slots ((type))
   :def_kind :dk_Constant)
+
+(define-method type ((obj constant-def))
+  (op:type (op:type_def obj)))
 
 
 ;;;; InterfaceDef
@@ -589,7 +596,7 @@
 
 (defun validate-operation-def (mode result params exceptions)
   (when (eq mode :op_oneway)
-    (unless (and (eq :pk_void (op:type result))
+    (unless (and (eq :tk_void (op:kind (op:type result)))
                  (zerop (length exceptions))
                  (every (lambda (p)
                           (eq :param_in (op:mode p)))
@@ -601,7 +608,7 @@
 (defun validate-operation-def-change (def &key 
                                             (mode (op:mode def))
                                             (result (op:result_def def))
-                                            (params (op:params def))
+                                            (params (slot-value def 'params))
                                             (exceptions (op:exceptions def)))
   (validate-operation-def mode result params exceptions))
 
@@ -868,7 +875,7 @@
 (defmethod idltype-tc ((obj string-def))
   (make-typecode :tk_string (op:bound obj)))
 
-;;;; interface WstringDef : IDLType {
+;;;; interface WstringDef : IDLType
 ;;;  attribute unsigned long bound;
 
 (define-ir-class wstring-def (corba:WstringDef idltype)
@@ -918,6 +925,20 @@
 (defmethod idltype-tc ((obj array-def))
   (make-array-typecode (op:element_type obj)
                        (op:length obj)))
+
+
+;;;; interface FixedDef : IDLType
+;;   attribute unsigned short digits;
+;;   attribute short scale;
+
+(define-ir-class fixed-def (CORBA:FixedDef idltype)
+  :def_kind :dk_fixed
+  :attributes ((digits 1)
+               (scale 0)))
+
+(defmethod idltype-tc ((obj fixed-def))
+  (make-typecode :tk_fixed (omg.org/features:digits obj)
+                 (op:scale obj)))
 
 
 
