@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.1 2000/11/14 22:50:28 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.2 2001/02/13 21:22:58 lenst Exp $
 
 (in-package :clorb)
 
@@ -90,6 +90,12 @@
     (setf status 4)
     (setf values (list object))
     (setf types  '(:tk_string))))
+
+
+(defun set-request-result (sreq results &optional types &key (status 0))
+  (setf (server-request-status sreq) status)
+  (setf (server-request-values sreq) results)
+  (setf (server-request-types sreq)  types))
 
 
 (defun set-request-exception (sreq condition)
