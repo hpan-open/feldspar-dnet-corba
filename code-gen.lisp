@@ -110,6 +110,9 @@
 (defmethod gen-type ((obj sequence-def))
   `sequence)
 
+(defmethod gen-type ((obj alias-def))
+  (scoped-symbol obj))
+
 
 (defmethod gen-code ((x contained))
   (mess 4 "Can't generate code for ~A of kind ~S"
