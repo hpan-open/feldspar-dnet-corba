@@ -49,5 +49,8 @@
 (deftype corba:double ()
   'real)
 
+(deftype corba:longdouble ()
+  'real)
+
 (deftype corba:fixed ()
   'rational)

@@ -33,7 +33,7 @@
    ;; types
    :boolean :char :wchar :octet :string :wstring :short
    :ushort :long :ulong :longlong :ulonglong :float :double
-   :fixed
+   "LONGDOUBLE" "FIXED"
    ;; non simple
    :TCKind
    :typecode :typecode/bounds :typecode/badkind :union 
