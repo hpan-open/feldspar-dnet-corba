@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.38 2005/02/21 18:12:32 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.39 2005/02/25 19:33:41 lenst Exp $
 
 (in-package :clorb)
 
@@ -81,7 +81,9 @@
           (life-state :initform nil :accessor life-state
                       :documentation "Living, destroy in progress or destroyed")
           (etherealize-complete :initform nil :accessor etherealize-complete)
-          (queue :initform nil :accessor poa-request-queue)))
+          (queue :initform nil :accessor poa-request-queue)
+          (executing-requests :initform nil :accessor executing-requests)))
+
 
 (defmethod print-object ((p portableserver:poa) stream)
   (print-unreadable-object (p stream :type t)
@@ -793,24 +795,38 @@ individual call (some callers may choose to block, while others may not).
            (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
 
 
+(defmacro deletef (object place &rest keys &environment env)
+  (multiple-value-bind (vars vals store-vars writer-form reader-form)
+      (get-setf-expansion place env)
+    (if (cdr store-vars) (error "Can't expand this"))
+    `(let* (,@(mapcar #'list vars vals)
+            (,(car store-vars) ,reader-form))
+       (setf ,(car store-vars)
+             (delete ,object ,(car store-vars) ,@keys))
+       ,writer-form)))
 
 (defun poa-invoke (poa request)
   (let ((oid (request-object-id request))
         (operation (request-operation request))
         (buffer (request-input request)))
-    (handler-case
-      (multiple-value-bind (servant postinvoke)
-                           (get-servant poa oid operation)
-        (let ((*poa-current* (make-poa-current poa oid servant)))
-          (setf (request-state request) :exec)
-          (unwind-protect
-            (servant-invoke servant operation buffer request)
-            (when postinvoke (funcall postinvoke)))))
-      (PortableServer:ForwardRequest (exception)
-       (set-request-forward request (op:forward_reference exception)))
-      (CORBA:UserException ()
-       (raise-system-exception 'CORBA:UNKNOWN)))
-    (server-request-respond request)))
+    (push request (executing-requests poa))
+    (setf (request-state request) :exec)
+    (unwind-protect
+      (progn
+        (handler-case
+          (multiple-value-bind (servant postinvoke)
+                               (get-servant poa oid operation)
+            (let ((*poa-current* (make-poa-current poa oid servant)))
+              (unwind-protect
+                (servant-invoke servant operation buffer request)
+                (when postinvoke (funcall postinvoke)))))
+          (PortableServer:ForwardRequest (exception)
+                                         (set-request-forward request (op:forward_reference exception)))
+          (CORBA:UserException ()
+                               (raise-system-exception 'CORBA:UNKNOWN)))
+        (server-request-respond request))
+      (deletef request (executing-requests poa)))))
+      
 
 
 (defun poa-locate (poa poa-spec &optional (check-poa-status t))
