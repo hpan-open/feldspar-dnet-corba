@@ -93,12 +93,11 @@
 (defmacro ensure-exception (code exception &rest pattern)
   `(handler-case
      (progn ,code
-            (ensure nil "~S should raise exception"
-                    ',code))
+            (tc-report "~S should raise exception" ',code))
      (,exception (exc)
                  (ensure-pattern* exc ,@pattern))
      (t (exc)
-        (ensure nil "Should raise ~A. Got: ~A" ',exception exc))))
+        (tc-report "Should raise ~A. Got: ~A" ',exception exc))))
 
 (defmacro ensure-repository (&rest args)
   `(ensure-pattern repository (repository-pattern ,@args)))

@@ -61,11 +61,13 @@
   (when *test-suite-debug*
     (break "Failed ensure")))
 
-(defun ensure (bool &optional description &rest args)
-  (unless bool
-    (if args (apply #'tc-report description args)
-        (tc-report "~A fail"
-                   (or description "ensure")))))
+(defmacro ensure (bool &optional description &rest args)
+  `(unless ,bool
+     ,(if description
+        (if args 
+          `(tc-report ,description ,@args)          
+          `(tc-report "FAIL: ~A" ,description))
+        `(tc-report "FAIL: ~S" ',bool))))
 
 (defun ensure-eql (is shouldbe)
   (unless (eql is shouldbe)
