@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.6 2001/06/18 19:26:19 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.7 2001/07/02 16:53:02 lenst Exp $
 
 (in-package :clorb)
 
@@ -29,8 +29,7 @@
               (mapcar (lambda (x) (list (car x) (cdr x)))
                       (fields obj)))
     (print-unreadable-object (obj stream :type t)
-      (format stream #+:ANSI-CL "~A~:{~_ ~A=~S~}"
-              #-:ANSI-CL "~A~:{ ~A=~S~}"
+      (format stream "~A~:{~_ ~A=~S~}"
               (type-id obj)
               (map 'list (lambda (pair) (list (car pair) (cdr pair)))
                    (fields obj))))))
@@ -89,13 +88,6 @@ NV-PAIRS is a list field names and field values."
 
 (defmethod struct-get ((struct CORBA:struct) (field string))
   (struct-get struct (lispy-name field)))
-
-(defmethod any-typecode ((struct CORBA:struct))
-  (get-typecode (type-id struct)))
-
-(defmethod any-value ((struct CORBA:struct))
-  struct)
-
 
 ;; Interface:
 (defun struct-typecode (id name &rest fields)
