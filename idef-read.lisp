@@ -68,10 +68,13 @@
                   for iface = (lookup-name-in container i-name nil)
                   when (null iface) return :delayed
                   collect iface))
-           (idef (create-contained
-                  container 'interface-def
-                  :name name :version version :id id
-                  :base_interfaces (and (consp base-interfaces) base-interfaces))))
+           (idef (or (lookup-name-in container name nil)
+                     (create-contained
+                      container 'interface-def
+                      :name name :version version :id id
+                      :base_interfaces '()))))
+      (when (consp base-interfaces)
+        (setf (op:base_interfaces idef) base-interfaces))
       (idef-read-contents forms idef)
       (when (eq base-interfaces :delayed)
         (setq *idef-read-agenda*
