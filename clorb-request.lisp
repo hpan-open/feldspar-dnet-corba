@@ -116,8 +116,7 @@
                when (/= 0 (logand ARG_IN (op:arg_modes nv)))
                     do (marshal-any-value (op:argument nv) buffer))))
     (marshal-giop-set-message-length buffer)
-    #-clisp (write-sequence (buffer-octets buffer) stream)
-    #+clisp (lisp:write-byte-sequence (buffer-octets buffer) stream)
+    (write-sequence (buffer-octets buffer) stream)
     (force-output stream)
     (unless (member :no-response flags)
       (push req *corba-waiting-requests*))))
@@ -156,16 +155,14 @@
 	msgtype)
     ;; Read header
     (setf (fill-pointer (buffer-octets buffer)) 12)
-    #+clisp (lisp:read-byte-sequence (buffer-octets buffer) stream)
-    #-clisp (read-sequence (buffer-octets buffer) stream 
-                           :end (fill-pointer (buffer-octets buffer)))
+    (read-sequence (buffer-octets buffer) stream 
+                   :end (fill-pointer (buffer-octets buffer)))
     (setq msgtype (unmarshal-giop-header buffer))
     (let ((size (+ (unmarshal-ulong buffer) 12)))
       (if (< (array-total-size (buffer-octets buffer)) size)
           (adjust-array (buffer-octets buffer) size))
       (setf (fill-pointer (buffer-octets buffer)) size)
-      #+clisp (lisp:read-byte-sequence (buffer-octets buffer) stream :start 12)
-      #-clisp (read-sequence (buffer-octets buffer) stream :start 12))
+      (read-sequence (buffer-octets buffer) stream :start 12))
     (ecase msgtype
       ((1)                              ; Reply
        (let* ((service-context (unmarshal-service-context buffer))
@@ -335,7 +332,7 @@
 
 (defun object-narrow (obj id)
   (assert (object-is-a obj id))
-  (make-instance 'CORBA:Proxy
+  (make-instance (find-proxy-class id)
     :id id
     :host (object-host obj)
     :port (object-port obj)
