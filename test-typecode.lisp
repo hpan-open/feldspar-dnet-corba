@@ -69,10 +69,59 @@
                     tc))))
 
   (define-test "Fixed"
-    (let ((tc (make-typecode :tk_fixed 10 2)))
+    (let ((tc (create-fixed-tc 10 2)))
       (ensure-equalp (op:fixed_digits tc) 10)
       (ensure-equalp (op:fixed_scale tc) 2)))
+
+  (define-test "Value Box"
+      (let* ((id "IDL:Foo/Box:1.0")
+             (tc (create-value-box-tc id "Box" corba:tc_string)))
+        (ensure-typep tc 'corba:typecode)
+        (ensure-pattern* tc
+                         'op:kind :tk_value_box
+                         'op:id id 'op:name "Box"
+                         'op:content_type corba:tc_string) ))
+  (define-test "Native"
+    (let* ((id "IDL:CORBA/nat:1.0")
+           (tc (create-native-tc id "nat")))
+      (ensure-typep tc 'corba:typecode)
+      (ensure-pattern* tc
+                       'op:kind :tk_native
+                       'op:id id 'op:name "nat")))
+
+  (define-test "create-abstract-interface-tc"
+    (let* ((id "IDL:x:1.0") (name "y")
+           (tc (create-abstract-interface-tc id name)))
+      (ensure-typep tc 'corba:typecode)
+      (ensure-pattern* tc
+                       'op:kind :tk_abstract_interface
+                       'op:id id 'op:name name)))
+
+  (define-test "create-local-interface-tc"
+    (let* ((id "IDL:x:1.0") (name "y")
+           (tc (create-local-interface-tc id name)))
+      (ensure-typep tc 'corba:typecode)
+      (ensure-pattern* tc
+                       'op:kind :tk_local_interface
+                       'op:id id 'op:name name)))
   
+  (define-test "create-value-tc"
+    (let* ((id "IDL:x:1.0") (name "y")
+           (tc (create-value-tc id name 0 nil
+                                `(("foo" ,CORBA:tc_long 1)
+                                  ("bar" ,CORBA:tc_string 0)))))
+      (ensure-typep tc 'corba:typecode)
+      (ensure-pattern* tc
+                       'op:kind :tk_value
+                       'op:id id 'op:name name
+                       'op:member_count 2
+                       'op:type_modifier 0
+                       'op:concrete_base_type nil)
+      (ensure-equalp (op:member_name tc 0) "foo")
+      (ensure-equalp (op:member_name tc 1) "bar")
+      (ensure-equalp (op:member_visibility tc 0) 1)
+      (ensure-equalp (op:member_visibility tc 1) 0)))
+
 
   (define-test "TypeCodeFactory"
     (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
@@ -107,6 +156,24 @@
                                                  (corba:structmember :name "b" :type CORBA:tc_long)))
                       (pattern 'op:kind :tk_struct 'op:name "s" 
                                'op:member_count 2))
+      (ensure-pattern* (op:create_value_box_tc factory "IDL:Foo/Box:1.0" "Box" corba:tc_string)
+                       'op:kind :tk_value_box
+                       'op:id "IDL:Foo/Box:1.0" 'op:name "Box"
+                       'op:content_type corba:tc_string)
+
+      (ensure-pattern* (op:create_native_tc factory "IDL:CORBA/nat:1.0" "nat")
+                       'op:kind :tk_native
+                       'op:id "IDL:CORBA/nat:1.0" 'op:name "nat")
+
+      (ensure-pattern* (op:create_abstract_interface_tc factory "IDL:CORBA/abs:1.0" "abs")
+                       'op:kind :tk_abstract_interface
+                       'op:id "IDL:CORBA/abs:1.0" 'op:name "abs")
+
+      (ensure-pattern* (op:create_local_interface_tc factory "IDL:CORBA/local:1.0" "local")
+                       'op:kind :tk_local_interface
+                       'op:id "IDL:CORBA/local:1.0" 'op:name "local")
+
+      ;;(ensure-pattern* (op:create_value_tc factory ))
       
       (let ((recursive_tc (op:create_recursive_tc factory "IDL:V:1.0")))
         (let ((tc (op:create_struct_tc factory "IDL:V:1.0" "V" 

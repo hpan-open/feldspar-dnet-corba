@@ -652,6 +652,27 @@ Can be set to true globally for singel-process / development.")
   (fix-recursive-tc (create-enum-tc id name members)))
 
 
+(define-method "CREATE_ABSTRACT_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY)
+                                               id name)
+  (create-abstract-interface-tc id name))
+
+(define-method "CREATE_NATIVE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (create-native-tc id name))
+
+(define-method "CREATE_VALUE_BOX_TC" ((OBJ CORBA:TYPECODEFACTORY)
+                                      id name boxed_type)
+  (fix-recursive-tc (create-value-box-tc id name boxed_type)))
+
+
+(define-method "CREATE_VALUE_TC" ((OBJ CORBA:TYPECODEFACTORY)
+                                  id name type_modifier concrete_base members)
+  
+  )
+
+(define-method "CREATE_LOCAL_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
+  (create-local-interface-tc id name))
+
+
 
 ;;;; local interface ORBInitInfo {
 ;;    readonly attribute CORBA::StringSeq arguments;

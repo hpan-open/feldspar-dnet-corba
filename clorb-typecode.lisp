@@ -11,7 +11,8 @@
      :tk_sequence :tk_array :tk_alias :tk_except
      :tk_longlong :tk_ulonglong :tk_longdouble
      :tk_wchar :tk_wstring :tk_fixed :tk_value :tk_value_box
-     :tk_native :tk_abstract_interface) 
+     :tk_native :tk_abstract_interface
+     :tk_local_interface) 
   "The symbols for the TCKind enum")
 
 (deftype corba:tckind ()
@@ -84,7 +85,6 @@
 (put ':tk_except 'tk-params '(complex :tk_string :tk_string
                               (sequence (anon-struct :tk_string :tk_typecode))))
 
-
 (put ':tk_value 'tk-params 
      '(complex :tk_string :tk_string :tk_short :tk_typecode 
        (sequence (anon-struct :tk_string :tk_typecode :tk_short))))
@@ -95,6 +95,7 @@
 
 (put ':tk_abstract_interface 'tk-params '(complex :tk_string :tk_string))
 
+(put :tk_local_interface 'tk_params '(complex :tk_string :tk_string))
 
 
 ;;; TypeCode Parameters
@@ -102,14 +103,21 @@
 ;; :tk_objref   id              name      
 ;; :tk_struct   id              name            members
 ;; :tk_except   id              name            members
-;; :tk_union    id              name            :tk_TypeCode    :tk_long
+;; :tk_union    id              name            :tk_TypeCode    :tk_long  members
 ;; :tk_alias    id              name            :tk_TypeCode
 ;; :tk_enum     id              name            members
+;; :tk_value_box id             name            typecode
+;; :tk_value    id              name            ValueModifier   TypeCode  members(name typecode visibility)
+;; :tk_native   id              name
+;; :tk_abstract_interface id    name
+;; :tk_local_interface id       name
 ;; :tk_sequence content_type    max      
 ;; :tk_string   max      
 ;; :tk_wstring  max
 ;; :tk_array  
 ;; :tk_fixed    digits		scale
+
+
 
 ;;; Accessors for TypeCode parameters
 
@@ -224,14 +232,16 @@
 
 (define-method id ((tc corba:typecode))
   (case (typecode-kind tc)
-    ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum)
+    ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum :tk_value_box
+                 :tk_native :tk_abstract_interface :tk_local_interface :tk_value)
      (tcp-id (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
 (define-method name ((tc corba:typecode))
   (case (typecode-kind tc)
-    ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum)
+    ((:tk_objref :tk_struct :tk_union :tk_alias :tk_except :tk_enum :tk_value_box 
+                 :tk_native :tk_abstract_interface :tk_local_interface :tk_value)
      (tcp-name (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
@@ -240,7 +250,7 @@
   (coerce (case (typecode-kind tc)
             ((:tk_struct :tk_except :tk_enum)
              (third (typecode-params tc)))
-            (:tk_union
+            ((:tk_union :tk_value)
              (fifth (typecode-params tc)))
             (otherwise
              (error 'corba:typecode/badkind))) 
@@ -253,7 +263,7 @@
   (case (typecode-kind tc)
     ((:tk_enum)
      (elt (tc-members tc) index))
-    ((:tk_struct :tk_except)
+    ((:tk_struct :tk_except :tk_value)
      (first (elt (tc-members tc) index)))
     ((:tk_union)
      (second (elt (fifth (typecode-params tc)) index)))
@@ -262,7 +272,7 @@
 
 (define-method member_type ((tc corba:typecode) index)
   (case (typecode-kind tc)
-    ((:tk_struct :tk_except)
+    ((:tk_struct :tk_except :tk_value)
      (second (elt (tc-members tc) index)))
     ((:tk_union)
      (third (elt (tc-members tc) index)))
@@ -273,6 +283,13 @@
   (case (typecode-kind tc)
     ((:tk_union)
      (first (elt (tc-members tc) index)))
+    (otherwise
+     (error 'corba:typecode/badkind))))
+
+(define-method member_visibility ((tc corba:typecode) index)
+  (case (typecode-kind tc)
+    ((:tk_value) 
+     (third (elt (tc-members tc) index)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
@@ -303,7 +320,7 @@
   (case (typecode-kind tc)
     ((:tk_sequence :tk_array)
      (first (typecode-params tc)))
-    (:tk_alias
+    ((:tk_alias :tk_value_box)
      (third (typecode-params tc)))
     (:tk_string corba:tc_char)
     (:tk_wstring corba:tc_wchar)
@@ -324,6 +341,26 @@
   (case (typecode-kind tc)
     (:tk_fixed
      (second (typecode-params tc)))
+    (otherwise
+     (error 'corba:typecode/badkind))))
+
+
+;; ValueModifier type_modifier() raises(BadKind);
+
+(define-method type_modifier ((tc corba:typecode))
+  (case (typecode-kind tc)
+    ((:tk_value) 
+     (third (typecode-params tc)))
+    (otherwise
+     (error 'corba:typecode/badkind))))
+
+
+;; TypeCode concrete_base_type() raises(BadKind);
+
+(define-method concrete_base_type ((tc corba:typecode))
+  (case (typecode-kind tc)
+    ((:tk_value) 
+     (fourth (typecode-params tc)))
     (otherwise
      (error 'corba:typecode/badkind))))
 
@@ -433,6 +470,36 @@ Members on form: (name TypeCode)"
 (defun create-enum-tc (id name members)
   (make-typecode :tk_enum id name (coerce members 'vector)))
 
+(defun create-value-box-tc (id name typecode)
+  (make-typecode :tk_value_box id name typecode))
 
+(defun create-native-tc (id name)
+  (make-typecode :tk_native id name))
 
+(defun create-abstract-interface-tc (id name)
+  (make-typecode :tk_abstract_interface id name))
 
+(defun create-local-interface-tc (id name)
+  (make-typecode :tk_local_interface id name))
+
+#|
+    typedef short ValueModifier;                        // PIDL
+    const ValueModifier VM_NONE         = 0;
+    const ValueModifier VM_CUSTOM       = 1;
+    const ValueModifier VM_ABSTRACT     = 2;
+    const ValueModifier VM_TRUNCATABLE  = 3;
+|#
+
+(defun create-value-tc (id name type-modifier concrete-base members)
+  (check-type id string)
+  (check-type name string)
+  (check-type type-modifier fixnum) ; ValueModifier
+  (check-type concrete-base (or null CORBA:TypeCode))
+  (check-type members sequence)
+  (map nil (lambda (m)
+             (check-type m 
+                         (cons string 
+                               (cons CORBA:TypeCode (cons fixnum null)))))
+       members)
+  (make-typecode :tk_value id name type-modifier concrete-base
+                 (coerce members 'vector)))
