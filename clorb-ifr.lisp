@@ -605,10 +605,10 @@ of contained."))
    :defined_in (or (op:defined_in module) "")
    :version (op:version module)))
 
-;;;; interface ConstantDef : Contained {
+;;;; interface ConstantDef : Contained
 ;;;   readonly attribute TypeCode type;
 ;;;   attribute IDLType type_def;
-;;;   attribute any value; };
+;;;   attribute any value;
 
 (define-ir-class constant-def (CORBA:ConstantDef contained)
   :def_kind :dk_constant
@@ -619,6 +619,14 @@ of contained."))
 (define-method type ((obj constant-def))
   (op:type (op:type_def obj)))
 
+(defmethod describe-contained ((def constant-def))
+  (CORBA:ConstantDescription
+   :name (op:name def)
+   :id   (subject-id def)
+   :defined_in (subject-id (op:defined_in def))
+   :version (op:version def)
+   :type (op:type def)
+   :value (op:value def) ))
 
 ;;;; InterfaceDef
 
