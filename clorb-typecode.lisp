@@ -24,18 +24,17 @@
 
 (define-slot-dumper CORBA:TypeCode)
 
-(defun print-typecode (typecode &optional (stream *standard-output*))
-  (print-unreadable-object (typecode stream :type t :identity t)
-    (format stream "~S~{~_ ~S~}" 
-            (slot-value typecode 'kind) (slot-value typecode 'params))))
 
 (defmethod print-object ((tc CORBA:TypeCode) stream)
   (cond
    (*print-readably*
     (format stream "#.(CLORB::MAKE-TYPECODE '~S~{ '~S~})"
             (slot-value tc 'kind) (slot-value tc 'params)))
+   (*print-pretty*
+    (format stream "~<#<TYPECODE~;~:I~@{~:_ ~W~}~;>~:>" (cons (slot-value tc 'kind) (slot-value tc 'params))))
    (t
-    (print-typecode tc stream))))
+    (print-unreadable-object (tc stream :type t :identity t)
+      (prin1 (slot-value tc 'kind) stream)))))
 
 
 (eval-when (load eval)
@@ -334,6 +333,13 @@
 (defun tcp-member-symbols (params)
   (map 'vector #'lispy-name (tcp-members params)))
 
+(defun arbritary-value (tc)
+  (ecase (op:kind tc)
+    ((:tk_short :tk_long :tk_ushort :tk_ulong :tk_float :tk_double :tk_octet 
+                :tk_longlong :tk_ulonglong :tk_enum) 
+     0)
+    ((:tk_boolean) nil)
+    ((:tk_char :tk_wchar) #\Space)))
 
 ;;;; Constructors
 
