@@ -5,14 +5,19 @@
 (defclass IDL-COMPILER () 
   ((include-directories :initform *default-include-directories*
                         :initarg :include-directories
-                        :accessor include-directories)))
+                        :accessor include-directories)
+   (defines   
+     :initform nil
+     :initarg :defines
+     :accessor defines)))
+
 
 
 (defgeneric load-repository (idl-compiler repository file))
 
 (defvar *default-idl-compiler* nil)
 
-(defvar *default-exclude* '("::CORBA"))
+(defvar *default-exclude* '("::CORBA" "::IOP" "::GIOP" "::IIOP"))
 
 (defun corba:idl (file &key print (eval t) output (package-decl t)
                          only (exclude *default-exclude*)
@@ -77,6 +82,11 @@
            :eval nil
            :target 'servant-target )
 
+(CORBA:IDL "clorb:idl;corba-misc.idl"
+           :output "clorb:src;clorb-misc.lisp"
+           :package-decl nil
+           :exclude NIL
+           :eval nil)
 
 |#
 ;;; clorb-idl.lisp ends here
