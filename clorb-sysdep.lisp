@@ -246,37 +246,31 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
              (socket:remote-port conn)))
      conn)
    #+digitool
-   (let* ((s (listener-stream socket))
-          (state (and s (ccl::opentransport-stream-connection-state s)))
-          (new nil))
-     (when (member state '(:incon :dataxfer))
-       (mess 3 "Accepting connection ~S" s)
-       (setq new s
-             state nil))
-     (when (member state '(nil :uninit :closed))
-       (mess 3 "New listener replacing ~S" s)
-       (or (mcl-listener-port socket)
-           (error "MCL OpenTransport needs explicit port number for listener socket"))
-       (setf (listener-stream socket)
-         (ccl::open-tcp-stream nil (mcl-listener-port socket) 
-                               :element-type '(unsigned-byte 8)
-                               :reuse-local-port-p t)))
-     new)))
+   (let* ((s (listener-stream socket)))
+     (when (and s blocking)
+       (flet ((ready-p (s)
+                (not (eql (ccl::opentransport-stream-connection-state s) :unbnd))))
+         (unless (ready-p s)
+           (ccl:process-wait "waiting" #'ready-p s))))
+
+     (let ((state (and s (ccl::opentransport-stream-connection-state s)))
+           (new nil))
+       
+       (when (member state '(:incon :dataxfer))
+         (mess 3 "Accepting connection ~S" s)
+         (setq new s
+               state nil))
+       (when (member state '(nil :uninit :closed))
+         (mess 3 "New listener replacing ~S" s)
+         (or (mcl-listener-port socket)
+             (error "MCL OpenTransport needs explicit port number for listener socket"))
+         (setf (listener-stream socket)
+               (ccl::open-tcp-stream nil (mcl-listener-port socket) 
+                                     :element-type '(unsigned-byte 8)
+                                     :reuse-local-port-p t)))
+       new))))
 
 
-;;; Socket status
-#|
-OpenTransport states
- :closed 
- :uninit   - reset ?
- :unbnd    - closed ?
- :idle 
- :outcon   - syn-sent
- :incon    - listen
- :dataxfer - established
- :outrel   - closing
- :inrel    - closing
-|#
 
 (defun socket-stream-closed-p (stream)
   (%SYSDEP
@@ -284,15 +278,14 @@ OpenTransport states
 
    #+digitool
    (let ((state (ccl::opentransport-stream-connection-state stream)))
-     (not (member state '(:outcon :incon :dataxfer))))
+     (not (member state '(:outcon :dataxfer))))
 
    ;; Default, assume it is not closed
    nil))
 
 
 ;; Check if input is directly available on (socket) stream
-;; if this returns false positives and wait-for-input-on-streams
-;; returns :cant the server functionallity is severly reduced :()
+;; or eof, or other error.
 (defun socket-stream-listen (stream)
   (declare (ignorable stream))
   (%SYSDEP 
@@ -302,6 +295,11 @@ OpenTransport states
    (eq t (ext:read-byte-lookahead stream))
    ;;(not (ext:read-byte-will-hang-p stream))
    #+clisp t                            ;Ouch!
+
+   #+CCL
+   (or (listen stream)
+       (ccl:stream-eofp stream)
+       (socket-stream-closed-p stream))
 
    ;; Default
    (listen stream))) 
@@ -596,6 +594,12 @@ Returns select result to be used in getting status for streams."
 
 
 ;;;; Multi process support
+
+(defun current-process ()
+  (%SYSDEP
+   "return the current process"
+   #+ccl ccl:*current-process*
+   :current-process))
 
 (defun start-process (options proc &rest args)
   (declare (ignorable options))
