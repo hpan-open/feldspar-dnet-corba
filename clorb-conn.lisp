@@ -19,7 +19,8 @@
    ;;(write-callback  :initarg :write-callback               :accessor connection-write-callback)
    (error-callback  :initarg :error-callback               :accessor connection-error-callback)
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
-   (client-requests                          :initform nil :accessor connection-client-requests)))
+   (client-requests                          :initform nil :accessor connection-client-requests)
+   (server-requests                          :initform nil :accessor connection-server-requests)))
 
 
 
@@ -118,32 +119,38 @@ Can be set to true globally for singel-process / development.")
 
 (defun orb-wait (wait-func &rest wait-args)
   (if *running-orb*
-    (loop until (apply wait-func wait-args) do (orb-work nil))
+    (loop until (apply wait-func wait-args) do (orb-work *the-orb* t nil))
     (apply #'process-wait "orb-wait" wait-func wait-args)))
 
 
 
-(defun orb-work (&optional poll)
-  (loop
-    do (let ((event (io-driver poll)))
-         (when event
-           (setq poll t)
-           (let* ((desc (second event))
-                  (conn (io-descriptor-connection desc)))
-             (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
-             (case (car event)
-               (:read-ready
-                (when conn (connection-read-ready conn)))
-               (:write-ready
-                (io-descriptor-set-write desc nil 0 0)
-                (when conn (connection-write-ready conn)))
-               (:new
-                (funcall *new-connection-callback* desc))
-               (:connected
-                ;; Not implemented yet..; for outgoing connections setup
-                nil)
-               (:error
-                (mess 4 "Error: ~A" (io-descriptor-error desc))
-                (io-descriptor-destroy desc)
-                (when conn (connection-error conn)))))))
-    while (io-work-pending-p)))
+(defun orb-work (orb run-queue poll)
+  (when run-queue
+    (loop while (work-queue orb)
+          do (funcall (pop (work-queue orb)))))
+  (let ((event-processed nil))
+    (loop for event = (io-get-event)
+          while event
+          do (setq event-processed t)
+          (let* ((desc (second event))
+                 (conn (io-descriptor-connection desc)))
+            (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
+            (case (car event)
+              (:read-ready
+               (when conn (connection-read-ready conn)))
+              (:write-ready
+               (io-descriptor-set-write desc nil 0 0)
+               (when conn (connection-write-ready conn)))
+              (:new
+               (funcall *new-connection-callback* desc))
+              (:connected
+               ;; Not implemented yet..; for outgoing connections setup
+               nil)
+              (:error
+               (mess 4 "Error: ~A" (io-descriptor-error desc))
+               (io-descriptor-destroy desc)
+               (when conn (connection-error conn))))))
+    (unless event-processed
+      (io-driver poll))))
+  
+
