@@ -41,8 +41,8 @@
 (persistent-naming:setup-pns :export t)
 
 (setq
- *print-length* 7
- *print-depth* 3
+ *print-length* 10
+ *print-depth* 4
  *print-array* nil
  )
 
