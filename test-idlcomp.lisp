@@ -74,8 +74,7 @@
 	typedef wchar wc;
 	typedef boolean b;
 	typedef Object i;
-	typedef any a;
- "
+	typedef any a; "
     ;;
     "o" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_octet))
     "c" (pattern 'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_char))    
@@ -258,7 +257,7 @@ typedef long a[y];
             'op:type (pattern 'op:kind :tk_except 
                               'op:name "exc"
                               'op:id "IDL:exc:1.0"                            
-                              'omg.org/features:member_count 1)
+                              'op:member_count 1)
             'op:members (seq-pattern
                          (struct-pattern
                           'struct-class-name 'omg.org/corba:structmember
@@ -280,7 +279,7 @@ typedef long a[y];
                 'op:type CORBA:tc_string)
     "foo::maybe" (def-pattern :dk_operation
                    'op:mode :op_normal
-                   'omg.org/features:result_def (def-pattern :dk_interface)
+                   'op:result_def (def-pattern :dk_interface)
                    'op:params (seq-pattern
                                (struct-pattern 'op:name "n" 'op:mode :param_in)
                                (struct-pattern 'op:name "rest" 'op:mode :param_out))
@@ -308,6 +307,16 @@ typedef long a[y];
   
   ;; TODO:
   ;; forward struct, union,..
-  
+  ;; preprocessing
+  ;; pragmas
+
+  (define-idl-test "Prefix Pragma"
+    "/* foo */
+  #pragma prefix \"omg.org\"
+	module CosNaming { typedef string Istring; }; "
+    ;; FIXME: idlcomp doesn't work if I add a space after #
+    "CosNaming::Istring" (def-pattern :dk_alias
+                           'op:id "IDL:omg.org/CosNaming/Istring:1.0" ))
+
   )
 
