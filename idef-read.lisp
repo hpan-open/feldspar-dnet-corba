@@ -236,7 +236,7 @@
     obj))
 
 (defun repo-path (module)
-  (if (and module (not (typep module 'repository)))
+  (if (and module (not (typep module 'CORBA:Repository)))
       (list*
         "/" (op::name module)
         (repo-path (op::defined_in module)))
