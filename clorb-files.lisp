@@ -76,7 +76,7 @@
                          (dsf (file-write-date sf)))
                      (or (null dcf) (null dsf)
                          (progn
-                           #+ignore
+                           #+(or)
                            (format t "~&;; Exam comp ~A(~A):~A(~A)~%"
                                    sf dsf cf dcf )
                            nil)

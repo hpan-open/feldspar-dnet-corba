@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.10 2002/06/01 05:46:38 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.11 2002/09/24 18:26:47 lenst Exp $
 
 (in-package :clorb)
 
@@ -437,7 +437,7 @@
 
     (ForwardRequest (fwd)
       (mess 4 "forwarding")
-      (set-request-forward sreq (car (userexception-values fwd))))
+      (set-request-forward sreq (omg.org/features:forward_reference fwd)))
     (exception (exc)
       (set-request-exception sreq exc))
     #+ignore

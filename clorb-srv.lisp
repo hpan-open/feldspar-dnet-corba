@@ -11,7 +11,7 @@
 
 ;;;; GIOP / IIOP stuff
 
-(defun decode-userexception (exc)
+'(defun decode-userexception (exc)
   (values
    (cons ':tk_string
          (if (slot-boundp exc 'types)
@@ -29,7 +29,7 @@
 
 (defun setup-server (&optional (orb (ORB_init)))
   (multiple-value-bind (port host)
-      (io-create-listner (orb-port orb))
+      (io-create-listener (orb-port orb))
     (setf (adaptor orb) t)
     (setf (orb-port orb) port)
     (unless (orb-host orb)
@@ -105,7 +105,7 @@
   (op:run orb))
 
 (defun recover (&optional (orb (ORB_init)))
-  (io-reset :listner nil)
+  (io-reset :listener nil)
   (main-loop orb))
 
 

@@ -5,8 +5,7 @@
 (deftype buffer-index ()
   '(integer 0 #.array-dimension-limit))
 
-(deftype octets ()
-  '(vector CORBA:octet))
+;;(deftype octets ()  '(vector CORBA:octet))
 
 (defvar *empty-octets*
   (make-array 0 :element-type 'CORBA:octet))

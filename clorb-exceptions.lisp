@@ -3,9 +3,6 @@
 (in-package :clorb)
 
 
-(define-condition corba:exception (serious-condition)
-  ())
-
 (defgeneric exception-name (exception)
   (:documentation "The scoped symbol for the exception type"))
 
@@ -82,8 +79,6 @@
 ;;; id-exception-class id   --> exception-class
 ;;;
 
-(define-condition corba:userexception (corba:exception)
-                  ())
 
 (define-condition unknown-user-exception (corba:userexception)
                   ((id :initarg :id :reader unknown-exception-id)
@@ -107,6 +102,7 @@ id: repo-id
 name: repo-name
 Slots: deprecated
 Members: (name typecode)*"
+  (assert (null slots))
   (loop
     for member in members
     for slot-name = (string (car member))
@@ -132,8 +128,8 @@ Members: (name typecode)*"
                              (lambda () (make-typecode :tk_except ,id ,name (list ,@tc-members))))
         (defmethod exception-name ((exc ,symbol)) ',symbol)
         (defmethod userexception-values ((ex ,symbol))
-          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',slot))
-                          (append slots members)))))))) 
+          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
+                          slot-defs))))))) 
 
 
 
