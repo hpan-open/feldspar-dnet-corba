@@ -1,3 +1,22 @@
+2002-05-30  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* orb-structs.lisp, orb-stub.lisp, orb-idl.lisp, code-gen.lisp:
+	* ir-class.lisp, orb-export.lisp:
+	removing
+
+	* clorb-iir.lisp: simplify
+
+	* clorb-exceptions.lisp, clorb-iiop.lisp, clorb-object.lisp:
+	Exception handling
+
+	* idef-read.lisp: use CORBA:StructMember instead of make-struct
+
+	* clorb-unmarshal.lisp: added fun unmarshal-exception
+
+2002-05-29  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-servant.lisp: Move op:_this to clorb-poa
+
 2002-05-28  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-poa.lisp (_this): moved here from clorb-servant.lisp
