@@ -28,12 +28,8 @@
 
 #+mcl
 (defclass mcl-listner-socket ()
-  ((port :initarg :port :accessor listner-port)
+  ((port :initarg :port :accessor mcl-listner-port)
    (stream :initform nil :accessor listner-stream)))
-
-#+mcl
-(defun listner-host (listner-socket)
-  (ccl::inet-host-name (ccl::stream-local-host (listner-stream listner-socket))))
 
 
 ;; the unconnected socket is returned by OPEN-PASSIVE-SOCKET and used
@@ -55,7 +51,7 @@
   (%SYSDEP
    "open listner socket"
    #+clisp 
-   (lisp:socket-server port)
+   (if port (socket-server port) (socket-server))
    #+cmucl-sockets 
    (ext:create-inet-listener port)
    #+db-sockets
@@ -72,6 +68,24 @@
    (let ((listner (make-instance 'mcl-listner-socket :port port)))
      (accept-connection-on-socket listner)
      listner)))
+
+(defun passive-socket-host (socket)
+  (%SYSDEP
+   "Get the hostname/IP of socket"
+   #+clisp
+   (socket-server-host socket)
+   #+mcl
+   (ccl::inet-host-name (ccl::stream-local-host (listner-stream listner-socket)))
+   ;; Default
+   *host* ))
+
+(defun passive-socket-port (socket)
+  (%SYSDEP
+   "Get the port of socket"
+   #+clisp
+   (socket-server-port socket)
+   ;; Default
+   *port* ))
 
 
 (defun open-active-socket (host port)
@@ -155,7 +169,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
      (when (member state '(nil :uninit :closed))
        (mess 3 "New listner replacing ~S" s)
        (setf (listner-stream socket)
-             (ccl::open-tcp-stream nil (listner-port socket) 
+             (ccl::open-tcp-stream nil (mcl-listner-port socket) 
                                    :element-type '(unsigned-byte 8)
                                    :reuse-local-port-p t)))
      new)))

@@ -4,42 +4,41 @@
   (:nicknames :CORBA)
   (:use)
   (:export
-   ORB_init ORB
-   Request Object Proxy
-   ;;request-result request-send request-invoke request-get-response
-   funcall define-method
+   :ORB_init :ORB
+   :Request :Object :Proxy
+   :FUNCALL :DEFINE-METHOD
    ;; NamedValue
-   Flags Identifier NamedValue
-   ARG_IN ARG_OUT ARG_INOUT CTX_RESTRICT_SCOPE
+   :Flags :Identifier :NamedValue
+   :ARG_IN :ARG_OUT :ARG_INOUT :CTX_RESTRICT_SCOPE
    ;; Any
-   Any any-value any-typecode
+   :Any :any-value :any-typecode
    ;; Exceptions
-   exception systemexception userexception
-   UNKNOWN BAD_PARAM NO_MEMORY IMP_LIMIT
-   COMM_FAILURE INV_OBJREF NO_PERMISSION INTERNAL MARSHAL
-   INITIALIZE NO_IMPLEMENT BAD_TYPECODE BAD_OPERATION
-   NO_RESOURCES NO_RESPONSE PERSIST_STORE BAD_INV_ORDER
-   TRANSIENT FREE_MEM INV_IDENT INV_FLAG INTF_REPOS
-   BAD_CONTEXT OBJ_ADAPTER DATA_CONVERSION OBJECT_NOT_EXIST
-   TRANSACTION_REQUIRED TRANSACTION_ROLLEDBACK INVALID_TRANSACTION
+   :exception :systemexception :userexception
+   :UNKNOWN :BAD_PARAM :NO_MEMORY :IMP_LIMIT
+   :COMM_FAILURE :INV_OBJREF :NO_PERMISSION :INTERNAL :MARSHAL
+   :INITIALIZE :NO_IMPLEMENT :BAD_TYPECODE :BAD_OPERATION
+   :NO_RESOURCES :NO_RESPONSE :PERSIST_STORE :BAD_INV_ORDER
+   :TRANSIENT :FREE_MEM :INV_IDENT :INV_FLAG :INTF_REPOS
+   :BAD_CONTEXT :OBJ_ADAPTER :DATA_CONVERSION :OBJECT_NOT_EXIST
+   :TRANSACTION_REQUIRED :TRANSACTION_ROLLEDBACK :INVALID_TRANSACTION
    ;; Type code constants
-   tc_null tc_void tc_short tc_long tc_ushort tc_ulong
-   tc_float tc_double tc_boolean tc_char
-   tc_octet tc_any tc_typecode tc_principal tc_objref
-   tc_struct tc_union tc_enum tc_string
-   tc_sequence tc_array tc_alias tc_except
-   tc_longlong tc_ulonglong tc_longdouble
-   tc_wchar tc_wstring tc_fixed
+   :tc_null :tc_void :tc_short :tc_long :tc_ushort :tc_ulong
+   :tc_float :tc_double :tc_boolean :tc_char
+   :tc_octet :tc_any :tc_typecode :tc_principal :tc_objref
+   :tc_struct :tc_union :tc_enum :tc_string
+   :tc_sequence :tc_array :tc_alias :tc_except
+   :tc_longlong :tc_ulonglong :tc_longdouble
+   :tc_wchar :tc_wstring :tc_fixed
    ;; types
-   boolean char wchar octet string wstring short
-   ushort long ulong longlong ulonglong float double
-   fixed
+   :boolean :char :wchar :octet :string :wstring :short
+   :ushort :long :ulong :longlong :ulonglong :float :double
+   :fixed
    ;; non simple
-   TCKind
-   typecode typecode/bounds typecode/badkind union 
-   struct environment
+   :TCKind
+   :typecode :typecode/bounds :typecode/badkind :union 
+   :struct :environment
    ;; Interface repository types
-   ParameterDescription))
+   :ParameterDescription))
 
 
 (defpackage "OMG.ORG/FEATURES"
@@ -91,50 +90,53 @@
 (defpackage "OMG.ORG/PORTABLESERVER"
   (:nicknames :PortableServer)
   (:use)
-  (:export ForwardRequest
-           Servant 
-           ServantManager ServantActivator 
-           ServantLocator ServantLocator/cookie
-           DynamicImplementation
-           oid-to-string string-to-oid
-           POAManager
-           POAManager/AdapterInactive
-           AdapterActivator
-           POA 
-           POA/AdapterAlreadyExists
-           POA/AdapterInactive
-           POA/AdapterNonExistent
-           POA/InvalidPolicy
-           POA/NoServant
-           POA/ObjectAlreadyActive
-           POA/ObjectNotActive
-           POA/ServantAlreadyActive
-           POA/ServantNotActive
-           POA/WrongAdapter
-           POA/WrongPolicy
-           Current Current/NoContext))
+  (:export "FORWARDREQUEST"
+           "SERVANT" 
+           "SERVANTMANAGER" "SERVANTACTIVATOR" 
+           "SERVANTLOCATOR" "SERVANTLOCATOR/COOKIE"
+           "DYNAMICIMPLEMENTATION"
+           "OID-TO-STRING" "STRING-TO-OID"
+           "POAMANAGER"
+           "POAMANAGER/ADAPTERINACTIVE"
+           "ADAPTERACTIVATOR"
+           "POA" 
+           "POA/ADAPTERALREADYEXISTS"
+           "POA/ADAPTERINACTIVE"
+           "POA/ADAPTERNONEXISTENT"
+           "POA/INVALIDPOLICY"
+           "POA/NOSERVANT"
+           "POA/OBJECTALREADYACTIVE"
+           "POA/OBJECTNOTACTIVE"
+           "POA/SERVANTALREADYACTIVE"
+           "POA/SERVANTNOTACTIVE"
+           "POA/WRONGADAPTER"
+           "POA/WRONGPOLICY"
+           "CURRENT" "CURRENT/NOCONTEXT"))
 
 
 (defpackage :clorb
   (:use COMMON-LISP #+cmu MOP #-(or sbcl cmu mcl) CLOS PortableServer)
   #+cmu
-  (:shadowing-import-from MOP CLASS-NAME BUILT-IN-CLASS CLASS-OF FIND-CLASS)
-  (:export struct-typecode struct-get make-struct 
+  (:shadowing-import-from "MOP"
+              "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
+  (:export "STRUCT-TYPECODE" "STRUCT-GET" "MAKE-STRUCT" 
            ;; Utilities
-           invoke resolve rebind
+           "INVOKE" "RESOLVE" "REBIND"
            ;; Extension
-           auto-servant define-servant)
+           "AUTO-SERVANT" "DEFINE-SERVANT" "DEFINE-USER-EXCEPTION"
+           "SERVANT-INTERFACE-ID" "SERVANT-INTERFACE"
+           "DEFINE-CORBA-STRUCT")
   #+clisp
   (:import-from LISP 
                 SOCKET-ACCEPT SOCKET-CONNECT SOCKET-SERVER SOCKET-SERVER-CLOSE
                 SOCKET-SERVER-HOST SOCKET-SERVER-PORT SOCKET-SERVICE-PORT
                 SOCKET-STREAM-HANDLE SOCKET-STREAM-HOST SOCKET-STREAM-LOCAL
                 SOCKET-STREAM-PEER SOCKET-STREAM-PORT SOCKET-WAIT)
-  (:import-from CORBA 
-                ORB_init ORB request object
-                define-method struct
+  (:import-from "OMG.ORG/CORBA"
+                "ORB_INIT" "ORB" "REQUEST" "OBJECT"
+                "DEFINE-METHOD" "STRUCT"
                 ;; Exceptions
-                exception systemexception userexception
+                "EXCEPTION" "SYSTEMEXCEPTION" "USEREXCEPTION"
                 ;; NamedValue
-                ARG_IN ARG_OUT ARG_INOUT CTX_RESTRICT_SCOPE
-                any any-value any-typecode))
+                "ARG_IN" "ARG_OUT" "ARG_INOUT" "CTX_RESTRICT_SCOPE"
+                "ANY" "ANY-VALUE" "ANY-TYPECODE"))
