@@ -117,7 +117,10 @@
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
-(defvar *source-pathname-defaults* *load-pathname*)
+(defvar *source-pathname-defaults* (make-pathname :name nil :type nil
+                                                  :defaults *load-pathname*))
+
+(defvar *binary-folder* (or #+clisp "fasl"))
 
 
 (defun dir-split (base)
@@ -140,8 +143,16 @@
                    (make-pathname :name name :type "lisp"
                                   :directory (if dir (cons :relative dir)))
                    *source-pathname-defaults*))
-              (cf (compile-file-pathname sf)))
-         
+              (cf (apply #'compile-file-pathname
+                         sf
+                         (if *binary-folder*
+                             (list :output-file
+                                   (merge-pathnames
+                                    (make-pathname
+                                     :name nil :type nil
+                                     :directory (list* :relative
+                                                       *binary-folder* dir))
+                                    *source-pathname-defaults*)) ))))
          (when (or (not (probe-file cf))
                    (let ((dcf (file-write-date cf))
                          (dsf (file-write-date sf)))
@@ -154,7 +165,7 @@
                          (> dsf dcf)
                          (> defs-date dcf))))
            (format t "~&;;;; Compiling ~A ~%" sf )
-           (compile-file sf))
+           (compile-file sf :output-file cf))
          (let ((dcf (file-write-date cf))
                (last (gethash base *load-dates*)))
            (when defs
