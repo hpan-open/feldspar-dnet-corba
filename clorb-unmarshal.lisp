@@ -229,21 +229,13 @@
       (unmarshal tc buffer))))
 
 
-
 (defun unmarshal-tagged-component (buffer)
   (cons (unmarshal-ulong buffer)
 	(unmarshal-osequence buffer)))
 
-(defun unmarshal-iiop-profile-body (buffer)
-  (make-iiop-profile
-   :version (cons (unmarshal-octet buffer) 
-                  (unmarshal-octet buffer))
-   :host (unmarshal-string buffer)
-   :port (unmarshal-ushort buffer)
-   :key (unmarshal-osequence buffer)))
-
 
 (defgeneric decode-ior-profile (tag encaps))
+(defgeneric create-objref (orb &key &allow-other-keys))
 
 (defun unmarshal-object (buffer &optional expected-id)
   (let* ((type-id (unmarshal-string buffer))
@@ -260,18 +252,10 @@
         (setq profiles (nreverse profiles))
         (unless profiles
           (error 'omg.org/corba:inv_objref))
-        (create-objref :ior-id type-id :expected-id expected-id
+        (create-objref (the-orb buffer)
+                       :ior-id type-id :expected-id expected-id
                        :profiles profiles :raw-profiles raw-profiles)))))
 
-(defun create-objref (&key ior-id expected-id raw-profiles profiles)
-  (make-instance (find-proxy-class 
-                  (if (equal ior-id "") expected-id ior-id))
-    :id ior-id
-    :profiles profiles
-    :raw-profiles raw-profiles ))
-
-(defmethod decode-ior-profile ((tag (eql 0)) encaps)
-  (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
 
 (defmethod decode-ior-profile ((tag (eql 1)) encaps)
   ;; A multi component profile
