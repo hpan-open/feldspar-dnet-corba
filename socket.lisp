@@ -82,14 +82,18 @@
    (socket-server-host socket)
    #+mcl
    (ccl::inet-host-name (ccl::stream-local-host (listner-stream listner-socket)))
+   ;;#+Allegro (socket:ipaddr-to-hostname (socket:local-host socket))
    ;; Default
-   *host* ))
+   (or *host* "localhost")))
+
 
 (defun passive-socket-port (socket)
   (%SYSDEP
    "Get the port of socket"
    #+clisp
    (socket-server-port socket)
+   #+Allegro
+   (socket:local-port socket)
    ;; Default
    *port* ))
 
