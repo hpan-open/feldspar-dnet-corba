@@ -65,7 +65,7 @@
   (assert (stringp id))
   (or (gethash id *repository*)
       (setf (gethash id *repository*)
-        (interface-from-def id))))
+            (interface-from-def (ir-lookup-id id) id))))
 
 (defun known-interface (id)
   (gethash id *repository*))
@@ -210,14 +210,11 @@
 (defun interface-from-def-cached (def)
   (let ((id (get-attribute def "_get_id" CORBA:tc_string)))
     (or (known-interface id)
-        (add-interface (interface-from-def def)))))
+        (add-interface (interface-from-def def id)))))
 
-(defun interface-from-def (def)
-  (when (stringp def)
-    (setq def (ir-lookup-id def)))
-  (let ((idseq (get-typecode "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"))
-        (id (get-attribute def "_get_id" CORBA:tc_string)))
-    (mess 3 "Getting interface ~A" id)
+(defun interface-from-def (def id)
+  (mess 3 "Getting interface ~A" id)
+  (let ((idseq (get-typecode "IDL:omg.org/CORBA/InterfaceDefSeq:1.0")))
     (make-interface
      :id id
      :inherit
