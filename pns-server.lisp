@@ -2,7 +2,8 @@
 
 (in-package :cl-user)
 
-(import '(corba:define-method))
+(eval-when (:compile-toplevel :execute)
+  (import '(corba:define-method)))
 
 
 
