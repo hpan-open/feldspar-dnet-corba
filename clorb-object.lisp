@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.5 2002/05/30 06:41:49 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.6 2002/06/01 05:44:45 lenst Exp $
 
 (in-package :clorb)
 
@@ -195,7 +195,7 @@
    (connection :initform nil :accessor request-connection)
    (reply :initform nil  :accessor request-reply)
    (service-context :initform nil :accessor request-service-context)
-   (exceptions :initform nil :accessor request-exceptions)))
+   (exceptions :initform nil :initarg :exceptions :accessor request-exceptions)))
 
 
 (define-method result ((r request))
@@ -212,6 +212,8 @@
 
 
 (defun add-arg (req name mode &optional typecode value)
+  (when (or value typecode)
+    (check-type typecode CORBA:TypeCode))
   (let ((arg (CORBA:Any :any-typecode typecode
                         :any-value value)))
     (setf (request-paramlist req)
