@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.4 2001/06/03 20:45:14 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.5 2001/06/12 19:32:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -129,9 +129,11 @@ NV-PAIRS is a list field names and field values."
 ;; type-id, fields, struct-get
 
 ;;; registry
-(defun add-struct-class (class)
-  (let ((instance (make-instance class)))
-    (setf (gethash (type-id instance) *specialized-structs*) class)))
+(defun add-struct-class (class id)
+  (unless id
+    (mess 3 "Null ID to add-struct-class")
+    (setq id (type-id (make-instance class))))
+  (setf (gethash id *specialized-structs*) class))
 
 
 ;;; Macrology
@@ -167,7 +169,7 @@ NV-PAIRS is a list field names and field values."
                    for n in ',slots
                    when (slot-boundp s n)
                    collect (cons f (slot-value s n))))
-             (add-struct-class ',name)))))
+             (add-struct-class ',name ,id)))))
 
 
 ;;; clorb-struct.lisp ends here
