@@ -12,6 +12,7 @@
 
 
 (defun corba:any (&key any-typecode any-value)
+  (check-type any-typecode (or NULL CORBA:TypeCode))
   (make-instance 'CORBA:Any
    :typecode (or any-typecode (any-typecode any-value))
    :value any-value))
