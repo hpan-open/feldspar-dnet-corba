@@ -47,7 +47,7 @@
           do (if (or (alphanumericp ch)
                      (find ch +safe-characters-extra+))
                  (princ ch out)
-                 (format out "%~02x" (char-code ch))))))
+                 (format out "%~2,'0x" (char-code ch))))))
 
 (defun decode-name (string)
   (with-output-to-string (out)

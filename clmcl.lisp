@@ -1,21 +1,21 @@
 (in-package :cl-user)
 
 ;;(pushnew :use-acl-socket *features*)
-(pushnew :use-my-idlparser *features*)
-(pushnew :no-idlcomp *features*)
+;;(pushnew :use-my-idlparser *features*)
+;;(pushnew :no-idlcomp *features*)
 (pushnew :clorb-dev *features*)
 
 
 #+:use-acl-socket (require 'acl-socket)
 (net.cddr.packer:require-package "BSD")
-#+:use-my-idlparser
-(net.cddr.packer:require-package "NET.CDDR.REDPAS")
 
 (defun clean-fasl ()
-  (mapc #'delete-file (directory "clorb:*.cfsl")))
+  (mapc #'delete-file (directory "clorb:**;*.cfsl")))
 
 (load "CLORB:SRC;CLORB-FILES")
-(setq net.cddr.clorb.system:*use-portable-interceptor* nil)
+(net.cddr.clorb.system:set-load-opts
+ :server t  :idlcomp nil  :my-idlparser t
+ :portable-interceptor t                   )
 (net.cddr.clorb.system:reload)
 
 (import '(@ @@ @@@) "CLORB")
