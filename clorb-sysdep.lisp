@@ -4,7 +4,7 @@
 ;; - interface to select (or poll) functionality
 ;; - read/write of octet sequences, blocking and non-blocking
 ;; - multi processing
-;;
+;; - external programs
 
 (in-package :clorb)
 
@@ -18,7 +18,11 @@
   #+clisp
   (pushnew :clisp-new-socket-status *features*)
   #+openmcl
-  (pushnew :use-acl-socket *features*))
+  (pushnew :use-acl-socket *features*)
+  #+(and MCL (not openmcl))
+  (when (find-package "BSD")
+    (pushnew :clorb-mcl-bsd *features*)))
+  
 
 
 ;;; The :sockets (db-sockets) library can be used in CMUCL or SBCL:
@@ -534,3 +538,48 @@ Returns select result to be used in getting status for streams."
    (apply #'ccl:process-wait-with-timeout whostate timeout wait-func args)
    ;; Default: ignore
    nil ))
+
+
+;;;; Running external programs
+
+(defun shell-to-string-or-stream (command)
+  (%SYSDEP
+   "Run a command in shell with output to string"
+
+   #+clorb-mcl-bsd
+   (bsd:system-command command)
+
+   #+(and mcl (not openmcl))
+   (let ((string
+          (ccl:send-eval (format nil "#!/bin/sh~A~A" #\Newline command)
+                         "JGTaskEvaluator")))
+     (substitute #\Newline #\LineFeed string))
+
+   #+clisp 
+   (make-pipe-input-stream command)
+   
+   #+excl
+   (with-output-to-string (out)
+     (multiple-value-bind (shell-stream error-stream process)
+         (excl:run-shell-command command :wait nil :output :stream )
+       (loop for c = (read-char shell-stream nil nil)
+           while c do (princ c out))
+       (when process
+         (loop (when (sys:reap-os-subprocess :pid process :wait nil)
+                 (return))))
+       (close shell-stream)
+       (when error-stream (close error-stream))))
+   
+   ;; No default
+   ;; should perhaps signal error (runtime) instead of compile time error
+   ))
+
+
+(defun external-namestring (pathname)
+  (%SYSDEP "convert pathname to a namestring suitable for external programs"
+           #+MCL
+           (if (ccl::using-posix-paths-p)
+             (ccl::posix-namestring pathname)
+             (namestring pathname))
+           ;; Default
+           (namestring pathname)))
