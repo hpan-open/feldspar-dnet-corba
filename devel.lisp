@@ -39,7 +39,8 @@
   (CORBA:ORB_init
    (list #+digitool "-ORBPort 4711"
          #+CMUCL    "-ORBPort 4720"
-         "-ORBInitRef NameService=corbaloc::/NameService" )))
+         ;;"-ORBInitRef NameService=corbaloc::/NameService" 
+         "-ORBInitRef NameService=corbaloc:rir:/CLORB-PNS" )))
 
 
 ;;; Initiating the object adapter (the server part of the ORB)
