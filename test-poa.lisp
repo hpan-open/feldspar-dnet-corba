@@ -7,7 +7,7 @@
   (let ((buffer (get-work-buffer (the-orb poa))))
     (unless request-p
       (setq request
-            (create-server-request 
+            (create-server-request
              (the-orb poa)
              :state :wait  :request-id 1  :connection *test-in-conn*
              :operation operation :kind kind  :response-flags 1
@@ -24,7 +24,7 @@
   (let ((buffer (get-work-buffer (the-orb poa))))
     (unless request-p
       (setq request
-            (create-server-request 
+            (create-server-request
              (the-orb poa)
              :state :wait  :request-id 1  :connection *test-in-conn*
              :operation operation :kind kind  :response-flags 1
@@ -61,13 +61,36 @@
 
 ;; ==========================================================================
 
+(defclass mock-dsi-servant (portableserver:dynamicimplementation)
+  ((plug-op :initform #'identity
+            :initarg :plug-op
+            :accessor plug-op)))
+
+(define-method invoke ((servant mock-dsi-servant) req)
+  (let ((op (op:operation req)))
+    (cond ((equal op "op")
+           (let ((args (op:arguments req
+                                     (list (corba:namedvalue
+                                            :name "x"
+                                            :argument (CORBA:Any :any-typecode CORBA:tc_string)
+                                            :arg_modes ARG_IN)))))
+             (op:set_result req
+                            (corba:any :any-typecode corba:tc_string
+                                       :any-value (funcall (plug-op servant)
+                                                           (any-value (op:argument (first args))))))))
+          (t
+           (error 'corba:bad_operation)))))
+
+
+;; ==========================================================================
+
 (corba:orb_init)
 (unless (orb-host *the-orb*)
   (setf (orb-host *the-orb*) "localhost"))
 
 
 (define-test-suite "POA Test"
-  (variables 
+  (variables
    (orb (make-instance 'clorb-orb :host "localhost" :port 9999 :active t :adaptor t))
    (*log-level* 4)
    (*last-poaid* 0)
@@ -83,26 +106,26 @@
       (ensure-pattern*
        (test-poa-invoke root-poa :oid oid :operation "_locate" :kind :locate))
       ;; standard request ops
-      (ensure-pattern* 
+      (ensure-pattern*
        (test-poa-invoke root-poa :oid oid :operation "_non_existent")
        'reply-status :no_exception
        'request-result '(nil))
-      (ensure-pattern* 
+      (ensure-pattern*
        (test-poa-invoke root-poa :oid oid :operation "_is_a" :args '("fooo"))
        'reply-status :no_exception
        'request-result '(nil))))
-  
-  
+
+
   (define-test "Policy creation"
     (let ((p1 (op:create_id_assignment_policy root-poa :user_id)))
       (ensure-typep p1 'CORBA:Policy)
-      (ensure-typep p1 'omg.org/portableserver:idassignmentpolicy)
+      (ensure-typep p1 'portableserver:idassignmentpolicy)
       (ensure-eql (op:value p1) :user_id)
       (op:destroy p1))
     (let ((p1 (op:create_policy orb portableserver:id_assignment_policy_id
                                 :system_id)))
       (ensure-typep p1 'CORBA:Policy)
-      (ensure-typep p1 'omg.org/portableserver:idassignmentpolicy)
+      (ensure-typep p1 'portableserver:idassignmentpolicy)
       (ensure-eql (op:value p1) :system_id)
       (op:destroy p1))
     ;; Check that correct exception is signalled
@@ -119,24 +142,24 @@
            (name "TestP")
            (poa (op:create_poa root-poa name nil (list p1 p2))))
       (ensure-typep poa 'PortableServer:POA)
-      
+
       ;; Unique POAManager created
       (ensure (not (eql (op:the_poamanager root-poa)
                         (op:the_poamanager poa))))
-      
+
       (ensure-equalp (op:the_name poa) name)
       (ensure-eql (op:the_parent poa) root-poa)
-      
+
       (let ((poa0 (op:find_POA root-poa name nil)))
         (ensure-eql poa0 poa))
-      
+
       (ensure (member poa (managed-poas (op:the_poamanager poa)))
               "Registered with the manger")
 
       (handler-case
         (progn (op:create_poa root-poa name nil nil)
                (ensure nil))
-        (OMG.ORG/PORTABLESERVER:POA/ADAPTERALREADYEXISTS ()))
+        (PORTABLESERVER:POA/ADAPTERALREADYEXISTS ()))
 
       (let ((obj (op:create_reference_with_id poa (string-to-oid "Foo") "IDL:if:1.0")))
         (ensure-typep obj 'CORBA:Proxy))))
@@ -160,7 +183,7 @@
       (handler-case
         (progn (op:find_POA root-poa "p1" nil)
                (ensure nil))
-        (OMG.ORG/PORTABLESERVER:POA/ADAPTERNONEXISTENT ()))
+        (PORTABLESERVER:POA/ADAPTERNONEXISTENT ()))
       (ensure-eql (gethash id1 *poa-map*) nil)
       (ensure-eql (gethash id2 *poa-map*) nil)
       (ensure (not (member poa1 (managed-poas (op:the_poamanager poa1))))
@@ -181,31 +204,31 @@
       (let ((poa (op:find_poa root-poa name t)))
         (ensure-typep poa 'PortableServer:POA)
         (ensure-equalp (op:the_name poa) name))))
-  
-  
+
+
   (define-test "set_servant_manager"
-     (ensure-exception (op:set_servant_manager root-poa nil)
-       portableserver:poa/wrongpolicy  )
-     (let ((poa (op:create_POA root-poa "p" nil
-                               (list (op:create_request_processing_policy root-poa :use_servant_manager)
-                                     (op:create_servant_retention_policy root-poa :retain)))))
-       (ensure-exception
-        (op:set_servant_manager poa nil)
-        CORBA:OBJ_ADAPTER 'op:minor (std-minor 4))
-       (let ((manager (make-instance 'PortableServer:ServantActivator)))
+    (ensure-exception (op:set_servant_manager root-poa nil)
+                      portableserver:poa/wrongpolicy  )
+    (let ((poa (op:create_POA root-poa "p" nil
+                              (list (op:create_request_processing_policy root-poa :use_servant_manager)
+                                    (op:create_servant_retention_policy root-poa :retain)))))
+      (ensure-exception
+       (op:set_servant_manager poa nil)
+       CORBA:OBJ_ADAPTER 'op:minor (std-minor 4))
+      (let ((manager (make-instance 'PortableServer:ServantActivator)))
+        (op:set_servant_manager poa manager)
+        (ensure-exception   ; only set once
          (op:set_servant_manager poa manager)
-         (ensure-exception   ; only set once
-          (op:set_servant_manager poa manager)
-           CORBA:BAD_INV_ORDER 'op:minor (std-minor 6)))))
+         CORBA:BAD_INV_ORDER 'op:minor (std-minor 6)))))
 
 
   (define-test "get_servant"
     (handler-case (progn (op:get_servant root-poa)
-                      (ensure nil "get_servant on Wrong Policy POA."))
-      (omg.org/portableserver:poa/wrongpolicy ()))
+                         (ensure nil "get_servant on Wrong Policy POA."))
+      (portableserver:poa/wrongpolicy ()))
     (let ((poa (op:create_POA root-poa "p" nil
-                           (list (op:create_request_processing_policy 
-                                       root-poa :use_default_servant)))))
+                              (list (op:create_request_processing_policy
+                                     root-poa :use_default_servant)))))
       (ensure-exception (op:get_servant poa)
                         Portableserver:POA/Noservant)))
 
@@ -258,7 +281,7 @@
       (setq poa (op:create_POA root-poa "p2" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
                                      (op:create_servant_retention_policy root-poa :retain)
-                                      (op:create_id_uniqueness_policy root-poa :multiple_id))))
+                                     (op:create_id_uniqueness_policy root-poa :multiple_id))))
       (setf (slot-value activator 'adapter) poa)
       (op:set_servant_manager poa activator)
       (op:activate (op:the_poamanager poa))
@@ -307,4 +330,64 @@
                        'request-exception (pattern 'identity (isa 'CORBA:TRANSIENT)
                                                    'system-exception-minor (std-minor 1)))))
 
-#| end suite |# )
+
+;;;; Reentrancy
+
+  (define-test "Executing request recorded in POA"
+    (let* ((servant (make-instance 'mock-dsi-servant ))
+           (oid (op:activate_object root-poa servant)))
+      ;; FIXME: perhaps check request id in executing-requests
+      (setf (plug-op servant)
+            (lambda (x)
+              (ensure (executing-requests root-poa))
+              (string-upcase x)))
+      (setup-test-in)
+      (test-poa-invoke root-poa
+                       :operation "op"
+                       :oid oid
+                       :args (list "hello"))
+      (test-read-response :orb orb
+                          :message (list :message-type :reply
+                                         'giop:replyheader
+                                         (pattern 'op:reply_status :no_exception)
+                                         corba:tc_string
+                                         "HELLO"))
+      (ensure (not (executing-requests root-poa)))))
+
+  (define-test "Recursive call to :single_thread_model"
+    (setup-test-in)
+    (let* ((poa (op:create_poa root-poa "single" 
+                               (op:the_poamanager root-poa)
+                               (list (op:create_thread_policy root-poa :single_thread_model))))
+           (oid #(1))
+           (servant (make-instance 'mock-dsi-servant))
+           (proxy (op:activate_object_with_id poa oid servant)))
+      (declare (ignore proxy))
+      (op:activate (op:the_poamanager root-poa))
+      (flet ((call-it (arg)
+               (test-poa-dispatch poa :poa-spec '()
+                                  :operation "op" :oid oid :args (list arg))))
+        (setf (plug-op servant)
+              (lambda (x)
+                (when (equal x "again")
+                  (call-it "stop")
+                  (test-read-response :orb orb
+                                      :message 
+                                      (list :message-type :reply
+                                            'giop:replyheader
+                                            (pattern 'op:reply_status :system_exception)
+                                            corba:tc_string
+                                            "IDL:omg.org/CORBA/TRANSIENT:1.0")))
+                "foo"))
+        (call-it "again")
+        (test-read-response :orb orb
+                            :message
+                            (list :message-type :reply
+                                  'giop:replyheader
+                                  (pattern 'op:reply_status :no_exception)
+                                  corba:tc_string
+                                  "foo")))))
+    
+    
+    
+    #| end suite |# )
