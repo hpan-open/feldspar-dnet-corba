@@ -45,15 +45,16 @@
 
 ;;;; Internal Interface Repository
 
-(eval-when (:load-toplevel)
+#|(eval-when (:load-toplevel)
   (makunbound '*repository*)
   (makunbound '*typecode-repository*))
+|#
 
 (defvar *repository*
-    (make-hash-table :test #'equal))
+  (make-hash-table :test #'equal))
 
 (defvar *typecode-repository*
-    (make-hash-table :test #'equal))
+  (make-hash-table :test #'equal))
 
 (defun add-interface (interface)
   (setf (gethash (interface-id interface)
@@ -72,8 +73,8 @@
 (defun known-idl-type (id)
   (gethash id *typecode-repository*))
 
-(defun add-typecode (typecode &optional (force t))
-  (add-typecode-with-id (op:id typecode) typecode force))
+;;(defun add-typecode (typecode &optional (force t))
+;;  (add-typecode-with-id (op:id typecode) typecode force))
 
 (defun add-typecode-with-id (id typecode &optional (force t))
   (or (if (not force) (gethash id *typecode-repository*))
@@ -142,6 +143,7 @@
         :argument (CORBA:Any :any-typecode CORBA:tc_objref)
         :arg_modes ARG_OUT)
        0)
+    (declare (ignore result))
     (or (request-invoke req)
         (error "InterfaceRepository does not know about ~A" id))))
 
