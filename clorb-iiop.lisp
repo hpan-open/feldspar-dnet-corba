@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.34 2004/06/09 21:09:20 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.35 2004/09/16 19:49:53 lenst Exp $
 
 
 (in-package :clorb)
@@ -42,8 +42,8 @@
 (DEFINE-STRUCT GIOP:LOCATEREQUESTHEADER
  :id "IDL:GIOP/LocateRequestHeader:1.0"
  :name "LocateRequestHeader"
- :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
-           ("object_key" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET) OBJECT_KEY)))
+ :members (("request_id" OMG.ORG/CORBA:TC_ULONG)
+           ("object_key" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))))
 
 (define-enum GIOP:LocateStatusType
   :id "IDL:GIOP/LocateStatusType:1.0"
@@ -54,22 +54,22 @@
  :id "IDL:GIOP/LocateReplyHeader:1.0"
  :name "LocateReplyHeader"
  :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID) 
-           ("locate_status" (SYMBOL-TYPECODE 'GIOP:LOCATESTATUSTYPE) LOCATE_STATUS)))
+           ("locate_status" (SYMBOL-TYPECODE 'GIOP:LOCATESTATUSTYPE))))
 
 (DEFINE-STRUCT GIOP:CANCELREQUESTHEADER
  :id "IDL:GIOP/CancelRequestHeader:1.0"
  :name "CancelRequestHeader"
- :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)))
+ :members (("request_id" OMG.ORG/CORBA:TC_ULONG)))
 
 (DEFINE-STRUCT GIOP:REQUESTHEADER_1_0
   :id "IDL:GIOP/RequestHeader_1_0:1.0"
   :name "RequestHeader_1_0"
-  :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST) SERVICE_CONTEXT)
-            ("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
-            ("response_expected" OMG.ORG/CORBA:TC_BOOLEAN RESPONSE_EXPECTED)
-            ("object_key" (create-sequence-tc NIL OMG.ORG/CORBA:TC_OCTET) OBJECT_KEY)
-            ("operation" OMG.ORG/CORBA:TC_STRING OPERATION)
-            ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL) REQUESTING_PRINCIPAL)))
+  :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST))
+            ("request_id" OMG.ORG/CORBA:TC_ULONG)
+            ("response_expected" OMG.ORG/CORBA:TC_BOOLEAN)
+            ("object_key" (create-sequence-tc NIL OMG.ORG/CORBA:TC_OCTET))
+            ("operation" OMG.ORG/CORBA:TC_STRING)
+            ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL))))
 
 (define-enum GIOP:REPLYSTATUSTYPE 
   :id "IDL:GIOP/ReplyStatusType:1.0"
