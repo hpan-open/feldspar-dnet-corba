@@ -1,7 +1,15 @@
 (in-package :clorb)
 
-(define-test "Test ORB Pseudo object"
+(defclass test-orb (clorb-orb)
+  (resolve-namecontext resolve-name))
 
+(defmethod orb-resolve ((orb test-orb) namecontext namestr)
+  (setf (slot-value orb 'resolve-namecontext) namecontext)
+  (setf (slot-value orb 'resolve-name) namestr))
+
+
+(define-test "Test ORB Pseudo object"
+  
   (define-test "Can't marshal local objects"
     (let ((orb (CORBA:ORB_init)))
       (ensure-exception
@@ -10,8 +18,8 @@
       (ensure-exception
        (op:_create_request orb nil "foo" nil nil 0)
        CORBA:NO_IMPLEMENT 'op:minor (std-minor 4))))
-
-
+  
+  
   (define-test "Initializing initial references"
     (let ((orb (CORBA:ORB_init)))
       (setf (orb-initial-references orb)
@@ -29,7 +37,17 @@
               (ensure-equalp (oid-to-string 
                               (iiop-profile-key (first (object-profiles obj))))
                              n)))))
-
-      
+  
+  (define-test "Resolve corbaname URL"
+    (let ((orb (make-instance 'test-orb)))
+      (let ((obj (op:string_to_object orb "corbaname::example.com#a/str%20ing/path")))
+        (ensure-equalp (slot-value orb 'resolve-name) "a/str ing/path")
+        (ensure-pattern* (slot-value orb 'resolve-namecontext)
+                         'object-profiles (sequence-pattern
+                                           (pattern 'iiop-profile-host "example.com"
+                                                    'iiop-profile-port 2809
+                                                    'iiop-profile-key (decode-objkey-vector "NameService")))))))
+  
+  
   #|end|#)
   

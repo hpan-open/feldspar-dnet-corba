@@ -386,6 +386,8 @@ Can be set to true globally for singel-process / development.")
      ((null method) (error "Illegal object reference: ~A" str))
      ((string-equal method "corbaloc")
       (corbaloc-to-object orb rest))
+     ((string-equal method "corbaname")
+      (corbaname-to-object orb rest))
      ;; IOR:xx urls
      ((string-equal method "IOR")
       (unmarshal-encapsulation (decode-hex-string rest) #'unmarshal-object))
@@ -443,9 +445,11 @@ Can be set to true globally for singel-process / development.")
   (values host port path)))
 
 
-(defun corbaloc-to-object (orb rest)
+(defun corbaloc-to-object (orb rest &optional default-key)
   (multiple-value-bind (addrs key)
                        (parse-corbaloc rest)
+    (if (and default-key (equal key ""))
+      (setq key default-key))
     (cond
      ((eq (car addrs) :rir)
       (op:resolve_initial_references orb (decode-objkey-string key)))
@@ -467,6 +471,17 @@ Can be set to true globally for singel-process / development.")
                     :key key)))
               (push profile (object-profiles proxy)))))
         proxy)))))
+
+
+(defun corbaname-to-object (orb rest)
+  (let ((name-pos (position #\# rest))
+        (name-part ""))
+    (when name-pos
+      (setq name-part (decode-objkey-string (subseq rest (1+ name-pos))))
+      (setq rest (subseq rest 0 name-pos)))
+    (let ((namecontext (corbaloc-to-object orb rest "NameService")))
+      (orb-resolve orb namecontext name-part))))
+
 
 (defun split-url (str)
   (let ((method-end (position #\: str)))

@@ -98,6 +98,11 @@
         (raise-system-exception 'CORBA:intf_repos))))
 
 
+(define-method _get_value_def ((self CORBA:ValueBase))
+  ;; Return ValueDef
+  (let ((id (object-id self)))
+    (or (op:lookup_id *internal-interface-repository* id)
+        (raise-system-exception 'CORBA:intf_repos))))
 
 
 (defun analyze-operation-name (name)
@@ -228,6 +233,12 @@ The list free operation is used to free the returned information.
            (setq *narrowed-ns* (or (nobject-narrow ns 'cosnaming:namingcontextext t)
                                    (nobject-narrow ns 'cosnaming:namingcontext)))))))
   
+
+;;; To support corbaname: URLs
+(defmethod orb-resolve ((orb clorb-orb) namecontext namestr)
+  (op:resolve_str (object-narrow namecontext 'CosNaming:NamingContextExt)
+                  namestr))
+
 
 (defun resolve (&rest names)
   (op:resolve (get-ns) (ns-name* names)))
