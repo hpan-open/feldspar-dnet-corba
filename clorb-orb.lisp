@@ -24,10 +24,10 @@
   ())
 
 (defclass clorb-orb (CORBA:ORB CORBA:TypeCodeFactory)
-  ((adaptor :initform nil     :accessor adaptor)
-   (active  :initarg :active  :accessor orb-active)
-   (host    :initarg :host    :accessor orb-host)
-   (port    :initarg :port    :accessor orb-port)
+  ((adaptor :initarg :adaptor :initform nil  :accessor adaptor)
+   (active  :initarg :active  :initform nil  :accessor orb-active)
+   (host    :initarg :host    :initform nil  :accessor orb-host)
+   (port    :initarg :port    :initform nil  :accessor orb-port)
    (initial-references :initform '()
                        :accessor orb-initial-references)
    (default-initial-reference
@@ -80,21 +80,26 @@
 ;;; ORB Operations for interceptors
 
 (defmethod has-received-exception ((orb clorb-orb) client-request)
-  (declare (ignore client-request))
-  nil)
+  (mess 2 "#~S received exception: ~S, ~A" 
+        (request-id client-request)
+        (request-status client-request)
+        (request-exception client-request)))
 
 (defmethod has-received-reply ((orb clorb-orb) client-request)
-  (declare (ignore client-request))
-  nil)
+  (mess 2 "#~S reply"
+        (request-id client-request)))
 
 (defmethod has-received-other ((orb clorb-orb) client-request)
-  (declare (ignore client-request))
-  nil)
-
+  (mess 2 "#~S other: ~S" 
+        (request-id client-request)
+        (request-status client-request)))
 
 (defmethod will-send-request ((orb clorb-orb) client-request)
-  (declare (ignore client-request))
-  nil)
+  (mess 2 "#~S send-request ~A ~S"
+        (request-id client-request)
+        (request-operation client-request)
+        (request-target client-request)))
+
 
 (defmethod has-received-request-header ((orb clorb-orb) server-request)
   (declare (ignore server-request))
@@ -281,27 +286,15 @@
 ;;;; Initializing the ORB
 ;;; ORB CORBA:ORB_init (arg_list, orbid)
 
-(defun CORBA:ORB_init (&optional args (orbid "") set-init)
-  (when (eq args t)
-    (setq args nil set-init t))
+(defun CORBA:ORB_init (&optional args (orbid ""))
   (let ((info nil))
     (cond ((null *the-orb*)
-           (setq *the-orb* (make-instance *orb-class*
-                             :active t
-                             :host *host*
-                             :port *port*))
-           (setq set-init t)
+           (setq *the-orb* (make-instance *orb-class* :active t))
            (setq info (create-orb-init-info *the-orb* args orbid))
            (dolist (fn *orb-initializers*)
              (op:pre_init fn info)))
           ((not (typep *the-orb* *orb-class*))
            (change-class *the-orb* *orb-class*)))
-    (when set-init
-      (when *name-service*
-        (set-initial-reference *the-orb* "NameService" *name-service*))
-      (when *interface-repository*
-        (set-initial-reference *the-orb* "InterfaceRepository"
-                               *interface-repository*)))
     (setq args (process-orb-args *the-orb* args))
     (setf (orb-active *the-orb*) t)
     (when info
@@ -333,7 +326,9 @@
                         ((option-match "-ORBDefaultInitRef")
                          (setf (orb-default-initial-reference orb) value))
                         ((option-match "-ORBPort")
-                         (setf (orb-port orb) (parse-arg-integer value))) 
+                         (setf (orb-port orb) (parse-arg-integer value)))
+                        ((option-match "-ORBHostname")
+                         (setf (orb-host orb) value)) 
                         (t (raise-system-exception 'CORBA:BAD_PARAM)))))
               (push arg new-args))))
     (nreverse new-args)))

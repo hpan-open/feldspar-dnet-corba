@@ -1,13 +1,5 @@
 (in-package :clorb) 
 
-(defparameter *host* nil
-  "The host that should be used in IORs.
-If nil, use default.")
-
-(defvar *port* nil
-  "The port to listen to.
-If nil, let implementation choose a port.")
-
 (defvar *clorb-pathname-defaults*
   (if (find-package "NET.CDDR.CLORB.SYSTEM")
       (symbol-value (intern "*SOURCE-PATHNAME-DEFAULTS*"
@@ -23,14 +15,6 @@ If nil, let implementation choose a port.")
                                         :name nil :type nil)
                          *clorb-pathname-defaults*)))
 
-
-(defvar *name-service* "file:///tmp/NameService"
-  "Reference to the CORBA NameService.
-Should be an URL that can be accepted by op:string_to_object.")
-
-(defvar *interface-repository* "file:///tmp/InterfaceRepository"
-  "Reference to the CORBA InterfaceRepository.
-Should be an URL that can be accepted by op:string_to_object.")
 
 (defparameter *log-level* 3)
 
