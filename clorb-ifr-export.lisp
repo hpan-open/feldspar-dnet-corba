@@ -92,7 +92,7 @@
 (defclass SERVANT-WRAPPER (portableserver:dynamicimplementation)
   ((orb
     :initarg :orb
-    :initform (orb_init)
+    :initform (CORBA:ORB_init)
     :reader the-orb)
    (poa
     :initarg :poa

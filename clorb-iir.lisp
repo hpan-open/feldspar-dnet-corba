@@ -129,7 +129,7 @@
 
 (defun get-ir ()
   (op:resolve_initial_references
-   (orb_init) "InterfaceRepository"))
+   (CORBA:ORB_init) "InterfaceRepository"))
 
 (defun ir-lookup-id (id)
   (multiple-value-bind (result req)

@@ -286,7 +286,7 @@
 
 (define-method incarnate ((manager pns-manager) oid adapter)
   (declare (ignore adapter))
-  (let ((orb (orb_init))
+  (let ((orb (CORBA:ORB_init))
         (servant (make-instance 'pns-context)))
     (load-context orb oid (naming-context-bind servant)
                   (slot-value manager 'basedir))
@@ -303,7 +303,7 @@
                             oid adapter servant cleanup-in-progress
                             remaining-activiations)
   (declare (ignore cleanup-in-progress remaining-activiations))
-  (let ((orb (orb_init)))
+  (let ((orb (CORBA:ORB_init)))
     (pns-save orb adapter servant manager oid)
     (setf (pns-active manager) (delete servant (pns-active manager)))))
 
@@ -316,7 +316,7 @@
     (op:activate (op:the_poamanager poa))
     (op:create_reference_with_id poa "root" +naming-context-id+)))
 
-(defun save-all (&optional (orb (orb_init)))
+(defun save-all (&optional (orb (CORBA:ORB_init)))
   (let* ((poa (op:find_poa (root-POA) "pns"))
          (manager (op:get_servant_manager poa)))
     (dolist (servant (pns-active manager))

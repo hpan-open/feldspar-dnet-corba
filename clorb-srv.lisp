@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.17 2003/12/08 23:18:45 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.18 2003/12/13 12:16:00 lenst Exp $	
 
 (in-package :clorb)
 
@@ -34,7 +34,7 @@
 
 ;;;; Server proper
 
-(defun setup-server (&optional (orb (ORB_init)))
+(defun setup-server (&optional (orb (CORBA:ORB_init)))
   (multiple-value-bind (port host)
       (io-create-listener (orb-port orb))
     (setf (adaptor orb) t)
@@ -196,7 +196,7 @@
   (error "NYI"))
 
 
-(defun root-poa (&optional (orb (orb_init)))
+(defun root-poa (&optional (orb (CORBA:ORB_init)))
   (unless (adaptor orb)
     (setup-server orb))
   *root-POA*)
@@ -211,11 +211,11 @@
   (setq *new-connection-callback* 'poa-connection-handler)
   (pushnew 'initialize-poa *orb-initializers* ))
 
-(defun main-loop (&optional (orb (ORB_init)))
+(defun main-loop (&optional (orb (CORBA:ORB_init)))
   (root-POA)
   (op:run orb))
 
-(defun recover (&optional (orb (ORB_init)))
+(defun recover (&optional (orb (CORBA:ORB_init)))
   (io-reset :listener nil)
   (main-loop orb))
 

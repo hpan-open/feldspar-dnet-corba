@@ -220,7 +220,7 @@ The list free operation is used to free the returned information.
 (defvar *narrowed-ns* nil)
 
 (defun get-ns ()
-  (let ((ns (op:resolve_initial_references (orb_init) "NameService")))
+  (let ((ns (op:resolve_initial_references (CORBA:ORB_init) "NameService")))
     (cond ((and (eq ns *pre-narrowed-ns*) *narrowed-ns*)
            *narrowed-ns*)
           (t
