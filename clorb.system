@@ -1,0 +1,55 @@
+;;; -*- Lisp -*-
+
+(proclaim '(optimize (debug 3)))
+
+(make:defsystem "clorb"
+    :source-extension "lisp"
+    ;:source-pathname #.(translate-logical-pathname #p"src:clorb;")
+    ;:binary-pathname "bin/"
+    :components ((:file "clorb-pkgdcl")
+                 (:file "clorb-macros"  :depends-on ("clorb-pkgdcl"))
+		 (:file "clorb-options" :depends-on ("clorb-pkgdcl"))
+                 (:file "clorb-supp")
+                 (:file "clorb-basetypes")
+                 (:file "clorb-exceptions")
+                 (:file "clorb-object")
+                 (:file "clorb-typecode")
+                 (:file "clorb-any")
+                 (:file "clorb-struct")
+                 (:file "clorb-union")
+                 (:file "clorb-buffer")
+                 (:file "clorb-marshal"  :depends-on ("clorb-buffer"))
+                 (:file "clorb-unmarshal" :depends-on ("clorb-buffer"))
+                 (:file "clorb-opdef")
+                 (:file "clorb-client")
+                 (:file "clorb-orb")
+                 (:file "clorb-request")
+                 (:file "clorb-iir")
+                 (:file "clorb-objkey")
+                 (:file "clorb-srvreq")
+                 (:file "clorb-servant" :depends-on ("clorb-iir"))
+                 (:file "clorb-trie")
+                 (:file "clorb-poamgr")
+                 (:file "clorb-poa")
+                 (:file "socket")
+                 (:file "clorb-util")
+                 (:file "clorb-srv" :depends-on ("socket"))
+                 (:file "dumpir"    :depends-on ("clorb-pkgdcl"))
+                 (:file "test-suite")
+                 ;; Experimental
+                 (:file "local-ir")
+                 (:file "idef-read")
+                 (:file "idef-write")
+                 (:file "idef-macros")
+                 ;; Services
+                 (:file "ns-server")
+                 (:file "ec-server" :depends-on ("clorb-srv"))
+                 ;; Example
+                 (:file "hello-server")
+                 (:file "hello-client")
+;;                  (:file "cmucl-macros")
+;;                  (:file "i386-linux-cmucl" :depends-on ("cmucl-macros"))
+;;                  (:file "cmucl" :depends-on ("i386-linux-cmucl")
+                 ))
+
+

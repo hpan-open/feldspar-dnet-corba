@@ -1,0 +1,88 @@
+;;;; Nice interface to NameService etc.
+
+(in-package :clorb)
+
+
+;;;; Easy DII
+
+;; Interface:
+(defun invoke (obj op &rest args)
+  (request-invoke
+   (object-create-request obj op args)))
+
+(defun corba:funcall (op obj &rest args)
+  (apply 'invoke obj op args))
+
+
+(defun object-interface (obj)
+  (handler-case (interface-from-def-cached (invoke obj "_interface"))
+    (corba:systemexception (exc)
+      (if (member (exception-id exc)
+                  '("IDL:omg.org/CORBA/BAD_OPERATION:1.0"
+                    "IDL:CORBA/BAD_OPERATION:1.0" ; -dan / for ORBit
+                    "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
+                    "IDL:omg.org/CORBA/INTF_REPOS:1.0")
+                  :test #'equal)
+          nil
+        (error exc)))))
+
+
+(defun object-opdef (object op &aux effective-id)
+  (if (consp op)
+      (setq effective-id (first op)
+            op (second op))
+    (setq effective-id (object-id object)))
+  (or (find-opdef *object-interface* op)
+      (find-opdef (or (known-interface effective-id)
+                      (object-interface object)
+                      (get-interface effective-id)) 
+                  op)))
+
+
+(defun object-create-request (object op args)
+  (let* ((opdef (object-opdef object op)))
+    (unless opdef
+      (error "Operation (~A) not defined for interface" op))
+    (unless (= (length args)
+	       (length (opdef-inparams opdef)))
+      (error "Wrong number of arguments to operation"))
+    (make-instance 'request
+     :target object
+     :operation (opdef-name opdef)
+     :paramlist
+     (cons 
+      (CORBA:NamedValue
+       :argument (CORBA:Any :any-typecode (opdef-result opdef))
+       :arg_modes ARG_OUT)
+      (loop for param in (opdef-params opdef)
+          collect 
+            (CORBA:NamedValue
+             :name (param-name param)
+             :argument (CORBA:Any :any-typecode (param-typecode param)
+                                  :any-value (if (eq (param-mode param) 
+                                                     :param_out)
+                                                 nil
+                                               (pop args)))
+             :arg_modes (ecase (param-mode param)
+                          (:param_in ARG_IN)
+                          (:param_out ARG_OUT)
+                          (:param_inout ARG_INOUT)))))
+     :opdef opdef)))
+
+
+;;;; Easy name service access
+
+(defun ns-name (names)
+  (map 'vector 
+    (lambda (id) (make-struct "IDL:omg.org/CosNaming/NameComponent:1.0"
+                              :id id :kind ""))
+    names))
+
+(defun get-ns ()
+  (op::resolve_initial_references (orb_init) "NameService"))
+
+(defun resolve (&rest names)
+  (invoke (get-ns) "resolve" (ns-name names)))
+
+(defun rebind (objref &rest names)
+  (invoke (get-ns) "rebind" (ns-name names) objref))
