@@ -14,21 +14,21 @@
     (let ((line (read-line stream nil nil nil)))
       (incf *current-idl-line*)
       (if (not line)
-	  line
+        line
 	(if (not (and (>= (length line) 1) (char= (char line 0) #\#)))
-	    (concatenate 'string line (string #\newline)) ; add a newline, since  an empty line is whitespace
+          (concatenate 'string line (string #\newline)) ; add a newline, since  an empty line is whitespace
 	  (progn
 	    (cond
-					; deal with the prefix pragma 
+             ; deal with the prefix pragma 
 	     ((and (>= (length line) 14) (string= (subseq line 0 14) "#pragma prefix"))
 	      (let ((from (position #\" line))
 		    (to (position #\" line :from-end t)))
 		(unless (and from to)  (error "wrong pragma prefix"))
 		(setf (car *current-idl-prefix*) (subseq line (1+ from) to))
 		" "))
-					; drop other pragmas
+             ; drop other pragmas
 	     ((and (>= (length line) 7) (string= (subseq line 0 7) "#pragma")) " "))
-	    (pprint line)
+	    ;;(pprint line)
 	    " "))))))
 
 
@@ -54,22 +54,17 @@
       (lalr-parser #'tokenizer #'parser-error))))
 
 
-(defvar *idl-include-dir*)
-(setf  *idl-include-dir* "/home/lenst/src/corba/interface/")
-
-
-(defun preprocess-file (file)
-  #+clisp
-  (let ((st (make-pipe-input-stream
-             (concatenate 'string "cpp -I " *idl-include-dir* " " file))))
-    st)
-  #-clisp
-  (open file :direction :input))
-
+(defun preprocess-command (file)
+  (concatenate 'string "cpp '" (clorb::external-namestring file) "'"))
 
 (defun parse-file (name)
-  (with-open-stream (s (preprocess-file name))
-    (parse-stream s)))
+  (let ((s (shell-to-string-or-stream (preprocess-command name))))
+    (cond ((stringp s)
+           (with-input-from-string (in s)
+             (parse-stream in)))
+          (t
+           (with-open-stream (in s)
+             (parse-stream in))))))
 
 (defun save-idef (name1 name2)
   (let ((b (parse-file name1)))
@@ -82,7 +77,7 @@
 
 ;;;; Connect to CLORB
 
-(defclass idl-compiler (clorb::idl-compiler)
+(defclass idl-compiler-impl (idl-compiler)
   ())
 
 (defun convert-package (list)
@@ -92,14 +87,13 @@
     (let ((*package* (find-package :clorb)))
       (read-from-string string))))
 
-(defmethod clorb::load-repository ((self idl-compiler) repository file)
+(defmethod load-repository ((self idl-compiler-impl) repository file)
   (setf *current-idl-line* 0)
-  (clorb::idef-read (convert-package
-                     (with-open-file (s file)
-                       (parse-stream s)))
-                    repository))
+  (idef-read (convert-package (parse-file file))
+             repository))
 
-(setq clorb::*default-idl-compiler* (make-instance 'idl-compiler))
+(unless *default-idl-compiler*
+  (setq *default-idl-compiler* (make-instance 'idl-compiler-impl)))
 
 #|
 (with-open-file (s #P"CLORB:IDL;x-01.idl")

@@ -2,9 +2,9 @@
 
 (pushnew :use-acl-socket *features*)
 (require 'acl-socket)
+(net.cddr.packer:require-package "BSD")
 
 (load "CLORB:SRC;CLORB-PKGDCL")
-(import '(§ §§§ %) :clorb)
 (load "CLORB:SRC;CLORB-FILES")
 (clorb:reload)
 
@@ -29,9 +29,6 @@
                 (pathname-name file))))
 
 (ensure-directories-exist persistent-naming:*naming-base-path* :verbose t)
-
-(define-symbol-macro §§         (in-package :clorb))
-(define-symbol-macro clorb::§§  (in-package :cl-user))
 
 #|
 (unless (find-class 'log-window nil)

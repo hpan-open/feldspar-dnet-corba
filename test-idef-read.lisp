@@ -31,24 +31,47 @@
   (define-test "Read Operation" 
     (idef-read '((define-module "Foo" ()
                      (define-interface "Bar" ()
-                       (define-operation "greet" ((:in level long))
-                         :result-type string))))
+                       (define-operation "greet" ((:param_in level long))
+                         :result-type string)
+                       (define-operation "note" ((:param_in level long))
+                         :result-type void
+                         :mode :op_oneway))))
                  r)
     (let* ((m (op:lookup r "Foo"))
            (i (op:lookup m "Bar"))
-           (o (op:lookup i "greet")))
+           (o (op:lookup i "greet"))
+           (n (op:lookup i "note")))
       (ensure o "lookup name")
       (ensure-equalp (op:def_kind o) :dk_Operation)
-      (ensure-equalp (op:kind (op:result o)) :tk_string)))
+      (ensure-equalp (op:kind (op:result o)) :tk_string)
+      (ensure-equalp (op:mode o) :op_normal)
+      (ensure-equalp (op:mode n) :op_oneway)))
 
   (define-test "Read Type" 
-    (idef-read '((define-type "Foo" short))
+    (idef-read '((define-type "Foo" short)
+                 (define-type "s0" string)
+                 (define-type "s10" (string 10))
+                 (define-type "f10_2" (fixed 10 2)))
                  r)
     (let* ((o (op:lookup r "Foo")))
       (ensure o "lookup name")
       (ensure-equalp (op:def_kind o) :dk_Alias)
       (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_Primitive)
-      (ensure-equalp (op:kind (op:original_type_def o)) :pk_short)))
+      (ensure-equalp (op:kind (op:original_type_def o)) :pk_short))
+    (let ((o (op:lookup r "s0")))
+      (ensure o "lookup name")
+      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_Primitive)
+      (ensure-equalp (op:kind (op:original_type_def o)) :pk_string))
+    (let ((o (op:lookup r "s10")))
+      (ensure o "lookup name")
+      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_string)
+      (ensure-equalp (op:bound (op:original_type_def o)) 10))
+    (let ((o (op:lookup r "f10_2")))
+      (ensure o "lookup name")
+      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_fixed)
+      (ensure-equalp (op:digits (op:original_type_def o)) 10)
+      (ensure-equalp (op:scale (op:original_type_def o)) 2)))
+  
   
   (define-test "Read Enum"
     (idef-read '((define-enum "F"
@@ -59,6 +82,23 @@
       (ensure-equalp (op:def_kind o) :dk_Enum)
       (ensure-equalp (op:members o) '("NORMAL" "DIRECTORY" "SYMLINK"))))
   
+  (define-test "Read Constant"
+    (idef-read '((define-constant "a" long 123)
+                 (define-constant "b" char #\X))
+               r)
+    (let* ((o (op:lookup r "a")))
+      (ensure o "lookup name")
+      (ensure-equalp (op:def_kind o) :dk_constant)
+      (ensure-equalp (any-value (op:value o)) 123)
+      (ensure-typecode (op:type o) :tk_long)
+      (ensure-typecode (any-typecode (op:value o)) :tk_long))
+    (let* ((o (op:lookup r "b")))
+      (ensure o "lookup name")
+      (ensure-equalp (op:def_kind o) :dk_constant)
+      (ensure-equalp (any-value (op:value o)) #\X)
+      (ensure-typecode (op:type o) :tk_char)
+      (ensure-typecode (any-typecode (op:value o)) :tk_char)))
+
   (define-test "Read Struct"
     (idef-read '((define-struct "S"
                        (("a" long)
@@ -78,13 +118,15 @@
     (let ((obj (op:lookup r "MyUnion")))
       (ensure-equalp (op:member_count (op:type obj)) 2)
       (ensure-equalp (op:name (elt (op:members obj) 1))
-                     "bar")))
+                     "bar")
+      (ensure-typecode (any-typecode (op:label (elt (op:members obj) 1)))
+                       CORBA:tc_long)))
 
   (define-test "Read Union 2"
     (idef-read '((define-enum "status" ("aa" "bb"))
                  (define-union "MyUnion2" "status"
                    ((:aa "foo" string)
-                    (default        "bar" long))))
+                    (default "bar" long))))
                r)
     (let ((obj (op:lookup r "MyUnion2")))
       (ensure-eql (any-value (op:label (elt (op:members obj) 0))) :aa)
@@ -92,7 +134,7 @@
         (ensure-typep l2 'CORBA:Any)
         (ensure-typecode (any-typecode l2) :tk_octet)
         (ensure-eql (any-value l2) 0))))
-  
+
   (define-test "Read Attribute"
     (idef-read '((define-interface "I" ()
                      (define-attribute "a" string
@@ -122,14 +164,15 @@
            (define-interface "FileDescription" ()
              (define-attribute "name" string :readonly t)
              (define-type "Buffer" string)
-             (define-operation "read" ((:in "size" long) 
-                                       (:out "buf" "Buffer"))
+             (define-operation "read" ((:param_in "size" long) 
+                                       (:param_out "buf" "Buffer"))
                :result-type void
                :exceptions nil)
              (define-operation "destroy" ()
                :result-type void))
            (define-interface "FileSystem" ()
-             (define-operation "open" ((:in file_name string)
-                                       (:in flags long))
+             (define-operation "open" ((:param_in file_name string)
+                                       (:param_in flags long))
                :result-type "::FileSys::FileDescription"))))
        r)))
+

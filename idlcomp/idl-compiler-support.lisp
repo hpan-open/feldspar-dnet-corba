@@ -33,9 +33,33 @@
 (defun string->char (str)
   (char str 1))
 
+
+(defun << (int n)
+  (ash int n))
+
+(defun >> (int n)
+  (ash (logand int #xFFFFFFFF) (- n)))
+
 ;
 (defun idl-expand (l pos)
-  (mapcar #'(lambda (x) (let ((new (copy-list l))) (setf (elt new pos) x) new)) (elt l pos)))
+  (mapcar #'(lambda (x) 
+              (let ((new (copy-list l))) 
+                (setf (elt new pos) x) new)) 
+          (elt l pos)))
+
+(defun expand-type (type array-sizes)
+  (if (null array-sizes)
+    type
+    `(array ,(expand-type type (cdr array-sizes))
+            ,(car array-sizes))))
+
+(defun expand-declarators (type declarators)
+  ;; declarator is name or (name size ..)
+  ;; return ( (name type) .. )
+  (loop for d in declarators 
+        collect (if (consp d)
+                  (list (car d) (expand-type type (cdr d)))
+                  (list d type))))
 
 
 (defun idl-flatten (l)

@@ -64,7 +64,9 @@
               (add-error *test-suite-result*)
               (format t "~&;;; In test case ~A~%;;;! ~A~%" 
                       tc-current
-                      (apply #'cl:format nil msg args)))
+                      (apply #'cl:format nil msg args))
+                (when *test-suite-debug*
+                  (break "Failed ensure")))
             (ensure-eql (is shouldbe)
               (unless (eql is shouldbe)
                 (tc-report "~S~_ should be~_ ~S"
@@ -80,9 +82,8 @@
             (ensure (bool &optional description)
               (unless bool
                 (tc-report "~A fail"
-                           (or description "ensure"))
-                (when *test-suite-debug*
-                  (break "Failed ensure"))))
+                           (or description "ensure"))))
+            
             (ensure-typecode (obj type)
               (unless (typep obj 'CORBA:TypeCode)
                 (tc-report "~S should be a TypeCode" obj))
@@ -95,6 +96,7 @@
                  (unless (op:equal obj type)
                    (tc-report "Typecode ~A should be equal to ~A."
                               obj type))))))
+           
            
            (macrolet ((define-test (name &body body)
                         `(let* ,',vars
@@ -111,3 +113,12 @@
                                  (end-test-case *test-suite-result*)))))))
              ,@body
              (print-result *test-suite-result*)))))))
+
+
+(defvar *temporary-suite-variables* nil)
+
+(defmacro define-test (name &body body)
+  `(define-test-suite "Temporary Suit"
+     (variables ,@ *temporary-suite-variables*)
+     (define-test ,name ,@body)))
+  

@@ -164,10 +164,16 @@
    "STRING-TO-OID" "THREADPOLICY" "THREADPOLICY-PROXY" "THREADPOLICY-SERVANT" "THREADPOLICYVALUE"
    "THREAD_POLICY_ID"))
 
+(defpackage "NET.CDDR.CLORB.INTERNALS"
+  (:use "COMMON-LISP")
+  (:export idl-compiler load-repository *default-idl-compiler*
+           idef-read 
+           shell-to-string-or-stream external-namestring))
 
 (defpackage :clorb
   (:nicknames "NET.CDDR.CLORB")
-  (:use COMMON-LISP #+cmu MOP #-(or sbcl cmu mcl) CLOS)
+  (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS"
+        #+cmu MOP #-(or sbcl cmu mcl) CLOS)
   #+cmu
   (:shadowing-import-from "MOP"
               "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
@@ -204,4 +210,4 @@
            setup-pns setup-naming-poa))
 
 (defpackage "CLORB.IDLCOMP"
-  (:use "COMMON-LISP"))
+  (:use "COMMON-LISP" "NET.CDDR.CLORB" "NET.CDDR.CLORB.INTERNALS"))

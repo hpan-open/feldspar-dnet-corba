@@ -1,13 +1,15 @@
 (in-package :clorb)
 
 (defparameter *idl-directory*
-    (or #+(or clisp openmcl) #P"/Users/lenst/src/hacks/idldump/work/"
-        #+(and mcl (not openmcl))  #3P"Macintosh HD:Users:lenst:src:hacks:idldump:work:"
-        #+allegro  #P"/home/lenst/src/hacks/idldump/work/"
-        ))
+  (or (make-pathname :directory '(:relative "src" "corba" "interfaces")
+                     :defaults common-lisp-user::*current-user-folder* )))
 
-(defparameter *tmp-directory* (pathname-directory #P"Macintosh HD:tmp:"))
+(defparameter *tmp-directory*
+  (or #+unix "/tmp"
+      #+mcl (ccl::FindFolder #$kOnAppropriateDisk #$kUserSpecificTmpFolderType)
+      ))
 
+#+(or)
 (defun pathname-unixname (pathname)
   (ccl::posix-namestring pathname)
   #+(or)
@@ -21,34 +23,28 @@
     (princ (pathname-type pathname) s)))
 
 (defun get-idl-sexp (file)
-  #+(or)
-  (let ((path (merge-pathnames file *idl-directory*))
-        (*package* (find-package :clorb)))
-    (setq path (make-pathname :type "sexp" :defaults path))
-    (with-open-file (in path)
-      (read in)))  
-  ;; ++++++++++++++
   (let* ((idl-file (merge-pathnames file *idl-directory*))
          (sexp-file (make-pathname :name (pathname-name idl-file)
                                    :type "sexp"
-                                   :directory *tmp-directory*)))
+                                   :defaults *tmp-directory*)))
     (assert (probe-file idl-file))
     (when (probe-file sexp-file)
       (delete-file sexp-file))
-    (ccl:send-eval (format nil "#!/bin/sh~A/Users/lenst/src/hacks/idldump/main ~A > ~A"
-                           #\Newline
-                           (pathname-unixname idl-file)
-                           (pathname-unixname sexp-file))
-                   "JGTaskEvaluator")
+    (let ((result
+           (shell-to-string-or-stream
+            (format nil "/Users/lenst/src/hacks/idldump/idldump ~A 2>&1 > ~A"
+                    (external-namestring idl-file)
+                    (external-namestring sexp-file)))))
+      (unless (or (null result)
+                  (equal result ""))
+        (format t "~&PARSE: ~A~%" result)))
     (assert (probe-file sexp-file))
     (with-open-file (in sexp-file)
       (let ((sexp (let ((*package* (find-package :clorb)))
                     (read in))))
          (when (symbolp sexp)
            (error "CORBA:IDL:~A ~A" sexp (read-line in)))
-         sexp))))   
-
-
+         sexp))))
 
 
 (defgeneric process-form (trigger args))
@@ -173,7 +169,31 @@
     (op:create_string (the-repository) bound)
     (primitive :pk_string)))
 
+(dx (TYPE_WIDE_STRING bound)
+  (if bound
+    (omg.org/features:create_wstring (the-repository) bound)
+    (primitive :pk_wstring)))
+
 (dx (INTEGER 'n) n)
+(dx (STRING 's) s)
+
+(dx (CHAR 'ch) 
+  (cond ((null ch) (primitive :pk_char))
+        (t (corba:any :any-value (char ch 0)
+                      :any-typecode CORBA:tc_char))))
+
+(dx (WIDE_CHAR 'ch) 
+  (cond ((null ch) (primitive :pk_wchar))
+        (t (corba:any :any-value (char ch 0)
+                      :any-typecode CORBA:tc_wchar))))
+
+(dx (BOOLEAN 'b) 
+  (cond ((null b) (primitive :pk_boolean))
+        ((eql b 0) nil)
+        ((eql b 1) t)
+        (t (warn "strange form (BOOLEAN ~S)" b)
+           nil)))
+
 
 (dx (TYPE_SEQUENCE element-type bound)
   (op:create_sequence (the-repository) (or bound 0) element-type))
@@ -185,7 +205,9 @@
   (op:create_interface *container* id name version  nil))
 
 (dx (CONST_DCL type (name id version) value)
-  (op:create_constant *container* id name version type value))
+  (op:create_constant *container* id name version type 
+                      (corba:any :any-typecode (op:type type)
+                                 :any-value (any-value value))))
 
 
 (dx (TYPE_INTEGER 'unsigned-flag 'base-type)
@@ -197,8 +219,7 @@
         unsigned-flag)))
 
 (dx (ANY) (primitive :pk_any))
-(dx (BOOLEAN) (primitive :pk_boolean))
-(dx (CHAR) (primitive :pk_char))
+
 (dx (OCTET) (primitive :pk_octet))
 (dx (OBJECT) (primitive :pk_objref))
 (dx (TYPECODE) (primitive :pk_typecode))
@@ -206,13 +227,26 @@
 (dx (TYPE_FLOAT 'kind)
   (primitive (ecase kind
                (float :pk_float)
-               (double :pk_double))))
+               (double :pk_double)
+               (longdouble :pk_longdouble))))
 
-
+(dx (TYPE_FIXED digits scale)
+  (op:create_fixed (the-repository) digits scale))
 
 (dx (TYPE_UNION (name id ver) discriminator-type members)
-  (op:create_union *container* id name ver 
-                   discriminator-type members))
+  (op:create_union 
+   *container* id name ver 
+   discriminator-type 
+   (map 'vector 
+        (lambda (member)
+          (if (typep (op:label member) 'CORBA:Any)
+            member
+            (CORBA:UnionMember
+             :name (op:name member)
+             :label (corba:any :any-typecode (op:type discriminator-type)
+                               :any-value (op:label member))
+             :type_def (op:type_def member))))
+        members)))
 
 (dx (CASE_STMT labels members)
   (loop for member in members nconc

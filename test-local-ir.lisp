@@ -229,4 +229,13 @@
       (ensure-equalp (op:bound obj) 10)
       (ensure-typecode (op:type obj) (make-typecode :tk_string 10))))
 
+
+  (define-test "FixedDef"
+    (let ((obj (op:create_fixed repository 10 2)))
+      (ensure-equalp (op:digits obj) 10)
+      (ensure-equalp (op:scale obj) 2)
+      (ensure-typecode (op:type obj) :tk_fixed)
+      (setf (op:scale obj) 3)
+      (ensure-equalp (op:fixed_scale (op:type obj)) 3)))
+    
 )

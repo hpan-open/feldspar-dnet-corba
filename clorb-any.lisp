@@ -97,6 +97,9 @@
 (defmethod any-value ((obj string))
   obj)
 
+(defmethod any-value ((obj character))
+  obj)
+
 (defmethod any-value ((obj symbol))
   ;; ENUM
   obj)

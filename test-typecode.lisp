@@ -78,4 +78,9 @@
         (ensure-eql (op:content_type (op:member_type tc 0))
                     tc))))
 
+  (define-test "Fixed"
+    (let ((tc (make-typecode :tk_fixed 10 2)))
+      (ensure-equalp (op:fixed_digits tc) 10)
+      (ensure-equalp (op:fixed_scale tc) 2)))
+  
 )

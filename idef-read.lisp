@@ -65,11 +65,13 @@
 
 
 (defmethod idef-read-part ((op (eql 'define-operation)) sexp container)
-  (destructuring-bind (name params &key result-type exceptions version id)
+  (destructuring-bind (name params &key result-type exceptions version id 
+                            (mode :op_normal))
       sexp
     (setq name (string name))
     (let ((op (create-contained container 'operation-def
-                                :name name :version version :id id)))
+                                :name name :version version :id id
+                                :mode :op_normal )))
       (lambda ()
         (setf (slot-value op 'params)
           (loop for p in params
@@ -84,7 +86,8 @@
         (setf (slot-value op 'exceptions)
           (mapcar #'(lambda (name)
                       (lookup-name-in container name))
-                  exceptions))))))
+                  exceptions))
+        (setf (op:mode op) mode)))))
 
 
 (defmethod idef-read-part ((op (eql 'define-enum)) sexp container)
@@ -117,13 +120,15 @@
         (setf (op:members def)
           (mapcar (lambda (x)
                     (destructuring-bind (label name type) x
-                      (CORBA:UnionMember :name (string name)
-                                         :label (if (eql label 'default)
-                                                  (load-time-value
-                                                   (CORBA:Any :any-typecode CORBA:tc_octet
-                                                              :any-value 0))
-                                                  label)
-                                         :type_def (parse-type-in container type))))
+                      (CORBA:UnionMember
+                       :name (string name)
+                       :label (if (eql label 'default)
+                                (load-time-value
+                                 (CORBA:Any :any-typecode CORBA:tc_octet
+                                            :any-value 0))
+                                (CORBA:Any :any-typecode (op:discriminator_type def)
+                                           :any-value label))
+                       :type_def (parse-type-in container type))))
                   members))))))
 
 (defmethod idef-read-part ((op (eql 'define-exception)) sexp container)
@@ -161,8 +166,10 @@
                                  :name name :value value
                                  :id id :version version)))
       (lambda ()
-        (setf (op:type_def def)
-          (parse-type-in container type))))))
+        (let ((type (parse-type-in container type)))
+          (setf (op:type_def def) type)
+          (setf (op:value def) (corba:any :any-value value
+                                          :any-typecode (op:type type))))))))
 
 
 (defun create-contained (container class &rest args
@@ -193,36 +200,61 @@
         (repo-path (op::defined_in module)))
     nil))
 
+(defun primitive-kind (type)
+  (case type
+    (null (values :pk_null CORBA:tc_null))
+    (void (values :pk_void CORBA:tc_void))
+    (short (values :pk_short CORBA:tc_short))
+    (long (values :pk_long CORBA:tc_long))
+    (ushort (values :pk_ushort CORBA:tc_ushort))
+    (ulong (values :pk_ulong CORBA:tc_ulong))
+    (float (values :pk_float CORBA:tc_float))
+    (double (values :pk_double CORBA:tc_double))
+    (boolean (values :pk_boolean CORBA:tc_boolean))
+    (char (values :pk_char CORBA:tc_char))
+    (octet (values :pk_octet CORBA:tc_octet))
+    (any (values :pk_any CORBA:tc_any))
+    (TypeCode (values :pk_TypeCode CORBA:tc_TypeCode))
+    (string (values :pk_string CORBA:tc_string))
+    (object (values :pk_objref CORBA:tc_objref))
+    (longlong (values :pk_longlong CORBA:tc_longlong))
+    (ulonglong (values :pk_ulonglong CORBA:tc_ulonglong))
+    (longdouble (values :pk_longdouble CORBA:tc_longdouble))
+    (wchar (values :pk_wchar CORBA:tc_wchar))
+    (wstring (values :pk_wstring CORBA:tc_wstring))))
+
 
 (defun parse-type-in (container type-sexp)
-  (cond
-   ((symbolp type-sexp)
-    (get-primitive type-sexp))
-   ((stringp type-sexp)
-    (lookup-name-in container type-sexp))
-   ((and (consp type-sexp) (eq (car type-sexp) 'sequence))
-    (destructuring-bind (member-type &optional (bound 0))
-                        (cdr type-sexp)
-      (make-instance 'sequence-def
-        :bound (or bound 0)
-        :element_type_def (parse-type-in container member-type))))
-   ((and (consp type-sexp) (eq (car type-sexp) 'array))
-    (destructuring-bind (member-type &optional (length 0))
-                        (cdr type-sexp)
-      (make-instance 'array-def
-        :length (or length 0)
-        :element_type_def (parse-type-in container member-type))))
-   ((and (consp type-sexp) (member (car type-sexp) '(string wstring)))
-    (destructuring-bind (string-type &optional (bound 0))
-                        (cdr type-sexp)
-      (if (zerop bound)
-        (get-primitive string-type)
-        (make-instance (if (eq string-type 'string)
-                         'string-def
-                         'wstring-def)
-          :bound bound))))
-   (t
-    (error "Illegal type spec: ~S" type-sexp))))
+  (let ((repository (op:containing_repository container))) 
+    (or 
+     (cond ((symbolp type-sexp)
+            (let ((kind (primitive-kind type-sexp)))
+              (and kind (op:get_primitive repository kind))))
+           ((stringp type-sexp)
+            (lookup-name-in container type-sexp))
+           ((consp type-sexp)
+            (case (car type-sexp)
+              ((sequence)
+               (destructuring-bind (member-type &optional (bound 0)) (cdr type-sexp)
+                 (op:create_sequence repository (or bound 0) 
+                                     (parse-type-in container member-type))))
+              ((array)
+               (destructuring-bind (member-type &optional (length 0)) (cdr type-sexp)
+                 (op:create_array repository (or length 0)
+                                  (parse-type-in container member-type))))
+              ((string wstring)
+               (destructuring-bind (string-type &optional (bound 0))
+                                   type-sexp
+                 (if (zerop bound)
+                   (op:get_primitive repository (primitive-kind string-type))
+                   (if (eq string-type 'string)
+                     (op:create_string repository bound)
+                     (op:create_wstring repository bound)))))
+              ((fixed)
+               (destructuring-bind (digits scale) (cdr type-sexp)
+                 (op:create_fixed repository digits scale))))))
+     (error "Illegal type spec: ~S" type-sexp))))
+
 
 (define-method defined_in ((r CORBA:Repository))
   nil)
@@ -248,30 +280,4 @@
       finally (return
                 (nreverse (cons name parts)))))
 
-(defun get-primitive (name)
-  (multiple-value-bind (pk tc)
-      (ecase name
-        (null (values :pk_null CORBA:tc_null))
-        (void (values :pk_void CORBA:tc_void))
-        (short (values :pk_short CORBA:tc_short))
-        (long (values :pk_long CORBA:tc_long))
-        (ushort (values :pk_ushort CORBA:tc_ushort))
-        (ulong (values :pk_ulong CORBA:tc_ulong))
-        (float (values :pk_float CORBA:tc_float))
-        (double (values :pk_double CORBA:tc_double))
-        (boolean (values :pk_boolean CORBA:tc_boolean))
-        (char (values :pk_char CORBA:tc_char))
-        (octet (values :pk_octet CORBA:tc_octet))
-        (any (values :pk_any CORBA:tc_any))
-        (TypeCode (values :pk_TypeCode CORBA:tc_TypeCode))
-        ;;(Principal (values :pk_Principal CORBA:tc_Principal))
-        (string (values :pk_string CORBA:tc_string))
-        (object (values :pk_objref CORBA:tc_objref))
-        (longlong (values :pk_longlong CORBA:tc_longlong))
-        (ulonglong (values :pk_ulonglong CORBA:tc_ulonglong))
-        (longdouble (values :pk_longdouble CORBA:tc_longdouble))
-        (wchar (values :pk_wchar CORBA:tc_wchar))
-        (wstring (values :pk_wstring CORBA:tc_wstring)))
-    (make-instance 'primitive-def
-      :kind pk
-      :type tc)))
+

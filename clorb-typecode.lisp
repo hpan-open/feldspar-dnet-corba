@@ -321,6 +321,23 @@
      (error 'corba:typecode/badkind))))
 
 
+;; for tk_fixed
+
+(define-method fixed_digits ((tc corba:typecode))
+  (case (typecode-kind tc)
+    (:tk_fixed
+     (first (typecode-params tc)))
+    (otherwise
+     (error 'corba:typecode/badkind))))
+
+(define-method fixed_scale ((tc corba:typecode))
+  (case (typecode-kind tc)
+    (:tk_fixed
+     (second (typecode-params tc)))
+    (otherwise
+     (error 'corba:typecode/badkind))))
+
+
 ;;;; Accessing typecodes of defined types
 
 (defun symbol-typecode (symbol)

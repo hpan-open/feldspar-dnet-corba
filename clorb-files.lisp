@@ -33,17 +33,16 @@
 
 (defparameter *server-files*
   '("clorb-objkey"
-    ;;("clorb-srvreq" t)
     "clorb-servant"
     "clorb-trie"
     "clorb-poa-base"
-    "clorb-poamgr"
     "clorb-poa"
     "clorb-srv"))
 
 
 (defparameter *x-files*
   '("test-suite"
+    "pattern"
     ;; Experimental
     "internalize"
     "idef-read"

@@ -9,14 +9,14 @@
            (a-string (op:get_primitive repository :pk_string))
            (id "IDL:foo/Union:1.1")
            (members (list (CORBA:UnionMember :name "aa"
-                                             :label 1
+                                             :label (any :any-value 1 :any-typecode corba:tc_ulong)
                                              :type_def a-string)
                           (CORBA:UnionMember :name "_def_"
                                              :label (CORBA:Any :any-typecode CORBA:tc_octet
                                                                :any-value 0)
                                              :type_def a-ulong )
                           (CORBA:UnionMember :name "bb"
-                                             :label 2
+                                             :label (any :any-value 2 :any-typecode corba:tc_ulong)
                                              :type_def a-ulong)))
            (obj (op:create_union repository id "aunion" "1.1"
                                  a-ulong members)))
@@ -29,6 +29,7 @@
               for new in (op:members (op:lookup_id new-rep id))
               do (ensure-equalp (any-value (op:label new))
                                 (any-value (op:label old)))
-              (ensure (op:equal (any-typecode (op:label new))
-                                (any-typecode (op:label old))))))))
+              (ensure-typecode (any-typecode (op:label new))
+                               (any-typecode (op:label old)))))))
+
 )

@@ -115,7 +115,7 @@
 	   ;((definitions) identity)
 	     ; have to deal with prefix pragma, make top level definitions differnt from other definitions
 	   ((top-definitions) identity)
-	   (()))
+	   (() identity))
 
 	(1x top-definitions
 	    ((top-definition) identity)
@@ -163,7 +163,7 @@
 	   (( T_INTERFACE T_IDENTIFIER) (lambda (x y) (list 'define-interface y '(:bases nil))))
 	   (( T_INTERFACE T_IDENTIFIER interface_inheritance_spec) (lambda (x y s) (list 'define-interface y (list :bases s))))
 	   (( T_ABSTRACT T_INTERFACE T_IDENTIFIER)  (lambda (x y) (list 'define-abstract-interface y :bases nil)))
-	   (( T_ABSTRACT T_INTERFACE T_IDENTIFIER interface_inheritance_spec (lambda (x y s) (list 'define-abstract-interface y :bases s)))))
+	   (( T_ABSTRACT T_INTERFACE T_IDENTIFIER interface_inheritance_spec) (lambda (x y s) (list 'define-abstract-interface y :bases s))))
 					;  
 
 	(8 interface_body
@@ -319,7 +319,9 @@
 					;
 
 	(27 const_dcl
-	    (( T_CONST const_type T_IDENTIFIER T_EQUAL const_exp) (lambda (t_const typ id t_equal expr) (list 'const typ id expr))))  
+	    (( T_CONST const_type T_IDENTIFIER T_EQUAL const_exp) 
+             (lambda (t_const typ id t_equal expr) 
+               (list 'define-constant id typ (eval expr)))))  
 					;
 
 	(28 const_type
@@ -336,17 +338,19 @@
 					;
 
 	(29 const_exp
-	    (( or_expr)))
+	    (( or_expr) identity))
 					;
 
 	(30 or_expr
 	    (( xor_expr) identity)
-	    (( or_expr T_VERTICAL_LINE xor_expr (lambda (a b c) `(or ,a ,c)))))
+            ;; lenst: fixed obvb
+	    (( or_expr T_VERTICAL_LINE xor_expr) (lambda (a b c) `(or ,a ,c))))
 					;
 
 	(31 xor_expr
 	    (( and_expr) identity)
-	    (( xor_expr T_CIRCUMFLEX and_expr  (lambda (a b c) `(xor ,a ,c)))))
+            ;; lenst: fixed obvb
+	    (( xor_expr T_CIRCUMFLEX and_expr) (lambda (a b c) `(xor ,a ,c))))
 					;
 
 	(32 and_expr
@@ -394,21 +398,23 @@
 	    (( T_CHARACTER_LITERAL) string->char )
 	    (( T_FIXED_PT_LITERAL)  string->string)
 	    (( T_FLOATING_PT_LITERAL) string->double)
-	    (( T_TRUE ) t)		;boolean_literal 
-	    (( T_FALSE ) nil))		;boolean_literal 
+	    (( T_TRUE )      (lambda (x) t))		;boolean_literal 
+	    (( T_FALSE )     (lambda (x) nil)))		;boolean_literal 
 					;
 
 	(41 positive_int_const
-	    (( const_exp)))
+	    (( const_exp) identity))
 					;
 
 
 	(43 type_dcl
-	    (( T_TYPEDEF type_spec declarators) (lambda (x y z) (idl-expand (list 'define-type z y) 1)))
+	    (( T_TYPEDEF type_spec declarators ) 
+             (lambda (x y z) (mapcar (lambda (x) (cons 'define-type x))
+                                     (expand-declarators y z))))
 	    (( struct_type) list)
 	    (( union_type) list)
 	    (( enum_type) list)
-	    (( T_NATIVE simple_declarator) (lambda (x y) (list (list ' native y)))))
+	    (( T_NATIVE simple_declarator) (lambda (x y) (list (list 'native y)))))
 					;
 
 	(44 type_spec
@@ -463,7 +469,7 @@
 					;
 
 	(52 complex_declarator
-	    (( array_declarator)))
+	    (( array_declarator) identity))
 					;
 
 	(53 floating_pt_type
@@ -496,22 +502,18 @@
 					;
 
 	(59 unsigned_int
-	    (( unsigned_long_int) (lambda (x) 'ulong))
-	    (( unsigned_short_int) (lambda (x) 'ushort))
-	    (( unsigned_longlong_int) (lambda (x) 'ulonglong)))
+	    (( T_UNSIGNED T_LONG )        (lambda (u x) 'ulong))
+	    (( T_UNSIGNED T_SHORT )       (lambda (u x) 'ushort))
+	    (( T_UNSIGNED T_LONG T_LONG ) (lambda (u x y) 'ulonglong)))
 					;
-
+#|
 	(60 unsigned_short_int
 	    (( T_UNSIGNED T_SHORT)))
-					;
-
 	(61 unsigned_long_int
 	    (( T_UNSIGNED T_LONG)))
-					;
-
 	(62 unsigned_longlong_int
 	    (( T_UNSIGNED T_LONG T_LONG)))
-					;
+|#
 
 	(63 char_type
 	    (( T_CHAR) (lambda (x) 'char)))
@@ -550,7 +552,8 @@
 
 	(71 member
 	    ((type_spec declarators T_SEMICOLON)
-	     (lambda (x y z) (idl-expand (list y x) 0) )))
+	     (lambda (x y z) 
+               (expand-declarators x y))))
 					;
 
 	(72 union_type
@@ -571,7 +574,7 @@
 					;
 
 	(74 switch_body
-	    (( case))
+	    (( case) identity)
 	    (( case switch_body) (lambda (x y) (append x y))))
 					;
 
@@ -592,7 +595,7 @@
 
 	(76 case_label
 	    (( T_CASE const_exp T_COLON ) (lambda (t1 x t2) (declare (ignore t1 t2)) x))
-	    (( T_DEFAULT T_COLON)))
+	    (( T_DEFAULT T_COLON) (lambda (t1 t2) 'default)))
 					;
 
 	(77 element_spec
@@ -617,7 +620,7 @@
 	(80 sequence_type
 	    (( T_SEQUENCE T_LESS_THAN_SIGN simple_type_spec T_COMMA
 			  positive_int_const T_GREATER_THAN_SIGN)
-	     (lambda (ts ls spec int gs) (list 'sequence spec int)))
+	     (lambda (ts ls spec co int gs) (list 'sequence spec int)))
 	    (( T_SEQUENCE T_LESS_THAN_SIGN simple_type_spec T_GREATER_THAN_SIGN)
 	     (lambda (ts ls spec gs) (list 'sequence spec nil))))
 					;
@@ -675,14 +678,14 @@
 	    (( op_attribute op_type_spec T_IDENTIFIER parameter_dcls
 			    raises_expr context_expr)
 	     (lambda (op-a op-ty id para raise con)
-	       (list 'define-operation  id para ;:attribute op-a
+	       (list 'define-operation  id para 
 		     :result-type op-ty  :exceptions raise ;:context con
-		     ))))
+                     :mode op-a ))))
 					;
 
 	(88 op_attribute
-	    (( ) list)
-	    (( T_ONEWAY) (lambda (x) 'oneway)))
+	    (( ) (lambda () :op_normal))
+	    (( T_ONEWAY) (lambda (x) :op_oneway)))
 					;
 
 	(89 op_type_spec
@@ -741,9 +744,8 @@
 					;
 
 	(96 fixed_pt_type
-	    (( T_FIXED T_LESS_THAN_SIGN positive_int_const T_COMMA
-		       T_INTEGER_LITERAL T_GREATER_THAN_SIGN)
-	     (lambda (fi ls pos-int co int-l gs) (list pos-int int-l))))
+	    (( T_FIXED T_LESS_THAN_SIGN positive_int_const T_COMMA positive_int_const T_GREATER_THAN_SIGN)
+	     (lambda (fi ls pos-int co int-l gs) (list 'fixed pos-int int-l))))
 					;
 
 	(97 fixed_pt_const_type
