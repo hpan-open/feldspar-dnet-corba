@@ -205,13 +205,13 @@
       (marshal-long (- recursive-typecode-pos (buffer-out-pos buffer))
                     buffer))
      (t
-      (let ((*marshal-typecode-record*
-             (acons tc (buffer-out-pos buffer)
-                    *marshal-typecode-record*))
-            (kind (typecode-kind tc))
+      (let ((kind (typecode-kind tc))
             (*typecode-params* (typecode-params tc)))
         (marshal-ulong (position kind (the vector TCKind)) buffer)
-        (marshal-spec *typecode-params* (get kind 'tk-params) buffer))))))
+        (let ((*marshal-typecode-record*
+               (acons tc (- (buffer-out-pos buffer) 4)
+                      *marshal-typecode-record*)))
+          (marshal-spec *typecode-params* (get kind 'tk-params) buffer)))))))
 
 
 (defun marshal-spec (params pspec buffer)
