@@ -43,7 +43,16 @@
 
 (defmethod match ((pattern pattern) object)
   (loop for (key value) on (pattern-args pattern) by #'cddr
-        do (let ((attval (funcall key object)))
+        do (let ((attval 
+                  (cond ((consp key)
+                         (let ((obj-pos (position '* key)))
+                           (cond (obj-pos
+                                  (apply (car key)
+                                         (loop for x in (cdr key)
+                                               collect (if (eql x '*) object x))))
+                                 (t (apply (car key) object (cdr key))))))
+                        (t
+                         (funcall key object)))))
              (handler-case 
                (match value attval)
                (match-fail (condition)

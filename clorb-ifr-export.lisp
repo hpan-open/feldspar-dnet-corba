@@ -2,8 +2,6 @@
 
 (in-package :clorb)
 
-(require-idl "CORBA::Repository" 
-             :file "clorb:src;ifr-idl.lisp")
 
 
 ;;;; Object indexer
@@ -30,8 +28,22 @@
 
 (defmethod index-object ((oi object-indexer) index)
   (gethash index (imap oi)))
-    
-;;;;
+
+
+
+;;;; Storing integers in object id
+
+(defconstant +oid-radix+ 36)
+
+(defun oid-integer (oid)
+  (parse-integer (oid-to-string oid) :radix +oid-radix+))
+
+(defun integer-oid (integer)
+  (string-to-oid (format nil "~vR" +oid-radix+ integer)))
+
+
+
+;;;; Object Translation
 
 (defgeneric translate (translator object)
   (:method (x (obj number)) 
@@ -54,33 +66,6 @@
            (map-struct (lambda (v) (translate x v)) obj)))
 
 
-  
-;;;;
-
-(defun create-operation-list (opdef)
-  (map 'list
-       (lambda (pd) 
-         (CORBA:NamedValue
-          :name (op:name pd)
-          :argument (CORBA:Any :any-typecode (op:type pd))
-          :arg_modes (ecase (op:mode pd)
-                       (:param_in ARG_IN)
-                       (:param_out ARG_OUT)
-                       (:param_inout ARG_INOUT))))
-       (op:params opdef)))
-
-;;;;
-
-(defconstant +oid-radix+ 36)
-
-(defun oid-integer (oid)
-  (parse-integer (oid-to-string oid) :radix +oid-radix+))
-
-(defun integer-oid (integer)
-  (string-to-oid (format nil "~vR" +oid-radix+ integer)))
-
-;;;;
-
 (defclass TRANSLATOR ()
   ((wrapper :initarg :wrapper :reader wrapper)))
 
@@ -99,7 +84,7 @@
                                (integer-oid (object-index (objmap x) obj))
                                (object-id obj)))
 
-;;;;
+;;;; Servant 
 
 (defclass SERVANT-WRAPPER (portableserver:dynamicimplementation)
   ((orb
@@ -144,27 +129,46 @@
   (translate (local-translator wrapper) obj))
 
 
+(defun find-contained (sym name)
+  (or (find name (get sym 'ifr-contents)
+            :key (lambda (sym) (get sym 'ifr-name))
+            :test #'equal)
+      (some (lambda (base) (find-contained base name))
+            (get sym 'ifr-bases))))
+
+
 (defun wrapper-opinfo (self operation)
   ;; values: func type paramlist result-type
   (let* ((id (op:primary_interface self (op:_object_id self) (op:_poa self)))
-         (interface (or (op:lookup_id *idef-repository* id)
+         (interface (or (ifr-id-symbol id)
                         (error "can't find interface: ~S" id))))
     (multiple-value-bind (name type) (analyze-operation-name operation)
-      (let ((def (op:lookup interface name))
-            (sym (intern (string-upcase name) :op)))
+      (let ((def (find-contained interface name))
+            (sym (feature name)))
+        (assert def)
         (case type
           (:setter
-           (assert (eq (op:def_kind def) :dk_attribute))
+           (assert (get def 'ifr-type))
            (values (fdefinition (list 'setf sym)) :setter
-                   (list (corba:namedvalue :argument (corba:any :any-typecode (op:type def))
-                                           :arg_modes ARG_IN))
+                   (list (corba:namedvalue 
+                          :argument (corba:any :any-typecode (get def 'ifr-type))
+                          :arg_modes ARG_IN))
                    CORBA:tc_void))
           (:getter
-           (assert (eq (op:def_kind def) :dk_attribute))
-           (values sym nil nil (op:type def)))
+           (assert (get def 'ifr-type))
+           (values sym nil nil (get def 'ifr-type)))
           (otherwise
-           (assert (eq (op:def_kind def) :dk_operation))
-           (values sym nil (create-operation-list def) (op:result def))))))))
+           (values sym nil 
+                   (loop for (name mode type) in (get def 'ifr-params)
+                         collect (corba:namedvalue
+                                  :name name
+                                  :argument (corba:any :any-typecode type)
+                                  :arg_modes (ecase mode
+                                               (:param_in ARG_IN)
+                                               (:param_out ARG_OUT)
+                                               (:param_inout ARG_INOUT))))
+                   (get def 'ifr-result))))))))
+
 
 (define-method invoke ((self servant-wrapper) r)
   (multiple-value-bind (op type args result-type)
@@ -181,7 +185,8 @@
                               (funcall op (first local-args) local-obj)
                               (apply op local-obj local-args)))
                   collect (make-remote self x)))
-           (result (pop res-list)))
+           (result (unless (eq :tk_void (op:kind result-type))
+                     (pop res-list))))
       (loop for arg in args
             when (/= 0 (logand ARG_OUT (op:arg_modes arg)))
             do (setf (any-value (op:argument arg)) (pop res-list)))
@@ -191,6 +196,8 @@
 
 
 ;;;; Set up a real thingy
+
+#|
 
 (defvar *z-rep* (make-instance 'repository))
 (defvar *z-poa* (let ((rootpoa (op:resolve_initial_references *the-orb* "RootPOA")))
@@ -213,8 +220,27 @@
 
 ;;(rebind (make-remote *z-serv* *z-rep*) "zrep")
 
-#|
-
 (make-remote *z-serv* *internal-interface-repository*)
 
 |#
+
+(defvar *ifr-export-servant* nil)
+(defvar *ifr-export-poa* nil)
+
+(defun export-ifr ()
+  (or *ifr-export-servant*
+      (let ((orb (CORBA:ORB_init)))
+        (or *ifr-export-poa*
+            (setq *ifr-export-poa*
+                  (op:create_poa (op:resolve_initial_references orb "RootPOA") 
+                                 "_IFWRAP"
+                                 nil
+                                 '(:use_default_servant :user_id :transient))))
+        (let ((servant (make-instance 'servant-wrapper
+                         :orb orb :poa *ifr-export-poa*)))
+          (op:set_servant *ifr-export-poa* servant)
+          (op:activate (op:the_poamanager *ifr-export-poa*))
+          (setq *ifr-export-servant* servant)))))
+
+(define-method _this ((obj IRObject))
+  (make-remote (export-ifr) obj))
