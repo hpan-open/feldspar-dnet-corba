@@ -7,9 +7,6 @@
   '(("src;**;*.*"  "~/src/clorb/**/*.*")
     ("**;*.*"      "~/src/clorb/**/*.*" )))
 
-(setf (logical-pathname-translations "phome")
-      '(("**;*.*"  "~/**/*.*")))
-
 (load "clorb:src;clorb-files")
 (net.cddr.clorb.system:reload)
 

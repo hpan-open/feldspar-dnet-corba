@@ -1,28 +1,11 @@
 (in-package :cl-user)
 
-;;(pushnew :use-acl-socket *features*)
-;;(pushnew :use-my-idlparser *features*)
-;;(pushnew :no-idlcomp *features*)
-(pushnew :clorb-dev *features*)
-
-
-#+:use-acl-socket (require 'acl-socket)
-(net.cddr.packer:require-package "BSD")
-
 (defun clean-fasl ()
-  (mapc #'delete-file (directory "clorb:**;*.cfsl")))
+  (mapc #'delete-file (directory "clorb:fasl;**;*.cfsl")))
 
-(load "CLORB:SRC;CLORB-FILES")
-(net.cddr.clorb.system:set-load-opts
- :server t  :idlcomp nil  :my-idlparser t
- :portable-interceptor t                   )
-(net.cddr.clorb.system:reload)
+(load "clorb:src;devel")
 
-(import '(@ @@ @@@) "CLORB")
-(define-symbol-macro inpc (in-package :clorb))
-(define-symbol-macro clorb::inpu (in-package :cl-user))
-
-
+#+(or)
 (ignore-errors
  (setq clorb:*host*
        (let ((local-ip (ccl::local-interface-ip-address)))
@@ -30,38 +13,11 @@
            "localhost"
            (ccl::tcp-addr-to-str local-ip)))))
 
-(setq net.cddr.clorb.persistent-naming:*naming-base-path*
-  (make-pathname :directory '(:relative "naming")
-                 :name "foo"
-                 :type "obj"))
-
-(setq net.cddr.clorb.persistent-naming:*naming-ior-file* nil)
 
 (ensure-directories-exist persistent-naming:*naming-base-path* :verbose t)
 
-
-#|
-(unless (find-class 'log-window nil)
-  (load "home:contrib;log-window"))
-(when (eq clorb::*log-output* t)
-  (setq clorb::*log-output*
-        (make-instance 'log-window :window-title "Log")))
-|#
-
-(defvar *the-orb*
-  (CORBA:ORB_init
-   (list "-ORBPort" "4711"
-         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
-         ;;"-ORBInitRef NameService=corbaloc::127.0.0.1:4744/NameService"
-         "-ORBInitRef NameService=corbaloc::/NameService"
-         #| "-ORBInitRef" "InterfaceRepository=" |#)))
-
-
-(format t "~&;;; Activating the POA~%")
-(progn 'ignore-errors
- (op:activate (op:the_poamanager (clorb::root-poa))))
-;;(clorb:load-ir)
-(persistent-naming:setup-pns :export t)
+;;(clorb::io-system-switch 'clorb::io-system-multiprocess)
+;;(persistent-naming:setup-pns :export t)
 
 
 (defun use-pentax-ifr ()
@@ -80,30 +36,18 @@
   (persistent-naming:setup-pns :export t)
   (op:run *the-orb*))
 
-
-
 (setq clorb::*log-level* 3)
 
+;; http://www.random.org/Random.ior
+(defparameter *random-ior*
+  "IOR:000000000000000f49444c3a52616e646f6d3a312e3000000000000100000000000000500001000000000016706c616e7874792e6473672e63732e7463642e69650006220000002c3a5c706c616e7874792e6473672e63732e7463642e69653a52616e646f6d3a303a3a49523a52616e646f6d00")
+
+
+
 #|
+
 (defun clorb::xir ()
   (map 'list #'op:name (op:contents (clorb::get-ir) :dk_all t)))
-|#
-
-
-#+(or)
-(let ((ns (clorb::get-ns)))
-  (defun pfoo (&optional (n 100))
-    (dotimes (i n)
-      (op:list ns 100))))
-
-
-#|
-(corba:idl "clorb:idl;CosNaming.idl" :eval nil)
-|#
-
-(load "clorb:examples;hello;auto")
-
-#|
 
 (corba:idl "clorb:idl;TypeCodeFactory.idl"
            :eval nil :output "clorb:y-typecodefactory.lisp"
@@ -132,23 +76,3 @@
 (op:string_to_object *the-orb* "corbaloc::10.0.1.2:4711/NameService")
 
 |#
-
-;; http://www.random.org/Random.ior
-(defparameter *random-ior*
-  "IOR:000000000000000f49444c3a52616e646f6d3a312e3000000000000100000000000000500001000000000016706c616e7874792e6473672e63732e7463642e69650006220000002c3a5c706c616e7874792e6473672e63732e7463642e69653a52616e646f6d3a303a3a49523a52616e646f6d00")
-
-
-#|
-(with-open-file (out "phome:lib;NameService")
-  (write-string (op:object_to_string *the-orb* (clorb::get-ns))
-                out))
-
-
-(setq ccl::*search-default* (format nil "~A:" (package-name (find-package :corba)))
-      ccl::*replace-default* "corba:")
-(setq ccl::*search-default* (format nil "~A:" (package-name (find-package :op)))
-      ccl::*replace-default* "op:")
-
-|#
-
-(load "clorb:src;all-test")
