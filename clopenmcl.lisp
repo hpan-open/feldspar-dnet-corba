@@ -31,7 +31,8 @@
 (setq clorb::*host-translations* '())
 
 
-(defvar *the-orb* (CORBA:ORB_init))
+(defvar *the-orb*
+  (CORBA:ORB_init (list "-ORBInitRef NameService=corbaloc::/NameService")))
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
