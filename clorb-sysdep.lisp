@@ -119,6 +119,8 @@
        (sockets:socket-name socket)
      (declare (ignore adr))
      port)
+   #+cmu
+   (nth-value 1 (ext:get-socket-host-and-port socket))
    #+mcl
    (mcl-listener-port socket)))
 
@@ -253,6 +255,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    (with-open-stream (s (open-active-socket host port nil))
      (let ((crlf (coerce (vector #\Return #\Linefeed) 'string)))
        (format s "GET /~A~A" path crlf)
+       (force-output s)
        (let ((ior (read-line s)))
          (cond 
           ((and (stringp ior)

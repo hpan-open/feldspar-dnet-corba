@@ -791,10 +791,10 @@
 (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                     define-union define-enum define-alias
                                     static-call))
-                     'pprint-def-and-keys)
+                     #'pprint-def-and-keys)
 
 (set-pprint-dispatch '(cons (member define-interface))
-                     'pprint-def2-and-keys)
+                     #'pprint-def2-and-keys)
 
 #||
 (load "clorb:src;iop-idl")

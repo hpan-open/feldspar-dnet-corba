@@ -82,7 +82,7 @@
 
 (defun io-create-listener (&optional port)
   (setq *io-socket* (open-passive-socket port))
-  (setq port (passive-socket-port *io-socket*))
+  (setq port (or port (passive-socket-port *io-socket*)))
   (mess 3 "listener created on ~A" port)
   (values port (passive-socket-host *io-socket*)))
 
