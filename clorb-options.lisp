@@ -10,9 +10,9 @@ If nil, let implementation choose a port.")
 
 (defvar *clorb-pathname-defaults*
   (make-pathname :name nil :type nil :version nil
-                 :defaults (or *compile-file-pathname*
-                               *load-pathname*
-                               #+(and MCL (not OpenMCL)) (pathname (ccl:front-window)))))
+                 :defaults (or #+MCL ccl:*loading-file-source-file*
+                               *compile-file-pathname*
+                               *load-pathname* )))
 
 
 (defvar *default-include-directories*
@@ -29,7 +29,7 @@ Should be an URL that can be accepted by op:string_to_object.")
   "Reference to the CORBA InterfaceRepository.
 Should be an URL that can be accepted by op:string_to_object.")
 
-(defparameter *log-level* 2)
+(defparameter *log-level* 3)
 
 (defparameter *explicit-any* t
   "Flag, if true, CORBA::Any will be unmarshaled to an ANY struct.

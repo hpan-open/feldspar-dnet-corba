@@ -17,19 +17,14 @@
 (setf (logical-pathname-translations "PHOME")
       '(("**;*.*"  "home:**;*.*")))
 
-(require 'acl-socket)
+;;(require 'acl-socket)
 #+use-my-idlparser (packer:require-package :net.cddr.redpas)
 
 (load "CLORB:SRC;clorb-files")
 (net.cddr.clorb.system:reload)
 
 (setq clorb:*host* "localhost")
-;;(setq clorb::*name-service* "corbaloc::1.2@localhost:2001/NameService")
-;;(setq clorb::*name-service* "file:///tmp/NameService")
-(setq clorb::*name-service* "corbaloc::localhost:4711/NameService")
-
 (setq clorb::*host-translations* '())
-
 
 (defvar *the-orb*
   (CORBA:ORB_init (list "-ORBInitRef NameService=corbaloc::/NameService")))

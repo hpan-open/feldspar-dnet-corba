@@ -139,6 +139,11 @@
 
 
 #|
+(with-open-file (out "phome:lib;NameService")
+  (write-string (op:object_to_string *the-orb* (clorb::get-ns))
+                out))
+
+
 (setq ccl::*search-default* (format nil "~A:" (package-name (find-package :corba)))
       ccl::*replace-default* "corba:")
 (setq ccl::*search-default* (format nil "~A:" (package-name (find-package :op)))

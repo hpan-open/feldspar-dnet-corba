@@ -148,7 +148,7 @@ Members on form: (name TypeCode)"
   (ifr-id-symbol id))
 
 
-;;; Marshalling support for exceptions
+;;;; Marshalling support for exceptions
 
 (defun exception-read (symbol buffer)
   "Read an exception of type indicated by SYMBOL from BUFFER."
