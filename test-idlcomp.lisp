@@ -37,7 +37,12 @@
     module Foo { /* bar */ interface Bar; };"
     "Foo" (def-pattern :dk_module))
 
-
+  (define-idl-test "escaping identifiers"
+      "typedef long _foo;  // normal identifier
+       typedef long _long; // reserved word as identifier"
+    "foo" (def-pattern :dk_alias)
+    "long" (def-pattern :dk_alias))
+  
   ;; ---------------------------------
   
   (define-idl-test "short"
@@ -149,17 +154,21 @@ typedef string aa[2][9];
                       'op:element_type_def (def-pattern :dk_primitive 'op:kind :pk_string)))))
   
   
-  (define-idl-test "const"
-    "const long A = 1;
+  (define-idl-test "const and literals"
+    "const long A = 1; const long O = 0177; const long H = 0xA9b;
      const char B = 'C';
      const octet C = 1; 
      const string S = \"wibbel\";
-     const boolean D = TRUE; "
+     const boolean D = TRUE;
+     typedef fixed<10,2> FT; const FT F = 12.45D; "
     "A" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_long)
           'op:value (pattern 'any-typecode CORBA:tc_long
                              'any-value 1))
     
+    "O" (pattern 'op:value (pattern 'any-value #O177))
+    "H" (pattern 'op:value (pattern 'any-value #xA9B))
+
     "B" (def-pattern :dk_constant
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_char)
           'op:value (pattern 'any-typecode CORBA:tc_char
@@ -178,8 +187,13 @@ typedef string aa[2][9];
     "D" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_boolean)
           'op:value (pattern 'any-typecode corba:tc_boolean
-                             'any-value t)))
-  
+                             'any-value t))
+    
+    "F" (def-pattern :dk_constant
+          'op:type_def (def-pattern :dk_alias 'op:type 
+                         (pattern 'op:content_type (create-fixed-tc 10 2)))
+          'op:value (pattern 'any-value 1245/100)))
+    
   
   (define-idl-test "constant expressions"
     "

@@ -32,12 +32,12 @@
   (let ((elem (gensym))
         (list (gensym)))
     `(let (,elem ,list)
-       (seq (,(if allow-empty 'opt 'seq)
-             (seq (-> ,form ,elem)
-                  (action (push ,elem ,list))
-                  (seq* ,@(if sep (list sep))
-                        (-> ,form ,elem)
-                        (action (push ,elem ,list)))))
+       (seq (alt (seq (-> ,form ,elem)
+                      (action (push ,elem ,list))
+                      (seq* ,@(if sep (list sep))
+                            (-> ,form ,elem)
+                            (action (push ,elem ,list))))
+                 ,@(if allow-empty '((seq))))
             (action (nreverse ,list))))))
 
 
@@ -452,16 +452,13 @@
 ;;;; Litterals
 
 (defun <literal> nil
- (alt (seq (<integer_literal>))
-      (seq (<string_literal>))
-      (seq (<boolean_literal>))
-      (seq (<character_literal>))
-      ;; not implemented yet:
-      (seq (<wide_string_literal>))
-      (seq (<wide_character_literal>))
-      (seq (<fixed_pt_literal>))
-      (seq (<floating_pt_literal>))
-      ))
+  (alt (seq (<number_literal>))
+       (seq (<string_literal>))
+       (seq (<boolean_literal>))
+       (seq (<character_literal>))
+       ;; not implemented yet:
+       (seq (<wide_string_literal>))
+       (seq (<wide_character_literal>))))
 
 (defun <boolean_literal> nil
   (alt (seq "TRUE" 	(action t))
@@ -664,37 +661,45 @@
 
 
 (defun <identifier> ()
-  ;; FIXME: an identifier can start with _ (should also be removed)
   (let ((tok (token *lexer*)))
-    (when (and (stringp tok)
-               (alpha-char-p (char tok 0))
-               (not (member tok *reserved-words* :test #'string=)))
-      (match-token *lexer* tok))))
+    (cond ((and (stringp tok)
+                (or (alpha-char-p (char tok 0))
+                    (eql #\_ (char tok 0)))
+                (not (member tok *reserved-words* :test #'string=)))
+           (match-token *lexer* tok)
+           (values t
+                   (if (eql #\_ (char tok 0))
+                       (subseq tok 1)
+                       tok)))
+          (t
+           ;; Bit of a trick, there is no <identifier> token from
+           ;; the lexer, but this will handled the error reporting.
+           (match-token *lexer* '<identifier>)))))
 
 
-(defun <integer_literal> ()
+
+(defun <number_literal> ()
   (seq #'numberp))
+
+(defun <character_literal> ()
+  (seq #'characterp))
 
 (defun <string_literal> ()
   (let (s)
     (seq (-> #'(lambda (tok) (and (consp tok) (eq (car tok) 'string))) s)
          (action (cdr s)))))
 
+
 (defun <wide_string_literal> ()
   ;; FIXME: check how this works
   nil)
 
-(defun <character_literal> ()
-  (seq #'characterp))
-
 (defun <wide_character_literal> ()
   nil)
 
-(defun <fixed_pt_literal> ()
-  nil)
 
-(defun <floating_pt_literal> ()
-  nil)
+
+;;;; Parser Class
 
 
 (defclass MY-IDLPARSER (idl-compiler)
