@@ -14,7 +14,7 @@
 
 (defvar *default-exclude* '("::CORBA"))
 
-(defun corba:idl (file &key print (eval t) output package-decl
+(defun corba:idl (file &key print (eval t) output (package-decl t)
                          only (exclude *default-exclude*)
                          (skeleton t) target
                          (compiler *default-idl-compiler*)
