@@ -1,3 +1,13 @@
+2003-09-27  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-orb.lisp: Added support for -ORBPort init argument to
+	ORB_init.
+
+	* clorb-iiop.lisp (unmarshal-giop-header): cleanup error message
+
+	* clorb-io.lisp (io-driver): added cludge to work-around the
+	buffering in sbcl streams.
+
 2003-09-25  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (repository-facade): Creating a

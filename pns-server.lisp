@@ -336,18 +336,18 @@
 (defvar *root-context* nil)
 
 (defun setup-pns ()
-  (unless *naming-poa* (setup-naming-poa))
-  (unless *root-context*
-    (setq *root-context*
-          (op:create_reference_with_id
-           *naming-poa*
-           (portableserver:string-to-oid "root")
-           (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
-  (with-open-file (out *naming-ior-file*
-                       :direction :output
-                       :if-exists :supersede)
-    (princ (op:object_to_string (CORBA:ORB_init) *root-context*)
-           out)))
+  (let ((orb (CORBA:ORB_init)))
+    (unless *naming-poa* (setup-naming-poa))
+    (unless *root-context*
+      (setq *root-context*
+            (op:create_reference_with_id
+             *naming-poa*
+             (portableserver:string-to-oid "root")
+             (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
+    (when *naming-ior-file*
+      (with-open-file (out *naming-ior-file*
+                           :direction :output :if-exists :supersede)
+        (princ (op:object_to_string orb *root-context*) out)))))
 
 ;;(defmethod initialize-instance :after ((self naming-context) &key)
 ;;  (clorb::mess 3 "Naming Context base=~A" (nc-base self)))
