@@ -1,15 +1,15 @@
 (in-package :clorb) 
 
-(defparameter *host* "localhost")
+(defparameter *host* "127.0.0.1")
 
-(defparameter *port* 4711)
+(defparameter *port* 4722)
 
-(defparameter *name-service* "/tmp/NameService"
+(defparameter *name-service* "NameService"
   "Reference to the CORBA NameService.
 This should be the name of a file where the name service IOR is stored
 or the IOR.")
 
-(defparameter *interface-repository* "/tmp/InterfaceRepository"
+(defparameter *interface-repository* "InterfaceRepository"
   "Reference to the CORBA InterfaceRepository.
 This should be the name of a file where the service IOR is stored
 or the IOR.")

@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.2 2001/02/13 14:50:56 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.3 2001/02/13 22:21:57 lenst Exp $
 
 (in-package :clorb)
 
@@ -30,6 +30,14 @@
                                      (subseq string 0 pos)
                                      (subseq string (+ pos 2)))))
   string)
+
+;;;; MCL Has old style (?) make-load-form
+#+MCL
+(require "ANSI-MAKE-LOAD-FORM")
+
+(defmacro define-slot-dumper (class)
+  `(defmethod make-load-form ((obj ,class) &optional env)
+     (make-load-form-saving-slots obj :environment env)))
 
 
 ;;;; Operations

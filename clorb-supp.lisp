@@ -1,12 +1,13 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.1 2000/11/14 22:50:28 lenst Exp $
+;; $Id: clorb-supp.lisp,v 1.2 2001/02/13 22:21:57 lenst Exp $
 
 (in-package :clorb)
 
+(defvar *log-output* t)
 
 (defun mess (level fmt &rest args)
   (when (>= level *log-level*)
-    (apply #'cl:format t
+    (apply #'cl:format *log-output*
            (format nil "~&~A ~A~%" 
                    (make-string level :initial-element #\;)
                    fmt)

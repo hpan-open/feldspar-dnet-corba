@@ -119,7 +119,7 @@
 
 
 (defpackage :clorb
-  (:use COMMON-LISP #+cmu MOP #-(or sbcl cmu) CLOS PortableServer)
+  (:use COMMON-LISP #+cmu MOP #-(or sbcl cmu mcl) CLOS PortableServer)
   #+cmu
   (:shadowing-import-from MOP CLASS-NAME BUILT-IN-CLASS CLASS-OF FIND-CLASS)
   (:export struct-typecode struct-get make-struct 

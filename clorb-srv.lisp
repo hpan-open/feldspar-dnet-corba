@@ -60,8 +60,7 @@
 
 (defmethod client-streams ((adaptor clorb-adaptor))
   (dolist (stream (client-streams-raw adaptor))
-    (unless (and (typep stream 'stream)
-                 (open-stream-p stream)) 
+    (unless (socket-stream-functional-p stream)
       (mess 1 "Removing closed stream ~S" stream)
       (setf (client-streams-raw adaptor)
         (delete stream (client-streams-raw adaptor)))))

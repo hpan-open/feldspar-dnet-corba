@@ -10,8 +10,8 @@
   operations
   inherit)
 
-(defmethod make-load-form ((obj interface) &optional env)
-  (make-load-form-saving-slots obj :environment env))
+(define-slot-dumper interface)
+
 
 (defmethod find-opdef ((interface interface) operation)
   "Find in INTERFACE the OPERATION and return the opdef struct."

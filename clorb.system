@@ -5,6 +5,7 @@
 (make:defsystem "clorb"
     :source-extension "lisp"
     ;:source-pathname #.(translate-logical-pathname #p"src:clorb;")
+    :source-pathname #p"Mac Home:clorb:"
     ;:binary-pathname "bin/"
     :components ((:file "clorb-pkgdcl")
                  (:file "clorb-macros"  :depends-on ("clorb-pkgdcl"))
@@ -13,9 +14,9 @@
                  (:file "clorb-basetypes")
                  (:file "clorb-exceptions")
                  (:file "clorb-object")
-                 (:file "clorb-typecode")
+                 (:file "clorb-typecode" :depends-on ("clorb-macros"))
                  (:file "clorb-any")
-                 (:file "clorb-struct")
+                 (:file "clorb-struct"   :depends-on ("clorb-macros"))
                  (:file "clorb-union")
                  (:file "clorb-buffer")
                  (:file "clorb-marshal"  :depends-on ("clorb-buffer"))

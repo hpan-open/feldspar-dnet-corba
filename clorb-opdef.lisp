@@ -9,8 +9,9 @@
   (result CORBA:tc_void)
   raises)
 
-(defmethod make-load-form ((obj opdef) &optional env)
-  (make-load-form-saving-slots obj :environment env))
+(define-slot-dumper opdef)
+
+
 
 ;; enum ParameterMode {PARAM_IN, PARAM_OUT, PARAM_INOUT};
 

@@ -16,11 +16,24 @@
     #+cmu (pushnew :cmucl-sockets *features*)
     #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own")))
 
+#+mcl 
+(require "OPENTRANSPORT")
+
 
 (defmacro %SYSDEP (desc &rest forms)
-  (when (zerop (length forms))
+  (when (null forms)
       (error "No system dependent code to ~A" desc))
   (car forms))
+
+
+#+mcl
+(defclass mcl-listner-socket ()
+  ((port :initarg :port :accessor listner-port)
+   (stream :initform nil :accessor listner-stream)))
+
+#+mcl
+(defun listner-host (listner-socket)
+  (ccl::inet-host-name (ccl::stream-local-host (listner-stream listner-socket))))
 
 
 ;; the unconnected socket is returned by OPEN-PASSIVE-SOCKET and used
@@ -54,7 +67,12 @@
    #+allegro
    (socket:make-socket :connect :passive :local-port port
                        :format :binary
-                       :reuse-address t)))
+                       :reuse-address t)
+   #+mcl
+   (let ((listner (make-instance 'mcl-listner-socket :port port)))
+     (accept-connection-on-socket listner)
+     listner)))
+
 
 (defun open-active-socket (host port)
   "Open a TCP connection to HOST:PORT, and return the stream asociated with it"
@@ -76,7 +94,11 @@
    #+allegro
    (socket:make-socket 
     :remote-host host :remote-port port
-    :format :binary)))
+    :format :binary)
+
+   #+mcl
+   (ccl::open-tcp-stream host port :element-type '(unsigned-byte 8))))
+
 
 
 (defun accept-connection-on-socket (socket &optional (blocking nil))
@@ -84,41 +106,60 @@
 with the new connection.  Do not block unless BLOCKING is non-NIL"
   ;; XXX this probably races on clisp - the client can go away between
   ;; select and accept.  Dunno what allegro does
-  #+cmucl-sockets
-  (when blocking
-    (let ((new (ext:accept-tcp-connection socket)))
-      (mess 3 "Acception tcp connection: ~S" new)
-      (setq new (system:make-fd-stream new
-                             :input t :output t :element-type
-                             '(unsigned-byte 8)))
-      (mess 2 " - to stream: ~S" new)
-      new))
-  ;;  (error "non-blocking accept() not yet implemented for cmucl sockets")
-  #+db-sockets
-  (let ((before (sockets:non-blocking-mode socket)))
-    (unwind-protect
-        (handler-case
-            (progn
-              (setf (sockets:non-blocking-mode socket) (not blocking))
-              (let ((k (sockets:socket-accept socket)))
-                (setf (sockets:non-blocking-mode k) nil)
-                (sockets:socket-make-stream k :element-type '(unsigned-byte 8)
-                                            :input t :output t )))
-          (sockets::interrupted-error nil))
-      (setf (sockets:non-blocking-mode socket) before)))
-  #+clisp 
-  (when (lisp:socket-wait socket 0 10)
-    (let* ((conn (lisp:socket-accept socket 
-                                     :element-type '(unsigned-byte 8))))
-      (mess 4 "Accepting connection from ~A"
-            (lisp:socket-stream-peer conn))
-      conn))
-  #+allegro 
-  (let ((conn (socket:accept-connection socket :wait blocking)))
-    (mess 4 "Accepting connection from ~A:~D"
-            (socket:ipaddr-to-hostname (socket:remote-host conn))
-            (socket:remote-port conn) )
-    conn))
+  (declare (ignorable blocking))
+  (%SYSDEP
+   "accept a connection"
+   #+cmucl-sockets
+   (when blocking
+     (let ((new (ext:accept-tcp-connection socket)))
+       (mess 3 "Acception tcp connection: ~S" new)
+       (setq new (system:make-fd-stream new
+                                        :input t :output t :element-type
+                                        '(unsigned-byte 8)))
+       (mess 2 " - to stream: ~S" new)
+       new))
+   ;;  (error "non-blocking accept() not yet implemented for cmucl sockets")
+   #+db-sockets
+   (let ((before (sockets:non-blocking-mode socket)))
+     (unwind-protect
+       (handler-case
+         (progn
+           (setf (sockets:non-blocking-mode socket) (not blocking))
+           (let ((k (sockets:socket-accept socket)))
+             (setf (sockets:non-blocking-mode k) nil)
+             (sockets:socket-make-stream k :element-type '(unsigned-byte 8)
+                                         :input t :output t )))
+         (sockets::interrupted-error nil))
+       (setf (sockets:non-blocking-mode socket) before)))
+   #+clisp 
+   (when (lisp:socket-wait socket 0 10)
+     (let* ((conn (lisp:socket-accept socket 
+                                      :element-type '(unsigned-byte 8))))
+       (mess 4 "Accepting connection from ~A"
+             (lisp:socket-stream-peer conn))
+       conn))
+   #+allegro 
+   (let ((conn (socket:accept-connection socket :wait blocking)))
+     (mess 4 "Accepting connection from ~A:~D"
+           (socket:ipaddr-to-hostname (socket:remote-host conn))
+           (socket:remote-port conn) )
+     conn)
+   #+mcl
+   (let* ((s (listner-stream socket))
+          (state (and s (ccl::opentransport-stream-connection-state s)))
+          (new nil))
+     (when (member state '(:incon :dataxfer))
+       (mess 3 "Accepting connection ~S" s)
+       (setq new s
+             state nil))
+     (when (member state '(nil :uninit :closed))
+       (mess 3 "New listner replacing ~S" s)
+       (setf (listner-stream socket)
+             (ccl::open-tcp-stream nil (listner-port socket) 
+                                   :element-type '(unsigned-byte 8)
+                                   :reuse-local-port-p t)))
+     new)))
+
 
 
 ;;; coerce an unconnected-socket to something intelligible to
@@ -140,6 +181,18 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clisp t                            ; Ouch!
    (listen stream)))
 
+(defun socket-stream-functional-p (stream)
+  "True if stream is a functional connection.
+False if, e.g., the peer has closed."
+  (%SYSDEP
+   "check if stream is functional"
+   #+mcl
+   (and stream
+        (eq (ccl::opentransport-stream-connection-state stream)
+            :dataxfer))
+   ;; Default
+   (and stream (open-stream-p stream))))
+
 
 (defun socket-close (socket)
   (%SYSDEP
@@ -158,7 +211,7 @@ Return
   NIL - if no input available
   :SERVER SOCKET  - if unconnected-socket SOCKET can accept conn.
   :STREAM STREAM  - if input available from STREAM
-  :CANT           - if the implementaion doesn't support waiting
+  :CANT           - if the implementation doesn't support waiting
 "
   (declare (ignorable server-sockets streams))
   (%SYSDEP 

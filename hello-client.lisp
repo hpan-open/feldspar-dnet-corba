@@ -1,4 +1,4 @@
-(in-package :user)
+(in-package :cl-user)
 
 (defun hello-client (&key file name)
   (let* ((orb (CORBA:ORB_init))

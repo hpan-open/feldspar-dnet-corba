@@ -214,7 +214,7 @@
 
 (defun corba-get-next-respons (orb &optional flags)
   (loop
-      for stream = (orb-wait orb (get-clients))
+      for stream = (orb-wait orb (get-connections))
       for req = (cond 
                  ((null stream) nil)
                  ((eq stream :cant)
@@ -229,7 +229,7 @@
   (let* ((orb (orb_init)))
     (loop for client = (request-client req)
         while (not (request-reply req))
-        when (orb-wait orb client)
+        when (and (orb-wait orb client) (socket-stream-listen client))
         do (corba-get-next-respons-1 client
                                      :wait (not (member :no-wait flags)))
         until (member :no-wait flags)))

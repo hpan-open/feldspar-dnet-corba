@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.1 2000/11/14 22:50:28 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.2 2001/02/13 22:21:57 lenst Exp $
 
 (in-package :clorb)
 
@@ -10,9 +10,7 @@
   ())
 
 ;; This is a bit dubious, but just for testing...
-(defmethod make-load-form ((obj CORBA:struct) &optional env)
-  (make-load-form-saving-slots obj :environment env))
-
+(define-slot-dumper CORBA:struct)
 
 (defgeneric type-id (struct))
 (defgeneric fields (struct))

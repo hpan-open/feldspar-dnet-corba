@@ -14,7 +14,7 @@ Where host is a string and port an integer.")
 	  (assoc host *iiop-connections* :test #'equal))
 	 (pp				; A port-socket pair
 	  (assoc port (cdr hp))))
-    (unless (and pp (open-stream-p (cdr pp)))
+    (unless (and pp (socket-stream-functional-p (cdr pp)))
       (unless hp
 	(push (setq hp (cons host nil)) *iiop-connections*))
       (let ((sock (open-active-socket host port)))
@@ -23,7 +23,9 @@ Where host is a string and port an integer.")
 	  (push (setq pp (cons port sock)) (cdr hp)))))
     (cdr pp)))
 
-(defun get-clients ()
+(defun get-connections ()
   (loop for hp in *iiop-connections*
 	nconc (loop for pp in (cdr hp) collect (cdr pp))))
 
+(defun close-connections ()
+  (map nil 'close (get-connections)))

@@ -22,9 +22,7 @@
   ((kind :initarg :kind)
    (params :initarg :params)))
 
-(defmethod make-load-form ((obj CORBA:TypeCode) &optional env)
-  (make-load-form-saving-slots obj :environment env))
-
+(define-slot-dumper CORBA:TypeCode)
 
 (defun print-typecode (typecode &optional (stream *standard-output*))
   (print-unreadable-object (typecode stream :type t :identity t)

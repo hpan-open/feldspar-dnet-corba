@@ -1,4 +1,4 @@
-(in-package :user)
+(in-package :cl-user)
 
 (clorb:define-servant hello-servant "Hello::World"
   :id "IDL:Hello/World:1.0")
