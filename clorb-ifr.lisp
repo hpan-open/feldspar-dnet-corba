@@ -155,7 +155,7 @@
     ;; name already exists within this Container and multiple versions are
     ;; not supported.
     (when (member name (contents c) :key #'op:name :test #'string-equal)
-      (error 'omg.org/corba:bad_param :minor 3))
+      (error 'corba:bad_param :minor 3))
 
     (setf (contents c) (nconc (contents c) (list object)))
     (setf (gethash id (idmap repository)) object)
@@ -290,7 +290,7 @@
                (every (lambda (x) (typep x 'CORBA:UnionMember))
                       members))
           (members)
-          'type-error :datum 'members :expected-type 'omg.org/corba:unionmemberseq)
+          'type-error :datum 'members :expected-type 'corba:unionmemberseq)
   (addto self (make-instance 'union-def
                 :id id :name name :version version
                 :discriminator_type_def discriminator_type
@@ -493,7 +493,7 @@
 
 (define-method create_sequence ((container Repository) bound element-type)
   (check-type bound integer)
-  (check-type element-type omg.org/corba:idltype)
+  (check-type element-type corba:idltype)
   (make-instance 'sequence-def
     :bound bound
     :element_type_def element-type))
@@ -592,14 +592,14 @@
                 append (op:contents x limit-type nil)))))
 
 
-(defun check-unique-name (container name)
+(defun check-unique-name (container name &key (minor 3))
   (when (op:lookup_name container name 1 :dk_all nil)
-    (error 'omg.org/corba:bad_param)))
+    (error 'corba:bad_param :minor minor)))
 
 (define-method (setf op:base_interfaces) :before (value (self interface-def))
   (loop for obj in (contents self) do
         (loop for base in value do
-              (check-unique-name base (op:name obj)))))
+              (check-unique-name base (op:name obj) :minor 5))))
 
 
 ;;;  AttributeDef create_attribute
@@ -685,7 +685,7 @@
                  (every (lambda (p)
                           (eq :param_in (op:mode p)))
                         params))
-      (error 'omg.org/corba:bad_param
+      (error 'corba:bad_param
              :minor 31
              :completed :completed_yes))))
 
@@ -998,7 +998,7 @@
 ;;;; interface ValueBoxDef : TypedefDef 
 ;;    attribute IDLType original_type_def;
 
-(define-ir-class valuebox-def (omg.org/corba:valueboxdef typedef-def)
+(define-ir-class valuebox-def (corba:valueboxdef typedef-def)
   :def_kind :dk_valuebox
   :attributes ((original_type_def)))
 
@@ -1112,20 +1112,20 @@
 
 (defmethod idltype-tc ((self Value-Def))
   (create-value-tc (op:id self) (op:name self) 
-                   (cond ((omg.org/features:is_abstract self) omg.org/corba:vm_abstract)
-                         ((omg.org/features:is_custom self) omg.org/corba:vm_custom)
-                         ((omg.org/features:is_truncatable self) omg.org/corba:vm_truncatable)
-                         (t omg.org/corba:vm_none))
-                   (omg.org/features:base_value self)
+                   (cond ((op:is_abstract self) corba:vm_abstract)
+                         ((op:is_custom self) corba:vm_custom)
+                         ((op:is_truncatable self) corba:vm_truncatable)
+                         (t corba:vm_none))
+                   (op:base_value self)
                    (simple-value-members
-                    (omg.org/features:contents self :dk_valuemember t))))
+                    (op:contents self :dk_valuemember t))))
 
 (define-method contents ((obj Value-Def) limit-type exclude-inherit)
   (if exclude-inherit
       (call-next-method)
-    (append (call-next-method)
-            (and (op:base_value obj)
+    (append (and (op:base_value obj)
                  (op:contents (op:base_value obj) limit-type nil))
+            (call-next-method)
             (loop for x in (coerce (op:abstract_base_values obj) 'list)
                 append (op:contents x limit-type nil))
             (loop for x in (coerce (op:supported_interfaces obj) 'list)
@@ -1147,7 +1147,7 @@
    ;; boolean is_custom
    :is_custom (op:is_custom def)
    ;; RepositoryId defined_in
-   :defined_in (op:id (op:defined_in def))
+   :defined_in (subject-id (op:defined_in def))
    ;; VersionSpec version
    :version (op:version def)
    ;; RepositoryIdSeq supported_interfaces
@@ -1157,9 +1157,12 @@
    ;; boolean is_truncatable
    :is_truncatable (op:is_truncatable def)
    ;; RepositoryId base_value
-   :base_value (op:id (op:base_value def))))
+   :base_value (subject-id (op:base_value def))))
 
-		
+(defmethod subject-id ((obj null))
+  "")
+
+
 ;;; FullValueDescription describe_value();
 (define-method "DESCRIBE_VALUE" ((def value-def))
   (corba:ValueDef/FullValueDescription
@@ -1172,15 +1175,15 @@
    ;; boolean is_custom
    :is_custom (op:is_custom def)
    ;; RepositoryId defined_in
-   :defined_in (op:defined_in def)
+   :defined_in (subject-id (op:defined_in def))
    ;; VersionSpec version
    :version (op:version def)
    ;; OpDescriptionSeq operations
-   :operations (op:operations def)
+   :operations (mapcar #'operation-description (op:contents def :dk_operation nil))
    ;; AttrDescriptionSeq attributes
-   :attributes (op:attributes def)
+   :attributes (mapcar #'describe-contained (op:contents def :dk_attribute nil))
    ;; ValueMemberSeq members
-   :members (op:members def)
+   :members (mapcar #'describe-contained (op:contents def :dk_valuemember nil))
    ;; InitializerSeq initializers
    :initializers (op:initializers def)
    ;; RepositoryIdSeq supported_interfaces
@@ -1190,7 +1193,7 @@
    ;; boolean is_truncatable
    :is_truncatable (op:is_truncatable def)
    ;; RepositoryId base_value
-   :base_value (op:id (op:base_value def))
+   :base_value (subject-id (op:base_value def))
    ;; TypeCode type
    :type (op:type def)))
 
