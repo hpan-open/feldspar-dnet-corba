@@ -8,19 +8,18 @@
 
                           by Lennart Staflin
 
-                              2003-10-23
+                              2004-01-15
 
 
 
 CLORB is an Object Request Broker implementing CORBA 2. It currently
-supports IIOP 1.0, IDL, DII, DSI and the POA. The goal is to make the
-mapping follow the proposed mapping for LISP [1].
+supports IIOP 1.0, IDL, DII, DSI, POA and value types. The goal is to
+make the mapping follow the proposed mapping for LISP [1].
 
 It lacks:
 
    * wide strings, chars
    * Request context
-   * Value Types
    * DynAny
    * CORBA Messaging
    * Multithreading
@@ -36,10 +35,10 @@ Ports:
    OpenMCL      seems to work (Mac OS X)
    CMUCL        partially working (some test cases fail)
    SBCL         seems to work on Mac OS X and Debian GNU/Linux (i386)
+   CLISP        works again (2.32)
    ACL 6.2      seems to work, but the trial version can't compile the IDL
                 compiler due to heap limitation
-   --
-   CLISP        not currently working, you could try CVS tag CLISP_OK
+
 
 
 
@@ -67,15 +66,7 @@ references.
 When compiling and loading clorb some clorb specific features control
 the process. 
 
-Features to put on *features* to control what gets loaded
-
-    :clorb-dev          load some development specific code (test suite)
-
-    :no-idlcomp         don't load the IDL compiler
-
-    :use-my-idlparser   load alternative IDL compiler (requires non
-                        included package)
-
+    
 Features to control what socket/tcp code gets used:
 
     :use-acl-socket     use the ACL-SOCKET package in preference to
@@ -88,8 +79,6 @@ Features to control what socket/tcp code gets used:
 
 Features that are automatically (?) determined (in clorb-sysdep):
 
-    clisp-ext 
-    clisp-new-socket-status 
     clorb-mcl-bsd 
     db-sockets 
     sb-bsd-sockets 
@@ -143,13 +132,18 @@ written to the stream *log-output*.
 
                      Loading/Compiling IDL files
 
-(CORBA:IDL pathname &key eval print) => repository
+(CORBA:IDL pathname &key eval print output skeleton) => repository
 
 Load and parse the IDL file referenced by PATHNAME. The interface
 repository containing the parsed IDL file is returned. The necessary
 code to use this interface is generated and loaded (unless the eval
 key is nil).
 
+Producing a Lisp file with all code for an IDL file:
+
+  (CORBA:IDL "foo.idl" :output "foo.lisp")
+
+  
 
 
                  Obtaining initial object references
@@ -231,11 +225,6 @@ ACL-COMPAT code from portable allegro server [fix reference].
 The file clmcl.lisp is what I have used during development to load
 the system.
 
-I use some extra features:
-
-  use-acl-socket  --  to use the socket code from acl-compat
-
-
 To load CLORB you need to do something like this:
 
     (require 'bsd)
@@ -245,10 +234,6 @@ To load CLORB you need to do something like this:
 
 
                                OpenMCL
-
-This requires that you have acl-socket from the portable Allegro server.
-
-(require 'acl-socket)
 
 (load "clorb-files")
 (net.cddr.clorb.system:reload)
@@ -272,8 +257,6 @@ This is what is needed to load CLORB in SBCL (for reference
 clsbcl.lisp is what I have used, but it contains some things that are
 dependent on my devlopment environment).
 
-
-(require :asdf)  ; prehaps not if you are using CLC
 
 (require :sb-bsd-sockets)
 
