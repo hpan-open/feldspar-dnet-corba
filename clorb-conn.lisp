@@ -84,6 +84,14 @@
     (io-descriptor-set-write desc octets 0 (length octets))))
 
 
+(defun connection-add-server-request (conn request)
+  (push request (connection-server-requests conn)))
+
+(defun connection-remove-server-request (conn request)
+  (setf (connection-server-requests conn)
+        (delete request (connection-server-requests conn))))
+
+
 
 ;;;; Connection events
 
