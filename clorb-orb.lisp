@@ -20,10 +20,9 @@
 
 ;;; (Object) Adaptor interface
 (defgeneric listner-sockets (adaptor))
-(defgeneric handle-socket (adaptor socket))
+(defgeneric handle-socket (adaptor socket &optional blocking))
 (defgeneric client-streams (adaptor))
 (defgeneric handle-stream (adaptor stream))
-(defgeneric server-fallback (adaptor))
 (defgeneric listner-host (adaptor))
 (defgeneric listner-port (adaptor))
 
@@ -64,7 +63,7 @@ Returns
       (setq server-sockets (listner-sockets adaptor)))
     (if (listp streams)
         (setq source-streams (append streams source-streams))
-      (push streams source-streams))
+        (push streams source-streams))
     (multiple-value-bind (type stream)
         (wait-for-input-on-streams server-sockets source-streams)
       (ecase type
@@ -73,16 +72,21 @@ Returns
              (progn
                (handle-stream adaptor stream)
                nil)
-           stream))
+             stream))
         (:server
          (handle-socket adaptor stream)
          nil)
         (:cant 
-         (when (and *running-orb* adaptor)
+         (when (and *running-orb* adaptor (null streams))
            ;; Should do server things, but don't know if there is
            ;; anything to do : (
-           (unless streams
-             (server-fallback adaptor)))
+           (let ((anything nil))
+             (dolist (stream client-streams)
+               (mess 1 "Poll ~S" stream)
+               (when (handle-stream adaptor stream)
+                 (setq anything t)))
+             (dolist (socket server-sockets)
+               (handle-socket adaptor socket (not anything)))))
          :cant)
         ((nil) nil)))))
 
