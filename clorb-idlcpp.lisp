@@ -131,7 +131,11 @@
 (defun cpp-line-p (line)
   (loop for char across line
         when (char= char #\#) return t
-        unless (ccl:whitespacep char) return nil))
+        unless (whitespacep char) return nil))
+
+(defun whitespacep (char)
+  (or (char= char #\Space)
+      (char= char #\Tab)))
 
 (defun parse-cpp-line (cpp line)
   (setq line (read-cpp-continuation-lines cpp line))
@@ -203,13 +207,14 @@
 
 ;; FIXME: add support for include directories and defines
 
-(defun cpp-command-string (file)
-  (format nil "cpp '~A'"
-          (external-namestring (truename file))))
+(defun cpp-command-string (file include-directories)
+  (format nil "cpp~{ -I'~A'~} '~A'"
+          (mapcar #'external-namestring include-directories)
+          (external-namestring file)))
 
 
-(defun using-cpp-stream (file function)
-  (let ((s (shell-to-string-or-stream (cpp-command-string file))))
+(defun using-cpp-stream (file function &key include-directories)
+  (let ((s (shell-to-string-or-stream (cpp-command-string file include-directories))))
     (cond ((stringp s)
            (with-input-from-string (in s)
              (let ((cpp (make-instance 'preprocessed-stream

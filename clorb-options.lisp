@@ -8,6 +8,12 @@ If nil, use default.")
   "The port to listen to.
 If nil, let implementation choose a port.")
 
+(defvar *default-include-directories*
+  (list (make-pathname :directory '(:relative "idl")
+                       :name nil :type nil
+                       :defaults *clorb-pathname-defaults*)))
+
+
 (defvar *name-service* "file:///tmp/NameService"
   "Reference to the CORBA NameService.
 Should be an URL that can be accepted by op:string_to_object.")

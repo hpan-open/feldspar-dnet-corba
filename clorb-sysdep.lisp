@@ -581,6 +581,7 @@ Returns select result to be used in getting status for streams."
 
 
 (defun external-namestring (pathname)
+  (setq pathname (truename pathname))
   (%SYSDEP "convert pathname to a namestring suitable for external programs"
            #+(and MCL (not openmcl))
            (if (ccl::using-posix-paths-p)
