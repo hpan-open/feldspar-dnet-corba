@@ -158,6 +158,11 @@
   (:export "STRUCT-TYPECODE" "STRUCT-GET" "MAKE-STRUCT" 
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND"
+           ;; Development tools
+           "RELOAD"
+           ;; Useful internals
+           "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
+           "*HOST*" "*PORT*"
            ;; Extension
            "AUTO-SERVANT" "DEFINE-SERVANT" "DEFINE-USER-EXCEPTION"
            "SERVANT-INTERFACE-ID" "SERVANT-INTERFACE"
