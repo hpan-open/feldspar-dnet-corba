@@ -1,5 +1,5 @@
 ;;;; clorb-ifr.lisp -- An Interface Repository Implementation
-;; $Id: clorb-ifr.lisp,v 1.3 2002/10/08 18:04:48 lenst Exp $
+;; $Id: clorb-ifr.lisp,v 1.4 2002/10/28 18:29:01 lenst Exp $
 
 (in-package :clorb)
 
@@ -25,6 +25,7 @@
 (defmacro define-ir-class (name supers
                            &rest args
                            &key id def_kind &allow-other-keys)
+  (declare (ignore id))
   (setq args
     (loop for x on args by #'cddr
         unless (member (car x) '(:id :def_kind))
@@ -32,10 +33,7 @@
   `(progn (define-corba-class ,name ,supers ,@args)
           ,@(if def_kind
                 `((define-method def_kind ((x ,name)) ,def_kind)
-                  (register-ir-class ,def_kind ',name)))
-          ,@(if id
-                `((defmethod servant-interface-id ((servant ,name))
-                    ,id)))))
+                  (register-ir-class ,def_kind ',name)))))
 
 
 (define-ir-class IRObject (CORBA:IRObject)
@@ -51,10 +49,32 @@
    "Compute the TypeCode from the attributes other than type."))
 
 (define-method type ((def irtypecode-mixin))
-  (unless (slot-boundp def 'type)
-    (setf (slot-value def 'type)
-      (idltype-tc def)))
-  (slot-value def 'type))
+  ;; Get the typecode for an IDL construct.
+  ;; The typecode is lazily constructed and recursive typecodes handled.
+  ;; The specific typcodes are handled ny the idltype-tc function.
+  (cond ((slot-boundp def 'type)
+         ;; Either the typecode is computed already or this is a recursive call
+         ;; during computation.
+         (let ((tc (slot-value def 'type)))
+           (cond ((eq t tc)
+                  ;; Beeing computed, make a placeholder typecode.
+                  ;; This typecode will be filled when the computation is done.
+                  (setf (slot-value def 'type) (make-typecode t)))
+                 (t
+                  tc))))
+        (t
+         ;; Typecode not defined, start computation
+         ;; mark computation with a t in the slot
+         (setf (slot-value def 'type) t)
+         (let* ((new-tc (idltype-tc def))
+                (old-tc (slot-value def 'type)))
+           (cond ((eq old-tc t)
+                  (setf (slot-value def 'type) new-tc))
+                 (t
+                  ;; therse was a recurive access during computation
+                  (typecode-smash old-tc new-tc)
+                  old-tc))))))
+
 
 (defmethod slot-updated :after ((obj irtypecode-mixin))
   (slot-makunbound obj 'type))
@@ -387,6 +407,8 @@
 ;;;     (in unsigned long bound,in IDLType element_type);
 
 (define-method create_sequence ((container Repository) bound element-type)
+  (check-type bound integer)
+  (check-type element-type omg.org/corba:idltype)
   (make-instance 'sequence-def
     :bound bound
     :element_type_def element-type))
@@ -416,16 +438,6 @@
   :id "IDL:omg.org/CORBA/ModuleDef:1.0"
   :def_kind :dk_module
   :defaults ())
-
-(defparameter *module-description*
-    (struct-typecode
-     "IDL:omg.org/CORBA/ModuleDescription:1.0"
-     "ModuleDescription"
-     "name" CORBA:tc_string             ; Identifier
-     "id" CORBA:tc_string               ; RepositoryId
-     "defined_in" CORBA:tc_string       ; RepositoryId
-     "version" CORBA:tc_string          ; VersionSpec
-     #||#))
 
 
 (defmethod describe-contained ((module module-def))
@@ -777,9 +789,7 @@
                  (op:id obj)
                  (op:name obj)
                  (map 'vector
-                      (lambda (x)
-                        (list (struct-get x :name)
-                              (struct-get x :type)))
+                      (lambda (x) (list (op:name x) (op:type x)))
                       (op:members obj))))
 
 (defmethod describe-contained ((obj exception-def))
