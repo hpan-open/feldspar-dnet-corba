@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.24 2004/02/08 14:32:43 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.25 2004/02/09 18:19:01 lenst Exp $
 
 
 ;; io-reset ()
@@ -378,7 +378,7 @@
                (io-queue-event :error desc)))))))
 
 
-(defun io-poll-select ()
+(defun io-poll-select (poll)
   (let ((select (make-select)))
     (dolist (desc *io-descriptions*)
       (unless (io-descriptor-shortcut-p desc)
@@ -390,15 +390,15 @@
                 (select-add-stream select stream input output desc) ))))))
     (when *io-socket*
       (select-add-listener select *io-socket*))
-    (setq select (select-wait select))
+    (setq select (select-wait select poll))
     (select-do-result select #'io-poll-desc)
     (when *io-socket*
       (io-listen nil))))
 
 
-(defmethod io-system-driver ((system io-system-select))
+(defmethod io-system-driver ((system io-system-select) poll)
   (setq *io-work-pending* nil)
-  (io-poll-select))
+  (io-poll-select poll))
 
 
 (defmethod io-ready-for-write ((system io-system-select) desc)
@@ -485,7 +485,8 @@
       (io-desc-write desc))))
 
 
-(defmethod io-system-driver ((system io-system-multiprocess))
+(defmethod io-system-driver ((system io-system-multiprocess) poll)
+  (declare (ignore poll))
   (io-start-bg-listen)
   (process-wait-with-timeout "waiting for event" 3600
                              (lambda () *io-event-queue*)))
@@ -496,7 +497,9 @@
 ;;;; Driver
 
 
-(defun io-driver (n)
-  (loop repeat n until *io-event-queue* do (io-system-driver *io-system*))
+(defun io-driver (poll)
+  (if poll
+    (io-system-driver *io-system* t)
+    (loop repeat 10 until *io-event-queue* do (io-system-driver *io-system* nil)))
   (pop *io-event-queue*))
 

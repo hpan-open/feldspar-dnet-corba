@@ -234,7 +234,7 @@
 
 (define-method perform_work ((orb orb))
   (let ((*running-orb* t))
-    (orb-work)))
+    (orb-work t)))
 
 
 ;;;    void run();
@@ -248,7 +248,7 @@
     (unwind-protect 
       (let ((*running-orb* t))
         (loop while (orb-active orb)
-              do (orb-work)))
+              do (orb-work nil)))
       (setq *running-orb* old))))
 
 

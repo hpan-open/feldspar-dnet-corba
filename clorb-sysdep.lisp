@@ -543,7 +543,7 @@ status for stream."
              (select-value select)))) ))
 
 
-(defun select-wait (select)
+(defun select-wait (select poll)
   "Wait for selected streams.
 Returns select result to be used in getting status for streams."
   (%SYSDEP
@@ -554,7 +554,7 @@ Returns select result to be used in getting status for streams."
      (mess 1 "Selecting ~A" select)
      (let ((select-list (select-value select)))
        (when select-list
-         (setf (select-value select) (ext:socket-status select-list 60))))
+         (setf (select-value select) (ext:socket-status select-list (if poll 0 60)))))
      (mess 1 "Select result ~A" (select-value select))
      select)
 
@@ -563,7 +563,7 @@ Returns select result to be used in getting status for streams."
      (setf (select-value select)
            (mp:wait-for-input-available
             (select-value select)
-            :timeout (if (select-writepending select) 0 20)
+            :timeout (if (or poll (select-writepending select)) 0 20)
             :whostate "wating for CORBA input"))
      select)
 
@@ -574,7 +574,7 @@ Returns select result to be used in getting status for streams."
            (%unix-select (1+ (select-maxn select))
                          (select-rset select)
                          (select-wset select)
-                         0 200)
+                         0 (if poll 0 200))
          (declare (ignorable xset))
          ;;FIXME: should perhaps use xset
          (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
@@ -585,8 +585,8 @@ Returns select result to be used in getting status for streams."
 
    ;; Default
    (progn
-     (unless (select-writepending select)
-       (sleep 0.1))
+     (unless (or poll (select-writepending select))
+       (sleep 0.02))
      select)))
 
 

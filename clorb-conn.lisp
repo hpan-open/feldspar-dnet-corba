@@ -118,18 +118,18 @@ Can be set to true globally for singel-process / development.")
 
 (defun orb-wait (wait-func &rest wait-args)
   (if *running-orb*
-    (loop until (apply wait-func wait-args) do (orb-work 100))
+    (loop until (apply wait-func wait-args) do (orb-work nil))
     (apply #'process-wait "orb-wait" wait-func wait-args)))
 
 
 
-(defun orb-work (&optional (n 1))
+(defun orb-work (&optional poll)
   (loop
-    do (let ((event (io-driver n)))
+    do (let ((event (io-driver poll)))
          (when event
+           (setq poll t)
            (let* ((desc (second event))
                   (conn (io-descriptor-connection desc)))
-             (setq n 1)
              (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
              (case (car event)
                (:read-ready
