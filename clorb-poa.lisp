@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.26 2004/01/21 17:31:40 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.27 2004/01/29 20:47:31 lenst Exp $
 
 (in-package :clorb)
 
@@ -645,13 +645,16 @@ POA destruction does not occur.
                       (setq servant
                             (op:incarnate (POA-servant-manager poa) oid poa))
                       (mess 2 "~A incarnated ~A for '~/clorb:stroid/'"
-                            poa servant oid)
-                      (op:activate_object_with_id poa oid servant))
+                            poa servant oid))
                      (t
                       (multiple-value-setq (servant cookie)
                         (op:preinvoke (POA-servant-manager poa)
                                       oid poa operation))
-                      (setq topost t))))
+                      (setq topost t)))
+               (unless (typep servant 'PortableServer:Servant)
+                 (raise-system-exception 'corba:obj_adapter 2 :completed_no))
+               (unless topost
+                 (op:activate_object_with_id poa oid servant)))
               ((poa-has-policy poa :use_default_servant)
                (setq servant (POA-default-servant poa)))
               (t

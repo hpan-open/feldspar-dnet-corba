@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.23 2004/01/21 17:25:31 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.24 2004/01/29 20:47:31 lenst Exp $	
 
 (in-package :clorb)
 
@@ -26,10 +26,11 @@
   (declare (ignore adapter))
   (let ((name (oid-to-string oid)))
     (let ((obj (gethash name *boot-objects*)))
-      (when obj
-        (signal (omg.org/portableserver:forwardrequest
-                 :forward_reference obj)))
-      nil)))
+      (cond (obj
+             (signal (omg.org/portableserver:forwardrequest
+                      :forward_reference obj)))
+            (t
+             (raise-system-exception 'corba:object_not_exist 0 :completed_no))))))
 
 
 
@@ -135,7 +136,7 @@
     (marshal-giop-header :reply buffer)
     (marshal-service-context (reply-service-context request) buffer) 
     (marshal-ulong (request-id request) buffer)
-    (marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
+    (marshal status (%symbol-typecode GIOP:REPLYSTATUSTYPE) buffer)
     buffer))
 
 (defmethod get-normal-response ((req server-request))
@@ -178,6 +179,7 @@
                (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
                  (cond
                   ((and reftype poa)
+                   (setf (the-poa request) poa)
                    (poa-invoke poa oid operation buffer request))
                   (t
                    (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
