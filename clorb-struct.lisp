@@ -103,19 +103,6 @@ of fields can be defaulted (numbers and strings)."
 (defmethod struct-get ((struct corba:struct) (field string))
   (struct-get struct (key field)))
 
-#+unused-functions
-(defun default-from-type (typecode)
-  ;; FIXME: similary to arbritary-value
-  (ecase (typecode-kind typecode)
-    ((:tk_ushort :tk_short :tk_ulong :tk_long :tk_float :tk_double
-      :tk_octet :tk_longlong :tk_ulonglong :tk_longdouble)
-     0)
-    ((:tk_boolean) nil)
-    ((:tk_char) #\Space)
-    ((:tk_string) "")
-    ((:tk_sequence) nil)
-    ((:tk_objref) nil)))
-
 
 ;; more marshalling support
 
