@@ -1,16 +1,16 @@
 
-(IN-PACKAGE :CLORB)
+(in-package :clorb)
 (IDEF-DEFINITIONS
   (WITH-PREFIX "omg.org"
    (DEFINE-MODULE "CosNaming" NIL (DEFINE-TYPE "Istring" STRING)
     (DEFINE-STRUCT "NameComponent"
      (("id" "CosNaming::Istring") ("kind" "CosNaming::Istring")))
-    (DEFINE-TYPE "Name" (SEQUENCE "CosNaming::NameComponent" 0))
+    (DEFINE-TYPE "Name" (sequence "CosNaming::NameComponent" 0))
     (DEFINE-ENUM "BindingType" ("nobject" "ncontext"))
     (DEFINE-STRUCT "Binding"
      (("binding_name" "CosNaming::Name")
       ("binding_type" "CosNaming::BindingType")))
-    (DEFINE-TYPE "BindingList" (SEQUENCE "CosNaming::Binding" 0))
+    (DEFINE-TYPE "BindingList" (sequence "CosNaming::Binding" 0))
     (DEFINE-INTERFACE "NamingContext" NIL
      (DEFINE-ENUM "NotFoundReason" ("missing_node" "not_context" "not_object"))
      (DEFINE-EXCEPTION "NotFound"
@@ -22,75 +22,75 @@
      (DEFINE-EXCEPTION "NotEmpty" NIL)
      (DEFINE-OPERATION
        "bind"
-       ((:PARAM_IN "n" "CosNaming::Name") (:PARAM_IN "obj" OBJECT))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name") (:param_in "obj" OBJECT))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"
         "CosNaming::NamingContext::AlreadyBound"))
      (DEFINE-OPERATION
        "rebind"
-       ((:PARAM_IN "n" "CosNaming::Name") (:PARAM_IN "obj" OBJECT))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name") (:param_in "obj" OBJECT))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "bind_context"
-       ((:PARAM_IN "n" "CosNaming::Name")
-        (:PARAM_IN "nc" "CosNaming::NamingContext"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name")
+        (:param_in "nc" "CosNaming::NamingContext"))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"
         "CosNaming::NamingContext::AlreadyBound"))
      (DEFINE-OPERATION
        "rebind_context"
-       ((:PARAM_IN "n" "CosNaming::Name")
-        (:PARAM_IN "nc" "CosNaming::NamingContext"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name")
+        (:param_in "nc" "CosNaming::NamingContext"))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "resolve"
-       ((:PARAM_IN "n" "CosNaming::Name"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name"))
+       :result-type
        OBJECT
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "unbind"
-       ((:PARAM_IN "n" "CosNaming::Name"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name"))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "new_context"
        NIL
-       :RESULT-TYPE
+       :result-type
        "CosNaming::NamingContext"
-       :EXCEPTIONS
+       :exceptions
        NIL)
      (DEFINE-OPERATION
        "bind_new_context"
-       ((:PARAM_IN "n" "CosNaming::Name"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name"))
+       :result-type
        "CosNaming::NamingContext"
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::AlreadyBound"
         "CosNaming::NamingContext::CannotProceed"
@@ -98,68 +98,68 @@
      (DEFINE-OPERATION
        "destroy"
        NIL
-       :RESULT-TYPE
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotEmpty"))
      (DEFINE-OPERATION
        "list"
-       ((:PARAM_IN "how_many" ULONG) (:PARAM_OUT "bl" "CosNaming::BindingList")
-        (:PARAM_OUT "bi" "CosNaming::BindingIterator"))
-       :RESULT-TYPE
+       ((:param_in "how_many" ULONG) (:param_out "bl" "CosNaming::BindingList")
+        (:param_out "bi" "CosNaming::BindingIterator"))
+       :result-type
        VOID
-       :EXCEPTIONS
+       :exceptions
        NIL))
     (DEFINE-INTERFACE "BindingIterator" NIL
      (DEFINE-OPERATION
        "next_one"
-       ((:PARAM_OUT "b" "CosNaming::Binding"))
-       :RESULT-TYPE
+       ((:param_out "b" "CosNaming::Binding"))
+       :result-type
        BOOLEAN
-       :EXCEPTIONS
+       :exceptions
        NIL)
      (DEFINE-OPERATION
        "next_n"
-       ((:PARAM_IN "how_many" ULONG)
-        (:PARAM_OUT "bl" "CosNaming::BindingList"))
-       :RESULT-TYPE
+       ((:param_in "how_many" ULONG)
+        (:param_out "bl" "CosNaming::BindingList"))
+       :result-type
        BOOLEAN
-       :EXCEPTIONS
+       :exceptions
        NIL)
-     (DEFINE-OPERATION "destroy" NIL :RESULT-TYPE VOID :EXCEPTIONS NIL))
-    (DEFINE-INTERFACE "NamingContextExt" (:BASES ("CosNaming::NamingContext"))
+     (DEFINE-OPERATION "destroy" NIL :result-type VOID :exceptions NIL))
+    (DEFINE-INTERFACE "NamingContextExt" (:bases ("CosNaming::NamingContext"))
      (DEFINE-TYPE "StringName" STRING) (DEFINE-TYPE "Address" STRING)
      (DEFINE-TYPE "URLString" STRING)
      (DEFINE-OPERATION
        "to_string"
-       ((:PARAM_IN "n" "CosNaming::Name"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::Name"))
+       :result-type
        "CosNaming::NamingContextExt::StringName"
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "to_name"
-       ((:PARAM_IN "sn" "CosNaming::NamingContextExt::StringName"))
-       :RESULT-TYPE
+       ((:param_in "sn" "CosNaming::NamingContextExt::StringName"))
+       :result-type
        "CosNaming::Name"
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::InvalidName"))
      (DEFINE-EXCEPTION "InvalidAddress" NIL)
      (DEFINE-OPERATION
        "to_url"
-       ((:PARAM_IN "addr" "CosNaming::NamingContextExt::Address")
-        (:PARAM_IN "sn" "CosNaming::NamingContextExt::StringName"))
-       :RESULT-TYPE
+       ((:param_in "addr" "CosNaming::NamingContextExt::Address")
+        (:param_in "sn" "CosNaming::NamingContextExt::StringName"))
+       :result-type
        "CosNaming::NamingContextExt::URLString"
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContextExt::InvalidAddress"
         "CosNaming::NamingContext::InvalidName"))
      (DEFINE-OPERATION
        "resolve_str"
-       ((:PARAM_IN "n" "CosNaming::NamingContextExt::StringName"))
-       :RESULT-TYPE
+       ((:param_in "n" "CosNaming::NamingContextExt::StringName"))
+       :result-type
        OBJECT
-       :EXCEPTIONS
+       :exceptions
        ("CosNaming::NamingContext::NotFound"
         "CosNaming::NamingContext::CannotProceed"
         "CosNaming::NamingContext::InvalidName"

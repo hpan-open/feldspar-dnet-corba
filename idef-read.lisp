@@ -180,8 +180,8 @@
     (let ((def (create-contained container 'attribute-def
                                  :id id :name name 
                                  :mode (if readonly
-                                         :ATTR_READONLY
-                                         :ATTR_NORMAL))))
+                                         :attr_readonly
+                                         :attr_normal))))
       (lambda ()
         (setf (op:type_def def)
           (parse-type-in container type))))))
@@ -241,7 +241,7 @@
     (char (values :pk_char CORBA:tc_char))
     (octet (values :pk_octet CORBA:tc_octet))
     (any (values :pk_any CORBA:tc_any))
-    (TypeCode (values :pk_TypeCode CORBA:tc_TypeCode))
+    (TypeCode (values :pk_typecode CORBA:tc_TypeCode))
     (string (values :pk_string CORBA:tc_string))
     (object (values :pk_objref CORBA:tc_object))
     (longlong (values :pk_longlong CORBA:tc_longlong))

@@ -148,7 +148,7 @@
     (setf (op:members struct) (process-list members))
     struct))
 
-(dx (MEMBER type ((name id ver array-spec)))
+(dx (member type ((name id ver array-spec)))
   (CORBA:StructMember :name name 
                       :type_def (convert-to-array type array-spec)))
 
@@ -166,10 +166,10 @@
     (op:create_wstring (the-repository) bound)
     (primitive :pk_wstring)))
 
-(dx (INTEGER 'n) n)
-(dx (STRING 's) s)
+(dx (integer 'n) n)
+(dx (string 's) s)
 
-(dx (CHAR 'ch) 
+(dx (char 'ch) 
   (cond ((null ch) (primitive :pk_char))
         (t (corba:any :any-value (char ch 0)
                       :any-typecode CORBA:tc_char))))
@@ -179,7 +179,7 @@
         (t (corba:any :any-value (char ch 0)
                       :any-typecode CORBA:tc_wchar))))
 
-(dx (BOOLEAN 'b) 
+(dx (boolean 'b) 
   (cond ((null b) (primitive :pk_boolean))
         ((eql b 0) nil)
         ((eql b 1) t)
@@ -247,7 +247,7 @@
              (CORBA:UnionMember
               :name (op:name member)
               :label (CORBA:Any :any-typecode CORBA:TC_OCTET
-                                :Any-value 0) 
+                                :any-value 0) 
               :type_def (op:type_def member) ))
           (loop for label in labels collect
                 (CORBA:UnionMember
@@ -256,7 +256,7 @@
                  :type_def (op:type_def member) )))))
 
 
-(defclass libidl-compiler (idl-compiler) ())
+(defclass LIBIDL-COMPILER (idl-compiler) ())
 
 (defmethod load-repository ((comp libidl-compiler) repository file) 
   (let ((*the-repository* repository)

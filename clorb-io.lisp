@@ -17,7 +17,7 @@
 
 ;;;; IO Layer
 
-(defstruct io-descriptor
+(defstruct IO-DESCRIPTOR
   status
   error
   ;; -- internal --

@@ -26,7 +26,7 @@
 
 ;;;; Naming Context Implementation
 
-(defclass naming-context (naming-context-servant)
+(defclass NAMING-CONTEXT (naming-context-servant)
   ((bind :initform (make-hash-table :test #'equal)
          :accessor naming-context-bind)))
 
@@ -161,7 +161,7 @@
 
 ;;;; BindingIterator Servant
 
-(defclass binding-iterator (binding-iterator-servant)
+(defclass BINDING-ITERATOR (binding-iterator-servant)
   ((bindings :initarg :bindings 
 	     :initform nil :accessor bindings)))
 
@@ -233,14 +233,14 @@
 
 ;;;; Persistant contexts
 
-(defclass pns-manager (ServantActivator)
+(defclass PNS-MANAGER (servantactivator)
   ((basedir :initform '(:absolute "tmp"))
    (active  :initform nil :accessor pns-active)
    (started :initform (get-universal-time)
             :reader pns-started)
    (seqno   :initform 0  :accessor pns-seqno)))
 
-(defclass pns-context (naming-context) ())
+(defclass PNS-CONTEXT (naming-context) ())
 
 (define-method new_context ((self pns-context)) 
   (let* ((poa (poa-current-poa *poa-current*))

@@ -5,7 +5,7 @@
 
 ;;; Interface type
 
-(defstruct interface
+(defstruct INTERFACE
   id
   operations
   inherit)

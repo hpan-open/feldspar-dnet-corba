@@ -22,7 +22,7 @@
   :name "completion_status"
   :members ("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE"))
 
-(defparameter CORBA::tc_completion_status
+(defparameter corba::tc_completion_status
   (symbol-typecode 'CORBA:completion_status))
 
 
@@ -56,7 +56,7 @@
             ,@(loop for name in excnames collect
                     (let* ((namestr (string name))
                            (id (format nil "IDL:omg.org/CORBA/~A:1.0" namestr))
-                           (sym (intern namestr :CORBA)))
+                           (sym (intern namestr :corba)))
                       `(progn
                          (define-condition ,sym (corba:systemexception) ())
                          (defmethod exception-name ((exc ,sym)) ',sym)

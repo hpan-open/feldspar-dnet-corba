@@ -8,46 +8,46 @@
    PUSHCONSUMER-PROXY PUSHSUPPLIER PUSHSUPPLIER-PROXY ))
 
 
-(DEFCLASS COSEVENTCOMM:PULLCONSUMER (OBJECT) NIL)
-(DEFCLASS COSEVENTCOMM:PULLCONSUMER-PROXY
- (COSEVENTCOMM:PULLCONSUMER OMG.ORG/CORBA:PROXY) NIL)
+(defclass COSEVENTCOMM:PULLCONSUMER (object) Nil)
+(defclass COSEVENTCOMM:PULLCONSUMER-PROXY
+ (coseventcomm:pullconsumer omg.org/corba:proxy) Nil)
 (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventComm/PullConsumer:1.0"
  'COSEVENTCOMM:PULLCONSUMER-PROXY)
-(DEFMETHOD OMG.ORG/FEATURES:DISCONNECT_PULL_CONSUMER
- ((OBJ COSEVENTCOMM:PULLCONSUMER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "disconnect_pull_consumer" ARGS))
-(DEFCLASS COSEVENTCOMM:PULLSUPPLIER (OBJECT) NIL)
-(DEFCLASS COSEVENTCOMM:PULLSUPPLIER-PROXY
- (COSEVENTCOMM:PULLSUPPLIER OMG.ORG/CORBA:PROXY) NIL)
+(defmethod omg.org/features:disconnect_pull_consumer
+ ((obj coseventcomm:pullconsumer-proxy) &rest args)
+ (apply 'INVOKE OBJ "disconnect_pull_consumer" ARGS))
+(defclass COSEVENTCOMM:PULLSUPPLIER (object) Nil)
+(defclass COSEVENTCOMM:PULLSUPPLIER-PROXY
+ (coseventcomm:pullsupplier omg.org/corba:proxy) Nil)
 (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventComm/PullSupplier:1.0"
  'COSEVENTCOMM:PULLSUPPLIER-PROXY)
-(DEFMETHOD OMG.ORG/FEATURES:DISCONNECT_PULL_SUPPLIER
- ((OBJ COSEVENTCOMM:PULLSUPPLIER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "disconnect_pull_supplier" ARGS))
-(DEFMETHOD OMG.ORG/FEATURES:TRY_PULL
- ((OBJ COSEVENTCOMM:PULLSUPPLIER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "try_pull" ARGS))
-(DEFMETHOD OMG.ORG/FEATURES:PULL
- ((OBJ COSEVENTCOMM:PULLSUPPLIER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "pull" ARGS))
-(DEFCLASS COSEVENTCOMM:PUSHSUPPLIER (OBJECT) NIL)
-(DEFCLASS COSEVENTCOMM:PUSHSUPPLIER-PROXY
- (COSEVENTCOMM:PUSHSUPPLIER OMG.ORG/CORBA:PROXY) NIL)
+(defmethod omg.org/features:disconnect_pull_supplier
+ ((obj coseventcomm:pullsupplier-proxy) &rest args)
+ (apply 'INVOKE OBJ "disconnect_pull_supplier" ARGS))
+(defmethod omg.org/features:try_pull
+ ((obj coseventcomm:pullsupplier-proxy) &rest args)
+ (apply 'INVOKE OBJ "try_pull" ARGS))
+(defmethod omg.org/features:pull
+ ((obj coseventcomm:pullsupplier-proxy) &rest args)
+ (apply 'INVOKE OBJ "pull" ARGS))
+(defclass COSEVENTCOMM:PUSHSUPPLIER (object) Nil)
+(defclass COSEVENTCOMM:PUSHSUPPLIER-PROXY
+ (coseventcomm:pushsupplier omg.org/corba:proxy) Nil)
 (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventComm/PushSupplier:1.0"
  'COSEVENTCOMM:PUSHSUPPLIER-PROXY)
-(DEFMETHOD OMG.ORG/FEATURES:DISCONNECT_PUSH_SUPPLIER
- ((OBJ COSEVENTCOMM:PUSHSUPPLIER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "disconnect_push_supplier" ARGS))
-(DEFCLASS COSEVENTCOMM:PUSHCONSUMER (OBJECT) NIL)
-(DEFCLASS COSEVENTCOMM:PUSHCONSUMER-PROXY
- (COSEVENTCOMM:PUSHCONSUMER OMG.ORG/CORBA:PROXY) NIL)
+(defmethod omg.org/features:disconnect_push_supplier
+ ((obj coseventcomm:pushsupplier-proxy) &rest args)
+ (apply 'INVOKE OBJ "disconnect_push_supplier" ARGS))
+(defclass COSEVENTCOMM:PUSHCONSUMER (object) Nil)
+(defclass COSEVENTCOMM:PUSHCONSUMER-PROXY
+ (coseventcomm:pushconsumer omg.org/corba:proxy) Nil)
 (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventComm/PushConsumer:1.0"
  'COSEVENTCOMM:PUSHCONSUMER-PROXY)
-(DEFMETHOD OMG.ORG/FEATURES:DISCONNECT_PUSH_CONSUMER
- ((OBJ COSEVENTCOMM:PUSHCONSUMER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "disconnect_push_consumer" ARGS))
-(DEFMETHOD OMG.ORG/FEATURES:PUSH
- ((OBJ COSEVENTCOMM:PUSHCONSUMER-PROXY) &REST ARGS)
- (APPLY 'INVOKE OBJ "push" ARGS))
-(DEFINE-USER-EXCEPTION COSEVENTCOMM:DISCONNECTED :ID
- "IDL:omg.org/CosEventComm/Disconnected:1.0" :SLOTS NIL)
+(defmethod omg.org/features:disconnect_push_consumer
+ ((obj coseventcomm:pushconsumer-proxy) &rest args)
+ (apply 'INVOKE OBJ "disconnect_push_consumer" ARGS))
+(defmethod omg.org/features:push
+ ((obj coseventcomm:pushconsumer-proxy) &rest args)
+ (apply 'INVOKE OBJ "push" ARGS))
+(DEFINE-USER-EXCEPTION COSEVENTCOMM:DISCONNECTED :id
+ "IDL:omg.org/CosEventComm/Disconnected:1.0" :slots NIL)

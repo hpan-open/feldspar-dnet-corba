@@ -33,11 +33,11 @@
 (defmethod match ((pattern t) object)
   (boolean-match pattern object (equalp pattern object)))
 
-(defmethod match ((pattern CORBA:TypeCode) object)
+(defmethod match ((pattern corba:typecode) object)
   (boolean-match pattern object (op:equal object pattern)))
 
 
-(defclass pattern ()
+(defclass PATTERN ()
   ((args :initarg :args :accessor pattern-args)))
 
 (defun pattern (&rest args)
@@ -54,7 +54,7 @@
 
 ;;;; IR Definition Pattern
 
-(defclass def-pattern (pattern)
+(defclass DEF-PATTERN (pattern)
   ((kind :initarg :kind :accessor def-kind)))
 
 (defun def-pattern (kind &rest args)
@@ -71,7 +71,7 @@
 
 ;;;; IR Repository Pattern 
 
-(defclass repository-pattern (pattern)
+(defclass REPOSITORY-PATTERN (pattern)
   ())
 
 (defun repository-pattern (&rest args)
@@ -90,7 +90,7 @@
 
 ;;;; Sequence Pattern
 
-(defclass sequence-pattern (pattern)
+(defclass SEQUENCE-PATTERN (pattern)
   ())
 
 (defun seq-pattern (&rest args)
@@ -115,7 +115,7 @@
 
 ;;;; Struct Pattern
 
-(defclass struct-pattern (pattern)
+(defclass STRUCT-PATTERN (pattern)
   ())
 
 (defun struct-pattern (&rest args)
@@ -133,7 +133,7 @@
 
 ;;;; Sexp pattern
 
-(defclass sexp-pattern (pattern)
+(defclass SEXP-PATTERN (pattern)
   ())
 
 (defun sexp-pattern (sexp)
@@ -176,7 +176,7 @@
 
 ;;;; Eval-To pattern
 
-(defclass eval-to-pattern (pattern)
+(defclass EVAL-TO-PATTERN (pattern)
   ())
 
 (defun eval-to (form)

@@ -1,6 +1,6 @@
 (in-package :clorb)
 
-(defclass irepository (repository)
+(defclass IREPOSITORY (repository)
   ())
 
 
@@ -21,14 +21,14 @@
              (internalize r o)))
     (let ((kind (op:def_kind obj)))
       (case kind
-        ((:dk_Attribute :dk_Constant :dk_Exception :dk_Interface
-          :dk_Module :dk_Operation :dk_Typedef
-          :dk_Alias :dk_Struct :dk_Union :dk_Enum)
+        ((:dk_attribute :dk_constant :dk_exception :dk_interface
+          :dk_module :dk_operation :dk_typedef
+          :dk_alias :dk_struct :dk_union :dk_enum)
          ;; Objects with id
          (let* ((id (op:id obj))
                 (old (gethash id (idmap r)) ))
            (if old
-               (progn (when (and (eq kind :dk_Module) content)
+               (progn (when (and (eq kind :dk_module) content)
                         (set-from old obj #'module-interner))
                       old)
              (let ((new (make-instance (get-ir-class kind)
@@ -43,21 +43,21 @@
                    when (slot-exists-p new n)
                    do (setf (slot-value new n) 
                         (interner (funcall (intern (symbol-name n) :op) obj))))
-               (set-from new obj (if (eq kind :dk_Module)
+               (set-from new obj (if (eq kind :dk_module)
                                      #'module-interner
                                    #'interner))
                new))))
-        ((:dk_Primitive)
+        ((:dk_primitive)
          (op:get_primitive r (op:kind obj)))
-        ((:dk_Repository)
+        ((:dk_repository)
          (when content
            (map nil
              (lambda (c)
                (addto r (interner c)))
-             (op:contents obj :dk_All t)))         
+             (op:contents obj :dk_all t)))         
          r)
-        ((:dk_String :dk_Sequence :dk_Array
-          :dk_Wstring :dk_Fixed)
+        ((:dk_string :dk_sequence :dk_array
+          :dk_wstring :dk_fixed)
          (let ((new (make-instance (get-ir-class kind))))
            (set-from new obj #'interner)
            new))))))
@@ -71,7 +71,7 @@
 (defmethod set-from ((obj container) src &optional filter)
   (setf (contents obj)
     (map 'list (or filter #'identity)
-         (op:contents src :dk_All t))))
+         (op:contents src :dk_all t))))
 
 (defmethod set-from :after ((obj interface-def) src &optional filter)
   (setf (op:base_interfaces obj)

@@ -1,9 +1,9 @@
 (in-package :clorb)
 
-(defclass iirx-interface (interface-def)
+(defclass IIRX-INTERFACE (interface-def)
   ((iir :initarg :iir :accessor iir)))
 
-(defclass iirx-operation (operation-def)
+(defclass IIRX-OPERATION (operation-def)
   ((iir :initarg :iir :accessor iir)))
 
 (define-method contents ((obj iirx-interface) kind ex)

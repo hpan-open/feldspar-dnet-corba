@@ -1,7 +1,7 @@
 
 (in-package :cl-user)
 
-(defclass clive-class (PortableServer:DynamicImplementation)
+(defclass CLIVE-CLASS (portableserver:dynamicimplementation)
   ())
 
 (corba:define-method primary_interface ((x clive-class) oid poa)
@@ -41,4 +41,4 @@
                                     :any-value res)))))
    (t
     (op:set_exception r (make-condition 'CORBA:BAD_OPERATION
-                          :completed :COMPLETED_NO)))))
+                          :completed :completed_no)))))

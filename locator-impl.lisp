@@ -5,16 +5,16 @@
 (define-servant locator-servant "Locator::Locator")
 (define-servant factory-servant "Locator::Factory")
 
-(defclass loc-manager (ServantManager)
+(defclass LOC-MANAGER (servantmanager)
   ((servers
     :initform (make-hash-table :test #'equal)
     :documentation "Map from server-name to servers factory obj"
     :reader managed-servers)))
 
-(defclass locator (locator-servant)
+(defclass LOCATOR (locator-servant)
   ((manager :initarg :manager :reader loc-manager)))
 
-(defclass loc-factory (factory-servant)
+(defclass LOC-FACTORY (factory-servant)
   ((name :initarg :name :reader server-name)
    (server :initarg :server :accessor server-ref)))
 
@@ -74,7 +74,7 @@ return an indentifier for this storage."
 
 ;;;; --- In the poa ---
 
-(defclass my-ref-factory (factory-servant)
+(defclass MY-REF-FACTORY (factory-servant)
   ())
 
 (defvar *my-ref-factory*

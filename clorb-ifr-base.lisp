@@ -1,29 +1,29 @@
 
-(IN-PACKAGE :CLORB)
+(in-package :clorb)
 
 (DEFINE-STRUCT OMG.ORG/CORBA:INTERFACEDESCRIPTION
- :ID "IDL:omg.org/CORBA/InterfaceDescription:1.0"
- :NAME "InterfaceDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/InterfaceDescription:1.0"
+ :name "InterfaceDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("base_interfaces" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYIDSEQ)
             BASE_INTERFACES))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:INTERFACEDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :BASE_INTERFACES
+          :base_interfaces
           (UNMARSHAL-SEQUENCE #'UNMARSHAL-STRING BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -33,33 +33,33 @@
            BUFFER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ
- :ID "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0"
- :NAME "AttrDescriptionSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0"
+ :name "AttrDescriptionSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:OPDESCRIPTIONSEQ
- :ID "IDL:omg.org/CORBA/OpDescriptionSeq:1.0"
- :NAME "OpDescriptionSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/OpDescriptionSeq:1.0"
+ :name "OpDescriptionSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:REPOSITORYIDSEQ
- :ID "IDL:omg.org/CORBA/RepositoryIdSeq:1.0"
- :NAME "RepositoryIdSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/RepositoryIdSeq:1.0"
+ :name "RepositoryIdSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:OPERATIONDESCRIPTION
- :ID "IDL:omg.org/CORBA/OperationDescription:1.0"
- :NAME "OperationDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/OperationDescription:1.0"
+ :name "OperationDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
@@ -71,33 +71,33 @@
             PARAMETERS)
            ("exceptions" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCDESCRIPTIONSEQ)
             EXCEPTIONS))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:OPERATIONDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :RESULT
+          :result
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)
-          :MODE
+          :mode
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE) BUFFER)
-          :CONTEXTS
+          :contexts
           (UNMARSHAL-SEQUENCE #'UNMARSHAL-STRING BUFFER)
-          :PARAMETERS
+          :parameters
           (UNMARSHAL-SEQUENCE
-            (LAMBDA (BUFFER)
+            (lambda (buffer)
               (STRUCT-READ 'OMG.ORG/CORBA:PARAMETERDESCRIPTION BUFFER))
             BUFFER)
-          :EXCEPTIONS
+          :exceptions
           (UNMARSHAL-SEQUENCE
-            (LAMBDA (BUFFER)
+            (lambda (buffer)
               (STRUCT-READ 'OMG.ORG/CORBA:EXCEPTIONDESCRIPTION BUFFER))
             BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -113,71 +113,71 @@
            BUFFER)
          (MARSHAL-SEQUENCE
            (OMG.ORG/FEATURES:PARAMETERS OBJ)
-           (LAMBDA (OBJ BUFFER)
+           (lambda (obj buffer)
              (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:PARAMETERDESCRIPTION BUFFER))
            BUFFER)
          (MARSHAL-SEQUENCE
            (OMG.ORG/FEATURES:EXCEPTIONS OBJ)
-           (LAMBDA (OBJ BUFFER)
+           (lambda (obj buffer)
              (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:EXCEPTIONDESCRIPTION BUFFER))
            BUFFER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:EXCDESCRIPTIONSEQ
- :ID "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0"
- :NAME "ExcDescriptionSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0"
+ :name "ExcDescriptionSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDESCRIPTION)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:EXCEPTIONDEFSEQ
- :ID "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"
- :NAME "ExceptionDefSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"
+ :name "ExceptionDefSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTEXTIDSEQ
- :ID "IDL:omg.org/CORBA/ContextIdSeq:1.0"
- :NAME "ContextIdSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/ContextIdSeq:1.0"
+ :name "ContextIdSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDENTIFIER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTEXTIDENTIFIER
- :ID "IDL:omg.org/CORBA/ContextIdentifier:1.0"
- :NAME "ContextIdentifier"
- :TYPE OMG.ORG/CORBA:IDENTIFIER
- :TYPECODE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER))
+ :id "IDL:omg.org/CORBA/ContextIdentifier:1.0"
+ :name "ContextIdentifier"
+ :type OMG.ORG/CORBA:IDENTIFIER
+ :typecode (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:PARDESCRIPTIONSEQ
- :ID "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"
- :NAME "ParDescriptionSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"
+ :name "ParDescriptionSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERDESCRIPTION)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:PARAMETERDESCRIPTION
- :ID "IDL:omg.org/CORBA/ParameterDescription:1.0"
- :NAME "ParameterDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/ParameterDescription:1.0"
+ :name "ParameterDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF)
            ("mode" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERMODE) MODE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:PARAMETERDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)
-          :TYPE_DEF
+          :type_def
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) BUFFER)
-          :MODE
+          :mode
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERMODE) BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE OBJ) OMG.ORG/CORBA:TC_TYPECODE BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE_DEF OBJ)
                   (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
@@ -187,40 +187,40 @@
                   BUFFER)))
 
 (DEFINE-ENUM OMG.ORG/CORBA:PARAMETERMODE
- :ID "IDL:omg.org/CORBA/ParameterMode:1.0"
- :NAME "ParameterMode"
- :MEMBERS ("PARAM_IN" "PARAM_OUT" "PARAM_INOUT"))
+ :id "IDL:omg.org/CORBA/ParameterMode:1.0"
+ :name "ParameterMode"
+ :members ("PARAM_IN" "PARAM_OUT" "PARAM_INOUT"))
 
 (DEFINE-ENUM OMG.ORG/CORBA:OPERATIONMODE
- :ID "IDL:omg.org/CORBA/OperationMode:1.0"
- :NAME "OperationMode"
- :MEMBERS ("OP_NORMAL" "OP_ONEWAY"))
+ :id "IDL:omg.org/CORBA/OperationMode:1.0"
+ :name "OperationMode"
+ :members ("OP_NORMAL" "OP_ONEWAY"))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION
- :ID "IDL:omg.org/CORBA/AttributeDescription:1.0"
- :NAME "AttributeDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/AttributeDescription:1.0"
+ :name "AttributeDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("mode" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE) MODE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)
-          :MODE
+          :mode
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE) BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -230,32 +230,32 @@
                   BUFFER)))
 
 (DEFINE-ENUM OMG.ORG/CORBA:ATTRIBUTEMODE
- :ID "IDL:omg.org/CORBA/AttributeMode:1.0"
- :NAME "AttributeMode"
- :MEMBERS ("ATTR_NORMAL" "ATTR_READONLY"))
+ :id "IDL:omg.org/CORBA/AttributeMode:1.0"
+ :name "AttributeMode"
+ :members ("ATTR_NORMAL" "ATTR_READONLY"))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:EXCEPTIONDESCRIPTION
- :ID "IDL:omg.org/CORBA/ExceptionDescription:1.0"
- :NAME "ExceptionDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/ExceptionDescription:1.0"
+ :name "ExceptionDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:EXCEPTIONDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -264,27 +264,27 @@
                   BUFFER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:TYPEDESCRIPTION
- :ID "IDL:omg.org/CORBA/TypeDescription:1.0"
- :NAME "TypeDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/TypeDescription:1.0"
+ :name "TypeDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:TYPEDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -293,30 +293,30 @@
                   BUFFER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:CONSTANTDESCRIPTION
- :ID "IDL:omg.org/CORBA/ConstantDescription:1.0"
- :NAME "ConstantDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/ConstantDescription:1.0"
+ :name "ConstantDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("value" OMG.ORG/CORBA:TC_ANY VALUE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:CONSTANTDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)
-          :VALUE
+          :value
           (UNMARSHAL OMG.ORG/CORBA:TC_ANY BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
@@ -324,71 +324,71 @@
          (MARSHAL (OMG.ORG/FEATURES:VALUE OBJ) OMG.ORG/CORBA:TC_ANY BUFFER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:MODULEDESCRIPTION
- :ID "IDL:omg.org/CORBA/ModuleDescription:1.0"
- :NAME "ModuleDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/ModuleDescription:1.0"
+ :name "ModuleDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:MODULEDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)))
 
 (DEFINE-ENUM OMG.ORG/CORBA:PRIMITIVEKIND
- :ID "IDL:omg.org/CORBA/PrimitiveKind:1.0"
- :NAME "PrimitiveKind"
- :MEMBERS ("pk_null" "pk_void" "pk_short" "pk_long" "pk_ushort" "pk_ulong"
+ :id "IDL:omg.org/CORBA/PrimitiveKind:1.0"
+ :name "PrimitiveKind"
+ :members ("pk_null" "pk_void" "pk_short" "pk_long" "pk_ushort" "pk_ulong"
            "pk_float" "pk_double" "pk_boolean" "pk_char" "pk_octet" "pk_any"
            "pk_TypeCode" "pk_Principal" "pk_string" "pk_objref" "pk_longlong"
            "pk_ulonglong" "pk_longdouble" "pk_wchar" "pk_wstring"))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:ENUMMEMBERSEQ
- :ID "IDL:omg.org/CORBA/EnumMemberSeq:1.0"
- :NAME "EnumMemberSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/EnumMemberSeq:1.0"
+ :name "EnumMemberSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:UNIONMEMBERSEQ
- :ID "IDL:omg.org/CORBA/UnionMemberSeq:1.0"
- :NAME "UnionMemberSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/UnionMemberSeq:1.0"
+ :name "UnionMemberSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:UNIONMEMBER
- :ID "IDL:omg.org/CORBA/UnionMember:1.0"
- :NAME "UnionMember"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/UnionMember:1.0"
+ :name "UnionMember"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("label" OMG.ORG/CORBA:TC_ANY LABEL)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF))
- :READ ((BUFFER)
-        (OMG.ORG/CORBA:UNIONMEMBER :NAME
+ :read ((BUFFER)
+        (OMG.ORG/CORBA:UNIONMEMBER :name
                                    (UNMARSHAL-STRING BUFFER)
-                                   :LABEL
+                                   :label
                                    (UNMARSHAL OMG.ORG/CORBA:TC_ANY BUFFER)
-                                   :TYPE
+                                   :type
                                    (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)
-                                   :TYPE_DEF
+                                   :type_def
                                    (UNMARSHAL (SYMBOL-TYPECODE
                                                'OMG.ORG/CORBA:IDLTYPE)
                                               BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:LABEL OBJ) OMG.ORG/CORBA:TC_ANY BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE OBJ) OMG.ORG/CORBA:TC_TYPECODE BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE_DEF OBJ)
@@ -396,94 +396,94 @@
                   BUFFER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:STRUCTMEMBERSEQ
- :ID "IDL:omg.org/CORBA/StructMemberSeq:1.0"
- :NAME "StructMemberSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/StructMemberSeq:1.0"
+ :name "StructMemberSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBER)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:STRUCTMEMBER
- :ID "IDL:omg.org/CORBA/StructMember:1.0"
- :NAME "StructMember"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/StructMember:1.0"
+ :name "StructMember"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF))
- :READ ((BUFFER)
-        (OMG.ORG/CORBA:STRUCTMEMBER :NAME
+ :read ((BUFFER)
+        (OMG.ORG/CORBA:STRUCTMEMBER :name
                                     (UNMARSHAL-STRING BUFFER)
-                                    :TYPE
+                                    :type
                                     (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE
                                                BUFFER)
-                                    :TYPE_DEF
+                                    :type_def
                                     (UNMARSHAL (SYMBOL-TYPECODE
                                                 'OMG.ORG/CORBA:IDLTYPE)
                                                BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE OBJ) OMG.ORG/CORBA:TC_TYPECODE BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:TYPE_DEF OBJ)
                   (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
                   BUFFER)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTAINEDSEQ
- :ID "IDL:omg.org/CORBA/ContainedSeq:1.0"
- :NAME "ContainedSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/ContainedSeq:1.0"
+ :name "ContainedSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:INTERFACEDEFSEQ
- :ID "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"
- :NAME "InterfaceDefSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"
+ :name "InterfaceDefSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF)))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:VERSIONSPEC
- :ID "IDL:omg.org/CORBA/VersionSpec:1.0"
- :NAME "VersionSpec"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CORBA/VersionSpec:1.0"
+ :name "VersionSpec"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-ENUM OMG.ORG/CORBA:DEFINITIONKIND
- :ID "IDL:omg.org/CORBA/DefinitionKind:1.0"
- :NAME "DefinitionKind"
- :MEMBERS ("dk_none" "dk_all" "dk_Attribute" "dk_Constant" "dk_Exception"
+ :id "IDL:omg.org/CORBA/DefinitionKind:1.0"
+ :name "DefinitionKind"
+ :members ("dk_none" "dk_all" "dk_Attribute" "dk_Constant" "dk_Exception"
            "dk_Interface" "dk_Module" "dk_Operation" "dk_Typedef" "dk_Alias"
            "dk_Struct" "dk_Union" "dk_Enum" "dk_Primitive" "dk_String"
            "dk_Sequence" "dk_Array" "dk_Repository" "dk_Wstring" "dk_Fixed"))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:REPOSITORYID
- :ID "IDL:omg.org/CORBA/RepositoryId:1.0"
- :NAME "RepositoryId"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CORBA/RepositoryId:1.0"
+ :name "RepositoryId"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-ALIAS OMG.ORG/CORBA:SCOPEDNAME
- :ID "IDL:omg.org/CORBA/ScopedName:1.0"
- :NAME "ScopedName"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CORBA/ScopedName:1.0"
+ :name "ScopedName"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-ALIAS OMG.ORG/CORBA:IDENTIFIER
- :ID "IDL:omg.org/CORBA/Identifier:1.0"
- :NAME "Identifier"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CORBA/Identifier:1.0"
+ :name "Identifier"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:IROBJECT (OBJECT)
- :PROXY (OMG.ORG/CORBA:IROBJECT-PROXY OMG.ORG/CORBA:IROBJECT
+ :proxy (OMG.ORG/CORBA:IROBJECT-PROXY OMG.ORG/CORBA:IROBJECT
          OMG.ORG/CORBA:PROXY)
- :ID "IDL:omg.org/CORBA/IRObject:1.0"
- :NAME "IRObject")
+ :id "IDL:omg.org/CORBA/IRObject:1.0"
+ :name "IRObject")
 
 (DEFINE-METHOD "DESTROY" ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY))
   (STATIC-CALL ("destroy" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS NIL))
+   :output ((OUTPUT))
+   :input ((INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "DEF_KIND" ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY))
   (GET-ATTRIBUTE
@@ -492,161 +492,161 @@
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:IDLTYPE (OMG.ORG/CORBA:IROBJECT)
- :PROXY (OMG.ORG/CORBA:IDLTYPE-PROXY OMG.ORG/CORBA:IDLTYPE
+ :proxy (OMG.ORG/CORBA:IDLTYPE-PROXY OMG.ORG/CORBA:IDLTYPE
          OMG.ORG/CORBA:IROBJECT-PROXY)
- :ID "IDL:omg.org/CORBA/IDLType:1.0"
- :NAME "IDLType")
+ :id "IDL:omg.org/CORBA/IDLType:1.0"
+ :name "IDLType")
 
 (DEFINE-METHOD "TYPE" ((OBJ OMG.ORG/CORBA:IDLTYPE-PROXY))
   (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:CONTAINER (OMG.ORG/CORBA:IROBJECT)
- :PROXY (OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINER
+ :proxy (OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINER
          OMG.ORG/CORBA:IROBJECT-PROXY)
- :ID "IDL:omg.org/CORBA/Container:1.0"
- :NAME "Container")
+ :id "IDL:omg.org/CORBA/Container:1.0"
+ :name "Container")
 
 (DEFINE-METHOD "CREATE_INTERFACE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID
                                    _NAME _VERSION _BASE_INTERFACES)
   (STATIC-CALL ("create_interface" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL-SEQUENCE
               _BASE_INTERFACES
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (MARSHAL OBJ
                          (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF)
                          BUFFER))
               OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_ALIAS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                                _VERSION _ORIGINAL_TYPE)
   (STATIC-CALL ("create_alias" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL _ORIGINAL_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
                      OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ALIASDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ALIASDEF) INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_ENUM" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                               _VERSION _MEMBERS)
   (STATIC-CALL ("create_enum" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL-SEQUENCE _MEMBERS #'MARSHAL-STRING OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMDEF) INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_UNION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                                _VERSION _DISCRIMINATOR_TYPE _MEMBERS)
   (STATIC-CALL ("create_union" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL _DISCRIMINATOR_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
                      OUTPUT)
             (MARSHAL-SEQUENCE
               _MEMBERS
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:UNIONMEMBER BUFFER))
               OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONDEF) INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_EXCEPTION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID
                                    _NAME _VERSION _MEMBERS)
   (STATIC-CALL ("create_exception" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL-SEQUENCE
               _MEMBERS
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:STRUCTMEMBER BUFFER))
               OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_STRUCT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                                 _VERSION _MEMBERS)
   (STATIC-CALL ("create_struct" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL-SEQUENCE
               _MEMBERS
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:STRUCTMEMBER BUFFER))
               OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_CONSTANT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                                   _VERSION _TYPE _VALUE)
   (STATIC-CALL ("create_constant" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL _TYPE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
             (MARSHAL _VALUE OMG.ORG/CORBA:TC_ANY OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONSTANTDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_MODULE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
                                 _VERSION)
   (STATIC-CALL ("create_module" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:MODULEDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "DESCRIBE_CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY)
                                     _LIMIT_TYPE _EXCLUDE_INHERITED
                                     _MAX_RETURNED_OBJS)
   (STATIC-CALL ("describe_contents" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL _LIMIT_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
                      OUTPUT)
             (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT)
             (MARSHAL-LONG _MAX_RETURNED_OBJS OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER)
+             (lambda (buffer)
                (STRUCT-READ 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION BUFFER))
              INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ
- :ID "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
- :NAME "DescriptionSeq"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
+ :name "DescriptionSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:CONTAINER/DESCRIPTION
- :ID "IDL:omg.org/CORBA/Container/Description:1.0"
- :NAME "Description"
- :MEMBERS (("contained_object" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
+ :id "IDL:omg.org/CORBA/Container/Description:1.0"
+ :name "Description"
+ :members (("contained_object" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
             CONTAINED_OBJECT)
            ("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
            ("value" OMG.ORG/CORBA:TC_ANY VALUE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:CONTAINER/DESCRIPTION
-          :CONTAINED_OBJECT
+          :contained_object
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) BUFFER)
-          :KIND
+          :kind
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) BUFFER)
-          :VALUE
+          :value
           (UNMARSHAL OMG.ORG/CORBA:TC_ANY BUFFER)))
- :WRITE ((OBJ BUFFER)
+ :write ((OBJ BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:CONTAINED_OBJECT OBJ)
                   (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
                   BUFFER)
@@ -658,77 +658,77 @@
 (DEFINE-METHOD "LOOKUP_NAME" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _SEARCH_NAME
                               _LEVELS_TO_SEARCH _LIMIT_TYPE _EXCLUDE_INHERITED)
   (STATIC-CALL ("lookup_name" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT)
             (MARSHAL-LONG _LEVELS_TO_SEARCH OUTPUT)
             (MARSHAL _LIMIT_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
                      OUTPUT)
             (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER)
+             (lambda (buffer)
                (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) BUFFER))
              INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _LIMIT_TYPE
                            _EXCLUDE_INHERITED)
   (STATIC-CALL ("contents" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL _LIMIT_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
                      OUTPUT)
             (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER)
+             (lambda (buffer)
                (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) BUFFER))
              INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "LOOKUP" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _SEARCH_NAME)
   (STATIC-CALL ("lookup" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:CONTAINED (OMG.ORG/CORBA:IROBJECT)
- :PROXY (OMG.ORG/CORBA:CONTAINED-PROXY OMG.ORG/CORBA:CONTAINED
+ :proxy (OMG.ORG/CORBA:CONTAINED-PROXY OMG.ORG/CORBA:CONTAINED
          OMG.ORG/CORBA:IROBJECT-PROXY)
- :ID "IDL:omg.org/CORBA/Contained:1.0"
- :NAME "Contained")
+ :id "IDL:omg.org/CORBA/Contained:1.0"
+ :name "Contained")
 
 (DEFINE-METHOD "MOVE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) _NEW_CONTAINER
                        _NEW_NAME _NEW_VERSION)
   (STATIC-CALL ("move" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL _NEW_CONTAINER
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER)
                      OUTPUT)
             (MARSHAL-STRING _NEW_NAME OUTPUT)
             (MARSHAL-STRING _NEW_VERSION OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "DESCRIBE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (STATIC-CALL ("describe" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT) (STRUCT-READ 'OMG.ORG/CORBA:CONTAINED/DESCRIPTION INPUT))
-   :EXCEPTIONS NIL))
+   :output ((OUTPUT))
+   :input ((INPUT) (STRUCT-READ 'OMG.ORG/CORBA:CONTAINED/DESCRIPTION INPUT))
+   :exceptions NIL))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:CONTAINED/DESCRIPTION
- :ID "IDL:omg.org/CORBA/Contained/Description:1.0"
- :NAME "Description"
- :MEMBERS (("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
+ :id "IDL:omg.org/CORBA/Contained/Description:1.0"
+ :name "Description"
+ :members (("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
            ("value" OMG.ORG/CORBA:TC_ANY VALUE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:CONTAINED/DESCRIPTION
-          :KIND
+          :kind
           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) BUFFER)
-          :VALUE
+          :value
           (UNMARSHAL OMG.ORG/CORBA:TC_ANY BUFFER)))
- :WRITE ((OBJ BUFFER)
+ :write ((OBJ BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:KIND OBJ)
                   (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
                   BUFFER)
@@ -758,7 +758,7 @@
     "_get_version"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)))
 
-(DEFINE-METHOD (SETF "VERSION") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+(DEFINE-METHOD (setf "VERSION") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_version"
@@ -768,7 +768,7 @@
 (DEFINE-METHOD "NAME" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (GET-ATTRIBUTE OBJ "_get_name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)))
 
-(DEFINE-METHOD (SETF "NAME") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+(DEFINE-METHOD (setf "NAME") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_name"
@@ -778,7 +778,7 @@
 (DEFINE-METHOD "ID" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (GET-ATTRIBUTE OBJ "_get_id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)))
 
-(DEFINE-METHOD (SETF "ID") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+(DEFINE-METHOD (setf "ID") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_id"
@@ -788,17 +788,17 @@
 (DEFINE-INTERFACE OMG.ORG/CORBA:INTERFACEDEF (OMG.ORG/CORBA:CONTAINER
                                               OMG.ORG/CORBA:CONTAINED
                                               OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:INTERFACEDEF-PROXY OMG.ORG/CORBA:INTERFACEDEF
+ :proxy (OMG.ORG/CORBA:INTERFACEDEF-PROXY OMG.ORG/CORBA:INTERFACEDEF
          OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINED-PROXY
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/InterfaceDef:1.0"
- :NAME "InterfaceDef")
+ :id "IDL:omg.org/CORBA/InterfaceDef:1.0"
+ :name "InterfaceDef")
 
 (DEFINE-METHOD "CREATE_OPERATION" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _ID
                                    _NAME _VERSION _RESULT _MODE _PARAMS
                                    _EXCEPTIONS _CONTEXTS)
   (STATIC-CALL ("create_operation" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL _RESULT (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
             (MARSHAL _MODE
@@ -806,46 +806,46 @@
                      OUTPUT)
             (MARSHAL-SEQUENCE
               _PARAMS
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:PARAMETERDESCRIPTION BUFFER))
               OUTPUT)
             (MARSHAL-SEQUENCE
               _EXCEPTIONS
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (MARSHAL OBJ
                          (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF)
                          BUFFER))
               OUTPUT)
             (MARSHAL-SEQUENCE _CONTEXTS #'MARSHAL-STRING OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_ATTRIBUTE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _ID
                                    _NAME _VERSION _TYPE _MODE)
   (STATIC-CALL ("create_attribute" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
             (MARSHAL-STRING _VERSION OUTPUT)
             (MARSHAL _TYPE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
             (MARSHAL _MODE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)
                      OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "DESCRIBE_INTERFACE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY))
   (STATIC-CALL ("describe_interface" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT))
+   :input ((INPUT)
            (STRUCT-READ 'OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION
                         INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-STRUCT OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION
- :ID "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
- :NAME "FullInterfaceDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+ :id "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
+ :name "FullInterfaceDescription"
+ :members (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
            ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
            ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
             DEFINED_IN)
@@ -857,42 +857,42 @@
            ("base_interfaces" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYIDSEQ)
             BASE_INTERFACES)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION
-          :NAME
+          :name
           (UNMARSHAL-STRING BUFFER)
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :DEFINED_IN
+          :defined_in
           (UNMARSHAL-STRING BUFFER)
-          :VERSION
+          :version
           (UNMARSHAL-STRING BUFFER)
-          :OPERATIONS
+          :operations
           (UNMARSHAL-SEQUENCE
-            (LAMBDA (BUFFER)
+            (lambda (buffer)
               (STRUCT-READ 'OMG.ORG/CORBA:OPERATIONDESCRIPTION BUFFER))
             BUFFER)
-          :ATTRIBUTES
+          :attributes
           (UNMARSHAL-SEQUENCE
-            (LAMBDA (BUFFER)
+            (lambda (buffer)
               (STRUCT-READ 'OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION BUFFER))
             BUFFER)
-          :BASE_INTERFACES
+          :base_interfaces
           (UNMARSHAL-SEQUENCE #'UNMARSHAL-STRING BUFFER)
-          :TYPE
+          :type
           (UNMARSHAL OMG.ORG/CORBA:TC_TYPECODE BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:NAME OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:DEFINED_IN OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:VERSION OBJ) BUFFER)
          (MARSHAL-SEQUENCE
            (OMG.ORG/FEATURES:OPERATIONS OBJ)
-           (LAMBDA (OBJ BUFFER)
+           (lambda (obj buffer)
              (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:OPERATIONDESCRIPTION BUFFER))
            BUFFER)
          (MARSHAL-SEQUENCE
            (OMG.ORG/FEATURES:ATTRIBUTES OBJ)
-           (LAMBDA (OBJ BUFFER)
+           (lambda (obj buffer)
              (STRUCT-WRITE OBJ 'OMG.ORG/CORBA:ATTRIBUTEDESCRIPTION BUFFER))
            BUFFER)
          (MARSHAL-SEQUENCE
@@ -905,9 +905,9 @@
 
 (DEFINE-METHOD "IS_A" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _INTERFACE_ID)
   (STATIC-CALL ("is_a" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _INTERFACE_ID OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL-BOOL INPUT))
-   :EXCEPTIONS NIL))
+   :output ((OUTPUT) (MARSHAL-STRING _INTERFACE_ID OUTPUT))
+   :input ((INPUT) (UNMARSHAL-BOOL INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "BASE_INTERFACES" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY))
   (GET-ATTRIBUTE
@@ -915,7 +915,7 @@
     "_get_base_interfaces"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEFSEQ)))
 
-(DEFINE-METHOD (SETF "BASE_INTERFACES") (NEWVAL
+(DEFINE-METHOD (setf "BASE_INTERFACES") (NEWVAL
                                          (OBJ
                                           OMG.ORG/CORBA:INTERFACEDEF-PROXY))
   (SET-ATTRIBUTE
@@ -925,10 +925,10 @@
     NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:OPERATIONDEF (OMG.ORG/CORBA:CONTAINED)
- :PROXY (OMG.ORG/CORBA:OPERATIONDEF-PROXY OMG.ORG/CORBA:OPERATIONDEF
+ :proxy (OMG.ORG/CORBA:OPERATIONDEF-PROXY OMG.ORG/CORBA:OPERATIONDEF
          OMG.ORG/CORBA:CONTAINED-PROXY)
- :ID "IDL:omg.org/CORBA/OperationDef:1.0"
- :NAME "OperationDef")
+ :id "IDL:omg.org/CORBA/OperationDef:1.0"
+ :name "OperationDef")
 
 (DEFINE-METHOD "EXCEPTIONS" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (GET-ATTRIBUTE
@@ -936,7 +936,7 @@
     "_get_exceptions"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEFSEQ)))
 
-(DEFINE-METHOD (SETF "EXCEPTIONS") (NEWVAL
+(DEFINE-METHOD (setf "EXCEPTIONS") (NEWVAL
                                     (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -950,7 +950,7 @@
     "_get_contexts"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDSEQ)))
 
-(DEFINE-METHOD (SETF "CONTEXTS") (NEWVAL
+(DEFINE-METHOD (setf "CONTEXTS") (NEWVAL
                                   (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -964,7 +964,7 @@
     "_get_mode"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE)))
 
-(DEFINE-METHOD (SETF "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+(DEFINE-METHOD (setf "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_mode"
@@ -977,7 +977,7 @@
     "_get_params"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARDESCRIPTIONSEQ)))
 
-(DEFINE-METHOD (SETF "PARAMS") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+(DEFINE-METHOD (setf "PARAMS") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_params"
@@ -990,7 +990,7 @@
     "_get_result_def"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "RESULT_DEF") (NEWVAL
+(DEFINE-METHOD (setf "RESULT_DEF") (NEWVAL
                                     (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -1002,10 +1002,10 @@
   (GET-ATTRIBUTE OBJ "_get_result" OMG.ORG/CORBA:TC_TYPECODE))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:ATTRIBUTEDEF (OMG.ORG/CORBA:CONTAINED)
- :PROXY (OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY OMG.ORG/CORBA:ATTRIBUTEDEF
+ :proxy (OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY OMG.ORG/CORBA:ATTRIBUTEDEF
          OMG.ORG/CORBA:CONTAINED-PROXY)
- :ID "IDL:omg.org/CORBA/AttributeDef:1.0"
- :NAME "AttributeDef")
+ :id "IDL:omg.org/CORBA/AttributeDef:1.0"
+ :name "AttributeDef")
 
 (DEFINE-METHOD "MODE" ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1013,7 +1013,7 @@
     "_get_mode"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)))
 
-(DEFINE-METHOD (SETF "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+(DEFINE-METHOD (setf "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_mode"
@@ -1023,7 +1023,7 @@
 (DEFINE-METHOD "TYPE_DEF" ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "TYPE_DEF") (NEWVAL
+(DEFINE-METHOD (setf "TYPE_DEF") (NEWVAL
                                   (OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -1035,10 +1035,10 @@
   (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:EXCEPTIONDEF (OMG.ORG/CORBA:CONTAINED)
- :PROXY (OMG.ORG/CORBA:EXCEPTIONDEF-PROXY OMG.ORG/CORBA:EXCEPTIONDEF
+ :proxy (OMG.ORG/CORBA:EXCEPTIONDEF-PROXY OMG.ORG/CORBA:EXCEPTIONDEF
          OMG.ORG/CORBA:CONTAINED-PROXY)
- :ID "IDL:omg.org/CORBA/ExceptionDef:1.0"
- :NAME "ExceptionDef")
+ :id "IDL:omg.org/CORBA/ExceptionDef:1.0"
+ :name "ExceptionDef")
 
 (DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1046,7 +1046,7 @@
     "_get_members"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)))
 
-(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
+(DEFINE-METHOD (setf "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_members"
@@ -1057,10 +1057,10 @@
   (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:ARRAYDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:ARRAYDEF-PROXY OMG.ORG/CORBA:ARRAYDEF
+ :proxy (OMG.ORG/CORBA:ARRAYDEF-PROXY OMG.ORG/CORBA:ARRAYDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/ArrayDef:1.0"
- :NAME "ArrayDef")
+ :id "IDL:omg.org/CORBA/ArrayDef:1.0"
+ :name "ArrayDef")
 
 (DEFINE-METHOD "ELEMENT_TYPE_DEF" ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1068,7 +1068,7 @@
     "_get_element_type_def"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "ELEMENT_TYPE_DEF") (NEWVAL
+(DEFINE-METHOD (setf "ELEMENT_TYPE_DEF") (NEWVAL
                                           (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -1082,14 +1082,14 @@
 (DEFINE-METHOD "LENGTH" ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_length" OMG.ORG/CORBA:TC_ULONG))
 
-(DEFINE-METHOD (SETF "LENGTH") (NEWVAL (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+(DEFINE-METHOD (setf "LENGTH") (NEWVAL (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_length" OMG.ORG/CORBA:TC_ULONG NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:SEQUENCEDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:SEQUENCEDEF-PROXY OMG.ORG/CORBA:SEQUENCEDEF
+ :proxy (OMG.ORG/CORBA:SEQUENCEDEF-PROXY OMG.ORG/CORBA:SEQUENCEDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/SequenceDef:1.0"
- :NAME "SequenceDef")
+ :id "IDL:omg.org/CORBA/SequenceDef:1.0"
+ :name "SequenceDef")
 
 (DEFINE-METHOD "ELEMENT_TYPE_DEF" ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1097,7 +1097,7 @@
     "_get_element_type_def"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "ELEMENT_TYPE_DEF") (NEWVAL
+(DEFINE-METHOD (setf "ELEMENT_TYPE_DEF") (NEWVAL
                                           (OBJ
                                            OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
   (SET-ATTRIBUTE
@@ -1112,56 +1112,56 @@
 (DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
 
-(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+(DEFINE-METHOD (setf "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:FIXEDDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:FIXEDDEF-PROXY OMG.ORG/CORBA:FIXEDDEF
+ :proxy (OMG.ORG/CORBA:FIXEDDEF-PROXY OMG.ORG/CORBA:FIXEDDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/FixedDef:1.0"
- :NAME "FixedDef")
+ :id "IDL:omg.org/CORBA/FixedDef:1.0"
+ :name "FixedDef")
 
 (DEFINE-METHOD "SCALE" ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_scale" OMG.ORG/CORBA:TC_SHORT))
 
-(DEFINE-METHOD (SETF "SCALE") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+(DEFINE-METHOD (setf "SCALE") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_scale" OMG.ORG/CORBA:TC_SHORT NEWVAL))
 
 (DEFINE-METHOD "DIGITS" ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_digits" OMG.ORG/CORBA:TC_USHORT))
 
-(DEFINE-METHOD (SETF "DIGITS") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+(DEFINE-METHOD (setf "DIGITS") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_digits" OMG.ORG/CORBA:TC_USHORT NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:WSTRINGDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:WSTRINGDEF-PROXY OMG.ORG/CORBA:WSTRINGDEF
+ :proxy (OMG.ORG/CORBA:WSTRINGDEF-PROXY OMG.ORG/CORBA:WSTRINGDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/WstringDef:1.0"
- :NAME "WstringDef")
+ :id "IDL:omg.org/CORBA/WstringDef:1.0"
+ :name "WstringDef")
 
 (DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
 
-(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
+(DEFINE-METHOD (setf "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:STRINGDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:STRINGDEF-PROXY OMG.ORG/CORBA:STRINGDEF
+ :proxy (OMG.ORG/CORBA:STRINGDEF-PROXY OMG.ORG/CORBA:STRINGDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/StringDef:1.0"
- :NAME "StringDef")
+ :id "IDL:omg.org/CORBA/StringDef:1.0"
+ :name "StringDef")
 
 (DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
 
-(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
+(DEFINE-METHOD (setf "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:PRIMITIVEDEF (OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:PRIMITIVEDEF-PROXY OMG.ORG/CORBA:PRIMITIVEDEF
+ :proxy (OMG.ORG/CORBA:PRIMITIVEDEF-PROXY OMG.ORG/CORBA:PRIMITIVEDEF
          OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/PrimitiveDef:1.0"
- :NAME "PrimitiveDef")
+ :id "IDL:omg.org/CORBA/PrimitiveDef:1.0"
+ :name "PrimitiveDef")
 
 (DEFINE-METHOD "KIND" ((OBJ OMG.ORG/CORBA:PRIMITIVEDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1171,27 +1171,27 @@
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:TYPEDEFDEF (OMG.ORG/CORBA:CONTAINED
                                             OMG.ORG/CORBA:IDLTYPE)
- :PROXY (OMG.ORG/CORBA:TYPEDEFDEF-PROXY OMG.ORG/CORBA:TYPEDEFDEF
+ :proxy (OMG.ORG/CORBA:TYPEDEFDEF-PROXY OMG.ORG/CORBA:TYPEDEFDEF
          OMG.ORG/CORBA:CONTAINED-PROXY OMG.ORG/CORBA:IDLTYPE-PROXY)
- :ID "IDL:omg.org/CORBA/TypedefDef:1.0"
- :NAME "TypedefDef")
+ :id "IDL:omg.org/CORBA/TypedefDef:1.0"
+ :name "TypedefDef")
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:CONSTANTDEF (OMG.ORG/CORBA:CONTAINED)
- :PROXY (OMG.ORG/CORBA:CONSTANTDEF-PROXY OMG.ORG/CORBA:CONSTANTDEF
+ :proxy (OMG.ORG/CORBA:CONSTANTDEF-PROXY OMG.ORG/CORBA:CONSTANTDEF
          OMG.ORG/CORBA:CONTAINED-PROXY)
- :ID "IDL:omg.org/CORBA/ConstantDef:1.0"
- :NAME "ConstantDef")
+ :id "IDL:omg.org/CORBA/ConstantDef:1.0"
+ :name "ConstantDef")
 
 (DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_value" OMG.ORG/CORBA:TC_ANY))
 
-(DEFINE-METHOD (SETF "VALUE") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+(DEFINE-METHOD (setf "VALUE") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
   (SET-ATTRIBUTE OBJ "_set_value" OMG.ORG/CORBA:TC_ANY NEWVAL))
 
 (DEFINE-METHOD "TYPE_DEF" ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
   (GET-ATTRIBUTE OBJ "_get_type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "TYPE_DEF") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+(DEFINE-METHOD (setf "TYPE_DEF") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_type_def"
@@ -1203,82 +1203,82 @@
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:MODULEDEF (OMG.ORG/CORBA:CONTAINER
                                            OMG.ORG/CORBA:CONTAINED)
- :PROXY (OMG.ORG/CORBA:MODULEDEF-PROXY OMG.ORG/CORBA:MODULEDEF
+ :proxy (OMG.ORG/CORBA:MODULEDEF-PROXY OMG.ORG/CORBA:MODULEDEF
          OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINED-PROXY)
- :ID "IDL:omg.org/CORBA/ModuleDef:1.0"
- :NAME "ModuleDef")
+ :id "IDL:omg.org/CORBA/ModuleDef:1.0"
+ :name "ModuleDef")
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:REPOSITORY (OMG.ORG/CORBA:CONTAINER)
- :PROXY (OMG.ORG/CORBA:REPOSITORY-PROXY OMG.ORG/CORBA:REPOSITORY
+ :proxy (OMG.ORG/CORBA:REPOSITORY-PROXY OMG.ORG/CORBA:REPOSITORY
          OMG.ORG/CORBA:CONTAINER-PROXY)
- :ID "IDL:omg.org/CORBA/Repository:1.0"
- :NAME "Repository")
+ :id "IDL:omg.org/CORBA/Repository:1.0"
+ :name "Repository")
 
 (DEFINE-METHOD "CREATE_FIXED" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _DIGITS
                                _SCALE)
   (STATIC-CALL ("create_fixed" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-USHORT _DIGITS OUTPUT)
+   :output ((OUTPUT) (MARSHAL-USHORT _DIGITS OUTPUT)
             (MARSHAL-SHORT _SCALE OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:FIXEDDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:FIXEDDEF) INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_ARRAY" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _LENGTH
                                _ELEMENT_TYPE)
   (STATIC-CALL ("create_array" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _LENGTH OUTPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _LENGTH OUTPUT)
             (MARSHAL _ELEMENT_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
                      OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ARRAYDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ARRAYDEF) INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_SEQUENCE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND
                                   _ELEMENT_TYPE)
   (STATIC-CALL ("create_sequence" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT)
             (MARSHAL _ELEMENT_TYPE
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
                      OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:SEQUENCEDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_WSTRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND)
   (STATIC-CALL ("create_wstring" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:WSTRINGDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "CREATE_STRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND)
   (STATIC-CALL ("create_string" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRINGDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "GET_PRIMITIVE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _KIND)
   (STATIC-CALL ("get_primitive" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL _KIND
                      (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEKIND)
                      OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEDEF) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "LOOKUP_ID" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _SEARCH_ID)
   (STATIC-CALL ("lookup_id" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_ID OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _SEARCH_ID OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:ALIASDEF (OMG.ORG/CORBA:TYPEDEFDEF)
- :PROXY (OMG.ORG/CORBA:ALIASDEF-PROXY OMG.ORG/CORBA:ALIASDEF
+ :proxy (OMG.ORG/CORBA:ALIASDEF-PROXY OMG.ORG/CORBA:ALIASDEF
          OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
- :ID "IDL:omg.org/CORBA/AliasDef:1.0"
- :NAME "AliasDef")
+ :id "IDL:omg.org/CORBA/AliasDef:1.0"
+ :name "AliasDef")
 
 (DEFINE-METHOD "ORIGINAL_TYPE_DEF" ((OBJ OMG.ORG/CORBA:ALIASDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1286,7 +1286,7 @@
     "_get_original_type_def"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "ORIGINAL_TYPE_DEF") (NEWVAL
+(DEFINE-METHOD (setf "ORIGINAL_TYPE_DEF") (NEWVAL
                                            (OBJ OMG.ORG/CORBA:ALIASDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
@@ -1295,10 +1295,10 @@
     NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:ENUMDEF (OMG.ORG/CORBA:TYPEDEFDEF)
- :PROXY (OMG.ORG/CORBA:ENUMDEF-PROXY OMG.ORG/CORBA:ENUMDEF
+ :proxy (OMG.ORG/CORBA:ENUMDEF-PROXY OMG.ORG/CORBA:ENUMDEF
          OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
- :ID "IDL:omg.org/CORBA/EnumDef:1.0"
- :NAME "EnumDef")
+ :id "IDL:omg.org/CORBA/EnumDef:1.0"
+ :name "EnumDef")
 
 (DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1306,7 +1306,7 @@
     "_get_members"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMMEMBERSEQ)))
 
-(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
+(DEFINE-METHOD (setf "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_members"
@@ -1314,10 +1314,10 @@
     NEWVAL))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:UNIONDEF (OMG.ORG/CORBA:TYPEDEFDEF)
- :PROXY (OMG.ORG/CORBA:UNIONDEF-PROXY OMG.ORG/CORBA:UNIONDEF
+ :proxy (OMG.ORG/CORBA:UNIONDEF-PROXY OMG.ORG/CORBA:UNIONDEF
          OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
- :ID "IDL:omg.org/CORBA/UnionDef:1.0"
- :NAME "UnionDef")
+ :id "IDL:omg.org/CORBA/UnionDef:1.0"
+ :name "UnionDef")
 
 (DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1325,7 +1325,7 @@
     "_get_members"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBERSEQ)))
 
-(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
+(DEFINE-METHOD (setf "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_members"
@@ -1338,7 +1338,7 @@
     "_get_discriminator_type_def"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
 
-(DEFINE-METHOD (SETF "DISCRIMINATOR_TYPE_DEF") (NEWVAL
+(DEFINE-METHOD (setf "DISCRIMINATOR_TYPE_DEF") (NEWVAL
                                                 (OBJ
                                                  OMG.ORG/CORBA:UNIONDEF-PROXY))
   (SET-ATTRIBUTE
@@ -1351,10 +1351,10 @@
   (GET-ATTRIBUTE OBJ "_get_discriminator_type" OMG.ORG/CORBA:TC_TYPECODE))
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:STRUCTDEF (OMG.ORG/CORBA:TYPEDEFDEF)
- :PROXY (OMG.ORG/CORBA:STRUCTDEF-PROXY OMG.ORG/CORBA:STRUCTDEF
+ :proxy (OMG.ORG/CORBA:STRUCTDEF-PROXY OMG.ORG/CORBA:STRUCTDEF
          OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
- :ID "IDL:omg.org/CORBA/StructDef:1.0"
- :NAME "StructDef")
+ :id "IDL:omg.org/CORBA/StructDef:1.0"
+ :name "StructDef")
 
 (DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY))
   (GET-ATTRIBUTE
@@ -1362,7 +1362,7 @@
     "_get_members"
     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)))
 
-(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY))
+(DEFINE-METHOD (setf "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY))
   (SET-ATTRIBUTE
     OBJ
     "_set_members"

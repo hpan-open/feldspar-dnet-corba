@@ -38,7 +38,7 @@
     #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own")))
 
 
-(defmacro %SYSDEP (desc &rest forms)
+(defmacro %sysdep (desc &rest forms)
   (when (null forms)
       (error "No system dependent code to ~A" desc))
   (car forms))
@@ -50,7 +50,7 @@
 (require "OPENTRANSPORT")
 
 #+(and mcl (not openmcl))
-(defclass mcl-listner-socket ()
+(defclass MCL-LISTNER-SOCKET ()
   ((port :initarg :port :accessor mcl-listener-port)
    (stream :initform nil :accessor listener-stream)))
 
@@ -284,12 +284,12 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
  "make select obj"
 
  #+sbcl
- (defstruct select
+ (defstruct SELECT
    (rset 0)
    (wset 0)
    (maxn 0 :type fixnum))
 
- (defstruct (select (:constructor make-select))
+ (defstruct (SELECT (:constructor make-select))
    value
    (writepending nil))
  )
@@ -562,7 +562,7 @@ Returns select result to be used in getting status for streams."
    #+clorb-mcl-bsd
    (bsd:system-command command)
 
-   #+(and mcl (not openmcl))
+   #+clorb-mcl-task-evaluator
    (let ((string
           (ccl:send-eval (format nil "#!/bin/sh~A~A" #\Newline command)
                          "JGTaskEvaluator")))

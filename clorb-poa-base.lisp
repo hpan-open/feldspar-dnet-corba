@@ -7,67 +7,67 @@
 
 
 (DEFINE-ALIAS OMG.ORG/PORTABLESERVER:OBJECTID
- :ID "IDL:omg.org/PortableServer/ObjectId:1.0"
- :NAME "ObjectId"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
+ :id "IDL:omg.org/PortableServer/ObjectId:1.0"
+ :name "ObjectId"
+ :type SEQUENCE
+ :typecode (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
 
 (DEFINE-ALIAS OMG.ORG/PORTABLESERVER:POALIST
- :ID "IDL:omg.org/PortableServer/POAList:1.0"
- :NAME "POAList"
- :TYPE SEQUENCE)
+ :id "IDL:omg.org/PortableServer/POAList:1.0"
+ :name "POAList"
+ :type SEQUENCE)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:FORWARDREQUEST
- :ID "IDL:omg.org/PortableServer/ForwardRequest:1.0"
- :NAME "ForwardRequest"
- :MEMBERS (("forward_reference" OMG.ORG/CORBA:tc_object)))
+ :id "IDL:omg.org/PortableServer/ForwardRequest:1.0"
+ :name "ForwardRequest"
+ :members (("forward_reference" OMG.ORG/CORBA:tc_object)))
 
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/RequestProcessingPolicyValue:1.0"
- :NAME "RequestProcessingPolicyValue"
- :MEMBERS ("USE_ACTIVE_OBJECT_MAP_ONLY" "USE_DEFAULT_SERVANT"
+ :id "IDL:omg.org/PortableServer/RequestProcessingPolicyValue:1.0"
+ :name "RequestProcessingPolicyValue"
+ :members ("USE_ACTIVE_OBJECT_MAP_ONLY" "USE_DEFAULT_SERVANT"
            "USE_SERVANT_MANAGER"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/ServantRetentionPolicyValue:1.0"
- :NAME "ServantRetentionPolicyValue"
- :MEMBERS ("RETAIN" "NON_RETAIN"))
+ :id "IDL:omg.org/PortableServer/ServantRetentionPolicyValue:1.0"
+ :name "ServantRetentionPolicyValue"
+ :members ("RETAIN" "NON_RETAIN"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/ImplicitActivationPolicyValue:1.0"
- :NAME "ImplicitActivationPolicyValue"
- :MEMBERS ("IMPLICIT_ACTIVATION" "NO_IMPLICIT_ACTIVATION"))
+ :id "IDL:omg.org/PortableServer/ImplicitActivationPolicyValue:1.0"
+ :name "ImplicitActivationPolicyValue"
+ :members ("IMPLICIT_ACTIVATION" "NO_IMPLICIT_ACTIVATION"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/IdAssignmentPolicyValue:1.0"
- :NAME "IdAssignmentPolicyValue"
- :MEMBERS ("USER_ID" "SYSTEM_ID"))
+ :id "IDL:omg.org/PortableServer/IdAssignmentPolicyValue:1.0"
+ :name "IdAssignmentPolicyValue"
+ :members ("USER_ID" "SYSTEM_ID"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/IdUniquenessPolicyValue:1.0"
- :NAME "IdUniquenessPolicyValue"
- :MEMBERS ("UNIQUE_ID" "MULTIPLE_ID"))
+ :id "IDL:omg.org/PortableServer/IdUniquenessPolicyValue:1.0"
+ :name "IdUniquenessPolicyValue"
+ :members ("UNIQUE_ID" "MULTIPLE_ID"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:LIFESPANPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/LifespanPolicyValue:1.0"
- :NAME "LifespanPolicyValue"
- :MEMBERS ("TRANSIENT" "PERSISTENT"))
+ :id "IDL:omg.org/PortableServer/LifespanPolicyValue:1.0"
+ :name "LifespanPolicyValue"
+ :members ("TRANSIENT" "PERSISTENT"))
 
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:THREADPOLICYVALUE
- :ID "IDL:omg.org/PortableServer/ThreadPolicyValue:1.0"
- :NAME "ThreadPolicyValue"
- :MEMBERS ("ORB_CTRL_MODEL" "SINGLE_THREAD_MODEL"))
+ :id "IDL:omg.org/PortableServer/ThreadPolicyValue:1.0"
+ :name "ThreadPolicyValue"
+ :members ("ORB_CTRL_MODEL" "SINGLE_THREAD_MODEL"))
 
 
 
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICY
          OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/RequestProcessingPolicy:1.0"
- :NAME "RequestProcessingPolicy")
+ :id "IDL:omg.org/PortableServer/RequestProcessingPolicy:1.0"
+ :name "RequestProcessingPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ
                          OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICY-PROXY))
@@ -77,11 +77,11 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:REQUESTPROCESSINGPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICY
          OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/ServantRetentionPolicy:1.0"
- :NAME "ServantRetentionPolicy")
+ :id "IDL:omg.org/PortableServer/ServantRetentionPolicy:1.0"
+ :name "ServantRetentionPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ
                          OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICY-PROXY))
@@ -91,11 +91,11 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:SERVANTRETENTIONPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICY(OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICY
          OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/ImplicitActivationPolicy:1.0"
- :NAME "ImplicitActivationPolicy")
+ :id "IDL:omg.org/PortableServer/ImplicitActivationPolicy:1.0"
+ :name "ImplicitActivationPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ
                          OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICY-PROXY))
@@ -105,10 +105,10 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:IMPLICITACTIVATIONPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICY OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/IdAssignmentPolicy:1.0"
- :NAME "IdAssignmentPolicy")
+ :id "IDL:omg.org/PortableServer/IdAssignmentPolicy:1.0"
+ :name "IdAssignmentPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICY-PROXY))
   (GET-ATTRIBUTE
@@ -117,10 +117,10 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:IDASSIGNMENTPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICY OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/IdUniquenessPolicy:1.0"
- :NAME "IdUniquenessPolicy")
+ :id "IDL:omg.org/PortableServer/IdUniquenessPolicy:1.0"
+ :name "IdUniquenessPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICY-PROXY))
   (GET-ATTRIBUTE
@@ -129,10 +129,10 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:IDUNIQUENESSPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:LIFESPANPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:LIFESPANPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:LIFESPANPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:LIFESPANPOLICY OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/LifespanPolicy:1.0"
- :NAME "LifespanPolicy")
+ :id "IDL:omg.org/PortableServer/LifespanPolicy:1.0"
+ :name "LifespanPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/PORTABLESERVER:LIFESPANPOLICY-PROXY))
   (GET-ATTRIBUTE
@@ -141,10 +141,10 @@
     (SYMBOL-TYPECODE 'OMG.ORG/PORTABLESERVER:LIFESPANPOLICYVALUE)))
 
 (DEFINE-INTERFACE OMG.ORG/PORTABLESERVER:THREADPOLICY (OMG.ORG/CORBA:POLICY)
- :PROXY (OMG.ORG/PORTABLESERVER:THREADPOLICY-PROXY
+ :proxy (OMG.ORG/PORTABLESERVER:THREADPOLICY-PROXY
          OMG.ORG/PORTABLESERVER:THREADPOLICY OMG.ORG/CORBA:POLICY-PROXY)
- :ID "IDL:omg.org/PortableServer/ThreadPolicy:1.0"
- :NAME "ThreadPolicy")
+ :id "IDL:omg.org/PortableServer/ThreadPolicy:1.0"
+ :name "ThreadPolicy")
 
 (DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/PORTABLESERVER:THREADPOLICY-PROXY))
   (GET-ATTRIBUTE
@@ -154,19 +154,19 @@
 
 
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:REQUEST_PROCESSING_POLICY_ID (QUOTE 22))
+(defconstant omg.org/portableserver:request_processing_policy_id (quote 22))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:SERVANT_RETENTION_POLICY_ID (QUOTE 21))
+(defconstant omg.org/portableserver:servant_retention_policy_id (quote 21))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:IMPLICIT_ACTIVATION_POLICY_ID (QUOTE 20))
+(defconstant omg.org/portableserver:implicit_activation_policy_id (quote 20))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:ID_ASSIGNMENT_POLICY_ID (QUOTE 19))
+(defconstant omg.org/portableserver:id_assignment_policy_id (quote 19))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:ID_UNIQUENESS_POLICY_ID (QUOTE 18))
+(defconstant omg.org/portableserver:id_uniqueness_policy_id (quote 18))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:LIFESPAN_POLICY_ID (QUOTE 17))
+(defconstant omg.org/portableserver:lifespan_policy_id (quote 17))
 
-(DEFCONSTANT OMG.ORG/PORTABLESERVER:THREAD_POLICY_ID (QUOTE 16))
+(defconstant omg.org/portableserver:thread_policy_id (quote 16))
 
 
 
@@ -174,57 +174,57 @@
 
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/WRONGPOLICY
- :ID "IDL:omg.org/PortableServer/POA/WrongPolicy:1.0"
- :NAME "WrongPolicy"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/WrongPolicy:1.0"
+ :name "WrongPolicy"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/WRONGADAPTER
- :ID "IDL:omg.org/PortableServer/POA/WrongAdapter:1.0"
- :NAME "WrongAdapter"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/WrongAdapter:1.0"
+ :name "WrongAdapter"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/SERVANTNOTACTIVE
- :ID "IDL:omg.org/PortableServer/POA/ServantNotActive:1.0"
- :NAME "ServantNotActive"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/ServantNotActive:1.0"
+ :name "ServantNotActive"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/SERVANTALREADYACTIVE
- :ID "IDL:omg.org/PortableServer/POA/ServantAlreadyActive:1.0"
- :NAME "ServantAlreadyActive"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/ServantAlreadyActive:1.0"
+ :name "ServantAlreadyActive"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/OBJECTNOTACTIVE
- :ID "IDL:omg.org/PortableServer/POA/ObjectNotActive:1.0"
- :NAME "ObjectNotActive"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/ObjectNotActive:1.0"
+ :name "ObjectNotActive"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/OBJECTALREADYACTIVE
- :ID "IDL:omg.org/PortableServer/POA/ObjectAlreadyActive:1.0"
- :NAME "ObjectAlreadyActive"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/ObjectAlreadyActive:1.0"
+ :name "ObjectAlreadyActive"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/NOSERVANT
- :ID "IDL:omg.org/PortableServer/POA/NoServant:1.0"
- :NAME "NoServant"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/NoServant:1.0"
+ :name "NoServant"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/INVALIDPOLICY
- :ID "IDL:omg.org/PortableServer/POA/InvalidPolicy:1.0"
- :NAME "InvalidPolicy"
- :MEMBERS (("index" OMG.ORG/CORBA:TC_USHORT)))
+ :id "IDL:omg.org/PortableServer/POA/InvalidPolicy:1.0"
+ :name "InvalidPolicy"
+ :members (("index" OMG.ORG/CORBA:TC_USHORT)))
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/ADAPTERNONEXISTENT
- :ID "IDL:omg.org/PortableServer/POA/AdapterNonExistent:1.0"
- :NAME "AdapterNonExistent"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/AdapterNonExistent:1.0"
+ :name "AdapterNonExistent"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POA/ADAPTERALREADYEXISTS
- :ID "IDL:omg.org/PortableServer/POA/AdapterAlreadyExists:1.0"
- :NAME "AdapterAlreadyExists"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POA/AdapterAlreadyExists:1.0"
+ :name "AdapterAlreadyExists"
+ :members NIL)
 
 
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:CURRENT/NOCONTEXT
- :ID "IDL:omg.org/PortableServer/Current/NoContext:1.0"
- :NAME "NoContext"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/Current/NoContext:1.0"
+ :name "NoContext"
+ :members NIL)

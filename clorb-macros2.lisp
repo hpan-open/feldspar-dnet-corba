@@ -19,7 +19,7 @@
  :TYPECODE OMG.ORG/CORBA:TC_STRING)
 |#
 
-(defmacro DEFINE-ALIAS (symbol &key id name type typecode)
+(defmacro define-alias (symbol &key id name type typecode)
   `(progn (deftype ,symbol () ',type)
           (set-symbol-id/typecode ',symbol ,id 
                                   (create-alias-tc ,id ,name ,typecode))))
@@ -53,7 +53,7 @@
       finally
         (return
           `(progn
-             (defclass ,name (CORBA:struct) ,slot-defs)
+             (defclass ,NAME (corba:struct) ,slot-defs)
              (defun ,name (&key ,@slots)
                ,(format nil "Construct CORBA struct ~A.~%Slots: ~S" name names)
                (make-instance ',name 
@@ -123,7 +123,7 @@
                        (setf (union-value obj) value))) code)))))
     
     `(progn
-       (defclass ,symbol (corba:union) ())
+       (defclass ,SYMBOL (corba:union) ())
        (defun ,symbol (&key union-value union-discriminator)
          (make-instance ',symbol 
            :value union-value
@@ -203,9 +203,9 @@ Members: (name typecode)*"
 (defmacro define-interface (symbol super &key (id "") proxy (name ""))
   `(progn
      (set-symbol-id/typecode ',symbol ,id (create-interface-tc ,id ,name))
-     (defclass ,symbol ,super ())
+     (defclass ,SYMBOL ,super ())
      ,@(if proxy
-         `((defclass ,(car proxy) ,(cdr proxy) ())
+         `((defclass ,(CAR PROXY) ,(cdr proxy) ())
            (register-proxy-class ,id ',(car proxy))))
      (defmethod object-id ((obj ,symbol))
        ,id)

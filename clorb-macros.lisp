@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.14 2003/02/22 17:33:48 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.15 2003/07/03 08:47:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -113,7 +113,7 @@
 
 ;;;; Define Corba Class
 
-(defstruct attspec  
+(defstruct ATTSPEC  
   name readonly virtual
   slotopts)
 
@@ -158,7 +158,7 @@
                               &key attributes slots defaults)
   (let ((asl (mapcar #'attspec-parse attributes)))
     `(progn
-       (defclass ,name ,superclasses
+       (defclass ,NAME ,superclasses
          (,@(remove nil
                     (mapcar 
                      (lambda (attspec)

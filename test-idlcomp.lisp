@@ -250,7 +250,7 @@ typedef long a[y];
           'op:members (seq-pattern "NISSE" "OLLE"))
     "x" (def-pattern :dk_constant
           'op:type_def (def-pattern :dk_enum)
-          'op:value (pattern 'any-value :NISSE)))
+          'op:value (pattern 'any-value :nisse)))
 
   
   (define-idl-test "exception def"

@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defclass CORBA:union () 
+(defclass CORBA:UNION () 
   ((discriminator 
     :initarg :discriminator
     :accessor union-discriminator)
@@ -32,10 +32,10 @@ where label = symbol clorb:default or value"
                    (coerce massaged-members 'vector))))
 
 
-(defmethod any-typecode ((obj CORBA:union))
+(defmethod any-typecode ((obj corba:union))
   (symbol-typecode (class-name (class-of obj))))
 
-(defmethod any-value ((obj CORBA:union))
+(defmethod any-value ((obj corba:union))
   obj)
 
 (defun corba:union (&key union-discriminator union-value

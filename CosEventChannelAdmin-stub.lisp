@@ -12,79 +12,79 @@
 
 
 
-(PROGN (DEFCLASS COSEVENTCHANNELADMIN:EVENTCHANNEL (OBJECT) NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY
-  (COSEVENTCHANNELADMIN:EVENTCHANNEL OMG.ORG/CORBA:PROXY) NIL)
+(progn (defclass COSEVENTCHANNELADMIN:EVENTCHANNEL (object) Nil)
+ (defclass COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY
+  (coseventchanneladmin:eventchannel omg.org/corba:proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/EventChannel:1.0"
   'COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:DESTROY
-  ((OBJ COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "destroy" ARGS))
- (DEFMETHOD OMG.ORG/FEATURES:FOR_SUPPLIERS
-  ((OBJ COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "for_suppliers" ARGS))
- (DEFMETHOD OMG.ORG/FEATURES:FOR_CONSUMERS
-  ((OBJ COSEVENTCHANNELADMIN:EVENTCHANNEL-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "for_consumers" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:SUPPLIERADMIN (OBJECT) NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:SUPPLIERADMIN-PROXY
-  (COSEVENTCHANNELADMIN:SUPPLIERADMIN OMG.ORG/CORBA:PROXY) NIL)
+ (defmethod omg.org/features:destroy
+  ((obj coseventchanneladmin:eventchannel-proxy) &rest args)
+  (apply 'INVOKE OBJ "destroy" ARGS))
+ (defmethod omg.org/features:for_suppliers
+  ((obj coseventchanneladmin:eventchannel-proxy) &rest args)
+  (apply 'INVOKE OBJ "for_suppliers" ARGS))
+ (defmethod omg.org/features:for_consumers
+  ((obj coseventchanneladmin:eventchannel-proxy) &rest args)
+  (apply 'INVOKE OBJ "for_consumers" ARGS))
+ (defclass COSEVENTCHANNELADMIN:SUPPLIERADMIN (object) Nil)
+ (defclass COSEVENTCHANNELADMIN:SUPPLIERADMIN-PROXY
+  (coseventchanneladmin:supplieradmin omg.org/corba:proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/SupplierAdmin:1.0"
   'COSEVENTCHANNELADMIN:SUPPLIERADMIN-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:OBTAIN_PULL_CONSUMER
-  ((OBJ COSEVENTCHANNELADMIN:SUPPLIERADMIN-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "obtain_pull_consumer" ARGS))
- (DEFMETHOD OMG.ORG/FEATURES:OBTAIN_PUSH_CONSUMER
-  ((OBJ COSEVENTCHANNELADMIN:SUPPLIERADMIN-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "obtain_push_consumer" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:CONSUMERADMIN (OBJECT) NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:CONSUMERADMIN-PROXY
-  (COSEVENTCHANNELADMIN:CONSUMERADMIN OMG.ORG/CORBA:PROXY) NIL)
+ (defmethod omg.org/features:obtain_pull_consumer
+  ((obj coseventchanneladmin:supplieradmin-proxy) &rest args)
+  (apply 'INVOKE OBJ "obtain_pull_consumer" ARGS))
+ (defmethod omg.org/features:obtain_push_consumer
+  ((obj coseventchanneladmin:supplieradmin-proxy) &rest args)
+  (apply 'INVOKE OBJ "obtain_push_consumer" ARGS))
+ (defclass COSEVENTCHANNELADMIN:CONSUMERADMIN (object) Nil)
+ (defclass COSEVENTCHANNELADMIN:CONSUMERADMIN-PROXY
+  (coseventchanneladmin:consumeradmin omg.org/corba:proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/ConsumerAdmin:1.0"
   'COSEVENTCHANNELADMIN:CONSUMERADMIN-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:OBTAIN_PULL_SUPPLIER
-  ((OBJ COSEVENTCHANNELADMIN:CONSUMERADMIN-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "obtain_pull_supplier" ARGS))
- (DEFMETHOD OMG.ORG/FEATURES:OBTAIN_PUSH_SUPPLIER
-  ((OBJ COSEVENTCHANNELADMIN:CONSUMERADMIN-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "obtain_push_supplier" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER (COSEVENTCOMM:PUSHSUPPLIER)
-  NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER-PROXY
-  (COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER COSEVENTCOMM:PUSHSUPPLIER-PROXY) NIL)
+ (defmethod omg.org/features:obtain_pull_supplier
+  ((obj coseventchanneladmin:consumeradmin-proxy) &rest args)
+  (apply 'INVOKE OBJ "obtain_pull_supplier" ARGS))
+ (defmethod omg.org/features:obtain_push_supplier
+  ((obj coseventchanneladmin:consumeradmin-proxy) &rest args)
+  (apply 'INVOKE OBJ "obtain_push_supplier" ARGS))
+ (defclass COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER (coseventcomm:pushsupplier)
+  Nil)
+ (defclass COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER-PROXY
+  (coseventchanneladmin:proxypushsupplier coseventcomm:pushsupplier-proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/ProxyPushSupplier:1.0"
   'COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:CONNECT_PUSH_CONSUMER
-  ((OBJ COSEVENTCHANNELADMIN:PROXYPUSHSUPPLIER-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "connect_push_consumer" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPULLCONSUMER (COSEVENTCOMM:PULLCONSUMER)
-  NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPULLCONSUMER-PROXY
-  (COSEVENTCHANNELADMIN:PROXYPULLCONSUMER COSEVENTCOMM:PULLCONSUMER-PROXY) NIL)
+ (defmethod omg.org/features:connect_push_consumer
+  ((obj coseventchanneladmin:proxypushsupplier-proxy) &rest args)
+  (apply 'INVOKE OBJ "connect_push_consumer" ARGS))
+ (defclass COSEVENTCHANNELADMIN:PROXYPULLCONSUMER (coseventcomm:pullconsumer)
+  Nil)
+ (defclass COSEVENTCHANNELADMIN:PROXYPULLCONSUMER-PROXY
+  (coseventchanneladmin:proxypullconsumer coseventcomm:pullconsumer-proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/ProxyPullConsumer:1.0"
   'COSEVENTCHANNELADMIN:PROXYPULLCONSUMER-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:CONNECT_PULL_SUPPLIER
-  ((OBJ COSEVENTCHANNELADMIN:PROXYPULLCONSUMER-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "connect_pull_supplier" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER (COSEVENTCOMM:PULLSUPPLIER)
-  NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER-PROXY
-  (COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER COSEVENTCOMM:PULLSUPPLIER-PROXY) NIL)
+ (defmethod omg.org/features:connect_pull_supplier
+  ((obj coseventchanneladmin:proxypullconsumer-proxy) &rest args)
+  (apply 'INVOKE OBJ "connect_pull_supplier" ARGS))
+ (defclass COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER (coseventcomm:pullsupplier)
+  Nil)
+ (defclass COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER-PROXY
+  (coseventchanneladmin:proxypullsupplier coseventcomm:pullsupplier-proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/ProxyPullSupplier:1.0"
   'COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:CONNECT_PULL_CONSUMER
-  ((OBJ COSEVENTCHANNELADMIN:PROXYPULLSUPPLIER-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "connect_pull_consumer" ARGS))
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER (COSEVENTCOMM:PUSHCONSUMER)
-  NIL)
- (DEFCLASS COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER-PROXY
-  (COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER COSEVENTCOMM:PUSHCONSUMER-PROXY) NIL)
+ (defmethod omg.org/features:connect_pull_consumer
+  ((obj coseventchanneladmin:proxypullsupplier-proxy) &rest args)
+  (apply 'INVOKE OBJ "connect_pull_consumer" ARGS))
+ (defclass COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER (coseventcomm:pushconsumer)
+  Nil)
+ (defclass COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER-PROXY
+  (coseventchanneladmin:proxypushconsumer coseventcomm:pushconsumer-proxy) Nil)
  (REGISTER-PROXY-CLASS "IDL:omg.org/CosEventChannelAdmin/ProxyPushConsumer:1.0"
   'COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER-PROXY)
- (DEFMETHOD OMG.ORG/FEATURES:CONNECT_PUSH_SUPPLIER
-  ((OBJ COSEVENTCHANNELADMIN:PROXYPUSHCONSUMER-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "connect_push_supplier" ARGS))
- (DEFINE-USER-EXCEPTION COSEVENTCHANNELADMIN:TYPEERROR :ID
-  "IDL:omg.org/CosEventChannelAdmin/TypeError:1.0" :SLOTS NIL)
- (DEFINE-USER-EXCEPTION COSEVENTCHANNELADMIN:ALREADYCONNECTED :ID
-  "IDL:omg.org/CosEventChannelAdmin/AlreadyConnected:1.0" :SLOTS NIL))
+ (defmethod omg.org/features:connect_push_supplier
+  ((obj coseventchanneladmin:proxypushconsumer-proxy) &rest args)
+  (apply 'INVOKE OBJ "connect_push_supplier" ARGS))
+ (DEFINE-USER-EXCEPTION COSEVENTCHANNELADMIN:TYPEERROR :id
+  "IDL:omg.org/CosEventChannelAdmin/TypeError:1.0" :slots NIL)
+ (DEFINE-USER-EXCEPTION COSEVENTCHANNELADMIN:ALREADYCONNECTED :id
+  "IDL:omg.org/CosEventChannelAdmin/AlreadyConnected:1.0" :slots NIL))

@@ -1,17 +1,17 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.14 2003/03/10 22:27:09 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.15 2003/07/03 08:47:44 lenst Exp $	
 
 (in-package :clorb)
 
 
 ;;;; Default POA (boot objects)
 
-(defvar *default-POA* nil)
+(defvar *default-poa* nil)
 
 (defvar *boot-objects*
   (make-hash-table :test #'equal))
 
-(defclass boot-object-manager (PortableServer:ServantActivator)
+(defclass BOOT-OBJECT-MANAGER (portableserver:servantactivator)
   ())
 
 (defun setup-default-poa (orb)
@@ -71,11 +71,11 @@
     (multiple-value-bind (msgtype) (unmarshal-giop-header buffer)
       (let ((decode-fun
              (ecase msgtype
-               ((:REQUEST)         #'poa-request-handler)
-               ((:CANCELREQUEST)   #'poa-cancelrequest-handler)
-               ((:LOCATEREQUEST)   #'poa-locaterequest-handler)
-               ((:CLOSECONNECTION) #'poa-closeconnection-handler)
-               ((:MESSAGEERROR)    #'poa-messageerror-handler))))
+               ((:request)         #'poa-request-handler)
+               ((:cancelrequest)   #'poa-cancelrequest-handler)
+               ((:locaterequest)   #'poa-locaterequest-handler)
+               ((:closeconnection) #'poa-closeconnection-handler)
+               ((:messageerror)    #'poa-messageerror-handler))))
         (let ((size (unmarshal-ulong buffer)))
           (mess 1 "Message type ~A size ~A" msgtype size)
           (if (zerop size)
@@ -173,7 +173,7 @@
   (error "NYI"))
 
 
-(defun root-POA (&optional (orb (orb_init)))
+(defun root-poa (&optional (orb (orb_init)))
   (unless (adaptor orb)
     (setup-server orb))
   *root-POA*)

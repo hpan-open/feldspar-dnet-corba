@@ -38,7 +38,7 @@
       (setf (buffer-byte-order buffer) (unmarshal-octet buffer))
       (funcall thunk buffer))))
 
-(defmacro unmarshal-number (size signed buffer)
+(defmacro unmarshal-number (size signed buffer &optional (align size))
   (let ((code1 `(the corba:octet (unmarshal-octet buffer)))
         (code2 nil)
         (code nil))
@@ -61,7 +61,7 @@
                       (- n ,(expt 2 (* size 8)))
                       n))))
     `(let ((buffer ,buffer))
-       (unmarshal-align ,size buffer)
+       (unmarshal-align ,align buffer)
        ,code)))
 
 (defun unmarshal-ushort (buffer)
@@ -82,8 +82,7 @@
 (defun unmarshal-long (buffer)
   (unmarshal-number 4 t buffer))
 
-(defun ieee-integer-to-float (raw float-type-zero
-                                     sign-bit expn-bits fraction-bits bias)
+(defun ieee-integer-to-float (raw float-type-zero sign-bit expn-bits fraction-bits bias)
   (if (zerop raw)
     float-type-zero
     (let ((fraction (+ (ldb (byte fraction-bits 0) raw)
@@ -97,8 +96,7 @@
                          (- fraction-bits)))))))
 
 
-(defmacro unmarshal-sequence-m ((buffer &key (el-type t))
-                                   &body el-read)
+(defmacro unmarshal-sequence-m ((buffer &key (el-type t)) &body el-read)
   (let ((len (gensym))
         (r (gensym))
         (i (gensym)))
@@ -278,7 +276,7 @@
                               (coerce 0 'corba:double)
                               63 11 52 1023))
       ((:tk_longdouble) 
-       (ieee-integer-to-float (unmarshal-number 16 nil buffer) 
+       (ieee-integer-to-float (unmarshal-number 16 nil buffer 8) 
                               (coerce 0 'corba:longdouble)
                               127 15 112 16383))
       ((:tk_string) (unmarshal-string buffer))
@@ -308,7 +306,7 @@
       ((anon-struct)
        (loop for type in params
              collect (unmarshal type buffer)))
-      ((:tk_TypeCode) 
+      ((:tk_typecode) 
        (unmarshal-typecode buffer))
       ((:tk_union)    
        (unmarshal-union params buffer))

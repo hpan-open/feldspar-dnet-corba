@@ -1,7 +1,7 @@
 (in-package :clorb)
 
 
-(defclass idllex (lexer)
+(defclass IDLLEX (lexer)
   ((lexer
     :initarg :lexer
     :accessor idllex-lexer)))

@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defclass CORBA:Any ()
+(defclass CORBA:ANY ()
   ((typecode :initarg :typecode )
    (value    :initarg :value    )))
 
@@ -11,29 +11,29 @@
 (defgeneric any-value (obj))
 
 
-(defun CORBA:Any (&key any-typecode any-value)
+(defun corba:any (&key any-typecode any-value)
   (make-instance 'CORBA:Any
    :typecode (or any-typecode (any-typecode any-value))
    :value any-value))
 
 
-(defmethod initialize-instance :after ((any CORBA:Any) &key &allow-other-keys)
+(defmethod initialize-instance :after ((any corba:any) &key &allow-other-keys)
   (unless (slot-boundp any 'typecode)
     (setf (slot-value any 'typecode)
       (any-typecode (slot-value any 'value)))))
 
 
 
-(defmethod any-typecode ((obj CORBA:Any))
+(defmethod any-typecode ((obj corba:any))
   (slot-value obj 'typecode))
 
-(defmethod any-value ((obj CORBA:Any))
+(defmethod any-value ((obj corba:any))
   (slot-value obj 'value))
 
-(defmethod (setf any-value) (val (obj CORBA:Any))
+(defmethod (setf any-value) (val (obj corba:any))
   (setf (slot-value obj 'value) val))
 
-(defmethod (setf any-typecode) (val (obj CORBA:Any))
+(defmethod (setf any-typecode) (val (obj corba:any))
   (setf (slot-value obj 'typecode) val))
 
 
@@ -55,7 +55,7 @@
     (corba:boolean   corba:tc_boolean)))
 
 
-(defun MEMBER-TYPECODE (sequence)
+(defun member-typecode (sequence)
   (let ((max-num 0)
         (min-num 0)
         (non-string nil)

@@ -42,9 +42,9 @@
 
 ;;;; CORBA:NamedValue
 
-(defconstant ARG_IN 1)
-(defconstant ARG_OUT 2)
-(defconstant ARG_INOUT 3)
+(defconstant arg_in 1)
+(defconstant arg_out 2)
+(defconstant arg_inout 3)
 
 
 (define-corba-class CORBA:NamedValue ()
@@ -52,7 +52,7 @@
                (argument) 
                (arg_modes)))
 
-(defun CORBA:NamedValue (&key (name "") argument (arg_modes ARG_IN))
+(defun corba:namedvalue (&key (name "") argument (arg_modes ARG_IN))
   (make-instance 'CORBA:NamedValue 
     :name name :argument argument :arg_modes arg_modes))
 
@@ -69,7 +69,7 @@
   :name "Object")
 
 #+(or)  ;; defined by define-interface
-(defmethod object-id ((obj CORBA:Object))
+(defmethod object-id ((obj corba:object))
   (or (some #'(lambda (x)
                 (let ((n (class-name x)))
                   (and (symbolp n) (symbol-ifr-id n))))
@@ -79,7 +79,7 @@
       "IDL:omg.org/Object:1.0"))
 
 
-(defclass CORBA:Proxy (CORBA:Object)
+(defclass CORBA:PROXY (corba:object)
   ((id :initform nil :initarg :id :accessor proxy-id)
    (connection :initform nil :accessor object-connection)
    (raw-profiles :initform nil :initarg :raw-profiles
@@ -119,7 +119,7 @@
 (define-method _is_nil ((x CORBA:Object))
   nil)
 
-(defstruct iiop-profile
+(defstruct IIOP-PROFILE
   (version '(1 . 0))
   (host    nil)
   (port    0    :type fixnum)
@@ -206,7 +206,7 @@
 
 ;;; Deferred from Any
 
-(defmethod any-value ((obj CORBA:Object))
+(defmethod any-value ((obj corba:object))
   obj)
 
 

@@ -12,7 +12,7 @@
    (a-string (op:get_primitive repository :pk_string)))
 
   (define-test "General"
-    (ensure-typep :dk_Constant 'CORBA:DefinitionKind))
+    (ensure-typep :dk_constant 'CORBA:DefinitionKind))
 
   (define-test "Contained"
     (let* ((name "foo")
@@ -209,7 +209,7 @@
                           :name "a"
                           :type CORBA:tc_void
                           :type_def a-string
-                          :mode :PARAM_IN)))
+                          :mode :param_in)))
            (exceptions '())
            (contexts '())
            (obj (op:create_operation idef id name version result mode params exceptions contexts)))

@@ -1,16 +1,16 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.17 2003/03/10 22:27:09 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.18 2003/07/03 08:47:44 lenst Exp $
 
 (in-package :clorb)
 
 
 ;;;; Servant manager
 
-(defclass PortableServer:ServantManager () ())
+(defclass PORTABLESERVER:SERVANTMANAGER () ())
 
 ;;  interface ServantActivator : ServantManager {
 
-(defclass PortableServer:ServantActivator (PortableServer:ServantManager) ())
+(defclass PORTABLESERVER:SERVANTACTIVATOR (portableserver:servantmanager) ())
 
 ;; Servant incarnate (in ObjectId oid, in POA adapter)
 ;;    raises (ForwardRequest);
@@ -27,7 +27,7 @@
                       reamining-activations))
   nil)
 
-(defclass PortableServer:ServantLocator (PortableServer:ServantManager) ())
+(defclass PORTABLESERVER:SERVANTLOCATOR (portableserver:servantmanager) ())
 
 (deftype PortableServer:ServantLocator/cookie () t)
 
@@ -46,8 +46,8 @@
 ;;;; Interface AdapterActivator
 
 (DEFINE-INTERFACE PortableServer:AdapterActivator (OBJECT)
- :ID "IDL:omg.org/PortableServer/AdapterActivator:1.0"
- :NAME "AdapterActivator")
+ :id "IDL:omg.org/PortableServer/AdapterActivator:1.0"
+ :name "AdapterActivator")
 
 (DEFINE-METHOD "UNKNOWN_ADAPTER" ((OBJ PortableServer:ADAPTERACTIVATOR)
                                   _PARENT _NAME)
@@ -78,7 +78,7 @@
           (the-orb :initarg :orb :accessor the-orb)
           (state :initform nil :accessor poa-state)))
 
-(defmethod print-object ((p PortableServer:POA) stream)
+(defmethod print-object ((p portableserver:poa) stream)
   (print-unreadable-object (p stream :type t)
     (format stream "~A ~D objects"
             (op:the_name p)
@@ -108,8 +108,8 @@
 (defun poa-current-servant (poa-current) (cddr poa-current))
 
 (DEFINE-INTERFACE PortableServer:Current (CORBA:Current)
- :ID "IDL:omg.org/PortableServer/Current:1.0"
- :NAME "Current")
+ :id "IDL:omg.org/PortableServer/Current:1.0"
+ :name "Current")
 
 (define-method get_POA ((current PortableServer::Current))
   (unless *poa-current* (error 'PortableServer:Current/NoContext))
@@ -147,25 +147,25 @@
 
 ;;;; interface POAManager
 
-(defclass PortableServer:POAManager (CORBA:Object)
+(defclass PORTABLESERVER:POAMANAGER (corba:object)
   ((state :initform :holding)))
 
 
 ;;; enum State {HOLDING, ACTIVE, DISCARDING, INACTIVE}
 (DEFINE-ENUM OMG.ORG/PORTABLESERVER:POAMANAGER/STATE
- :ID "IDL:omg.org/PortableServer/POAManager/State:1.0"
- :NAME "State"
- :MEMBERS ("HOLDING" "ACTIVE" "DISCARDING" "INACTIVE"))
+ :id "IDL:omg.org/PortableServer/POAManager/State:1.0"
+ :name "State"
+ :members ("HOLDING" "ACTIVE" "DISCARDING" "INACTIVE"))
 
 
 ;;; exception AdapterInactive{};
 (DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POAMANAGER/ADAPTERINACTIVE
- :ID "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0"
- :NAME "AdapterInactive"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0"
+ :name "AdapterInactive"
+ :members NIL)
 
 
-(defun POAManager-new-state (pm new-state)
+(defun poamanager-new-state (pm new-state)
   (with-slots (state) pm
     (when (eq state :inactive)
       (error 'POAManager/AdapterInactive))
@@ -215,7 +215,7 @@
 
 ;;;; POA Registry
 
-(defvar *root-POA* nil)
+(defvar *root-poa* nil)
 
 (defvar *last-poaid* 0)
 
@@ -270,7 +270,7 @@
     policies))
 
 
-(defun create-POA (poa name manager policies orb
+(defun create-poa (poa name manager policies orb
                        &key poaid )
   (setq policies (canonical-policy-list policies))
   (when (and poa (find name (op:the_children poa)
@@ -280,7 +280,7 @@
          (make-instance 'PortableServer:poa
            :the_name name
            :the_parent poa
-           :the_POAmanager (or manager (make-instance 'PortableServer:poamanager))
+           :the_poamanager (or manager (make-instance 'PortableServer:poamanager))
            :policies policies
            :poaid (or poaid (incf *last-poaid*))
            :orb orb)))
@@ -673,68 +673,68 @@ POA destruction does not occur.
 
 ;;;; Policy implementation objects
 
-(defclass policy-value-mixin (policy-impl)
+(defclass POLICY-VALUE-MIXIN (policy-impl)
   ((value :initarg :value)))
 
 (define-method value ((obj policy-value-mixin))
   (slot-value obj 'value))
 
-(defclass requestprocessingpolicy-impl (PortableServer:REQUESTPROCESSINGPOLICY policy-value-mixin)
+(defclass REQUESTPROCESSINGPOLICY-IMPL (portableserver:requestprocessingpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:REQUEST_PROCESSING_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:request_processing_policy_id)) val)
   (unless (typep val 'PortableServer:REQUESTPROCESSINGPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'requestprocessingpolicy-impl :policy_type type :value val))
 
 
-(defclass servantretentionpolicy-impl (PortableServer:SERVANTRETENTIONPOLICY policy-value-mixin)
+(defclass SERVANTRETENTIONPOLICY-IMPL (portableserver:servantretentionpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:SERVANT_RETENTION_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:servant_retention_policy_id)) val)
   (unless (typep val 'PortableServer:SERVANTRETENTIONPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'servantretentionpolicy-impl :policy_type type :value val))
 
 
-(defclass implicitactivationpolicy-impl (PortableServer:IMPLICITACTIVATIONPOLICY policy-value-mixin)
+(defclass IMPLICITACTIVATIONPOLICY-IMPL (portableserver:implicitactivationpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:IMPLICIT_ACTIVATION_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:implicit_activation_policy_id)) val)
   (unless (typep val 'PortableServer:IMPLICITACTIVATIONPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'implicitactivationpolicy-impl :policy_type type :value val))
 
 
-(defclass idassignmentpolicy-impl (PortableServer:IDASSIGNMENTPOLICY policy-value-mixin)
+(defclass IDASSIGNMENTPOLICY-IMPL (portableserver:idassignmentpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:ID_ASSIGNMENT_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:id_assignment_policy_id)) val)
   (unless (typep val 'PortableServer:IDASSIGNMENTPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'idassignmentpolicy-impl :policy_type type :value val))
 
 
-(defclass iduniquenesspolicy-impl (PortableServer:IDUNIQUENESSPOLICY policy-value-mixin)
+(defclass IDUNIQUENESSPOLICY-IMPL (portableserver:iduniquenesspolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:ID_UNIQUENESS_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:id_uniqueness_policy_id)) val)
   (unless (typep val 'PortableServer:IDUNIQUENESSPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'iduniquenesspolicy-impl :policy_type type :value val))
 
-(defclass lifespanpolicy-impl (PortableServer:LIFESPANPOLICY policy-value-mixin)
+(defclass LIFESPANPOLICY-IMPL (portableserver:lifespanpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:LIFESPAN_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:lifespan_policy_id)) val)
   (unless (typep val 'PortableServer:LIFESPANPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'lifespanpolicy-impl :policy_type type :value val))
 
-(defclass threadpolicy-impl (PortableServer:THREADPOLICY policy-value-mixin)
+(defclass THREADPOLICY-IMPL (portableserver:threadpolicy policy-value-mixin)
   ())
 
-(defmethod create-policy ((type (eql PortableServer:THREAD_POLICY_ID)) val)
+(defmethod create-policy ((type (eql portableserver:thread_policy_id)) val)
   (unless (typep val 'PortableServer:THREADPOLICYVALUE)
     (error (CORBA:policyerror :reason CORBA:bad_policy_type)))
   (make-instance 'threadpolicy-impl :policy_type type :value val))

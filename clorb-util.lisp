@@ -50,7 +50,7 @@
     (values (subseq name 5) :setter))
    (t name)))
 
-(defmethod find-opdef ((interface CORBA:InterfaceDef) operation)
+(defmethod find-opdef ((interface corba:interfacedef) operation)
   "Find in INTERFACE the OPERATION and return the opdef object."
   ;; Compatibility with clorb-iir for use in dii and auto-servants.
   (multiple-value-bind (name type)
@@ -58,13 +58,13 @@
     (let ((def (op:lookup interface name)))
       (case type
         (:setter
-         (assert (eq (op:def_kind def) :dk_Attribute))
+         (assert (eq (op:def_kind def) :dk_attribute))
          (make-setter-opdef operation def))
         (:getter
-         (assert (eq (op:def_kind def) :dk_Attribute))
+         (assert (eq (op:def_kind def) :dk_attribute))
          (make-getter-opdef operation def))
         (otherwise
-         (assert (eq (op:def_kind def) :dk_Operation))
+         (assert (eq (op:def_kind def) :dk_operation))
          (make-opdef :name operation
                      :params (op:params def)
                      :result (op:result def)

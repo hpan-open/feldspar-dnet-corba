@@ -70,7 +70,7 @@
 ;;    void pre_init (in ORBInitInfo info);
 ;;    void post_init (in ORBInitInfo info);
 
-(defclass PortableInterceptor:ORBInitializer ()
+(defclass PORTABLEINTERCEPTOR:ORBINITIALIZER ()
   ())
 
 (define-method "PRE_INIT" ((init PortableInterceptor:ORBInitializer) info)
@@ -104,7 +104,7 @@
 
 ;;; ORB CORBA:ORB_init (arg_list, orbid)
 
-(defun CORBA:ORB_init (&optional args (orbid "") set-init)
+(defun corba:orb_init (&optional args (orbid "") set-init)
   (when (eq args t)
     (setq args nil set-init t))
   (let ((info nil))
@@ -478,22 +478,22 @@ Can be set to true globally for singel-process / development.")
 (define-corba-class CORBA:Current ())
 #+(or)
 (DEFINE-INTERFACE OMG.ORG/CORBA:CURRENT (OBJECT)
-  :PROXY (OMG.ORG/CORBA:CURRENT-PROXY OMG.ORG/CORBA:CURRENT OMG.ORG/CORBA:PROXY)
-  :ID "IDL:omg.org/CORBA/Current:1.0"
-  :NAME "Current")
+  :proxy (OMG.ORG/CORBA:CURRENT-PROXY OMG.ORG/CORBA:CURRENT OMG.ORG/CORBA:PROXY)
+  :id "IDL:omg.org/CORBA/Current:1.0"
+  :name "Current")
 
 ;;;; Policy
 
 (DEFINE-ALIAS OMG.ORG/CORBA:POLICYTYPE
-  :ID "IDL:omg.org/CORBA/PolicyType:1.0"
-  :NAME "PolicyType"
-  :TYPE OMG.ORG/CORBA:ULONG
-  :TYPECODE OMG.ORG/CORBA:TC_ULONG)
+  :id "IDL:omg.org/CORBA/PolicyType:1.0"
+  :name "PolicyType"
+  :type OMG.ORG/CORBA:ULONG
+  :typecode OMG.ORG/CORBA:TC_ULONG)
 
 (DEFINE-INTERFACE OMG.ORG/CORBA:POLICY (OBJECT)
-  :PROXY (OMG.ORG/CORBA:POLICY-PROXY OMG.ORG/CORBA:POLICY OMG.ORG/CORBA:PROXY)
-  :ID "IDL:omg.org/CORBA/Policy:1.0"
-  :NAME "Policy")
+  :proxy (OMG.ORG/CORBA:POLICY-PROXY OMG.ORG/CORBA:POLICY OMG.ORG/CORBA:PROXY)
+  :id "IDL:omg.org/CORBA/Policy:1.0"
+  :name "Policy")
 
 (define-corba-class policy-impl (OMG.ORG/CORBA:POLICY)
   :attributes ((policy_type :readonly)) )
@@ -505,41 +505,41 @@ Can be set to true globally for singel-process / development.")
 
 
 (DEFINE-METHOD "DESTROY" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
-  (STATIC-CALL ("destroy" OBJ) :OUTPUT ((OUTPUT)) :INPUT ((INPUT)) :EXCEPTIONS NIL))
+  (STATIC-CALL ("destroy" OBJ) :output ((OUTPUT)) :input ((INPUT)) :exceptions NIL))
 
 (DEFINE-METHOD "COPY" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
   (STATIC-CALL ("copy" OBJ)
-               :OUTPUT ((OUTPUT))
-               :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY) INPUT))
-               :EXCEPTIONS NIL))
+               :output ((OUTPUT))
+               :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY) INPUT))
+               :exceptions NIL))
 
 (DEFINE-METHOD "POLICY_TYPE" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
   (GET-ATTRIBUTE OBJ "_get_policy_type" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICYTYPE)))
 
 
 (DEFINE-ALIAS OMG.ORG/CORBA:POLICYLIST
-  :ID "IDL:omg.org/CORBA/PolicyList:1.0"
-  :NAME "PolicyList"
-  :TYPE SEQUENCE
-  :TYPECODE (create-sequence-tc 0 (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY)))
+  :id "IDL:omg.org/CORBA/PolicyList:1.0"
+  :name "PolicyList"
+  :type SEQUENCE
+  :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY)))
 
-(DEFCONSTANT OMG.ORG/CORBA:SECCONSTRUCTION (QUOTE 11))
-(DEFCONSTANT OMG.ORG/CORBA:UNSUPPORTED_POLICY_VALUE (QUOTE 4))
-(DEFCONSTANT OMG.ORG/CORBA:BAD_POLICY_VALUE (QUOTE 3))
-(DEFCONSTANT OMG.ORG/CORBA:BAD_POLICY_TYPE (QUOTE 2))
-(DEFCONSTANT OMG.ORG/CORBA:UNSUPPORTED_POLICY (QUOTE 1))
-(DEFCONSTANT OMG.ORG/CORBA:BAD_POLICY (QUOTE 0))
+(defconstant omg.org/corba:secconstruction (quote 11))
+(defconstant omg.org/corba:unsupported_policy_value (quote 4))
+(defconstant omg.org/corba:bad_policy_value (quote 3))
+(defconstant omg.org/corba:bad_policy_type (quote 2))
+(defconstant omg.org/corba:unsupported_policy (quote 1))
+(defconstant omg.org/corba:bad_policy (quote 0))
 
 (DEFINE-ALIAS OMG.ORG/CORBA:POLICYERRORCODE
-  :ID "IDL:omg.org/CORBA/PolicyErrorCode:1.0"
-  :NAME "PolicyErrorCode"
-  :TYPE OMG.ORG/CORBA:SHORT
-  :TYPECODE OMG.ORG/CORBA:TC_SHORT)
+  :id "IDL:omg.org/CORBA/PolicyErrorCode:1.0"
+  :name "PolicyErrorCode"
+  :type OMG.ORG/CORBA:SHORT
+  :typecode OMG.ORG/CORBA:TC_SHORT)
 
 (DEFINE-USER-EXCEPTION OMG.ORG/CORBA:POLICYERROR
-  :ID "IDL:omg.org/CORBA/PolicyError:1.0"
-  :NAME "PolicyError"
-  :MEMBERS (("reason" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICYERRORCODE))))
+  :id "IDL:omg.org/CORBA/PolicyError:1.0"
+  :name "PolicyError"
+  :members (("reason" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICYERRORCODE))))
 
 
 (defgeneric create-policy (type value))
@@ -656,27 +656,27 @@ Can be set to true globally for singel-process / development.")
 ;;;    typedef string ObjectId;
 
 (DEFINE-ALIAS PORTABLEINTERCEPTOR:ORBINITINFO/ObjectId
- :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/ObjectId:1.0"
- :NAME "ObjectId"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/ObjectId:1.0"
+ :name "ObjectId"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 
 ;;;    exception DuplicateName {
 ;;      string name;
 
 (DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/DUPLICATENAME
- :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/DuplicateName:1.0"
- :NAME "DuplicateName"
- :MEMBERS (("name" OMG.ORG/CORBA:TC_STRING)))
+ :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/DuplicateName:1.0"
+ :name "DuplicateName"
+ :members (("name" OMG.ORG/CORBA:TC_STRING)))
 
 
 ;;;    exception InvalidName {};
 
 (DEFINE-USER-EXCEPTION PORTABLEINTERCEPTOR:ORBINITINFO/INVALIDNAME
- :ID "IDL:omg.org/PortableInterceptor/ORBInitInfo/InvalidName:1.0"
- :NAME "InvalidName"
- :MEMBERS NIL)
+ :id "IDL:omg.org/PortableInterceptor/ORBInitInfo/InvalidName:1.0"
+ :name "InvalidName"
+ :members NIL)
 
 
 ;;;    void register_initial_reference (in ObjectId id, in Object obj)

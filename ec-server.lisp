@@ -52,7 +52,7 @@
 
 ;;;  ------------------------------------------------- event-channel -------
 
-(defclass event-channel (event-channel-servant)
+(defclass EVENT-CHANNEL (event-channel-servant)
   ((consumers  :initform '() :accessor consumers)
    (suppliers  :initform '() :accessor suppliers)
    (consumer-admin :initform nil :accessor consumer-admin)
@@ -77,7 +77,7 @@
 
 ;;;; ------------------------------------------------- consumer-admin ------
 
-(defclass consumer-admin (consumer-admin-servant)
+(defclass CONSUMER-ADMIN (consumer-admin-servant)
   ((channel :initarg :channel :reader channel)))
 
 (define-method obtain_push_supplier ((servant consumer-admin))
@@ -89,7 +89,7 @@
 
 ;;;; ------------------------------------------------- supplier-admin ------
 
-(defclass supplier-admin (supplier-admin-servant)
+(defclass SUPPLIER-ADMIN (supplier-admin-servant)
   ((channel :initarg :channel :reader channel)))
 
 (define-method obtain_push_consumer ((servant supplier-admin))
@@ -101,7 +101,7 @@
 
 ;;;; SUPPLIER CLASSES ----------------------------------------------------
 
-(defclass supplier () 
+(defclass SUPPLIER () 
   ((channel :initarg :channel :accessor channel)
    (consumer :initform nil  :accessor consumer)))
 
@@ -121,7 +121,7 @@
 
 ;;;; ------------------------------------------------- push-supplier -------
 
-(defclass push-supplier (supplier push-supplier-servant)
+(defclass PUSH-SUPPLIER (supplier push-supplier-servant)
   ())
 
 (defmethod add-event ((self push-supplier) event)
@@ -137,7 +137,7 @@
 
 ;;;; --------------------------------------------------pull-supplier -------
 
-(defclass pull-supplier (supplier pull-supplier-servant)
+(defclass PULL-SUPPLIER (supplier pull-supplier-servant)
   ((pending-pull :initform nil  :accessor pending-pull)
    (events       :initform '()  :accessor events)))
 
@@ -173,7 +173,7 @@
 
 ;;;; CONSUMER CLASSES ------------------------------------------------------
 
-(defclass consumer ()
+(defclass CONSUMER ()
   ((state :initarg :channel :accessor channel)
    (supplier :accessor supplier)))
 
@@ -193,7 +193,7 @@
 
 ;;;; ------------------------------------------------- push-consumer -------
 
-(defclass push-consumer (consumer push-consumer-servant)
+(defclass PUSH-CONSUMER (consumer push-consumer-servant)
   ())
 
 (define-method push ((self push-consumer) any)
@@ -210,7 +210,7 @@
 
 ;;;; ------------------------------------------------- pull-consumer -------
 
-(defclass pull-consumer (consumer pull-consumer-servant)
+(defclass PULL-CONSUMER (consumer pull-consumer-servant)
   ())
 
 (define-method connect_pull_supplier ((self pull-consumer) supplier)
@@ -229,7 +229,7 @@
 ;;                   (op::connect_pull_consumer subs nil)
 ;;                   subs))
 
-(defclass push-trace (push-consumer) ())
+(defclass PUSH-TRACE (push-consumer) ())
 (define-method push ((servant push-trace) event)
   (format t "~&>>> Push ~S~%" event))
 

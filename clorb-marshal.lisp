@@ -25,30 +25,30 @@
         (vector-push-extend 0 octets) ))))
 
 #-clisp
-(defun marshal-number (n size buffer)
+(defun marshal-number (n size buffer &optional (align size))
   (declare (fixnum size)
            (integer n)
            (optimize (speed 3) (debug 0) (safety 1)))
-  (marshal-align size buffer)
+  (marshal-align align buffer)
   (loop for p from 0 by 8
 	for c fixnum below size
 	do (marshal-octet (ldb (byte 8 p) n) buffer)))
 
 ;;
 (#-clisp define-compiler-macro #+clisp defmacro
-         marshal-number (&whole form n size buffer)
+         marshal-number (&whole form n size buffer &optional (align size))
   (if (numberp size)
       (let ((nvar '#:nvar)
             (nnvar '#:nnvar)
             (bvar '#:bvar))
         `(let* (,@(if (> size 3) 
                       `((,nnvar ,n) 
-                        (,nvar (logand ,nnvar #16rFFFFFF)))
+                        (,nvar (logand ,nnvar #16rffffff)))
                       `((,nvar ,n)))
                 (,bvar ,buffer))
           ,@(if (> size 3)
                 `((declare (type (integer 0 #16rFFFFFF) ,nvar))))
-          (marshal-align ,size ,bvar)
+          (marshal-align ,align ,bvar)
           (marshal-octet (logand #16rff ,nvar) ,bvar)
           ,@(loop for p from 8 by 8
                   for c from 1 below size
@@ -248,7 +248,7 @@
 
 (defun marshal (arg type buffer)
   (multiple-value-bind (kind params) 
-      (type-expand type)
+                       (type-expand type)
     (case kind
       ((:tk_any) (marshal-any arg buffer))
       ((:tk_octet) (marshal-octet arg buffer))
@@ -267,7 +267,7 @@
                                     8 buffer))
       ((:tk_longdouble) (marshal-number (float-as-ieee-integer (coerce arg 'corba:longdouble)
                                                                127 112 16383)
-                                        16 buffer))
+                                        16 buffer 8))
       ((:tk_string string) (marshal-string arg buffer))
       ((osequence) (marshal-osequence arg buffer))
       ((:tk_objref object) (marshal-ior arg buffer))

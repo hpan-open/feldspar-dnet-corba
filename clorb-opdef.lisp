@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defstruct opdef
+(defstruct OPDEF
   name
   (params nil )
   (result CORBA:tc_void)

@@ -50,7 +50,7 @@
            (o (op:lookup i "greet"))
            (n (op:lookup i "note")))
       (ensure o "lookup name")
-      (ensure-equalp (op:def_kind o) :dk_Operation)
+      (ensure-equalp (op:def_kind o) :dk_operation)
       (ensure-equalp (op:kind (op:result o)) :tk_string)
       (ensure-equalp (op:mode o) :op_normal)
       (ensure-equalp (op:mode n) :op_oneway)))
@@ -63,12 +63,12 @@
                  r)
     (let* ((o (op:lookup r "Foo")))
       (ensure o "lookup name")
-      (ensure-equalp (op:def_kind o) :dk_Alias)
-      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_Primitive)
+      (ensure-equalp (op:def_kind o) :dk_alias)
+      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_primitive)
       (ensure-equalp (op:kind (op:original_type_def o)) :pk_short))
     (let ((o (op:lookup r "s0")))
       (ensure o "lookup name")
-      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_Primitive)
+      (ensure-equalp (op:def_kind (op:original_type_def o)) :dk_primitive)
       (ensure-equalp (op:kind (op:original_type_def o)) :pk_string))
     (let ((o (op:lookup r "s10")))
       (ensure o "lookup name")
@@ -87,7 +87,7 @@
                  r)
     (let* ((o (op:lookup r "F")))
       (ensure o "lookup name")
-      (ensure-equalp (op:def_kind o) :dk_Enum)
+      (ensure-equalp (op:def_kind o) :dk_enum)
       (ensure-equalp (op:members o) '("NORMAL" "DIRECTORY" "SYMLINK"))))
   
   (define-test "Read Constant"
@@ -124,7 +124,7 @@
      ((define-struct "S"
         (("a" long)
          ("b" string))))
-     "S" (def-pattern :dk_Struct
+     "S" (def-pattern :dk_struct
            'op:members 
            (seq-pattern (struct-pattern 'struct-class-name 'CORBA:StructMember
                                         'op:name "a"
@@ -166,7 +166,7 @@
                  r)
     (let* ((o (op:lookup (op:lookup r "I") "a") ))
       (ensure o "lookup name")
-      (ensure-equalp (op:def_kind o) :dk_Attribute)
+      (ensure-equalp (op:def_kind o) :dk_attribute)
       (ensure-equalp (op:mode o) :attr_normal )
       (ensure-equalp (op:id o) "IDL:my/M/I/a:1.0")
       (ensure-equalp (op:kind (op:type_def o)) :pk_string))

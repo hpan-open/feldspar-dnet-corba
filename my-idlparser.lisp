@@ -551,7 +551,7 @@
     "wstring" "custom" "inout" "private" "TRUE" "default" "interface" "public" "truncatable" ) )
 
 
-(defun <IDENTIFIER> ()
+(defun <identifier> ()
   ;; FIXME: an identifier can start with _ (should also be removed)
   (let ((tok (token *lexer*)))
     (when (and (stringp tok)
@@ -560,32 +560,32 @@
       (match-token *lexer* tok))))
 
 
-(defun <INTEGER_LITERAL> ()
+(defun <integer_literal> ()
   (seq #'numberp))
 
-(defun <STRING_LITERAL> ()
+(defun <string_literal> ()
   (let (s)
     (seq (-> #'(lambda (tok) (and (consp tok) (eq (car tok) 'string))) s)
          (action (cdr s)))))
 
-(defun <WIDE_STRING_LITERAL> ()
+(defun <wide_string_literal> ()
   ;; FIXME: check how this works
   nil)
 
-(defun <CHARACTER_LITERAL> ()
+(defun <character_literal> ()
   (seq #'characterp))
 
-(defun <WIDE_CHARACTER_LITERAL> ()
+(defun <wide_character_literal> ()
   nil)
 
-(defun <FIXED_PT_LITERAL> ()
+(defun <fixed_pt_literal> ()
   nil)
 
-(defun <FLOATING_PT_LITERAL> ()
+(defun <floating_pt_literal> ()
   nil)
 
 
-(defclass my-idlparser (idl-compiler)
+(defclass MY-IDLPARSER (idl-compiler)
   ())
 
 (defmethod load-repository ((self my-idlparser) repository file)

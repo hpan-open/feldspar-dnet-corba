@@ -1,10 +1,10 @@
 
-(IN-PACKAGE :CLORB)
+(in-package :clorb)
 
-(EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (ENSURE-CORBA-PACKAGE
     "COSNAMING"
-    :EXPORT
+    :export
     '("NAMINGCONTEXTEXT/STRINGNAME" "NAMINGCONTEXTEXT/ADDRESS"
       "NAMINGCONTEXTEXT/URLSTRING" "NAMINGCONTEXTEXT/INVALIDADDRESS"
       "NAMINGCONTEXTEXT-PROXY" "NAMINGCONTEXTEXT"
@@ -15,30 +15,30 @@
       "NAMECOMPONENT" "BINDINGTYPE" "NAME" "BINDING" "BINDINGLIST")))
 
 (DEFINE-ALIAS COSNAMING:BINDINGLIST
- :ID "IDL:omg.org/CosNaming/BindingList:1.0"
- :NAME "BindingList"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc 0 (SYMBOL-TYPECODE 'COSNAMING:BINDING)))
+ :id "IDL:omg.org/CosNaming/BindingList:1.0"
+ :name "BindingList"
+ :type SEQUENCE
+ :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'COSNAMING:BINDING)))
 
 (DEFINE-STRUCT COSNAMING:BINDING
- :ID "IDL:omg.org/CosNaming/Binding:1.0"
- :NAME "Binding"
- :MEMBERS (("binding_name" (SYMBOL-TYPECODE 'COSNAMING:NAME) BINDING_NAME)
+ :id "IDL:omg.org/CosNaming/Binding:1.0"
+ :name "Binding"
+ :members (("binding_name" (SYMBOL-TYPECODE 'COSNAMING:NAME) BINDING_NAME)
            ("binding_type" (SYMBOL-TYPECODE 'COSNAMING:BINDINGTYPE)
             BINDING_TYPE))
- :READ ((BUFFER)
-        (COSNAMING:BINDING :BINDING_NAME
+ :read ((BUFFER)
+        (COSNAMING:BINDING :binding_name
                            (UNMARSHAL-SEQUENCE
-                             (LAMBDA (BUFFER)
+                             (lambda (buffer)
                                (STRUCT-READ 'COSNAMING:NAMECOMPONENT BUFFER))
                              BUFFER)
-                           :BINDING_TYPE
+                           :binding_type
                            (UNMARSHAL (SYMBOL-TYPECODE 'COSNAMING:BINDINGTYPE)
                                       BUFFER)))
- :WRITE ((OBJ BUFFER)
+ :write ((OBJ BUFFER)
          (MARSHAL-SEQUENCE
            (OMG.ORG/FEATURES:BINDING_NAME OBJ)
-           (LAMBDA (OBJ BUFFER)
+           (lambda (obj buffer)
              (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
            BUFFER)
          (MARSHAL (OMG.ORG/FEATURES:BINDING_TYPE OBJ)
@@ -46,287 +46,287 @@
                   BUFFER)))
 
 (DEFINE-ENUM COSNAMING:BINDINGTYPE
- :ID "IDL:omg.org/CosNaming/BindingType:1.0"
- :NAME "BindingType"
- :MEMBERS ("nobject" "ncontext"))
+ :id "IDL:omg.org/CosNaming/BindingType:1.0"
+ :name "BindingType"
+ :members ("nobject" "ncontext"))
 
 (DEFINE-ALIAS COSNAMING:NAME
- :ID "IDL:omg.org/CosNaming/Name:1.0"
- :NAME "Name"
- :TYPE SEQUENCE
- :TYPECODE (create-sequence-tc
+ :id "IDL:omg.org/CosNaming/Name:1.0"
+ :name "Name"
+ :type SEQUENCE
+ :typecode (create-sequence-tc
              0
              (SYMBOL-TYPECODE 'COSNAMING:NAMECOMPONENT)))
 
 (DEFINE-STRUCT COSNAMING:NAMECOMPONENT
- :ID "IDL:omg.org/CosNaming/NameComponent:1.0"
- :NAME "NameComponent"
- :MEMBERS (("id" (SYMBOL-TYPECODE 'COSNAMING:ISTRING) ID)
+ :id "IDL:omg.org/CosNaming/NameComponent:1.0"
+ :name "NameComponent"
+ :members (("id" (SYMBOL-TYPECODE 'COSNAMING:ISTRING) ID)
            ("kind" (SYMBOL-TYPECODE 'COSNAMING:ISTRING) KIND))
- :READ ((BUFFER)
+ :read ((BUFFER)
         (COSNAMING:NAMECOMPONENT
-          :ID
+          :id
           (UNMARSHAL-STRING BUFFER)
-          :KIND
+          :kind
           (UNMARSHAL-STRING BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
+ :write ((OBJ BUFFER) (MARSHAL-STRING (OMG.ORG/FEATURES:ID OBJ) BUFFER)
          (MARSHAL-STRING (OMG.ORG/FEATURES:KIND OBJ) BUFFER)))
 
 (DEFINE-ALIAS COSNAMING:ISTRING
- :ID "IDL:omg.org/CosNaming/Istring:1.0"
- :NAME "Istring"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CosNaming/Istring:1.0"
+ :name "Istring"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-INTERFACE COSNAMING:BINDINGITERATOR (OBJECT)
- :PROXY (COSNAMING:BINDINGITERATOR-PROXY COSNAMING:BINDINGITERATOR
+ :proxy (COSNAMING:BINDINGITERATOR-PROXY COSNAMING:BINDINGITERATOR
          OMG.ORG/CORBA:PROXY)
- :ID "IDL:omg.org/CosNaming/BindingIterator:1.0"
- :NAME "BindingIterator")
+ :id "IDL:omg.org/CosNaming/BindingIterator:1.0"
+ :name "BindingIterator")
 
 (DEFINE-METHOD "DESTROY" ((OBJ COSNAMING:BINDINGITERATOR-PROXY))
   (STATIC-CALL ("destroy" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS NIL))
+   :output ((OUTPUT))
+   :input ((INPUT))
+   :exceptions NIL))
 
 (DEFINE-METHOD "NEXT_N" ((OBJ COSNAMING:BINDINGITERATOR-PROXY) _HOW_MANY)
   (STATIC-CALL ("next_n" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _HOW_MANY OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL-BOOL INPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _HOW_MANY OUTPUT))
+   :input ((INPUT) (UNMARSHAL-BOOL INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER) (STRUCT-READ 'COSNAMING:BINDING BUFFER))
+             (lambda (buffer) (STRUCT-READ 'COSNAMING:BINDING BUFFER))
              INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "NEXT_ONE" ((OBJ COSNAMING:BINDINGITERATOR-PROXY))
   (STATIC-CALL ("next_one" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL-BOOL INPUT)
+   :output ((OUTPUT))
+   :input ((INPUT) (UNMARSHAL-BOOL INPUT)
            (STRUCT-READ 'COSNAMING:BINDING INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-INTERFACE COSNAMING:NAMINGCONTEXT (OBJECT)
- :PROXY (COSNAMING:NAMINGCONTEXT-PROXY COSNAMING:NAMINGCONTEXT
+ :proxy (COSNAMING:NAMINGCONTEXT-PROXY COSNAMING:NAMINGCONTEXT
          OMG.ORG/CORBA:PROXY)
- :ID "IDL:omg.org/CosNaming/NamingContext:1.0"
- :NAME "NamingContext")
+ :id "IDL:omg.org/CosNaming/NamingContext:1.0"
+ :name "NamingContext")
 
 (DEFINE-METHOD "LIST" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _HOW_MANY)
   (STATIC-CALL ("list" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _HOW_MANY OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-ULONG _HOW_MANY OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER) (STRUCT-READ 'COSNAMING:BINDING BUFFER))
+             (lambda (buffer) (STRUCT-READ 'COSNAMING:BINDING BUFFER))
              INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'COSNAMING:BINDINGITERATOR) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "DESTROY" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY))
   (STATIC-CALL ("destroy" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTEMPTY)))
+   :output ((OUTPUT))
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTEMPTY)))
 
 (DEFINE-METHOD "BIND_NEW_CONTEXT" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N)
   (STATIC-CALL ("bind_new_context" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT))
-   :INPUT ((INPUT)
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT) INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/ALREADYBOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "NEW_CONTEXT" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY))
   (STATIC-CALL ("new_context" OBJ)
-   :OUTPUT ((OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT) INPUT))
-   :EXCEPTIONS NIL))
+   :exceptions NIL))
 
 (DEFINE-METHOD "UNBIND" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N)
   (STATIC-CALL ("unbind" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "RESOLVE" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N)
   (STATIC-CALL ("resolve" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL OMG.ORG/CORBA:tc_object INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT) (UNMARSHAL OMG.ORG/CORBA:tc_object INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "REBIND_CONTEXT" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N _NC)
   (STATIC-CALL ("rebind_context" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT)
             (MARSHAL _NC (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT) OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "BIND_CONTEXT" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N _NC)
   (STATIC-CALL ("bind_context" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT)
             (MARSHAL _NC (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT) OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME
                  COSNAMING:NAMINGCONTEXT/ALREADYBOUND)))
 
 (DEFINE-METHOD "REBIND" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N _OBJ)
   (STATIC-CALL ("rebind" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT)
             (MARSHAL _OBJ OMG.ORG/CORBA:tc_object OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "BIND" ((OBJ COSNAMING:NAMINGCONTEXT-PROXY) _N _OBJ)
   (STATIC-CALL ("bind" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT)
             (MARSHAL _OBJ OMG.ORG/CORBA:tc_object OUTPUT))
-   :INPUT ((INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :input ((INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME
                  COSNAMING:NAMINGCONTEXT/ALREADYBOUND)))
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXT/NOTEMPTY
- :ID "IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0"
- :NAME "NotEmpty"
- :MEMBERS NIL)
+ :id "IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0"
+ :name "NotEmpty"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXT/ALREADYBOUND
- :ID "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
- :NAME "AlreadyBound"
- :MEMBERS NIL)
+ :id "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
+ :name "AlreadyBound"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXT/INVALIDNAME
- :ID "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
- :NAME "InvalidName"
- :MEMBERS NIL)
+ :id "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
+ :name "InvalidName"
+ :members NIL)
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
- :ID "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
- :NAME "CannotProceed"
- :MEMBERS (("cxt" (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT))
+ :id "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
+ :name "CannotProceed"
+ :members (("cxt" (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT))
            ("rest_of_name" (SYMBOL-TYPECODE 'COSNAMING:NAME))))
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXT/NOTFOUND
- :ID "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
- :NAME "NotFound"
- :MEMBERS (("why" (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT/NOTFOUNDREASON))
+ :id "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
+ :name "NotFound"
+ :members (("why" (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT/NOTFOUNDREASON))
            ("rest_of_name" (SYMBOL-TYPECODE 'COSNAMING:NAME))))
 
 (DEFINE-ENUM COSNAMING:NAMINGCONTEXT/NOTFOUNDREASON
- :ID "IDL:omg.org/CosNaming/NamingContext/NotFoundReason:1.0"
- :NAME "NotFoundReason"
- :MEMBERS ("missing_node" "not_context" "not_object"))
+ :id "IDL:omg.org/CosNaming/NamingContext/NotFoundReason:1.0"
+ :name "NotFoundReason"
+ :members ("missing_node" "not_context" "not_object"))
 
 (DEFINE-INTERFACE COSNAMING:NAMINGCONTEXTEXT (COSNAMING:NAMINGCONTEXT)
- :PROXY (COSNAMING:NAMINGCONTEXTEXT-PROXY COSNAMING:NAMINGCONTEXTEXT
+ :proxy (COSNAMING:NAMINGCONTEXTEXT-PROXY COSNAMING:NAMINGCONTEXTEXT
          COSNAMING:NAMINGCONTEXT-PROXY)
- :ID "IDL:omg.org/CosNaming/NamingContextExt:1.0"
- :NAME "NamingContextExt")
+ :id "IDL:omg.org/CosNaming/NamingContextExt:1.0"
+ :name "NamingContextExt")
 
 (DEFINE-METHOD "RESOLVE_STR" ((OBJ COSNAMING:NAMINGCONTEXTEXT-PROXY) _N)
   (STATIC-CALL ("resolve_str" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _N OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL OMG.ORG/CORBA:tc_object INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/NOTFOUND
+   :output ((OUTPUT) (MARSHAL-STRING _N OUTPUT))
+   :input ((INPUT) (UNMARSHAL OMG.ORG/CORBA:tc_object INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/NOTFOUND
                  COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME
                  COSNAMING:NAMINGCONTEXT/ALREADYBOUND)))
 
 (DEFINE-METHOD "TO_URL" ((OBJ COSNAMING:NAMINGCONTEXTEXT-PROXY) _ADDR _SN)
   (STATIC-CALL ("to_url" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ADDR OUTPUT) (MARSHAL-STRING _SN OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL-STRING INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXTEXT/INVALIDADDRESS
+   :output ((OUTPUT) (MARSHAL-STRING _ADDR OUTPUT) (MARSHAL-STRING _SN OUTPUT))
+   :input ((INPUT) (UNMARSHAL-STRING INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXTEXT/INVALIDADDRESS
                  COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-USER-EXCEPTION COSNAMING:NAMINGCONTEXTEXT/INVALIDADDRESS
- :ID "IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0"
- :NAME "InvalidAddress"
- :MEMBERS NIL)
+ :id "IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0"
+ :name "InvalidAddress"
+ :members NIL)
 
 (DEFINE-METHOD "TO_NAME" ((OBJ COSNAMING:NAMINGCONTEXTEXT-PROXY) _SN)
   (STATIC-CALL ("to_name" OBJ)
-   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SN OUTPUT))
-   :INPUT ((INPUT)
+   :output ((OUTPUT) (MARSHAL-STRING _SN OUTPUT))
+   :input ((INPUT)
            (UNMARSHAL-SEQUENCE
-             (LAMBDA (BUFFER) (STRUCT-READ 'COSNAMING:NAMECOMPONENT BUFFER))
+             (lambda (buffer) (STRUCT-READ 'COSNAMING:NAMECOMPONENT BUFFER))
              INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
+   :exceptions (COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-METHOD "TO_STRING" ((OBJ COSNAMING:NAMINGCONTEXTEXT-PROXY) _N)
   (STATIC-CALL ("to_string" OBJ)
-   :OUTPUT ((OUTPUT)
+   :output ((OUTPUT)
             (MARSHAL-SEQUENCE
               _N
-              (LAMBDA (OBJ BUFFER)
+              (lambda (obj buffer)
                 (STRUCT-WRITE OBJ 'COSNAMING:NAMECOMPONENT BUFFER))
               OUTPUT))
-   :INPUT ((INPUT) (UNMARSHAL-STRING INPUT))
-   :EXCEPTIONS (COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
+   :input ((INPUT) (UNMARSHAL-STRING INPUT))
+   :exceptions (COSNAMING:NAMINGCONTEXT/INVALIDNAME)))
 
 (DEFINE-ALIAS COSNAMING:NAMINGCONTEXTEXT/URLSTRING
- :ID "IDL:omg.org/CosNaming/NamingContextExt/URLString:1.0"
- :NAME "URLString"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CosNaming/NamingContextExt/URLString:1.0"
+ :name "URLString"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-ALIAS COSNAMING:NAMINGCONTEXTEXT/ADDRESS
- :ID "IDL:omg.org/CosNaming/NamingContextExt/Address:1.0"
- :NAME "Address"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CosNaming/NamingContextExt/Address:1.0"
+ :name "Address"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)
 
 (DEFINE-ALIAS COSNAMING:NAMINGCONTEXTEXT/STRINGNAME
- :ID "IDL:omg.org/CosNaming/NamingContextExt/StringName:1.0"
- :NAME "StringName"
- :TYPE OMG.ORG/CORBA:STRING
- :TYPECODE OMG.ORG/CORBA:TC_STRING)
+ :id "IDL:omg.org/CosNaming/NamingContextExt/StringName:1.0"
+ :name "StringName"
+ :type OMG.ORG/CORBA:STRING
+ :typecode OMG.ORG/CORBA:TC_STRING)

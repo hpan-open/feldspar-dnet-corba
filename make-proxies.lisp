@@ -18,9 +18,9 @@
                            op::_get_domain_managers
                            op::_set_policy_overrides))
         (let ((name (string-downcase (symbol-name op))))
-          (eval `(defmethod ,op ((obj CORBA:Proxy) &rest args)
+          (eval `(defmethod ,op ((obj corba:proxy) &rest args)
                    (%invoke ,name obj args)))
-          (eval `(defmethod (setf ,op) (val (obj CORBA:Proxy))
+          (eval `(defmethod (setf ,op) (val (obj corba:proxy))
                    (invoke obj ,(concatenate 'string "_set_" name) val))))))))
 
 (make-all-proxies)

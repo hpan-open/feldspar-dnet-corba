@@ -7,10 +7,10 @@
       (loop for x in l
             for kind = (op:def_kind x)
             for f = nil then t
-            do (when f (pprint-newline (if (eq k :dk_Interface)
+            do (when f (pprint-newline (if (eq k :dk_interface)
                                          :fill :mandatory)))
             (format *standard-output* "~A ~S  "
                     (op:name x) kind)
-            (when (eq kind :dk_Module)
+            (when (eq kind :dk_module)
               (pprint-newline :mandatory)
               (describe-repo x))))))

@@ -3,7 +3,7 @@
 (defparameter *str-stream-idef*
     (lookup-name "Streams_0::str_stream"))
 
-(defclass str-stream-impl (servant)
+(defclass STR-STREAM-IMPL (servant)
   ((acc :initform ""))
   (:default-initargs
       :interface-id (op:id *str-stream-idef*)

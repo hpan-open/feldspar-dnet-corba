@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defclass idl-compiler () 
+(defclass IDL-COMPILER () 
   ((include-directories :initform *default-include-directories*
                         :initarg :include-directories
                         :accessor include-directories)))
@@ -14,7 +14,7 @@
 
 (defvar *default-exclude* '("::CORBA"))
 
-(defun CORBA:IDL (file &key print (eval t) 
+(defun corba:idl (file &key print (eval t) 
                          only (exclude *default-exclude*)
                          (skeleton t)
                          (compiler *default-idl-compiler*))

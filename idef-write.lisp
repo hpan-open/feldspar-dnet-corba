@@ -8,7 +8,7 @@ This guides the use of local or absolute names.")
 
 
 
-(defmethod gen-iref ((pdef CORBA:PrimitiveDef))
+(defmethod gen-iref ((pdef corba:primitivedef))
   (ecase (op:kind pdef)
     (:pk_void 'void)
     (:pk_short 'short)
@@ -21,7 +21,7 @@ This guides the use of local or absolute names.")
     (:pk_char 'char)
     (:pk_octet 'octet)
     (:pk_any 'any)
-    (:pk_TypeCode 'TypeCode)
+    (:pk_typecode 'TypeCode)
     (:pk_string 'string)
     (:pk_objref 'object)
     (:pk_longlong 'longlong)
@@ -30,21 +30,21 @@ This guides the use of local or absolute names.")
     (:pk_wchar 'wchar)
     (:pk_wstring 'wstring)))
 
-(defmethod gen-iref ((idef CORBA:Contained))
+(defmethod gen-iref ((idef corba:contained))
   (if (eq (op:defined_in idef) *idef-write-container*)
       (op:name idef)
     (op:absolute_name idef)))
 
 
-(defmethod gen-iref ((seq CORBA:SequenceDef))
+(defmethod gen-iref ((seq corba:sequencedef))
   `(sequence ,(gen-iref (op:element_type_def seq))
              ,(op:bound seq)))
 
-(defmethod gen-iref ((seq CORBA:ArrayDef))
+(defmethod gen-iref ((seq corba:arraydef))
   `(array ,(gen-iref (op:element_type_def seq))
           ,(op:length seq)))
 
-(defmethod default-repoid ((obj CORBA:Contained) &optional prefix)
+(defmethod default-repoid ((obj corba:contained) &optional prefix)
   (let ((names (list ":" (op:version obj))))
     (loop for c = obj then (op:defined_in c)
         while (typep c 'CORBA:Contained)
@@ -65,13 +65,13 @@ This guides the use of local or absolute names.")
      (list :id (op:id obj)))))
 
 
-(defmethod gen-idef ((tdef CORBA:AliasDef))
+(defmethod gen-idef ((tdef corba:aliasdef))
   `(define-type ,(op:name tdef)
        ,(gen-iref (op:original_type_def tdef))))
 
 
 ;;    (define-attribute "name" string :readonly t)
-(defmethod gen-idef ((adef CORBA:AttributeDef))
+(defmethod gen-idef ((adef corba:attributedef))
   `(define-attribute ,(op:name adef)
        ,(gen-iref (op:type_def adef))
      ,@(if (eq (op:mode adef) :attr_readonly)
@@ -79,7 +79,7 @@ This guides the use of local or absolute names.")
      ,@ (contained-id-info adef)))
 
 
-(defmethod gen-idef ((odef CORBA:OperationDef))
+(defmethod gen-idef ((odef corba:operationdef))
   `(define-operation ,(op:name odef)
        ,(map 'list (lambda (param)
                      (list (op:mode param)
@@ -92,7 +92,7 @@ This guides the use of local or absolute names.")
 
 
 
-(defmethod gen-idef ((idef CORBA:InterfaceDef))
+(defmethod gen-idef ((idef corba:interfacedef))
   (let ((*idef-write-container* idef))
     `(define-interface ,(op:name idef) 
          (
@@ -102,13 +102,13 @@ This guides the use of local or absolute names.")
           ,@(contained-id-info idef))
        ,@(map 'list 'gen-idef (op:contents idef :dk_all t)))))
 
-(defmethod gen-idef ((mdef CORBA:ModuleDef))
+(defmethod gen-idef ((mdef corba:moduledef))
   (let ((*idef-write-container* mdef))
     `(define-module ,(op:name mdef) 
          (,@(contained-id-info mdef))
        ,@(map 'list 'gen-idef (op:contents mdef :dk_all t)))))
 
-(defmethod gen-idef ((sdef CORBA:StructDef))
+(defmethod gen-idef ((sdef corba:structdef))
   `(define-struct ,(op:name sdef) 
        ,(map 'list 
           (lambda (smember)
@@ -117,12 +117,12 @@ This guides the use of local or absolute names.")
           (op:members sdef))
      ,@(contained-id-info sdef)))
 
-(defmethod gen-idef ((enum CORBA:EnumDef))
+(defmethod gen-idef ((enum corba:enumdef))
   `(define-enum ,(op:name enum) 
        ,(coerce (op:members enum) 'list)
      ,@(contained-id-info enum)))
 
-(defmethod gen-idef ((union CORBA:UnionDef))
+(defmethod gen-idef ((union corba:uniondef))
   `(define-union ,(op:name union) 
        ,(gen-iref (op:discriminator_type_def union))
      ,(map 'list  
@@ -137,7 +137,7 @@ This guides the use of local or absolute names.")
         (op:members union))
      ,@(contained-id-info union)))
 
-(defmethod gen-idef ((exception CORBA:ExceptionDef))
+(defmethod gen-idef ((exception corba:exceptiondef))
   `(define-exception ,(op:name exception) 
        ,(map 'list  
           (lambda (smember)
@@ -146,7 +146,7 @@ This guides the use of local or absolute names.")
           (op:members exception))
      ,@(contained-id-info exception)))
 
-(defmethod gen-idef ((const CORBA:ConstantDef))
+(defmethod gen-idef ((const corba:constantdef))
   `(define-constant ,(op:name const) ,(gen-iref (op:type_def const))
      ,(op:value const)
      ,@(contained-id-info const)))

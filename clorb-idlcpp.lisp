@@ -11,7 +11,7 @@
 (defgeneric idl-repositoryid-pragmas (preprocessed-stream))
 
 
-(defclass preprocessed-stream ()
+(defclass PREPROCESSED-STREAM ()
   ((cpp-stream :initarg :cpp-stream :accessor cpp-stream)
    (file-stack
     :initform (list (list "" 0 ""))

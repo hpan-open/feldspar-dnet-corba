@@ -38,7 +38,7 @@
     (pprint-logical-block (*standard-output* l :per-line-prefix "| ")
       (loop for x in l
           for f = nil then t
-          do (when f (pprint-newline (if (eq k :dk_Interface)
+          do (when f (pprint-newline (if (eq k :dk_interface)
                                          :fill :mandatory)))
              (format *standard-output*
                      "~A ~S  "

@@ -2,7 +2,7 @@
 
 (in-package :clorb)
 
-(defclass CORBA:struct ()
+(defclass CORBA:STRUCT ()
   ())
 
 
@@ -16,10 +16,10 @@
 
 
 
-(defmethod any-typecode ((struct CORBA:struct))
+(defmethod any-typecode ((struct corba:struct))
   (symbol-typecode (class-name (class-of struct))))
 
-(defmethod any-value ((struct CORBA:struct))
+(defmethod any-value ((struct corba:struct))
   struct)
 
 
@@ -33,7 +33,7 @@
 
 ;;;; Generic struct
 
-(defclass generic-struct (CORBA:struct)
+(defclass GENERIC-STRUCT (corba:struct)
   ((typecode :initarg :typecode :reader generic-struct-typecode)
    (fields  :initarg :fields  :accessor fields)))
 
@@ -44,7 +44,7 @@
   (generic-struct-typecode struct))
 
 
-(defmethod print-object ((obj CORBA:struct) stream)
+(defmethod print-object ((obj corba:struct) stream)
   (cond (*print-readably*
          (format stream "#.(~S~:{ ~S '~S~})"
                  (class-name (class-of obj))
@@ -100,7 +100,7 @@ of fields can be defaulted (numbers and strings)."
 (defmethod struct-get ((struct generic-struct) (field symbol))
   (cdr (assoc field (fields struct))))
 
-(defmethod struct-get ((struct CORBA:struct) (field string))
+(defmethod struct-get ((struct corba:struct) (field string))
   (struct-get struct (key field)))
 
 #+unused-functions

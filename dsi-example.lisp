@@ -1,7 +1,7 @@
 
 (in-package :cl-user)
 
-(defclass my-class (PortableServer:DynamicImplementation)
+(defclass MY-CLASS (portableserver:dynamicimplementation)
   ())
 
 (corba:define-method primary_interface ((x my-class) oid poa)
@@ -34,7 +34,7 @@
                                      :any-value res)))))
     (t
      (op:set_exception r (make-condition 'CORBA:BAD_OPERATION
-                                         :completed :COMPLETED_NO)))))
+                                         :completed :completed_no)))))
 
 
 (defun setup-dsi-example ()

@@ -9,15 +9,15 @@
             indent
             (op:absolute_name x) kind id)
       (case kind
-           (:dk_Module 
-            (ir-add-all (op:contents x :dk_All t)
+           (:dk_module 
+            (ir-add-all (op:contents x :dk_all t)
                         (1+ level)))
-           (:dk_Interface
+           (:dk_interface
             (or (known-interface id)
                 (add-interface (interface-from-def x id)))
-            (ir-add-all (op:contents x :dk_All t)
+            (ir-add-all (op:contents x :dk_all t)
                         (1+ level)))
-           ((:dk_Struct :dk_Alias :dk_Exception :dk_Enum)
+           ((:dk_struct :dk_alias :dk_exception :dk_enum)
             ;; IDL - types
             (or (known-idl-type id)
                 (add-typecode-with-id id (typecode-from-def x))))))

@@ -10,7 +10,7 @@
 (defvar *empty-octets*
   (make-array 0 :element-type 'CORBA:octet))
 
-(defstruct buffer
+(defstruct BUFFER
   (octets *empty-octets* :type octets)
   (position    0         :type buffer-index)
   (byte-order  1         :type bit)

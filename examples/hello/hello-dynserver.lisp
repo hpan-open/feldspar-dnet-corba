@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(defclass hello-world-dsi (PortableServer:DynamicImplementation)
+(defclass HELLO-WORLD-DSI (portableserver:dynamicimplementation)
   ((motd :initform "Hello World")))
 
 (corba:define-method primary_interface ((servant hello-world-dsi) oid poa)
@@ -15,7 +15,7 @@
       (op:set_result request (slot-value self 'motd)))
      (t
       (op:set_exception request (make-condition 'CORBA:BAD_OPERATION
-                                  :completed :COMPLETED_NO))))))
+                                  :completed :completed_no))))))
 
 
 (defvar *hello-dynservant* nil)

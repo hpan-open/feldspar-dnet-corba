@@ -121,8 +121,8 @@ types will be converterd by this GF."))
 
 ;;;; Lisp mapping convenice functions
 
-(defun PortableServer:oid-to-string (oid)
+(defun portableserver:oid-to-string (oid)
   (map 'string #'code-char oid))
 
-(defun PortableServer:string-to-oid (string)
+(defun portableserver:string-to-oid (string)
   (to-object-id string))

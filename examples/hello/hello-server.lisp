@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(defclass hello-world (hello:world-servant)
+(defclass HELLO-WORLD (hello:world-servant)
   ((motd :initform "Hello World")))
 
 (corba:define-method greet ((self hello-world))

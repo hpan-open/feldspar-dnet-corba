@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.12 2003/02/24 17:37:42 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.13 2003/07/03 08:47:44 lenst Exp $
 
 (in-package :clorb)
 
@@ -27,7 +27,7 @@
 ;; To support the Object interface:
 ;;  op:_non_existent, op:_is_a, op:_get_interface
 
-(defclass PortableServer:Servant (CORBA:Object) ())
+(defclass PORTABLESERVER:SERVANT (corba:object) ())
 
 (define-method _default_POA ((servant PortableServer:servant))
   (root-POA))
@@ -35,16 +35,16 @@
 (define-method _non_existent ((servant PortableServer:servant))
   nil)
 
-(defmethod primary-interface ((servant PortableServer:servant) oid poa)
+(defmethod primary-interface ((servant portableserver:servant) oid poa)
   (declare (ignore oid poa))
   (object-id servant))
 
-(defmethod servant-invoke ((servant PortableServer:Servant) operation input handler)
+(defmethod servant-invoke ((servant portableserver:servant) operation input handler)
   (declare (ignore operation input handler))
   (error 'omg.org/corba:bad_operation
          :completed :completed_no))
 
-(defmethod servant-invoke :around ((servant PortableServer:Servant) operation input handler)
+(defmethod servant-invoke :around ((servant portableserver:servant) operation input handler)
   (cond ((string= operation "_locate") nil)
         ((string= operation "_is_a")
          (let ((output (get-normal-response handler)))
@@ -65,7 +65,7 @@
 
 ;;;; Class: DynamicImplementation
 
-(defclass PortableServer:DynamicImplementation (PortableServer:Servant)
+(defclass PORTABLESERVER:DYNAMICIMPLEMENTATION (portableserver:servant)
   ())
 
 ;; IDL/Lisp 6.3 DynamicImplementation
@@ -81,7 +81,7 @@
   (declare (ignore oid poa))
   (error 'CORBA:NO_IMPLEMENT))
 
-(defmethod servant-invoke ((servant PortableServer:DynamicImplementation) operation input handler)
+(defmethod servant-invoke ((servant portableserver:dynamicimplementation) operation input handler)
   (let ((req (make-instance 'CORBA:ServerRequest
                :operation operation 
                :input input )))
@@ -105,7 +105,7 @@
 
 
 
-(defmethod primary-interface ((servant PortableServer:DynamicImplementation) oid poa)
+(defmethod primary-interface ((servant portableserver:dynamicimplementation) oid poa)
   (op:primary_interface servant oid poa))
 
 

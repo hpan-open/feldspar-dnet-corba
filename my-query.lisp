@@ -1,6 +1,6 @@
 (in-package :clorb)
 
-(defclass qnode (servant)
+(defclass QNODE (servant)
   ()
   (:default-initargs
       :interface-id "IDL:MyQuery/Node:1.0"))

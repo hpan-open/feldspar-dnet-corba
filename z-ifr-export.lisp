@@ -10,7 +10,7 @@
 ;; (object-index oi obj) => integer
 ;; (index-object oi integer) => obj
 ;; --
-(defclass object-indexer ()
+(defclass OBJECT-INDEXER ()
   ((imap
     :initform (make-hash-table)
     :accessor imap)
@@ -81,27 +81,27 @@
 
 ;;;;
 
-(defclass translator ()
+(defclass TRANSLATOR ()
   ((wrapper :initarg :wrapper :reader wrapper)))
 
 (defmethod objmap ((x translator)) (objmap (wrapper x)))
 (defmethod the-poa ((x translator)) (the-poa (wrapper x)))
 
-(defclass local-translator (translator) ())
+(defclass LOCAL-TRANSLATOR (translator) ())
 
-(defmethod translate ((x local-translator) (obj CORBA:Proxy))
+(defmethod translate ((x local-translator) (obj corba:proxy))
   (index-object (objmap x) (oid-integer (op:reference_to_id (the-poa x) obj))))
 
-(defclass remote-translator (translator) ())
+(defclass REMOTE-TRANSLATOR (translator) ())
 
-(defmethod translate ((x remote-translator) (obj IRObject))
+(defmethod translate ((x remote-translator) (obj irobject))
   (op:create_reference_with_id (the-poa x)
                                (integer-oid (object-index (objmap x) obj))
                                (object-id obj)))
 
 ;;;;
 
-(defclass servant-wrapper (PortableServer:dynamicimplementation)
+(defclass SERVANT-WRAPPER (portableserver:dynamicimplementation)
   ((orb
     :initarg :orb
     :initform (orb_init)
@@ -154,16 +154,16 @@
             (sym (intern (string-upcase name) :op)))
         (case type
           (:setter
-           (assert (eq (op:def_kind def) :dk_Attribute))
+           (assert (eq (op:def_kind def) :dk_attribute))
            (values (fdefinition (list 'setf sym)) :setter
                    (list (corba:namedvalue :argument (corba:any :any-typecode (op:type def))
                                            :arg_modes ARG_IN))
                    CORBA:tc_void))
           (:getter
-           (assert (eq (op:def_kind def) :dk_Attribute))
+           (assert (eq (op:def_kind def) :dk_attribute))
            (values sym nil nil (op:type def)))
           (otherwise
-           (assert (eq (op:def_kind def) :dk_Operation))
+           (assert (eq (op:def_kind def) :dk_operation))
            (values sym nil (create-operation-list def) (op:result def))))))))
 
 (define-method invoke ((self servant-wrapper) r)

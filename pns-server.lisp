@@ -33,7 +33,7 @@
 
 (defvar *naming-poa* nil)
 
-(defclass naming-context (cosnaming:namingcontextext-servant)
+(defclass NAMING-CONTEXT (cosnaming:namingcontextext-servant)
   ((base :initarg :base :accessor nc-base)))
 
 (define-method _default_POA ((servant naming-context))
@@ -112,7 +112,7 @@
          (path (pns-path self component))
          type ior)
     (unless (probe-file path)
-      (not-found :MISSING_NODE n))
+      (not-found :missing_node n))
     (with-open-file (stream path :direction :input)
       (with-standard-io-syntax ()
         (setq type (read stream))
@@ -145,7 +145,7 @@
 
 
 (define-method bind_context ((self naming-context) n nc)
-  (pns-bind self n nc :NCONTEXT))
+  (pns-bind self n nc :ncontext))
 
 (define-method bind_new_context ((self naming-context) n)
   (if (= 1 (length n))
@@ -158,7 +158,7 @@
 
 (define-method bind ((self naming-context) n obj)
   (if (= 1 (length n))
-      (pns-bind self n obj :NOBJECT)
+      (pns-bind self n obj :nobject)
       (multiple-value-bind (next name)
           (pns-step self n)
         (op:bind next name obj))))
@@ -166,14 +166,14 @@
 
 (define-method rebind ((self naming-context) n obj)
   (if (= 1 (length n))
-      (pns-bind self n obj :NOBJECT t)
+      (pns-bind self n obj :nobject t)
       (multiple-value-bind (next name)
           (pns-step self n)
         (op:rebind next name obj))))
 
 (define-method rebind_context ((self naming-context) n nc)
   (if (= 1 (length n))
-      (pns-bind self n nc :NCONTEXT t)
+      (pns-bind self n nc :ncontext t)
       (multiple-value-bind (next name)
           (pns-step self n)
         (op:rebind_context next name nc))))
@@ -277,7 +277,7 @@
 
 ;;;; BindingIterator Servant
 
-(defclass binding-iterator (cosnaming:bindingiterator-servant)
+(defclass BINDING-ITERATOR (cosnaming:bindingiterator-servant)
   ((bindings :initarg :bindings
 	     :initform nil :accessor bindings)))
 
@@ -310,7 +310,7 @@
 
 ;;;; Setup the naming POA
 
-(defclass naming-manager (PortableServer:ServantActivator)
+(defclass NAMING-MANAGER (portableserver:servantactivator)
   ())
 
 (define-method incarnate ((m naming-manager) oid adapter)
@@ -323,7 +323,7 @@
 
 (defun setup-naming-poa ()
   (let* ((orb (CORBA:ORB_init))
-         (rootPOA (op:resolve_initial_references orb "RootPOA"))
+         (rootpoa (op:resolve_initial_references orb "RootPOA"))
          (policies
           (list (op:create_lifespan_policy rootPOA :persistent)
                 (op:create_servant_retention_policy rootPOA :retain)

@@ -12,7 +12,7 @@
                                         (:param_in "nb2" float))
           :result-type float)))))
 
-(defclass calc-impl (poa/rootPOA:ICalculator-servant)
+(defclass CALC-IMPL (poa/rootpoa:icalculator-servant)
   ())
 
 (corba:define-method add ((servant calc-impl) nb1 nb2)
