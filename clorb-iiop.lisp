@@ -19,17 +19,26 @@
 (DEFINE-STRUCT GIOP:VERSION
   :id "IDL:GIOP/Version:1.0"
   :name "Version"
-  :members (("major" OMG.ORG/CORBA:TC_OCTET MAJOR)
-            ("minor" OMG.ORG/CORBA:TC_OCTET MINOR)))
+  :members (("major" OMG.ORG/CORBA:TC_OCTET)
+            ("minor" OMG.ORG/CORBA:TC_OCTET)))
 
 (DEFINE-STRUCT GIOP:MESSAGEHEADER_1_0
   :id "IDL:GIOP/MessageHeader_1_0:1.0"
   :name "MessageHeader_1_0"
-  :members (("magic" (create-array-tc 4 OMG.ORG/CORBA:TC_CHAR) MAGIC)
-            ("GIOP_version" (SYMBOL-TYPECODE 'GIOP:VERSION) GIOP_VERSION)
-            ("byte_order" OMG.ORG/CORBA:TC_BOOLEAN BYTE_ORDER)
-            ("message_type" OMG.ORG/CORBA:TC_OCTET MESSAGE_TYPE)
-            ("message_size" OMG.ORG/CORBA:TC_ULONG MESSAGE_SIZE)))
+  :members (("magic" (create-array-tc 4 OMG.ORG/CORBA:TC_CHAR))
+            ("GIOP_version" (SYMBOL-TYPECODE 'GIOP:VERSION))
+            ("byte_order" OMG.ORG/CORBA:TC_BOOLEAN)
+            ("message_type" OMG.ORG/CORBA:TC_OCTET)
+            ("message_size" OMG.ORG/CORBA:TC_ULONG)))
+
+(DEFINE-STRUCT GIOP:MESSAGEHEADER_1_1
+ :ID "IDL:omg.org/GIOP/MessageHeader_1_1:1.0"
+ :NAME "MessageHeader_1_1"
+ :MEMBERS (("magic" (CREATE-ARRAY-TC 4 OMG.ORG/CORBA:TC_CHAR))
+           ("GIOP_version" (SYMBOL-TYPECODE 'GIOP:VERSION))
+           ("flags" OMG.ORG/CORBA:TC_OCTET)
+           ("message_type" OMG.ORG/CORBA:TC_OCTET)
+           ("message_size" OMG.ORG/CORBA:TC_ULONG)))
 
 (DEFINE-STRUCT GIOP:LOCATEREQUESTHEADER
  :id "IDL:GIOP/LocateRequestHeader:1.0"
@@ -131,21 +140,21 @@
 
 (defvar *default-trace-connection* nil)
 
-(defstruct CONNECTION
-  (read-buffer)
-  (read-callback)
-  (write-buffer)
-  (write-callback)
-  (io-descriptor)
-  (trace *default-trace-connection*)
-  (trace-send nil)
-  (trace-recv nil))
+(defclass Connection ()
+  ((read-buffer :initarg :read-buffer :accessor connection-read-buffer)
+   (read-callback :initarg :read-callback :accessor connection-read-callback)
+   (write-buffer :initarg :write-buffer :accessor connection-write-buffer)
+   (write-callback :initarg :write-callback :accessor connection-write-callback)
+   (io-descriptor :initarg :io-descriptor :initform nil :accessor connection-io-descriptor)
+   (trace :initarg :trace :initform *default-trace-connection* :accessor connection-trace)
+   (trace-send :initform nil :accessor connection-trace-send)
+   (trace-recv :initform nil :accessor connection-trace-recv)))
 
 
 (defvar *desc-conn* (make-hash-table))
 
 (defun make-associated-connection (desc)
-  (let* ((conn (make-connection :io-descriptor desc)))
+  (let* ((conn (make-instance 'Connection :io-descriptor desc)))
     (setf (gethash desc *desc-conn*) conn)
     conn))
 
@@ -376,9 +385,9 @@
   (lambda (desc)
     (io-descriptor-destroy desc)))
 
-(defvar *shortcut-in* (make-connection))
+(defvar *shortcut-in* (make-instance 'connection))
 
-(defvar *shortcut-out* (make-connection))
+(defvar *shortcut-out* (make-instance 'connection))
 
 (defun shortcut-transfer (from to)
   (when (and (connection-write-buffer from)
