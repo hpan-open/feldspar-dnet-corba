@@ -63,7 +63,7 @@
     (COSNAMING:BINDINGITERATOR OMG.ORG/CORBA:PROXY)
   NIL)
 
-(clorb::register-proxy-class "IDL:omg.org/CosNaming/BindingIterator:1.0"
+(register-proxy-class "IDL:omg.org/CosNaming/BindingIterator:1.0"
     'COSNAMING:BINDINGITERATOR-PROXY)
 
 (defmethod OMG.ORG/FEATURES:DESTROY
@@ -82,7 +82,7 @@
 (defclass COSNAMING:NAMINGCONTEXT-PROXY
     (COSNAMING:NAMINGCONTEXT OMG.ORG/CORBA:PROXY) NIL)
 
-(clorb::register-proxy-class "IDL:omg.org/CosNaming/NamingContext:1.0"
+(register-proxy-class "IDL:omg.org/CosNaming/NamingContext:1.0"
                       'COSNAMING:NAMINGCONTEXT-PROXY)
 
 (defmethod OMG.ORG/FEATURES:LIST
