@@ -118,7 +118,8 @@
                  :accessor object-raw-profiles)
    (profiles :initform nil :initarg :profiles :accessor object-profiles)
    (selected-profile :initform nil :accessor selected-profile)
-   (forward :initform nil :initarg :forward :accessor object-forward)))
+   (forward :initform nil :initarg :forward :accessor object-forward)
+   (forward-reset :initform nil :accessor object-forward-reset)))
 
 
 (defmethod print-object ((o corba:proxy) stream)
