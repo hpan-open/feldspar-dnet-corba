@@ -59,6 +59,7 @@
       (read-from-string string))))
 
 (defmethod load-repository ((self idl-compiler-impl) repository file)
+  (setf *current-idl-line* 0)
   (idef-read (convert-package (parse-file file))
              repository))
 
