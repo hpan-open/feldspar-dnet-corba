@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.7 2002/06/01 05:45:03 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.8 2002/10/08 18:04:48 lenst Exp $
 
 (in-package :clorb)
 
@@ -133,6 +133,27 @@ be bound to the server-request.")
                 (opdef-inparam-typecodes opdef)
                 (opdef-outparam-typecodes opdef))))))
 
+(defmethod find-opinfo ((interface interface-def) operation)
+  (multiple-value-bind (name type)
+      (analyze-operation-name operation)
+    (let ((def (op:lookup interface name))
+          (sym (intern (string-upcase name) :op)))
+      (case type
+        (:setter
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (values (fdefinition (list 'setf sym))
+                 (list (op:type def))
+                 nil))
+        (:getter
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (values sym
+                 nil
+                 (list (op:type def))))
+        (otherwise
+         (assert (eq (op:def_kind def) :dk_Operation))
+         (values sym
+                 (opdef-inparam-typecodes def)
+                 (opdef-outparam-typecodes def)))))))
 
 (defmethod servant-invoke ((servant auto-servant) sreq)
   (let* ((operation (server-request-operation sreq)))

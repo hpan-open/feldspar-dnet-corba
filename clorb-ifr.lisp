@@ -1,5 +1,5 @@
 ;;;; clorb-ifr.lisp -- An Interface Repository Implementation
-;; $Id: clorb-ifr.lisp,v 1.2 2002/10/05 14:01:46 lenst Exp $
+;; $Id: clorb-ifr.lisp,v 1.3 2002/10/08 18:04:48 lenst Exp $
 
 (in-package :clorb)
 
@@ -471,12 +471,10 @@
    :name (op:name def)
    :id   (subject-id def)
    :defined_in (subject-id (op:defined_in def))
-   :version "1.0"
-   :operations (map 'list
-                    #'operation-description
-                    (op:contents def :dk_Operation nil)  )
-   :attributes (map 'list
-                    #'describe-contained
+   :version (op:version def)
+   :operations (map 'list #'operation-description
+                    (op:contents def :dk_Operation nil))
+   :attributes (map 'list #'describe-contained
                     (op:contents def :dk_Attribute nil))
    :base_interfaces (map 'list #'subject-id
                          (op:base_interfaces def))
@@ -492,65 +490,13 @@
             (loop for x in (op:base_interfaces obj)
                 append (op:contents x limit-type nil)))))
 
-(defmethod find-opdef ((interface interface-def) operation)
-  "Find in INTERFACE the OPERATION and return the operation-def object."
-  ;; Compatibility with clorb-iir for use in auto-servants.
-  (multiple-value-bind (name type)
-      (analyze-operation-name operation)
-    (let ((def (op:lookup interface name)))
-      (case type
-        (:setter
-         (assert (eq (op:def_kind def) :dk_Attribute))
-         (make-setter-opdef operation def))
-        (:getter
-         (assert (eq (op:def_kind def) :dk_Attribute))
-         (make-getter-opdef operation def))
-        (otherwise
-         (assert (eq (op:def_kind def) :dk_Operation))
-         def)))))
 
 
-(defmethod find-opinfo ((interface interface-def) operation)
-  (multiple-value-bind (name type)
-      (analyze-operation-name operation)
-    (let ((def (op:lookup interface name))
-          (sym (intern (string-upcase name) :op)))
-      (case type
-        (:setter
-         (assert (eq (op:def_kind def) :dk_Attribute))
-         (values (fdefinition (list 'setf sym))
-                 (list (op:type def))
-                 nil))
-        (:getter
-         (assert (eq (op:def_kind def) :dk_Attribute))
-         (values sym
-                 nil
-                 (list (op:type def))))
-        (otherwise
-         (assert (eq (op:def_kind def) :dk_Operation))
-         (values sym
-                 (opdef-inparam-typecodes def)
-                 (opdef-outparam-typecodes def)))))))
 
 
-(defun analyze-operation-name (name)
-  (cond
-   ((< (length name) 6) name)
-   ((string= name "_get_" :end1 5)
-    (values (subseq name 5) :getter))
-   ((string= name "_set_" :end1 5)
-    (values (subseq name 5) :setter))
-   (t name)))
 
-(defun make-getter-opdef (name attdef)
-  (make-opdef
-   :name name
-   :result (op:type attdef)))
 
-(defun make-setter-opdef (name attdef)
-  (make-opdef
-   :name name
-   :params (make-param "" :param_in (op:type attdef))))
+
 
 ;;;  AttributeDef create_attribute (
 ;;;                                 in RepositoryId id,

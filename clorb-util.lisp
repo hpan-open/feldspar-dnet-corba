@@ -7,7 +7,6 @@
 
 ;;;; Easy DII
 
-;; Interface:
 (defun invoke (obj op &rest args)
   (request-funcall
    (object-create-request obj op args)))
@@ -32,17 +31,58 @@
         (error exc)))))
 
 
+(defun analyze-operation-name (name)
+  (cond
+   ((< (length name) 6) name)
+   ((string= name "_get_" :end1 5)
+    (values (subseq name 5) :getter))
+   ((string= name "_set_" :end1 5)
+    (values (subseq name 5) :setter))
+   (t name)))
+
+(defmethod find-opdef ((interface CORBA:InterfaceDef) operation)
+  "Find in INTERFACE the OPERATION and return the opdef object."
+  ;; Compatibility with clorb-iir for use in dii and auto-servants.
+  (multiple-value-bind (name type)
+      (analyze-operation-name operation)
+    (let ((def (op:lookup interface name)))
+      (case type
+        (:setter
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (make-setter-opdef operation def))
+        (:getter
+         (assert (eq (op:def_kind def) :dk_Attribute))
+         (make-getter-opdef operation def))
+        (otherwise
+         (assert (eq (op:def_kind def) :dk_Operation))
+         (make-opdef :name operation
+                     :params (op:params def)
+                     :result (omg.org/features:result def)
+                     :raises (map 'list #'op:type (op:exceptions def))))))))
+
+
 (defun object-opdef (object op)
   (let ((effective-id (object-id object)))
     (or (find-opdef *object-interface* op)
         (find-opdef (or (known-interface effective-id)
-                        (object-interface object)
                         (loop for rep in *repositories*
                               thereis (op:lookup_id (if (symbolp rep) (symbol-value rep) rep) effective-id))
+                        (object-interface object)
                         (get-interface effective-id)) 
                     op))))
 
-
+#|
+This operation, which creates a pseudo-object, is defined in the ORB interface.
+void create_operation_list ( // PIDL
+in OperationDef oper, // operation
+out NVList new_list // argument definitions
+);
+This operation returns an NVList initialized with the argument descriptions for a given
+operation. The information is returned in a form that may be used in Dynamic
+Invocation requests. The arguments are returned in the same order as they were defined
+for the operation.
+The list free operation is used to free the returned information.
+|#
 (defun object-create-request (object op args)
   (let* ((opdef (object-opdef object op)))
     (unless opdef
