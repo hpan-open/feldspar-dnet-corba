@@ -79,7 +79,9 @@
     names))
 
 (defun get-ns ()
-  (op::resolve_initial_references (orb_init) "NameService"))
+  (object-narrow
+   (op::resolve_initial_references (orb_init) "NameService")
+   "IDL:omg.org/CosNaming/NamingContext:1.0"))
 
 (defun resolve (&rest names)
   (invoke (get-ns) "resolve" (ns-name names)))
