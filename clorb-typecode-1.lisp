@@ -183,34 +183,54 @@
     (otherwise `(elt (typecode-params ,x) ,i))))
 
 
-(defmacro define-typecode (class-name &key kind cdr-syntax params member-params constant extra-slots)
+(defmacro define-typecode (class-name &key kind cdr-syntax params member-params 
+                                       constant extra-slots share (shared-params 0))
   `(progn
-     (defclass ,class-name (CORBA:TypeCode)
+     (defclass ,class-name (,(or share 'CORBA:TypeCode))
        ,extra-slots)
-     (setf (get ',kind 'tk-params) ',cdr-syntax)
-     (setf (get ',kind 'tk-class) ',class-name)
+     ,@(if kind
+         `((setf (get ',kind 'tk-params) ',cdr-syntax)
+           (setf (get ',kind 'tk-class) ',class-name)
+           ,(make-compact-params class-name params member-params)))
      ,@(loop for param in params
              for i from 0
+             unless (< i shared-params)
              collect (if (eq param :members)
                        `(defmethod tc-members ((tc ,class-name))
                           (tcp-elt tc ,i))
                        `(define-method ,param ((tc ,class-name))
                           (tcp-elt tc ,i))))
      ,@(cond ((consp member-params)
-              (loop for mp in member-params 
+              (loop for mp in member-params
                     for i from 0
                     collect `(define-method ,mp ((tc ,class-name) index)
                                (elt (elt (tc-members tc) index) ,i))))
              ((null member-params) nil)
              ((symbolp member-params)
               `((define-method ,member-params ((tc ,class-name) index)
-                 (elt (tc-members tc) index)))))
-     ,(make-compact-params class-name params member-params)
+                  (elt (tc-members tc) index)))))
      ,@(if constant
          `((defparameter ,(if (consp constant) (car constant) constant)
              (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
                                                       (cdr constant)))))))))
 
+
+
+(defmacro with-cache-slot ((object slot &key 
+                                   (dont-cache-types nil)
+                                   (cache-types t))
+                           &body body)
+  (let ((objvar (gensym)))
+    `(let ((,objvar ,object))
+       (if (slot-boundp ,objvar ',slot)
+         (slot-value ,objvar ',slot)
+         (let ((new-value (progn ,@body)))
+           (typecase new-value
+             ,@(if dont-cache-types
+                 `((,dont-cache-types new-value)))
+             (,cache-types (setf (slot-value ,objvar ',slot) new-value))
+             ,@(if (not (eql cache-types t))
+                 `((t new-value)))))))))
 
 
 
@@ -255,6 +275,9 @@
 (defun ifr-id-symbol (id)
   "Return the scoped symbol for a known interface repository ID."
   (gethash id *ifr-id-symbol*))
+
+(defun typecode-symbol (tc)
+  (ifr-id-symbol (op:id tc)))
 
 (defun set-symbol-ifr-id (symbol id)
   (setf (gethash id *ifr-id-symbol*) symbol)

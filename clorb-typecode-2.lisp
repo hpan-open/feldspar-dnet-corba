@@ -134,47 +134,6 @@
               (let ((digit (logand octet #xF)))
                 (cond ((< digit 10) (accumulate digit))
                       ((= digit #xD) (setf n (- n))))))))))))
-      
-
-
-;;;; Objref
-
-(define-typecode objref-typecode
-  :kind :tk_objref
-  :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name)
-  :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
-
-(defmethod unmarshal ((tc objref-typecode) buffer)
-  (unmarshal-object buffer (op:id tc)))
-
-
-
-;;;; Enum
-
-(define-typecode enum-typecode
-  :kind :tk_enum
-  :params (id name :members)
-  :cdr-syntax (complex :tk_string :tk_string (sequence :tk_string))
-  :member-params member_name)
-
-(defmethod marshal (arg (enum-tc enum-typecode) buffer)
-  (declare (optimize speed))
-  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
-  (let ((symbols (tc-keywords enum-tc)))
-    (marshal-ulong 
-     (if (integerp arg)
-         arg
-       (or (position arg symbols)
-           (error 'type-error 
-                  :datum arg 
-                  :expected-type (concatenate 'list '(member) symbols))))
-     buffer)))
-
-(defmethod unmarshal ((tc enum-typecode) buffer)
-  (let ((index (unmarshal-ulong buffer)))
-    (elt (tc-keywords tc) index)))
-
 
 
 
@@ -218,6 +177,7 @@
   :constant (corba:tc_wstring 0))
 
 
+
 ;;;; Array
 
 (define-typecode array-typecode
@@ -244,10 +204,64 @@
 
 
 
+;;;; abstract class named-typecode
+
+(define-typecode named-typecode
+  :params (id name))
+
+
+
+;;;; Objref
+
+(define-typecode objref-typecode
+  :kind :tk_objref
+  :share named-typecode
+  :shared-params 2
+  :cdr-syntax (complex :tk_string :tk_string)
+  :params (id name)
+  :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
+
+(defmethod unmarshal ((tc objref-typecode) buffer)
+  (unmarshal-object buffer (op:id tc)))
+
+
+
+;;;; Enum
+
+(define-typecode enum-typecode
+  :kind :tk_enum
+  :share named-typecode
+  :shared-params 2
+  :params (id name :members)
+  :cdr-syntax (complex :tk_string :tk_string (sequence :tk_string))
+  :member-params member_name)
+
+(defmethod marshal (arg (enum-tc enum-typecode) buffer)
+  (declare (optimize speed))
+  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
+  (let ((symbols (tc-keywords enum-tc)))
+    (marshal-ulong 
+     (if (integerp arg)
+         arg
+       (or (position arg symbols)
+           (error 'type-error 
+                  :datum arg 
+                  :expected-type (concatenate 'list '(member) symbols))))
+     buffer)))
+
+(defmethod unmarshal ((tc enum-typecode) buffer)
+  (let ((index (unmarshal-ulong buffer)))
+    (elt (tc-keywords tc) index)))
+
+
+
+
 ;;;; Alias
 
 (define-typecode alias-typecode
   :kind :tk_alias
+  :share named-typecode
+  :shared-params 2
   :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
   :params (id name content_type))
 
@@ -396,38 +410,30 @@
                  (coerce members 'vector)))
 
 
+
 ;;;; Convenience ?
 
+
+(defun tc-member-names (tc)
+  (loop for i below (op:member_count tc) collect (op:member_name tc i)))
+
+
 (defun tc-keywords (tc)
-  (unless (slot-boundp tc 'keywords)
-    (setf (slot-value tc 'keywords)
-          (map 'vector 
-               (ecase (typecode-kind tc)
-                 ((:tk_struct :tk_except)
-                  (lambda (m) (key (first m))))
-                 ((:tk_union)
-                  (lambda (m) (key (second m))))
-                 ((:tk_enum)
-                  #'key))
-               (tc-members tc))))
-  (slot-value tc 'keywords))
+  (with-cache-slot (tc keywords)
+    (map 'vector #'key (tc-member-names tc))))
 
 
-(defun tc-features (tc)
-  ;; Return a vector of feature symbols for the members.
-  ;; (FIXME: why vector?)
-  ;; Works with struct and except.
-  ;; Union ?
-  ;; Enum - seems pointless (FIXME?)
-  (map 'vector
-       (ecase (typecode-kind tc)
-         ((:tk_struct :tk_except)
-          (lambda (m) (feature (first m))))
-         ((:tk_union)
-          (lambda (m) (feature (second m))))
-         ((:tk_enum)
-          #'feature))
-       (tc-members tc)))
+(defun tc-feature-symbols (tc)
+  ;; Return a list of feature symbols for the members.
+  (if (slot-exists-p tc 'feature-symbols)
+    (with-cache-slot (tc feature-symbols)
+      (mapcar #'feature (tc-member-names tc)))
+    (mapcar #'feature (tc-member-names tc))))
+
+(defun tc-member-types (tc)
+  (with-cache-slot (tc member-types)
+    (loop for i from 0 below (op:member_count tc)
+          collect (op:member_type tc i))))
 
 
 (defun arbritary-value (tc)

@@ -7,7 +7,9 @@
   :kind :tk_except
   :cdr-syntax (complex :tk_string :tk_string (sequence (:tk_string :tk_typecode)))
   :params (id name :members)
-  :member-params (member_name member_type))
+  :member-params (member_name member_type)
+  :share named-typecode :shared-params 2
+  :extra-slots (member-types feature-symbols))
 
 
 (defun create-exception-tc (id name members)
@@ -95,6 +97,7 @@ Members on form: (name TypeCode)"
                    (values :initarg :values :reader unknown-exception-values)))
 
 
+#+unused-methods
 (defmethod all-fields ((exc userexception))
   (map 'list
        (lambda (member) (funcall (feature (first member)) exc))
@@ -124,7 +127,7 @@ Members on form: (name TypeCode)"
   (let* ((id (op:id typecode))
          (class (id-exception-class id))
          (initargs 
-          (loop for (nil tc) across (tc-members typecode)
+          (loop for tc in (tc-member-types typecode)
                 for key across (tc-keywords typecode)
                 collect key
                 collect (unmarshal tc buffer))))
@@ -136,6 +139,6 @@ Members on form: (name TypeCode)"
 
 (defmethod marshal (arg (tc except-typecode) buffer)
   (marshal-string (op:id tc) buffer)
-  (let ((values (all-fields arg)))
-    (doseq (member (tc-members tc))
-      (marshal (pop values) (second member) buffer))))
+  (loop for type in (tc-member-types tc)
+        for feature in (tc-feature-symbols tc)
+        do (marshal (funcall feature arg) type buffer)))

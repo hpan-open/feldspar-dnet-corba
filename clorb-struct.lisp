@@ -11,7 +11,9 @@
   :cdr-syntax (complex :tk_string :tk_string
                        (sequence (:tk_string :tk_typecode)))
   :params (id name :members)
-  :member-params (member_name member_type))
+  :member-params (member_name member_type)
+  :share named-typecode :shared-params 2
+  :extra-slots (member-types feature-symbols))
 
 
 (defun create-struct-tc (id name members)
@@ -133,8 +135,7 @@ of fields can be defaulted (numbers and strings)."
 
 
 (defmethod unmarshal ((tc struct-typecode) buffer)
-  (let* ((id (op:id tc))
-         (symbol (ifr-id-symbol id)))
+  (let* ((symbol (typecode-symbol tc)))
     (if symbol 
       (struct-read symbol buffer)
       (unmarshal-struct-2 symbol tc buffer))))
@@ -147,7 +148,7 @@ of fields can be defaulted (numbers and strings)."
             (lambda (&rest fields) (make-generic-struct tc fields)))))
     (apply constructor
            (loop for key across (tc-keywords tc) 
-                 for (nil tc) across (tc-members tc)
+                 for tc in (tc-member-types tc)
                  collect key
                  collect (unmarshal tc buffer)))))
 
@@ -157,7 +158,12 @@ of fields can be defaulted (numbers and strings)."
 
 
 (defmethod marshal (struct (typecode struct-typecode) buffer)
-  (loop for (nil tc) across (tc-members typecode)
+  (loop for tc in (tc-member-types typecode)
+        for feature in (tc-feature-symbols typecode)
+        do (marshal (slot-value struct feature) tc buffer)))
+
+(defmethod marshal ((struct generic-struct) (typecode struct-typecode) buffer)
+  (loop for tc in (tc-member-types typecode)
         for name across (tc-keywords typecode)
         do (marshal (struct-get struct name) tc buffer)))
 
