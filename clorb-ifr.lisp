@@ -1,5 +1,5 @@
 ;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: local-ir.lisp,v 1.18 2002/10/05 11:18:09 lenst Exp $
+;; $Id: clorb-ifr.lisp,v 1.1 2002/10/05 13:56:57 lenst Exp $
 
 (in-package :clorb)
 
