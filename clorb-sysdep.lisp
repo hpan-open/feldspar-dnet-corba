@@ -591,23 +591,26 @@ Returns select result to be used in getting status for streams."
 
 ;;;; Running external programs
 
-(defun shell-to-string-or-stream (command)
+(defun shell-to-stream (command stream)
+  (%SYSDEP
+   "execute shell command with output to stream"
+   #+openmcl
+   (ccl:run-program "/bin/bash" (list "-c" command) :output stream)
+   #+cmu
+   (ext:run-program "/bin/sh" (list "-c" command) :output stream)
+   #+sbcl
+   (sb-ext:run-program "/bin/sh" (list "-c" command) :output stream)
+   ;; Default
+   (error "No implementation for SHELL-TO-STREAM")))
+
+
+(defun shell-to-string (command)
   (%SYSDEP
    "Run a command in shell with output to string"
 
-   #+openmcl
+   #+(or cmu openmcl sbcl)
    (with-output-to-string (out)
-     (ccl:run-program "/bin/bash" (list "-c" command)
-                      :output out))
-
-   #+cmu
-   (with-output-to-string (out)
-     (ext:run-program "/bin/sh" (list "-c" command)
-                      :output out))
-   #+sbcl
-   (with-output-to-string (out)
-     (sb-ext:run-program "/bin/sh" (list "-c" command)
-                         :output out))   
+     (shell-to-stream command out))
 
    #+clorb-mcl-bsd
    (bsd:system-command command)
@@ -619,8 +622,12 @@ Returns select result to be used in getting status for streams."
      (substitute #\Newline #\LineFeed string))
 
    #+clisp 
-   (make-pipe-input-stream command)
-   
+   (with-output-to-string (out)
+     (let ((shell-stream (make-pipe-input-stream command)))
+       (loop for c = (read-char shell-stream nil nil)
+           while c do (princ c out))
+       (close shell-stream)))
+
    #+excl
    (with-output-to-string (out)
      (multiple-value-bind (shell-stream error-stream process)
@@ -633,9 +640,7 @@ Returns select result to be used in getting status for streams."
        (close shell-stream)
        (when error-stream (close error-stream))))
    
-   ;; No default
-   ;; should perhaps signal error (runtime) instead of compile time error
-   ))
+   (error "No implementation for SHELL-TO-STRING")))
 
 
 (defun external-namestring (pathname)

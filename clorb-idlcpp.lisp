@@ -214,16 +214,10 @@
 
 
 (defun using-cpp-stream (file function &key include-directories)
-  (let ((s (shell-to-string-or-stream (cpp-command-string file include-directories))))
-    (cond ((stringp s)
-           (with-input-from-string (in s)
-             (let ((cpp (make-instance 'preprocessed-stream
-                          :cpp-stream in)))
-               (funcall function cpp))))
-          (t
-           (with-open-stream (in s)
-             (let ((cpp (make-instance 'preprocessed-stream
-                          :cpp-stream in)))
-               (funcall function cpp)))))))
+  (let ((s (shell-to-string (cpp-command-string file include-directories))))
+    (with-input-from-string (in s)
+      (let ((cpp (make-instance 'preprocessed-stream
+                   :cpp-stream in)))
+        (funcall function cpp)))))
 
 
