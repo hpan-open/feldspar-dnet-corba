@@ -39,6 +39,8 @@
 (defun use-quad-mcl-ns ()
   (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::quad.local.:4711/NameService")))
 
+(defun use-jacorb ()
+  (CORBA:ORB_init '("-ORBInitRef NameService=http://localhost/~lenst/NS_ref")))
 
 
 

@@ -9,7 +9,8 @@ clean:
 	$(MAKE) -C redpas clean
 
 clean-fasl:
-	-cd fasl && eval rm -f $(FASL) && rm -rf luna idlcomp redpas
+	rm -r fasl
+
 
 setmcl:
 	/Developer/Tools/SetFile -t TEXT -c CCL2 *.lisp
