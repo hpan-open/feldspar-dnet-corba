@@ -12,9 +12,6 @@
           ("**;*.*"      "CLORB:SRC;**;*.*" ))))
 
 
-(setf (logical-pathname-translations "PHOME")
-      '(("**;*.*"  "home:**;*.*")))
-
 ;;(require 'acl-socket)
 ;;#+use-my-idlparser (packer:require-package :net.cddr.redpas)
 

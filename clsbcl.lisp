@@ -19,7 +19,8 @@
 
 
 (load "clorb:src;clorb-files")
-;;(setq net.cddr.clorb.system:*source-pathname-defaults* (pathname "clorb:src;"))
+;;(setq net.cddr.clorb.system::*source-pathname-defaults* (pathname "clorb:src;"))
+(setq net.cddr.clorb.system::*binary-folder* "fasl")
 (net.cddr.clorb.system:reload)
 
 (load "clorb:src;examples;hello;auto")
