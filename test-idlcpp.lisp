@@ -158,9 +158,10 @@ bas bara" )
 
   (define-test "using-cpp-stream"
       (using-cpp-stream
-       (make-pathname :name "hello" :type "idl" 
-                      :directory '(:relative "examples" "hello")
-                      :defaults (truename *clorb-pathname-defaults*))
+       (merge-pathnames
+        (make-pathname :name "hello" :type "idl" 
+                       :directory '(:relative "examples" "hello"))
+        (truename *clorb-pathname-defaults*))
        (lambda (cpp)
          (ensure-typep (read-cpp-line cpp) 'string)
          (let ((file (current-file cpp)))
