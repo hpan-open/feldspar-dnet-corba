@@ -348,16 +348,19 @@
 (defun register-proxy-class (id class)
   (setf (gethash id *proxy-classes*) class))
 
-(defun object-narrow (obj id)
+(defun object-narrow (obj id &optional no-error)
   "Return an equivalent proxy with class for the repository id."
   (when (symbolp id)
     (setq id (symbol-ifr-id id)))
-  (assert (op:_is_a obj id))
-  (make-instance (find-proxy-class id)
-    :id id
-    :forward (object-forward obj)
-    :profiles (object-profiles obj)
-    :raw-profiles (object-raw-profiles obj)))
+  (cond ((op:_is_a obj id)
+         (make-instance (find-proxy-class id)
+                        :id id
+                        :forward (object-forward obj)
+                        :profiles (object-profiles obj)
+                        :raw-profiles (object-raw-profiles obj)))
+        (no-error nil)
+        (t
+         (error "Object of wrong type for narrowing"))))
 
 
 ;;; clorb-object.lisp ends here
