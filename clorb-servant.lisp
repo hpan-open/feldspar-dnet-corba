@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.6 2002/05/29 05:10:01 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.7 2002/06/01 05:45:03 lenst Exp $
 
 (in-package :clorb)
 
@@ -19,27 +19,13 @@
 (define-method _default_POA ((servant servant))
   (root-POA))
 
-(defgeneric servant-invoke (servant sreq))
+(defgeneric servant-invoke (servant sreq)
+  (:documentation "Called by the POA to perform an operation on the object"))
+
 (defgeneric primary-interface (servant oid poa))
 
 (define-method _non_existent ((servant servant))
   nil)
-
-(define-method _is_a ((servant servant) logical-type-id)
-  (or (equal logical-type-id "IDL:omg.org/CORBA/Object:1.0")
-      (equal logical-type-id (current-primary-interface servant))
-      (op:is_a (op::_get_interface servant) logical-type-id)))
-
-(define-method _get_interface ((servant servant))
-  (handler-case
-      (op:lookup_id (get-ir) (current-primary-interface servant))
-    (error ()
-      (error 'corba:intf_repos))))
-
-(defun current-primary-interface (servant)
-  (primary-interface servant 
-                     (poa-current-object-id *poa-current*)
-                     (poa-current-poa *poa-current*)))
 
 
 ;;;; Class: DynamicImplementation
@@ -139,7 +125,7 @@ be bound to the server-request.")
           (analyze-operation-name operation)
         (values (case type
                   (:setter 
-                   (fdefinition (list 'setf (operation-symbol name)))           )
+                   (fdefinition (list 'setf (operation-symbol name))))
                   (:getter 
                    (operation-symbol name))
                   (otherwise
