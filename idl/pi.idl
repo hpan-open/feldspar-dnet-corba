@@ -46,6 +46,11 @@ module PortableInterceptor {
 
   typedef CORBA::StringSeq RequestContext;
 
+  typedef unsigned long SlotId;
+
+  exception InvalidSlot {};
+
+
   local interface Interceptor {
     readonly attribute string name;
     void destroy();
@@ -122,17 +127,9 @@ module PortableInterceptor {
   };
 
 
-  typedef unsigned long SlotId;
-
-  exception InvalidSlot {};
-
   local interface Current : CORBA::Current {
     any get_slot (in SlotId id) raises (InvalidSlot);
     void set_slot (in SlotId id, in any data) raises (InvalidSlot);
-  };
-
-  local interface IORInterceptor : Interceptor {
-    void establish_components (in IORInfo info);
   };
 
   local interface IORInfo {
@@ -142,15 +139,14 @@ module PortableInterceptor {
                                        in IOP::ProfileId profile_id);
   };
 
+  local interface IORInterceptor : Interceptor {
+    void establish_components (in IORInfo info);
+  };
+
   local interface PolicyFactory {
     CORBA::Policy create_policy (in CORBA::PolicyType type,
                                  in any value)
       raises (CORBA::PolicyError);
-  };
-
-  local interface ORBInitializer {
-    void pre_init (in ORBInitInfo info);
-    void post_init (in ORBInitInfo info);
   };
 
   local interface ORBInitInfo {
@@ -175,6 +171,11 @@ module PortableInterceptor {
     SlotId allocate_slot_id ();
     void register_policy_factory (in CORBA::PolicyType type,
                                   in PolicyFactory policy_factory);
+  };
+
+  local interface ORBInitializer {
+    void pre_init (in ORBInitInfo info);
+    void post_init (in ORBInitInfo info);
   };
 
 };
