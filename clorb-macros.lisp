@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.6 2002/05/02 20:40:11 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.7 2002/05/24 10:05:47 lenst Exp $
 
 (in-package :clorb)
 
@@ -122,6 +122,8 @@
     (make-attspec :name name :readonly readonly :virtual virtual
                   :slotopts (nconc slotopts attspec))))
 
+(defmethod slot-updated ((obj t)))
+
 (defun attribute-ops (attspec class)
   (let* ((name
           (attspec-name attspec))
@@ -139,7 +141,9 @@
        (define-method ,opname ((obj ,class)) ,read-form)
        ,@(if (not (attspec-readonly attspec))
              `((defmethod (setf ,opname) (value (obj ,class))
-                 (setf ,read-form value))))
+                 (setf ,read-form value)
+                 (slot-updated obj)
+                 value)))
        (define-method ,giop-get-name ((obj ,class))
          (,opname obj))
        ,@(if (not (attspec-readonly attspec))
