@@ -126,16 +126,18 @@
    #+clisp
    (ext:socket-server-host socket)
 
-   #+(and digitool (not use-acl-socket))
+   #+(or Allegro use-acl-socket)
+   (socket:ipaddr-to-hostname (socket:local-host socket))
+
+   #+digitool
    (let ((host (ccl::stream-local-host (listener-stream socket))))
      (handler-case
-       (ccl::inet-host-name host)
+       (if (zerop host)
+         "localhost"
+         (ccl::inet-host-name host))
        (ccl::tcp-unknown-domain-name 
         nil
         (ccl::tcp-addr-to-str host))))
-
-   #+Allegro
-   (socket:ipaddr-to-hostname (socket:local-host socket))
 
    #+openmcl
    (or (ignore-errors (openmcl-socket:ipaddr-to-hostname
