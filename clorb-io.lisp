@@ -155,7 +155,7 @@
         (io-descriptor-write-limit desc) end)
   (when (and *io-multi-process* buf (> end start))
     (if (> (- end start) *io-background-write-treshold*)
-      (setf (io-descriptor-write-process desc) (start-process "write" #'io-desc-write desc))
+      (setf (io-descriptor-write-process desc) (start-process "CORBA write" #'io-desc-write desc))
       (io-desc-write desc))))
 
 
@@ -171,7 +171,7 @@
 (defun io-start-bg-listen ()
   (unless *io-listener-process*
     (setf *io-listener-process*
-          (start-process "listen" #'io-bg-listen))))
+          (start-process "CORBA listen" #'io-bg-listen))))
 
 
 (defun io-poll-desc (desc status)
@@ -225,7 +225,7 @@
                       (or (eq :broken (io-descriptor-status desc))                       
                           (if (listen (io-descriptor-stream desc))
                             (setf (io-descriptor-read-process desc)
-                                  (start-process "read" #'io-desc-read desc)))))
+                                  (start-process "CORBA read" #'io-desc-read desc)))))
                     *io-ready-for-read*)) )
   (let ((event (pop *io-event-queue*)))
     (values-list (or event '(nil)))))
