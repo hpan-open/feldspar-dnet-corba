@@ -2,7 +2,7 @@
 (setf
  *token-list*
  (let*
-     ((nl (coerce '(#\newline #\return) 'string))
+     (
       (digits '(+ digit))
       (int-literal `(seq ("123456789") (* ,digits)))
       (oct-literal '(seq "0" (* oct-digit)))
@@ -25,24 +25,18 @@
       (Fixed-Literal2 `(seq ,Digits "." ("dD")))
       (Fixed-Literal3 `(seq "." ,Digits ("dD")))
       (Fixed-Literal4 `(seq ,Digits "." ,Digits "dD"))
-      (leer '(+ (or #\tab #\space #\newline #\return)))
+      (leer '(+ (or #\tab #\space #\linefeed #\return)))
       (CORBA-Identifier `(seq alpha (* (or alpha-num ("_")))))
-      (comment `(or (seq "//" (^ #\newline) ,nl) 
-		   (seq "/*" (* (or (seq "*" (^ "/")) (^ "*")) "*/"))))
       (comment1 `(seq "/*" 
 		    (* (or (seq "*" (^ "/")) 
 			   (^ "*"))) 
 		    "*/"))
-      (comment2 `(seq "//" (* (^ #\newline #\return)) (or #\newline #\return)))
-      (pragma `(seq "#" (* (^ #\newline #\return)) (or #\newline #\return))))   
+      (comment2 `(seq "//" (* (^ #\return)) #\return))
+      )   
    
    `((,leer nil)
-     ;(,comment 'comment)
-     ((seq "#pragma" (+ " ") "prefix" (+ " ") "\"" (* (^ " ")) "\"" (* (^ #\newline #\return)) (or #\newline #\return)) nil);T_with-prefix)
-     (,pragma nil); pragma) 
      (,comment1 nil)
      (,comment2 nil)
-     ("qwertyasd" (pprint str))
      ("{" T_LEFT_CURLY_BRACKET)
      ("}" T_RIGHT_CURLY_BRACKET)
      ("[" T_LEFT_SQUARE_BRACKET)

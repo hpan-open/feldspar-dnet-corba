@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.13 2003/01/16 22:57:56 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.14 2003/02/22 17:33:48 lenst Exp $
 
 (in-package :clorb)
 
@@ -81,7 +81,7 @@
                   `((declare (ignore -args-))
                     ,@body))))))))
 
-#+MCL 
+#+(and MCL (not openmcl))
 (when (boundp 'ccl:*fred-special-indent-alist*)
   (pushnew '(define-method . ccl::defmethod-special-indent)
            ccl:*fred-special-indent-alist*

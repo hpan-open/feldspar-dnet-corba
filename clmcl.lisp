@@ -130,4 +130,9 @@
       (op:list ns 100))))
 
 
+#|
+(corba:idl #P"QuadX:Users:lenst:src:corba:interfaces:CosNaming.idl" :eval nil)
+
+|#
+
 

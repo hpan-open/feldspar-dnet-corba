@@ -90,8 +90,7 @@
 (defclass local-translator (translator) ())
 
 (defmethod translate ((x local-translator) (obj CORBA:Proxy))
-  (let ((index (oid-integer (op:reference_to_id (the-poa x) obj))))
-    (index-object (objmap x) index)))
+  (index-object (objmap x) (oid-integer (op:reference_to_id (the-poa x) obj))))
 
 (defclass remote-translator (translator) ())
 

@@ -1,6 +1,17 @@
 (in-package :clorb)
 
+
 (defvar *the-repository* )
+(defvar *container* )
+
+(defun convert-to-array (type-def array-spec)
+  (if array-spec
+    (op:create_array *the-repository*
+                     (car array-spec)
+                     (convert-to-array type-def (cdr array-spec)))
+    type-def))
+
+
 
 (defun named-create (container create-op name &rest args)
   (apply create-op container (repo-id name *container*) name "1.0"

@@ -79,12 +79,9 @@
        ,@(unless vars `((declare (ignorable args))))
        (let ,vars ,@decls ,@body ))))
 
-(defvar *container* (make-instance 'repository))
 
 (defun the-repository ()
-  (typecase *container*
-    (CORBA:Repository *container*)
-    (CORBA:Contained  (op:containing_repository *container*))))
+  *the-repository*)
 
 (defun primitive (kind)
   (op:get_primitive (the-repository) kind))
@@ -92,11 +89,6 @@
 (defun lookup-id (id)
   (op:lookup_id (the-repository) id))
 
-(defun convert-to-array (type-def array-spec)
-  (if array-spec
-    (op:create_array (the-repository) (car array-spec)
-                     (convert-to-array type-def (cdr array-spec)))
-    type-def))
 
 (defun decode-name (form)
   ;; (TYPE_ARRAY (IDENT "larr" "IDL:larr:1.0"   ) ((INTEGER 10)))
@@ -266,15 +258,17 @@
 
 (defclass libidl-compiler (idl-compiler) ())
 
-(defmethod load-repository ((comp libidl-compiler) *container* file) 
-  (process-list (get-idl-sexp file)))
+(defmethod load-repository ((comp libidl-compiler) repository file) 
+  (let ((*the-repository* repository)
+        (*container* repository))
+    (process-list (get-idl-sexp file))))
 
 (unless *default-idl-compiler*
   (setq *default-idl-compiler* (make-instance 'libidl-compiler)))
 
 
 #||
-(setq *container* (make-instance 'repository))
+(setq *container* (setq *the-repository* (make-instance 'repository)))
 (process-list (get-idl-sexp "trader.idl"))
 (process-list (get-idl-sexp "PortableServer.idl"))
 (process-list (get-idl-sexp "x-04.idl"))

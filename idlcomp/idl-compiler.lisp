@@ -10,7 +10,7 @@
   (lambda ()
     (let ((line (read-cpp-line cpp)))
       (and line
-           (concatenate 'string line (string #\newline))))))
+           (concatenate 'string line (string #\return))))))
 
 
 (defun parse-cpp-stream (cpp)
@@ -20,6 +20,7 @@
                        (make-cpp-line-reader cpp))))
     (labels ((tokenizer ()
                (let ((res (funcall base-tokenizer)))
+                 ;;(format t "Tokenizer: ~S~%" res)
                  (cond
                   ((not res) (cons nil nil))
                   ((not (cdr res)) (error "unkown token"))
@@ -52,14 +53,14 @@
   ())
 
 (defun convert-package (list)
-  (let ((string (with-output-to-string (s)
-                  (let ((*package* (find-package :clorb.idlcomp)))
-                    (print list s)))))
-    (let ((*package* (find-package :clorb)))
-      (read-from-string string))))
+  (with-standard-io-syntax
+    (let ((string (with-output-to-string (s)
+                    (let ((*package* (find-package :clorb.idlcomp)))
+                      (print list s)))))
+      (let ((*package* (find-package :clorb)))
+        (read-from-string string)))))
 
 (defmethod load-repository ((self idl-compiler-impl) repository file)
-  (setf *current-idl-line* 0)
   (idef-read (convert-package (parse-file file))
              repository))
 

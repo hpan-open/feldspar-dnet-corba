@@ -3,10 +3,13 @@
 (in-package :clorb)
 
 (defvar *temporary-directory*
-  (let ((base (truename "ccl:")))
-    (make-pathname
-     :directory (list :absolute (second (pathname-directory base)) "tmp")
-     :defaults base)))
+  (or #+unix "/tmp/"
+      #+mcl
+      (let ((base (truename "ccl:")))
+        (make-pathname
+         :directory (list :absolute (second (pathname-directory base)) "tmp")
+         :defaults base)))
+  "")
 
 (defun repository-from-string (string)
   (let ((repository (make-instance 'repository))
@@ -291,8 +294,8 @@ typedef long a[y];
 
   (define-idl-test "Interface 2"
     "interface c;
-   interface a { attribute long n; };
-   interface b : a { attribute c peer; };
+   interface a { attribute long n; exception e {}; };
+   interface b : a { attribute c peer; void op1() raises (e); };
    interface c : a { exception e {}; };"
     ;; 
     "a" (def-pattern :dk_interface)

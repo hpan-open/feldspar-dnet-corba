@@ -115,7 +115,7 @@
 	   ;((definitions) identity)
 	     ; have to deal with prefix pragma, make top level definitions differnt from other definitions
 	   ((top-definitions) identity)
-	   (() identity))
+	   (() list))
 
 	(1x top-definitions
 	    ((top-definition) identity)

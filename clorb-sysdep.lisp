@@ -546,6 +546,11 @@ Returns select result to be used in getting status for streams."
   (%SYSDEP
    "Run a command in shell with output to string"
 
+   #+openmcl
+   (with-output-to-string (out)
+     (ccl:run-program "/bin/bash" (list "-c" command)
+                      :output out))
+
    #+clorb-mcl-bsd
    (bsd:system-command command)
 
@@ -577,7 +582,7 @@ Returns select result to be used in getting status for streams."
 
 (defun external-namestring (pathname)
   (%SYSDEP "convert pathname to a namestring suitable for external programs"
-           #+MCL
+           #+(and MCL (not openmcl))
            (if (ccl::using-posix-paths-p)
              (ccl::posix-namestring pathname)
              (namestring pathname))
