@@ -4,6 +4,16 @@
 
 (defvar *repositories* '())
 
+
+;;;; file URL
+
+(defun pathname-url (pathname)
+  (format nil "file://~{/~A~}/~A.~A"
+          (cdr (pathname-directory pathname))
+          (pathname-name pathname)
+          (pathname-type pathname)))
+
+
 
 ;;;; Easy DII
 

@@ -188,7 +188,7 @@
               "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
   (:export "STRUCT-GET"
            ;; Utilities
-           "INVOKE" "RESOLVE" "REBIND"
+           "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
            ;; Development tools
            "RELOAD"
            ;; Useful internals
