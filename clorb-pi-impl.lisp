@@ -3,6 +3,17 @@
 (in-package :clorb)
 
 
+;; clorb-pi-base.lisp consists of the generated code from the Portable
+;; Interceptors IDL.
+
+#| How to generate clorb-pi-base.lisp anew:
+(CORBA:IDL "clorb:idl;pi.idl" 
+           :eval nil :package-decl nil
+           :output "clorb:src;y-clorb-pi-base.lisp" )
+|#
+
+
+
 ;;;; ORB Subclass for PortableInterceptors
 
 (defclass pi-orb (clorb-orb)
@@ -82,13 +93,34 @@
 ;;;; Request Classes 
 
 (defclass pi-request (PortableInterceptor:RequestInfo)
-  ((flow-stack  :accessor flow-stack  :initform nil)))
+  ((flow-stack   :accessor flow-stack  :initform nil)
+   (request-info)))
 
-(defclass pi-client-request (pi-request client-request PortableInterceptor:ClientRequestInfo)
+(defgeneric request-info (pi-request))
+
+
+(defclass pi-client-request (pi-request client-request)
   ())
 
-(defclass pi-server-request (pi-request server-request PortableInterceptor:ServerRequestInfo)
+(defclass pi-server-request (pi-request server-request)
   ())
+
+
+(defclass client-request-info (PortableInterceptor:ClientRequestInfo)
+  ((request  :initarg :request  :accessor the-request)))
+
+(defclass server-request-info (PortableInterceptor:ServerRequestInfo)
+  ((request  :initarg :request  :accessor the-request)))
+
+
+(defmethod request-info ((self pi-client-request))
+  (with-cache-slot (self request-info)
+    (make-instance 'client-request-info :request self)))
+
+(defmethod request-info ((self pi-server-request))
+  (with-cache-slot (self request-info)
+    (make-instance 'server-request-info :request self)))
+
 
 (defgeneric run-interceptors (req list operation))
 (defgeneric rerun-interceptors (req operation))
@@ -97,16 +129,16 @@
 (defmethod run-interceptors ((self pi-request) interceptors operation)
   (setf (flow-stack self) nil)
   (dolist (interceptor interceptors)
-    (funcall operation interceptor self)
+    (funcall operation interceptor (request-info self))
     (push interceptor (flow-stack self))))
 
 (defmethod rerun-interceptors ((self pi-request) operation)
   (dolist (interceptor (flow-stack self))
-    (funcall operation interceptor self)))
+    (funcall operation interceptor (request-info self))))
 
 (defmethod pop-interceptors ((self pi-request) operation)
   (loop while (flow-stack self)
-        do (funcall operation (pop (flow-stack self)) self)))
+        do (funcall operation (pop (flow-stack self)) (request-info self))))
 
 
 ;;; to handle locate request (for the time)
@@ -114,18 +146,18 @@
   (declare (ignore operation)))
 
 
-;;;; ClientRequestInfo aspect of client-request
+;;;; ClientRequestInfo methods
 
 
-(define-method "TARGET" ((self client-request))
-   (request-target self))
+(define-method "TARGET" ((self client-request-info))
+   (request-target (the-request self)))
 
-(define-method "EFFECTIVE_TARGET" ((self client-request))
-  (let ((target (request-target self)))
+(define-method "EFFECTIVE_TARGET" ((self client-request-info))
+  (let ((target (request-target (the-request self))))
     (or (object-forward target) target)))
 
-(define-method "EFFECTIVE_PROFILE" ((self client-request))
- (request-effective-profile self))
+(define-method "EFFECTIVE_PROFILE" ((self client-request-info))
+ (request-effective-profile (the-request self)))
 
 
 ;;; readonly attribute any received_exception;
@@ -136,26 +168,26 @@
 ;; example, it is unknown or the bindings don’t provide the TypeCode), then this
 ;; attribute will be an any containing the system exception UNKNOWN with a standard minor code of 1. However, the RepositoryId of the exception is available in the received_exception_id attribute.
 
-(define-method "RECEIVED_EXCEPTION" ((self client-request))
+(define-method "RECEIVED_EXCEPTION" ((self client-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 
 ;;; readonly attribute CORBA::RepositoryId received_exception_id;
 ;; This attribute is the CORBA::RepositoryId of the exception to be returned to the client.
 
-(define-method "RECEIVED_EXCEPTION_ID" ((self client-request))
-  (exception-id (request-exception self)))
+(define-method "RECEIVED_EXCEPTION_ID" ((self client-request-info))
+  (exception-id (request-exception (the-request self))))
 
 
-(define-method "GET_EFFECTIVE_COMPONENT" ((self client-request) _ID)
+(define-method "GET_EFFECTIVE_COMPONENT" ((self client-request-info) _ID)
   (DECLARE (IGNORE _ID))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "GET_EFFECTIVE_COMPONENTS" ((self client-request) _ID)
+(define-method "GET_EFFECTIVE_COMPONENTS" ((self client-request-info) _ID)
   (DECLARE (IGNORE _ID))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "GET_REQUEST_POLICY" ((self client-request)
+(define-method "GET_REQUEST_POLICY" ((self client-request-info)
                                      _TYPE)
   (DECLARE (IGNORE _TYPE))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
@@ -173,40 +205,40 @@
        (setf list (delete old list)))
      (setf (,context-accessor self) (cons service_context list))))
 
-(define-method "ADD_REQUEST_SERVICE_CONTEXT" ((self client-request)
+(define-method "ADD_REQUEST_SERVICE_CONTEXT" ((self client-request-info)
                                                     service_context replace)
-  (%add-service-context self service-context-list 
+  (%add-service-context (the-request self) service-context-list 
                         service_context replace))
 
-(define-method "REQUEST_ID" ((self client-request))
-  (request-id self))
+(define-method "REQUEST_ID" ((self client-request-info))
+  (request-id (the-request self)))
 
-(define-method "OPERATION" ((self client-request))
-  (request-operation self))
+(define-method "OPERATION" ((self client-request-info))
+  (request-operation (the-request self)))
 
-(define-method "ARGUMENTS" ((self client-request))
+(define-method "ARGUMENTS" ((self client-request-info))
   (map 'list
        (lambda (param)
          (Dynamic:Parameter :argument (op:argument param)
                             :mode (op:arg_modes param)))
-       (cdr (request-paramlist self))))
+       (cdr (request-paramlist (the-request self)))))
 
-(define-method "EXCEPTIONS" ((self client-request))
-   (request-exceptions self))
+(define-method "EXCEPTIONS" ((self client-request-info))
+   (request-exceptions (the-request self)))
 
-(define-method "CONTEXTS" ((self client-request))
+(define-method "CONTEXTS" ((self client-request-info))
   nil)
 
-(define-method "OPERATION_CONTEXT" ((self client-request))
+(define-method "OPERATION_CONTEXT" ((self client-request-info))
   nil)
 
-(define-method "RESULT" ((self client-request))
-  (op:return_value self))
+(define-method "RESULT" ((self client-request-info))
+  (op:return_value (the-request self)))
 
-(define-method "RESPONSE_EXPECTED" ((self client-request))
-  (response-expected self))
+(define-method "RESPONSE_EXPECTED" ((self client-request-info))
+  (response-expected (the-request self)))
 
-(define-method "REPLY_STATUS" ((self client-request))
+(define-method "REPLY_STATUS" ((self client-request-info))
 #| FIXME:
 This attribute describes the state of the result of the operation invocation. 
 Its value can be one of the following:
@@ -216,16 +248,16 @@ PortableInterceptor::USER_EXCEPTION
 PortableInterceptor::LOCATION_FORWARD
 PortableInterceptor::TRANSPORT_RETRY
 |#
-  (ecase (request-status self)
+  (ecase (request-status (the-request self))
     ((:user_exception) PortableInterceptor::USER_EXCEPTION)
     ((:no_exception) PortableInterceptor::SUCCESSFUL)
     ((:system_exception) PortableInterceptor::SYSTEM_EXCEPTION)
     ((:location_forward) PortableInterceptor::LOCATION_FORWARD)))
 
-(define-method "FORWARD_REFERENCE" ((self client-request))
-  (object-forward (request-target self)))
+(define-method "FORWARD_REFERENCE" ((self client-request-info))
+  (object-forward (request-target (the-request self))))
 
-(define-method "GET_SLOT" ((self client-request) _ID)
+(define-method "GET_SLOT" ((self client-request-info) _ID)
   (DECLARE (IGNORE _ID))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
@@ -233,109 +265,111 @@ PortableInterceptor::TRANSPORT_RETRY
   (or (find id service-context-list :key #'op:context_id)
       (raise-system-exception 'CORBA:bad_param 23)))
 
-(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self client-request) id)
-  (get-service-context id (service-context-list self)))
+(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self client-request-info) id)
+  (get-service-context id (service-context-list (the-request self))))
 
-(define-method "GET_REPLY_SERVICE_CONTEXT" ((self client-request) id)
-  (get-service-context id (reply-service-context self)))
-
-
-
-;;;; ServerRequestInfo aspect
+(define-method "GET_REPLY_SERVICE_CONTEXT" ((self client-request-info) id)
+  (get-service-context id (reply-service-context (the-request self))))
 
 
-(define-method "REQUEST_ID" ((self server-request))
-  (request-id self))
 
-(define-method "OPERATION" ((self server-request))
-  (request-operation self))
+;;;; ServerRequestInfo methods
 
-(define-method "ARGUMENTS" ((self server-request))
-  (cond ((arguments-set-p self)
-         (map 'list (lambda (nv)
-                      (Dynamic:Parameter :argument (op:argument nv)
-                                         :mode (op:mode nv)))
-              (request-arguments self)))
-        ((slot-boundp self 'meta-args)
-         (loop with args = (request-args self)
-               for (nil mode tc) in (meta-args self)
-               collect (Dynamic:Parameter :argument (CORBA:Any :any-value
-                                                               (if (not (eql mode :param_out))
-                                                                 (pop args))
-                                                               :any-typecode tc)
-                                          :mode mode)))
-        (t (raise-system-exception 'CORBA:no_resources))))
 
-(define-method "EXCEPTIONS" ((self server-request))
-  (cond ((slot-boundp self 'exceptions)
+(define-method "REQUEST_ID" ((self server-request-info))
+  (request-id (the-request self)))
+
+(define-method "OPERATION" ((self server-request-info))
+  (request-operation (the-request self)))
+
+(define-method "ARGUMENTS" ((self server-request-info))
+  (let ((req (the-request self)))
+    (cond ((arguments-set-p req)
+           (map 'list (lambda (nv)
+                        (Dynamic:Parameter :argument (op:argument nv)
+                                           :mode (op:mode nv)))
+                (request-arguments req)))
+          ((slot-boundp req 'meta-args)
+           (loop with args = (request-args req)
+                 for (nil mode tc) in (meta-args self)
+                 collect (Dynamic:Parameter :argument (CORBA:Any :any-value
+                                                                 (if (not (eql mode :param_out))
+                                                                   (pop args))
+                                                                 :any-typecode tc)
+                                            :mode mode)))
+          (t (raise-system-exception 'CORBA:no_resources)))))
+
+(define-method "EXCEPTIONS" ((self server-request-info))
+  (cond ((slot-boundp (the-request self) 'exceptions)
          (request-exceptions self))
         (t
          (raise-system-exception 'CORBA:no_resources))))
 
-(define-method "CONTEXTS" ((self server-request))
+(define-method "CONTEXTS" ((self server-request-info))
   (raise-system-exception 'CORBA:no_resources))
 
-(define-method "OPERATION_CONTEXT" ((self server-request))
+(define-method "OPERATION_CONTEXT" ((self server-request-info))
   (raise-system-exception 'CORBA:no_resources))
 
-(define-method "RESULT" ((self server-request))
-  (cond ((not (slot-boundp self 'result))
-         (raise-system-exception 'corba:no_resources))
-        ((dsi-request-p self)
-         (request-result self))
-        (t 
-         (let ((type (request-result-type self)))
-           (CORBA:Any :any-typecode type
-                      :any-value (unless (typep type 'void-typecode)
-                                   (first (request-result self))))))))
+(define-method "RESULT" ((self server-request-info))
+  (let ((req (the-request self)))
+    (cond ((not (slot-boundp req 'result))
+           (raise-system-exception 'corba:no_resources))
+          ((dsi-request-p req)
+           (request-result req))
+          (t 
+           (let ((type (request-result-type req)))
+             (CORBA:Any :any-typecode type
+                        :any-value (unless (typep type 'void-typecode)
+                                     (first (request-result req)))))))))
 
 
-(define-method "RESPONSE_EXPECTED" ((self server-request))
-  (response-expected self))
+(define-method "RESPONSE_EXPECTED" ((self server-request-info))
+  (response-expected (the-request self)))
 
-(define-method "REPLY_STATUS" ((self server-request))
+(define-method "REPLY_STATUS" ((self server-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "FORWARD_REFERENCE" ((self server-request))
+(define-method "FORWARD_REFERENCE" ((self server-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "GET_SLOT" ((self server-request) ID)
+(define-method "GET_SLOT" ((self server-request-info) ID)
   (DECLARE (IGNORE ID))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self server-request) id)
-  (get-service-context id (service-context-list self)))
+(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self server-request-info) id)
+  (get-service-context id (service-context-list (the-request self))))
 
-(define-method "GET_REPLY_SERVICE_CONTEXT" ((self server-request) id)
-  (get-service-context id (reply-service-context self)))
+(define-method "GET_REPLY_SERVICE_CONTEXT" ((self server-request-info) id)
+  (get-service-context id (reply-service-context (the-request self))))
 
-(define-method "SENDING_EXCEPTION" ((self server-request))
-  (request-exception self))
+(define-method "SENDING_EXCEPTION" ((self server-request-info))
+  (request-exception (the-request self)))
 
-(define-method "OBJECT_ID" ((self server-request))
+(define-method "OBJECT_ID" ((self server-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "ADAPTER_ID" ((self server-request))
+(define-method "ADAPTER_ID" ((self server-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "TARGET_MOST_DERIVED_INTERFACE" ((self server-request))
+(define-method "TARGET_MOST_DERIVED_INTERFACE" ((self server-request-info))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "GET_SERVER_POLICY" ((self server-request) _TYPE)
+(define-method "GET_SERVER_POLICY" ((self server-request-info) _TYPE)
   (DECLARE (IGNORE _TYPE))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "SET_SLOT" ((self server-request) _ID _DATA)
+(define-method "SET_SLOT" ((self server-request-info) _ID _DATA)
   (DECLARE (IGNORE _ID _DATA))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "TARGET_IS_A" ((self server-request) _ID)
+(define-method "TARGET_IS_A" ((self server-request-info) _ID)
   (DECLARE (IGNORE _ID))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
-(define-method "ADD_REPLY_SERVICE_CONTEXT" ((self server-request)
+(define-method "ADD_REPLY_SERVICE_CONTEXT" ((self server-request-info)
                                             service_context replace)
-  (%add-service-context self reply-service-context
+  (%add-service-context (the-request self) reply-service-context
                         service_context replace))
 
 
