@@ -72,8 +72,23 @@
 (defun unmarshal-long (buffer)
   (unmarshal-number 4 t buffer))
 
+(defun ieee-integer-to-float (raw float-type-zero
+                                     sign-bit expn-bits fraction-bits bias)
+  (if (zerop raw)
+    float-type-zero
+    (let ((fraction (+ (ldb (byte fraction-bits 0) raw)
+                       (ash 1 fraction-bits)))
+          (exponent (ldb (byte expn-bits fraction-bits) raw))
+          (sign  (logbitp sign-bit raw)))
+      (* (if sign -1 1)
+         (scale-float (float fraction float-type-zero)
+                      (+ exponent 
+                         (- bias)
+                         (- fraction-bits)))))))
+
+
 (defmacro unmarshal-sequence-m ((buffer &key (el-type t))
-                                &body el-read)
+                                   &body el-read)
   `(loop with buffer = ,buffer
        with len = (unmarshal-ulong buffer) 
        with r = (make-array len :element-type ,el-type)
@@ -235,6 +250,9 @@
       ((long :tk_long) (unmarshal-long buffer))
       ((:tk_longlong) (unmarshal-number 8 t buffer))
       ((:tk_ulonglong) (unmarshal-number 8 nil buffer))
+      ((:tk_float) (ieee-integer-to-float (unmarshal-ulong buffer) 0s0 31 8 23 127))
+      ((:tk_double) (ieee-integer-to-float (unmarshal-number 8 nil buffer) 0d0 63 11 52 1023))
+      ((:tk_longdouble) (ieee-integer-to-float (unmarshal-number 16 nil buffer) 0d0 127 15 112 16383))
       ((string :tk_string) (unmarshal-string buffer))
       ((:tk_any) (unmarshal-any buffer))
       ((:tk_sequence sequence)

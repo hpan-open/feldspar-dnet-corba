@@ -14,7 +14,7 @@
         ;; but
         (marshal-res #(168 254) (marshal-ushort -344 buffer)))
 
-    (define-test "Float"
+    (define-test "Float 1"
       (let ((test-data '((1.25 #16R3fa00000 #16R3ff4000000000000)
                          (12.5 #16R41480000 #16R4029000000000000)
                          (1.1 #16R3f8ccccd #16R3ff199999999999a)
@@ -33,6 +33,20 @@
                          (marshal (first tuple) CORBA:tc_float buffer))
             (marshal-res (integer-octets (third tuple) 8)
                          (marshal (first tuple) CORBA:tc_double buffer))))))
+
+    (define-test "Float 2"
+      (let ((test-data '(1.25 12.5 1.1 -1.125 -1.1 #.pi 0.0 ))
+            (buffer (get-work-buffer)))
+        (flet ((test-roundtrip (float type typecode)
+                 (setf (fill-pointer (buffer-octets buffer)) 0)
+                 (marshal float typecode buffer)
+                 (setf (buffer-position buffer) 0)
+                 (let ((result (unmarshal typecode buffer)))
+                   (ensure-equalp result (coerce float type)))))
+          (dolist (float test-data)
+            (test-roundtrip float 'CORBA:float CORBA:tc_float)
+            (test-roundtrip float 'CORBA:double CORBA:tc_double)
+            (test-roundtrip float 'CORBA:longdouble CORBA:tc_longdouble)))))
 
     (define-test "encapsulation"
         (marshal-res 

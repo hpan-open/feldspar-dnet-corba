@@ -80,9 +80,9 @@
       (let* ((len (integer-length frac))
              (shift (+ 1 (- fraction-bits len))))
         (unless (zerop shift)
-          (format t "Shift=~D~%" shift))
+          (mess 2 "Shift=~D" shift))
         (logior (ash (if (< sign 0) 1 0) sign-bit)
-                (ash (+ expn shift fraction-bits bias) fraction-bits)
+                (ash (+ expn (- shift) fraction-bits bias) fraction-bits)
                 (- (ash frac shift) (ash 1 fraction-bits)))))))
 
 (defun marshal-string (s buffer)
