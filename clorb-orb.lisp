@@ -102,6 +102,11 @@
   (op:post_init (symbol-function init) info))
 
 
+
+(deftype CORBA:ORBId ()
+  'string)
+
+
 ;;; ORB CORBA:ORB_init (arg_list, orbid)
 
 (defun corba:orb_init (&optional args (orbid "") set-init)

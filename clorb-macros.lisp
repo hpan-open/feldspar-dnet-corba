@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.17 2003/11/12 17:20:20 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.18 2003/11/24 09:04:54 lenst Exp $
 
 (in-package :clorb)
 
@@ -62,7 +62,7 @@
 (defmacro define-method (name &body body)
   (multiple-value-bind (opsym setf-form sym-expr)
       (opname-helper name)
-    (let* ((qualifiers (if (not (consp (car body)))
+    (let* ((qualifiers (if (not (listp (car body)))
                          (list (pop body))))
            (args (pop body))
            (doc-string

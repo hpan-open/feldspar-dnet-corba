@@ -64,7 +64,7 @@
 
 
 (defun object-interface (obj)
-  (handler-case 
+  (handler-case
     (static-call ("_interface" obj)
                  :input ((buffer)
                          (unmarshal (symbol-typecode 'corba:interfacedef) buffer)))
