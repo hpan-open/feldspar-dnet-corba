@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.5 2002/05/02 20:40:11 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.6 2002/05/29 05:10:01 lenst Exp $
 
 (in-package :clorb)
 
@@ -90,22 +90,7 @@
   (op:primary_interface servant oid poa))
 
 
-;;;; Implementation details
-
-;; FIXME: move to clorb-poa ?? 
-(define-method _this ((servant servant))
-  (let* ((poa (or (op:_default_POA servant)
-		  (root-POA) ))
-	 (oid (if (and (member :multiple-id (POA-policies poa))
-                       *poa-current*)
-                  (poa-current-object-id *poa-current*)
-                (op::servant_to_id poa servant))))
-    (op:create_reference_with_id
-     poa oid
-     (primary-interface servant oid poa))))
-
-
-;;;; Auto-Dynamic servant (CLORB sepecific)
+;;;; Auto-Dynamic servant (CLORB specific)
 
 ;;; This will use the interface repository or a local interface-def
 ;;; object to marshal requests parameters and invoke operations.
