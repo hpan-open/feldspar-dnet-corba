@@ -9,6 +9,8 @@
 (defparameter *tmp-directory* (pathname-directory #P"Macintosh HD:tmp:"))
 
 (defun pathname-unixname (pathname)
+  (ccl::posix-namestring pathname)
+  #+(or)
   (with-output-to-string (s)
     (loop for dir in (pathname-directory pathname)
           do (cond ((eq :absolute dir) (princ "/" s))
@@ -238,11 +240,10 @@
 
 #||
 (setq *container* (make-instance 'repository))
-;(process-list (get-idl-sexp "trader"))
+(process-list (get-idl-sexp "trader.idl"))
 (process-list (get-idl-sexp "PortableServer.idl"))
-
 (process-list (get-idl-sexp "x-04.idl"))
-;;(process-list (get-idl-sexp "my-query.idl"))
+(process-list (get-idl-sexp "my-query.idl"))
 (unless (fboundp 'describe-repo)
   (load "CLORB:SRC;describe-repo"))
 (describe-repo *container*)

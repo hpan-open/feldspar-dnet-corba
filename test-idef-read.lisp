@@ -69,7 +69,7 @@
       (ensure-equalp (op:def_kind o) :dk_Struct)
       (ensure-equalp (length (op:members o)) 2  )))
 
-  (define-test "Read Union"
+  (define-test "Read Union 1"
     (idef-read '((define-union "MyUnion" long
                    ((0 "foo" string)
                     (1 "bar" long))))
@@ -80,6 +80,19 @@
       (ensure-equalp (op:name (elt (op:members obj) 1))
                      "bar")))
 
+  (define-test "Read Union 2"
+    (idef-read '((define-enum "status" ("aa" "bb"))
+                 (define-union "MyUnion2" "status"
+                   ((:aa "foo" string)
+                    (default        "bar" long))))
+               r)
+    (let ((obj (op:lookup r "MyUnion2")))
+      (ensure-eql (any-value (op:label (elt (op:members obj) 0))) :aa)
+      (let ((l2 (op:label (elt (op:members obj) 1))))
+        (ensure-typep l2 'CORBA:Any)
+        (ensure-typecode (any-typecode l2) :tk_octet)
+        (ensure-eql (any-value l2) 0))))
+  
   (define-test "Read Attribute"
     (idef-read '((define-interface "I" ()
                      (define-attribute "a" string

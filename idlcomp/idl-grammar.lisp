@@ -556,7 +556,10 @@
 	(72 union_type
 	    (( T_UNION T_IDENTIFIER T_SWITCH T_LEFT_PARANTHESIS
 		       switch_type_spec T_RIGHT_PARANTHESIS T_LEFT_CURLY_BRACKET
-		       switch_body T_RIGHT_CURLY_BRACKET)))
+		       switch_body T_RIGHT_CURLY_BRACKET)
+             (lambda (t1 name t2 t3 disc-type t4 t5 body t6)
+               (declare (ignore t1 t2 t3 t4 t5 t6))
+               `(define-union ,name ,disc-type ,body))))
 					; 
 
 	(73 switch_type_spec
@@ -569,22 +572,31 @@
 
 	(74 switch_body
 	    (( case))
-	    (( case switch_body)))
+	    (( case switch_body) (lambda (x y) (append x y))))
 					;
 
-	(75 case	
-	    (( case_label case))
-	    (( case_label element_spec T_SEMICOLON))
-	    (( case_label T_PRAGMA element_spec T_SEMICOLON))) ;New  
+	(75 case	; let case return list of (label name type) tripplets
+	    (( case_label case) 
+             (lambda (label case) 
+               (cons (cons label (cdr (car case)))
+                     case )))
+	    (( case_label element_spec T_SEMICOLON) 
+             (lambda (label element t1)
+               (declare (ignore t1))
+               (list (list* label element))))
+	    (( case_label T_PRAGMA element_spec T_SEMICOLON) ;New
+             (lambda (label t0 element t1)
+               (declare (ignore t0 t1))
+               (list (list* label element))))) 
 					;
 
 	(76 case_label
-	    (( T_CASE const_exp T_COLON ))
+	    (( T_CASE const_exp T_COLON ) (lambda (t1 x t2) (declare (ignore t1 t2)) x))
 	    (( T_DEFAULT T_COLON)))
 					;
 
 	(77 element_spec
-	    (( type_spec declarator) list))
+	    (( type_spec declarator) (lambda (type name) (list name type))))
 					;
 
 	(78 enum_type
@@ -623,7 +635,9 @@
 					;
 
 	(83 array_declarator
-	    (( T_IDENTIFIER fixed_array_sizes) (lambda (x y) (append x y))))
+	    (( T_IDENTIFIER fixed_array_sizes) 
+             (lambda (name sizes) 
+               (cons name sizes ))))
 					;
 
 	(83a fixed_array_sizes

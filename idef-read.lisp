@@ -117,7 +117,11 @@
           (mapcar (lambda (x)
                     (destructuring-bind (label name type) x
                       (CORBA:UnionMember :name (string name)
-                                         :label label
+                                         :label (if (eql label 'default)
+                                                  (load-time-value
+                                                   (CORBA:Any :any-typecode CORBA:tc_octet
+                                                              :any-value 0))
+                                                  label)
                                          :type_def (parse-type-in container type))))
                   members))))))
 

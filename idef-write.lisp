@@ -127,7 +127,11 @@ This guides the use of local or absolute names.")
        ,(gen-iref (op:discriminator_type_def union))
      ,(map 'list  
         (lambda (m)
-          (list (struct-get m :label)
+          (list (let ((label (struct-get m :label)))
+                  (if (and (eq :tk_octet (op:kind (any-typecode label)))
+                           (zerop (any-value label)))
+                    'default
+                    (any-value label)))
                 (struct-get m :name)
                 (gen-iref (op:type_def m))))
         (op:members union))

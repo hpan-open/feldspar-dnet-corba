@@ -160,3 +160,12 @@
                     repository))
 
 (setq clorb::*default-idl-compiler* (make-instance 'idl-compiler))
+
+#|
+(with-open-file (s #P"CLORB:IDL;x-01.idl")
+  (parse-stream s))
+
+(with-open-file (s #P"CLORB:IDL;x-04.idl")
+  (parse-stream s))
+
+|#
