@@ -356,7 +356,20 @@
     (when *naming-ior-file*
       (with-open-file (out *naming-ior-file*
                            :direction :output :if-exists :supersede)
-        (princ (op:object_to_string orb *root-context*) out)))))
+        (princ (op:object_to_string orb *root-context*) out)))
+    *root-context*))
 
 ;;(defmethod initialize-instance :after ((self naming-context) &key)
 ;;  (clorb::mess 3 "Naming Context base=~A" (nc-base self)))
+
+
+(defun pns-initial-ref (orb)
+  (net.cddr.clorb::set-initial-reference orb "CLORB-PNS"
+                                         (lambda (orb)
+                                           (declare (ignore orb))
+                                           (setup-pns))))
+
+
+(pushnew 'pns-initial-ref net.cddr.clorb::*orb-initializers*)
+(when net.cddr.clorb::*the-orb*
+  (pns-initial-ref net.cddr.clorb::*the-orb*))
