@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.15 2005/02/15 21:11:44 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.16 2005/03/23 15:52:14 lenst Exp $
 
 (in-package :clorb)
 
@@ -54,6 +54,9 @@
    (output-func
     :initarg :output-func           :initform 'dii-output-func
     :accessor output-func)
+   (args
+    :initarg :args
+    :accessor request-args)
    (input-func
     :initarg :input-func            :initform 'dii-input-func
     :accessor input-func)
@@ -158,8 +161,8 @@
 ;;;; Sending requests
 
 
-(defun request-start-request (req handler)
-  "Connect REQ target and call HANDLER with connection, request-id"
+(defun request-start-request (req)
+  "Connect REQ target, assing request-id and return connection"
   (setf (request-status req) nil)
   (let ((object (request-target req)))
     (let ((conn (get-object-connection object)))
@@ -170,8 +173,7 @@
         (setf (request-id req) req-id)
         (setf (request-effective-profile req)
               (selected-profile (or (object-forward object) object)))
-        (funcall handler conn req-id)
-        (values conn)))))
+        (values conn req-id)))))
 
 
 (defun static-error-handler (condition)
@@ -181,7 +183,7 @@
 (defvar *call-hook* nil)
 
 (defun do-static-call (obj operation response-expected
-                       output-func input-func exceptions)
+                       output-func input-func exceptions &optional args)
   (let ((req (create-client-request
               (the-orb obj)
               :target obj
@@ -190,6 +192,7 @@
               :exceptions exceptions
               :output-func output-func
               :input-func input-func 
+              :args args
               :error-handler #'static-error-handler)))
     (request-send req)
     (if *call-hook* 
@@ -204,20 +207,17 @@
 
 
 (defun request-send (req)
-  (request-start-request 
-   req
-   (lambda (connection request-id)
-     (setf (service-context-list req) nil)
-     (will-send-request (the-orb req) req)
-     (let ((buffer
-            (connection-start-request connection request-id (service-context-list req)
-                                      (response-expected req) (request-effective-profile req)
-                                      (request-operation req))))
-       (setf (request-buffer req) buffer)
-       (funcall (output-func req) req buffer) 
-       (setf (request-buffer req) nil)
-       (connection-send-request connection buffer
-                                (if (response-expected req) req))))))
+  (multiple-value-bind (connection request-id)
+                       (request-start-request req)
+    (setf (service-context-list req) nil)
+    (will-send-request (the-orb req) req)
+    (let ((buffer
+           (connection-start-request connection request-id (service-context-list req)
+                                     (response-expected req) (request-effective-profile req)
+                                     (request-operation req))))
+      (funcall (output-func req) req buffer) 
+      (connection-send-request connection buffer
+                               (if (response-expected req) req)))))
 
 
 ;;; void send_oneway ()
@@ -258,8 +258,26 @@
   (setf (reply-service-context req) service-context))
 
 
+(defun request-poll (req)
+  ;; Check if result of request is ready
+  ;; might retransmit request, if redirected
+  (case (request-status req)
+    (:location_forward
+     (setf (object-forward (request-target req))
+           (unmarshal-object (request-buffer req)))
+     (has-received-other (the-orb req) req)
+     (request-send req)
+     nil)
+    
+    ;;FIXME: check for transient and retry if policies allow
+
+    (otherwise 
+     req)))
+
+
 (defun request-wait-response (req)
-  (orb-wait #'request-status req))
+  (loop do (orb-wait #'request-status req)
+        until (request-poll req)))
 
 
 (defun request-handle-error (req)
@@ -289,11 +307,6 @@
       (:system_exception
        (setf (request-exception req) (unmarshal-systemexception buffer))
        (request-handle-error req))
-      (:location_forward
-       (setf (object-forward (request-target req))
-             (unmarshal-object buffer))
-       (has-received-other (the-orb req) req)
-       (request-invoke req))
       (:no_exception
        ;; FIXME: the has-received-reply should ideally be done after
        ;; unmarshalling result, but then we can't simply return the
@@ -344,7 +357,7 @@
 
 (define-method poll_response ((req client-request))
   ;; FIXME: 13
-  (case (request-status req)
+  (case (request-poll req)
     ((:initial) (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
     ((:returned) (raise-system-exception 'CORBA:BAD_INV_ORDER 12 :completed_yes))
     ((nil) nil)
@@ -435,15 +448,14 @@
           (setq output-func 
                 (let ((mfuns (loop for (nil pmode tc) in params
                                    unless (eql pmode :param_out) collect (marshal-function tc))))
-                  (lambda (req buffer args)
-                    (declare (ignore req))
-                    (loop for a in args for m in mfuns do (funcall m a buffer)))))
+                  (lambda (req buffer)
+                    (loop for a in (request-args req)
+                          for m in mfuns do (funcall m a buffer)))))
           (setq exceptions (mapcar #'symbol-typecode exc-syms))
           (setq op name)
           (setq response-expected (eq mode :op_normal))))
-      (do-static-call obj op response-expected 
-                      (lambda (req buffer) (funcall output-func req buffer args))
-                      input-func exceptions))))
+      (do-static-call obj op response-expected output-func input-func
+                      exceptions args))))
 
 (defun compute-static-get (sym)
   (let (op input-func)
@@ -471,14 +483,13 @@
           (setq op (setter-name name))
           (setq output-func
                 (let ((mfun (marshal-function type)))
-                  (lambda (req buffer arg)
-                    (declare (ignore req))
-                    (funcall mfun arg buffer))))))
+                  (lambda (req buffer)
+                    (funcall mfun (request-args req) buffer))))))
       (do-static-call obj op t 
-                      (lambda (req buffer)
-                        (funcall output-func req buffer value))
+                      output-func
                       (lambda (req buffer) (declare (ignore req buffer)))
-                      nil))))
+                      nil
+                      value))))
 
 
 ;;;; Object stubs
