@@ -144,6 +144,8 @@
                (process-opt-initial-reference orb (pop args)))
               ((equal option "-ORBDefaultInitRef")
                (setf (orb-default-initial-reference orb) (pop args)))
+              ((equal option "-ORBPort")
+               (setf (orb-port orb) (parse-arg-integer (pop args))))
               ((string-starts-with option "-ORB")
                (pop args))
               (t (push option new-args)))))
@@ -161,6 +163,12 @@
     (let ((name (subseq arg 0 eq-pos))
           (ior  (subseq arg (+ eq-pos 1))))
       (set-initial-reference orb name ior))))
+
+(defun parse-arg-integer (arg)
+  (typecase arg 
+    (number arg)
+    (string (parse-integer arg))
+    (t (error "Argument should be integer: ~A" arg))))
 
 
 ;;;    void shutdown( in boolean wait_for_completion );
@@ -421,6 +429,7 @@ Can be set to true globally for singel-process / development.")
 
 
 (defun decode-hex-string (string)
+  (declare (string string))
   (assert (evenp (length string)))
   (let ((ints
          (loop for i from 0 below (length string) by 2
@@ -431,6 +440,7 @@ Can be set to true globally for singel-process / development.")
                 :element-type '(unsigned-byte 8))))
 
 (defun decode-objkey-string (string)
+  (declare (string string))
   (with-output-to-string (out)
     (loop with state = 0
           for ch across string
@@ -447,6 +457,7 @@ Can be set to true globally for singel-process / development.")
                (2 (setq state 0))))))
 
 (defun decode-objkey-vector (string)
+  (declare (string string))
   (let ((out (make-array 50 :adjustable t :fill-pointer 0
                          :element-type 'CORBA:Octet)))
     (loop with state = 0
@@ -465,6 +476,7 @@ Can be set to true globally for singel-process / development.")
     out))
 
 (defun parse-iiop-version (str)
+  (declare (string str))
   (multiple-value-bind (major pos)
       (parse-integer str :junk-allowed t)
     (assert (eq (char str pos) #\.))
