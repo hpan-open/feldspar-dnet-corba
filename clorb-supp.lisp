@@ -1,5 +1,5 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.8 2003/11/14 06:37:21 lenst Exp $
+;; $Id: clorb-supp.lisp,v 1.9 2003/11/24 09:06:26 lenst Exp $
 
 (in-package :clorb)
 
@@ -49,6 +49,13 @@
     (setf (cdr x) x)
     x))
 
+
+(defun feature (name)
+  (intern (string-upcase name) :op))
+
+(defun key (string)
+  (check-type string string)
+  (intern (string-upcase string) :keyword))
 
 
 
