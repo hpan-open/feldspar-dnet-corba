@@ -15,13 +15,13 @@
       (marshal-res #(168 254) (marshal-ushort -344 buffer)))
     
     (define-test "Float 1"
-      (let ((test-data '((1.25 #16R3fa00000 #16R3ff4000000000000)
-                         (12.5 #16R41480000 #16R4029000000000000)
-                         (1.1 #16R3f8ccccd #16R3ff199999999999a)
+      (let ((test-data '((1.25d0 #16R3fa00000 #16R3ff4000000000000)
+                         (12.5d0 #16R41480000 #16R4029000000000000)
+                         (1.1d0 #16R3f8ccccd #16R3ff199999999999a)
                          (-1.125 #16Rbf900000 #16Rbff2000000000000)
-                         (-1.1 #16Rbf8ccccd #16Rbff199999999999a)
+                         (-1.1d0 #16Rbf8ccccd #16Rbff199999999999a)
                          (#.pi #16R40490fdb #16R400921fb54442d18)
-                         (0.0 #16R00000000 #16R0000000000000000))))
+                         (0.0d0 #16R00000000 #16R0000000000000000))))
         (flet ((integer-octets (integer bytes)
                  (let ((octets (make-array bytes :element-type 'CORBA:Octet)))
                    (loop for i below bytes do
@@ -120,8 +120,10 @@
                             (list nil "off" corba:tc_string)))
              (tc (create-union-tc "IDL:Two:1.0" "Two" corba:tc_boolean members)))
         (marshal tc omg.org/corba:tc_typecode buffer)
-        (unmarshal omg.org/corba:tc_typecode buffer)
-        ))
+        (let ((tc2 (unmarshal omg.org/corba:tc_typecode buffer)))
+          (ensure-eql (op:member_count tc2) (op:member_count tc))
+          (ensure (omg.org/features:equal tc2 tc)))))
+    
     
     (define-test "RecursiveTypecode"
       (let* ((struct-filter
