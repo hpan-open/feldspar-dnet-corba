@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.9 2002/05/30 06:11:11 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.10 2002/09/23 13:33:45 lenst Exp $
 
 (in-package :clorb)
 
@@ -23,17 +23,28 @@
    (fields  :initarg :fields  :accessor fields)))
 
 (defmethod print-object ((obj CORBA:struct) stream)
-  (if *print-readably*
-      (format stream "#.(CLORB::MAKE-STRUCT ~S~:{ ~S '~S~})"
-              (type-id obj)
-              (mapcar (lambda (x) (list (car x) (cdr x)))
-                      (fields obj)))
-    (print-unreadable-object (obj stream :type t)
-      (format stream "~A~:{~_ ~A=~S~}"
-              (type-id obj)
-              (map 'list (lambda (pair) (list (car pair) (cdr pair)))
-                   (fields obj))))))
+  (cond (*print-readably*
+         (format stream "#.(CLORB::MAKE-STRUCT ~S~:{ ~S '~S~})"
+                 (type-id obj)
+                 (mapcar (lambda (x) (list (car x) (cdr x)))
+                         (fields obj))))
 
+        (*print-pretty*
+         (let ((fields (map 'list (lambda (pair) (list (car pair) (cdr pair)))
+                            (fields obj))))
+           (pprint-logical-block (stream fields
+                                         :prefix "#<" :suffix ">")
+             (pprint-indent :block 4)
+             (typecase obj
+               (generic-struct (princ (type-id obj) stream))
+               (t (princ (type-of obj) stream)))
+             (format stream "~{ ~_~{~W ~W~}~}" fields) )))
+        (t
+         (print-unreadable-object (obj stream :type t)
+           (format stream "~A~:{ ~S ~S~}"
+                   (type-id obj)
+                   (map 'list (lambda (pair) (list (car pair) (cdr pair)))
+                        (fields obj)))))))
 
 
 ;; Interface:
