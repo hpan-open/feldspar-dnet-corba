@@ -26,8 +26,7 @@
                              (setq tc-current ,(string name))
                              (incf tc-count)
                              ,@body)
-                         (null ()
-                            ;error (exc)
+                         (error (exc)
                            (tc-report "Exception ~A" exc)))))
          
          ,@body

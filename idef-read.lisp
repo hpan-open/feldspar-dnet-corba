@@ -227,6 +227,7 @@
 
 
 (defun repository-of (container)
+  ;; FIXME: what about attribute containing_repository
   (loop while (not (typep container 'repository))
       do (setf container (op:defined_in container)))
   container)

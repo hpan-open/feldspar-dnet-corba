@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.5 2002/03/21 19:31:12 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.6 2002/04/23 12:35:37 lenst Exp $
 
 (in-package :clorb)
 
@@ -43,6 +43,7 @@
 
 
 
+;;;; Portable Object Adaptor
 ;;; Class: POA
 
 (define-corba-class POA ()

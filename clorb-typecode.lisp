@@ -319,3 +319,6 @@
 
 (defun MAKE-ARRAY-TYPECODE (member-type size)
   (make-typecode :tk_array member-type size))
+
+(defun make-tc-alias (id name typecode)
+  (make-typecode :tk_alias id name typecode))

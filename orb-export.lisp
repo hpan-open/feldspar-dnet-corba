@@ -1,7 +1,8 @@
-(in-package "OMG.ORG/CORBA")
+(cl:in-package "OMG.ORG/CORBA")
 (cl:export
  '(CONTAINED/DESCRIPTION
    STRUCTMEMBER
+   scopedname
    UNIONMEMBER
    CONTAINER/DESCRIPTION
    MODULEDESCRIPTION

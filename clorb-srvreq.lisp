@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.7 2001/07/02 16:50:39 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.8 2002/04/23 12:34:24 lenst Exp $
 
 (in-package :clorb)
 
@@ -78,6 +78,9 @@
 
 
 (defun set-request-result (sreq results &optional types &key (status 0))
+  (when (and types (/= (length types) (length results)))
+    (mess 5 "set-request-result: results#~A types#~A"
+          (length results) (length types)))
   (setf (server-request-status sreq) status)
   (setf (server-request-values sreq) results)
   (setf (server-request-types sreq)  types))

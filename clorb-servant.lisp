@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.3 2001/07/02 16:46:48 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.4 2002/04/23 12:35:37 lenst Exp $
 
 (in-package :clorb)
 
@@ -99,7 +99,7 @@
 ;;;; Implementation details
 
 ;; FIXME: move to clorb-poa ?? 
-(define-method op::_this ((servant servant))
+(define-method _this ((servant servant))
   (let* ((poa (or (op:_default_POA servant)
 		  (root-POA) ))
 	 (oid (if (and (member :multiple-id (POA-policies poa))

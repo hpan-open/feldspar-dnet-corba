@@ -5,6 +5,18 @@
    (symbols  :initform nil)
    (defs     :initform nil)))
 
+(defgeneric target-typecode (obj target)
+  (:documentation 
+   "The target code to compute the typecode for idltype object."))
+
+(defgeneric target-code (obj target)
+  (:documentation
+   "The target code defining the object."))
+
+(defgeneric target-type (idltype target)
+  (:documentation
+   "Lisp type mapping for IDL-type."))
+
 
 (defun make-target-symbol (target name package)
   (let* ((package
@@ -43,6 +55,19 @@
     (make-target-symbol target name package)))
 
 
+(defun make-progn (l)
+  (cons 'progn
+        (loop for x in l
+            append (if (and (consp x) (eq 'progn (car x)))
+                     (cdr x)
+                     (list x)))))
+
+(defun make-idltype (symbol id typecode &rest forms)
+  (make-progn
+   `((setf (get ',symbol 'ifr-id) ,id)
+     (setf (get ',symbol 'typecode) ,typecode)
+     ,@forms)))
+
 (defun target-base-list (target bases root-class)
   (if bases 
       (map 'list (lambda (base)
@@ -74,27 +99,6 @@
                                      "-PROXY")
                         (symbol-package scoped-symbol))))
 
-(defmethod target-icode ((def contained) class target)
-  (declare (ignore class))
-  (target-code def target))
-
-(defmethod target-icode ((op operation-def) class target)
-  (let* ((op-name (op:name op))
-         (lisp-name (make-target-symbol target op-name :op)))
-    `(defmethod ,lisp-name ((obj ,class) &rest args)
-       (apply 'clorb::invoke obj ,op-name args))))
-
-(defmethod target-icode ((op attribute-def) class target)
-  (let* ((att-name (op:name op))
-         (lisp-name (make-target-symbol target att-name :op)))
-    `(progn
-       (defmethod ,lisp-name ((obj ,class) &rest)
-         (apply 'clorb::invoke obj ,(getter-name att-name)))
-       ,@(if (eq (op:mode op) :attr_normal)
-             (list `(defmethod (setf ,lisp-name) (newval (obj ,class))
-                      (apply 'clorb::invoke obj ,(setter-name att-name)
-                             newval)))))))
-
 
 (defun setter-name (name)
   (concatenate 'string "_set_" name))
@@ -102,7 +106,8 @@
 (defun getter-name (name)
   (concatenate 'string "_get_" name))
 
-(defmethod gen-type ((obj primitive-def) target)
+(defmethod target-type ((obj primitive-def) target)
+  (declare (ignore target))
   (ecase (op:kind obj)
     ;;(:pk_null 'CORBA:null)
     (:pk_short 'CORBA:short)
@@ -127,37 +132,79 @@
 
 
 
-(defmethod gen-type ((obj sequence-def) target)
+(defmethod target-type ((obj sequence-def) target)
+  (declare (ignore target))
   `sequence)
 
-(defmethod gen-type ((obj alias-def) target)
+(defmethod target-type ((obj alias-def) target)
   (scoped-target-symbol target obj))
 
+(defmethod target-typecode ((obj primitive-def) target)
+  (declare (ignore target))
+  (ecase (op:kind obj)
+    (:pk_string `'CORBA:tc_string))
+)
+
+(defmethod target-typecode ((x sequence-def) target)
+  `(make-sequence-typecode 
+    ,(target-typecode (op:element_type_def x) target)
+    ,(op:bound x)))
+
+
+(defmethod target-typecode ((x idltype) target)
+  `(get ,(scoped-target-symbol target x) 'typecode))
+
+
+;;;; target-code methods
 
 (defmethod target-code ((x contained) target)
+  (declare (ignore target))
   (mess 4 "Can't generate code for ~A of kind ~S"
         (op:name x)
         (op:def_kind x))
   (describe x))
 
 (defmethod target-code ((x alias-def) target)
-  `(deftype ,(scoped-target-symbol target x) ()
-     ',(gen-type (op:original_type_def x) target)))
-
-(defun make-progn (l)
-  (cons 'progn
-        (loop for x in l
-            append (if (eq 'progn (car x))
-                       (cdr x)
-                     (list x)))))
+  (let ((symbol (scoped-target-symbol target x)))
+    (make-idltype 
+     symbol
+     (op:id x)
+     `(make-tc-alias ,(op:id x) ,(op:name x)
+                     ,(target-typecode (op:original_type_def x) target))
+     `(deftype ,symbol
+               ',(target-type (op:original_type_def x) target)))))
 
 (defmethod target-code ((idef interface-def) target)
-  (let ((class (target-proxy-class-symbol target idef)))
-    (make-progn 
-     (list* (target-defclass target idef)
-            (target-defproxyclass target idef)
-            (map 'list (lambda (x) (target-icode x class target))
-              (op:contents idef :dk_all t))))))
+  (make-idltype
+   (scoped-target-symbol target idef)
+   (op:id idef)
+   `(make-typecode :tk_objref ,(op:id idef) ,(op:name idef))
+   (target-defclass target idef)
+   (target-defproxyclass target idef)
+   (make-progn
+    (map 'list (lambda (x) (target-code x target))
+         (op:contents idef :dk_all t)))))
+
+(defmethod target-code ((op operation-def) target)
+  (let* ((op-name (op:name op))
+         (lisp-name (make-target-symbol target op-name :op))
+         (class (target-proxy-class-symbol target (op:defined_in op))))
+    `(defmethod ,lisp-name ((obj ,class) &rest args)
+       (apply 'clorb::invoke obj ,op-name args))))
+
+
+(defmethod target-code ((op attribute-def) target)
+  (let* ((att-name (op:name op))
+         (lisp-name (make-target-symbol target att-name :op))
+         (class (target-proxy-class-symbol target (op:defined_in op))))
+    `(progn
+       (defmethod ,lisp-name ((obj ,class) &rest)
+         (apply 'clorb::invoke obj ,(getter-name att-name)))
+       ,@(if (eq (op:mode op) :attr_normal)
+             (list `(defmethod (setf ,lisp-name) (newval (obj ,class))
+                      (apply 'clorb::invoke obj ,(setter-name att-name)
+                             newval)))))))
+
 
 (defmethod target-code ((mdef module-def) target)
   (make-progn (map 'list (lambda (contained)
@@ -189,6 +236,8 @@
                            :initarg (make-target-symbol target m-name :keyword))))
                  (op:members exc))))
 
+
+;;;; Stub code generator
 
 (defun stub-code (name)
   (let ((target (make-instance 'code-target)))

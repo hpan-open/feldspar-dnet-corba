@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(load "clorb:clorb-pkgdcl")
+(load "CLORB:SRC;CLORB-PKGDCL")
 
 (defparameter clorb:*port*  4711)
 (defparameter clorb::*name-service* "NameService")
@@ -12,8 +12,6 @@
 
 (ensure-directories-exist *naming-base-path* :verbose t)
 
-(load "clorb:clorb-files")
-(clorb:reload)
 
 ;;(make:oos :clorb :load)
 
@@ -21,13 +19,14 @@
 (import 'cl-user::§§§ :clorb)
 (import 'cl-user::% :clorb)
 
-
 (define-symbol-macro cl-user::§§
   (in-package :clorb))
 
 (define-symbol-macro clorb::§§
   (in-package :cl-user))
 
+(load "CLORB:SRC;CLORB-FILES")
+(clorb:reload)
 
 #|
 (unless (find-class 'log-window nil)
@@ -48,7 +47,7 @@
        (clorb::listner-socket (clorb::adaptor clorb::*the-orb*))))
 |#
 
-(setq clorb::*host*
+(setq clorb:*host*
       (ccl::tcp-addr-to-str (ccl::local-interface-ip-address)))
 
 #+t2-has-ifr
@@ -61,16 +60,29 @@
         (setq ior (subseq ior 0 (1- (length ior)))))
       (setq clorb::*interface-repository* ior))))
 
-;;#+pentax-has-ifr
+#+pentax-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.1" 80))
   (let ((crlf (coerce (vector #\Return #\Linefeed) 'string)))
     (format s "GET /InterfaceRepository~A" crlf)
     (let ((ior (read-line s)))
-      (when (and (stringp ior)
+      (cond 
+       ((and (stringp ior)
                  (> (length ior) 4)
                  (string= "IOR:" ior :end2 4))
         (setq ior (string-right-trim crlf ior))
-        (setq clorb::*interface-repository* ior)))))
+        (setq clorb::*interface-repository* ior))
+       (t
+        (clorb::mess 4 "non ior=~A" ior))))))
+
+
+(defun hh ()
+  (cl-user::setup-hello :file "hello.ior")
+  (cl-user::hello-client :file "hello.ior"))
+
+(defun hhn ()
+  (cl-user::setup-hello :name "hello")
+  (cl-user::hello-client :name "hello"))
+
 
 (defun run ()
   (setup-pns)
