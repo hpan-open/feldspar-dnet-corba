@@ -4,7 +4,7 @@
 
                 a Common Lisp implementation of CORBA
 
-                    Version 0.4 (an ALPHA release)
+                    Version 0.4+ (an ALPHA release)
 
                           by Lennart Staflin
 
@@ -18,13 +18,14 @@ mapping follow the proposed mapping for LISP [1].
 
 It lacks:
 
-   * Support for some basic types (fixed) (still :-)
+   * wide strings, chars
+   * Request context
    * Value Types
    * DynAny
    * CORBA Messaging
    * Multithreading
    * IIOP 1.1/1.2
-   
+
 CLORB is released under GNU Library General Public License see the
 file COPYING.
 

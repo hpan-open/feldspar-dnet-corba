@@ -6,7 +6,7 @@
 ;;;; Basic types
 
 (deftype corba:boolean ()
-  'boolean)
+  t)
 
 (deftype corba:char ()
   'character)
@@ -59,6 +59,12 @@
 
 (deftype corba:fixed ()
   'rational)
+
+(deftype fixed (digits scale)
+  (let ((limit (if (< scale 0)
+                 (* (expt 10 digits) (expt 10 (- scale)))
+                 (/ (expt 10 digits) (expt 10 scale)))))
+    `(rational (,(- limit)) (,limit))))
 
 
 ;;;; Exception types
