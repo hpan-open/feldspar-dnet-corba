@@ -59,10 +59,10 @@
     (make-instance class :kind kind :params params)))
 
 (defun typecode-kind (tc)
-  (slot-value tc 'kind))
+  (if tc (slot-value tc 'kind) :tk_null))
 
 (defun typecode-params (tc)
-  (slot-value tc 'params))
+  (and tc (slot-value tc 'params)))
 
 (defun (setf typecode-params) (params tc)
   (setf (slot-value tc 'params) params))
@@ -111,11 +111,11 @@
 
 (defgeneric compute-marshal-function (tc)
   (:method ((tc CORBA:TypeCode))
-           (error "Marshalling of ~S not implementd" (op:kind tc))))
+           (error "Marshalling of ~S not implemented" (op:kind tc))))
 
 (defgeneric compute-unmarshal-function (tc)
   (:method ((tc CORBA:TypeCode))
-           (error "Unmarshalling of ~S not implementd" (op:kind tc))))
+           (error "Unmarshalling of ~S not implemented" (op:kind tc))))
 
 
 (defun marshal-function (tc)
@@ -298,9 +298,6 @@
 (defgeneric unset-extra-slots (tc)
   (:method ((tc CORBA:TypeCode))
            (slot-makunbound tc 'keywords)))
-
-
-
 
 
 ;;;; Accessing typecodes of defined types
