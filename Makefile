@@ -1,9 +1,13 @@
 all:
+FASL="*.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.nfasl *.cfsl"
 
 clean:
-	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.nfasl *.bak
+	eval rm -f $(FASL) *.bak
 	$(MAKE) -C idlcomp clean
 	$(MAKE) -C luna clean
+
+clean-fasl:
+	-cd fasl && rm -f $(FASL) && rm -rf luna idlcomp
 
 setmcl:
 	/Developer/Tools/SetFile -t TEXT -c CCL2 *.lisp

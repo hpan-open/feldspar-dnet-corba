@@ -31,7 +31,7 @@
 (setq clorb::*host-translations* '())
 
 
-(defvar *orb* (CORBA:ORB_init))
+(defvar *the-orb* (CORBA:ORB_init))
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))

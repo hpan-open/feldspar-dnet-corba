@@ -1,8 +1,8 @@
 (in-package :cl-user)
 
 ;;(pushnew :use-acl-socket *features*)
-;;(pushnew :use-my-idlparser *features*)
-;;(pushnew :no-idlcomp *features*)
+(pushnew :use-my-idlparser *features*)
+(pushnew :no-idlcomp *features*)
 (pushnew :clorb-dev *features*)
 
 
@@ -43,11 +43,12 @@
         (make-instance 'log-window :window-title "Log")))
 |#
 
-(defvar *orb*
+(defvar *the-orb*
   (CORBA:ORB_init
    (list "-ORBPort" "4711"
          ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
-         "-ORBInitRef NameService=corbaloc::127.0.0.1:4744/NameService"
+         ;;"-ORBInitRef NameService=corbaloc::127.0.0.1:4744/NameService"
+         "-ORBInitRef NameService=corbaloc::/NameService"
          #| "-ORBInitRef" "InterfaceRepository=" |#)))
 
 
@@ -59,26 +60,29 @@
 
 
 (defun use-pentax-ifr ()
-  (clorb::set-initial-reference *orb* "InterfaceRepository" 
+  (clorb::set-initial-reference *the-orb* "InterfaceRepository" 
                                 "http://10.0.1.251/InterfaceRepository"))
 
 (defun use-pentax-ns ()
-  (clorb::set-initial-reference *orb* "NameService" 
+  (clorb::set-initial-reference *the-orb* "NameService" 
                                 "http://10.0.1.251/NameService"))
 
+(defun use-mcl-ns ()
+  (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::127.0.0.1:4711/NameService")))
 
 
 (defun run ()
   (persistent-naming:setup-pns :export t)
-  (op:run *orb*))
+  (op:run *the-orb*))
 
 
 
 (setq clorb::*log-level* 3)
 
+#|
 (defun clorb::xir ()
   (map 'list #'op:name (op:contents (clorb::get-ir) :dk_all t)))
-
+|#
 
 
 #+(or)
@@ -115,7 +119,7 @@
 (with-open-file (o "clorb:y-ifr-idl.lisp" :direction :output :if-exists :supersede) (write (idef-write common-lisp-user::irr :default-prefix "omg.org") :stream o :pretty t))
 
 
-(op:string_to_object *orb* "corbaloc::10.0.1.2:4711/NameService")
+(op:string_to_object *the-orb* "corbaloc::10.0.1.2:4711/NameService")
 
 |#
 
