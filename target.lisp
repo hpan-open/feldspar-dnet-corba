@@ -372,7 +372,7 @@
 (set-pprint-dispatch '(cons (member define-user-exception define-corba-struct))
                      'pprint-def-and-keys)
 
-#|
+#||
 (load "clorb:src;iop-idl")
 (gen-stub-file (lookup-name "IOP") "clorb:x-iop.lisp")
 (gen-stub-file (lookup-name "CosNaming") "clorb:x-cosnaming.lisp" :package-def t)
@@ -383,6 +383,9 @@
 (load "clorb:src;ifr-idl")
 (gen-stub-file (lookup-name "CORBA") "clorb:x-ifr-base.lisp")
 
+(load "clorb:src;file-idl")
+(gen-stub-file (lookup-name "poa") "clorb:x-file.lisp" :package-def t)
+
 (defvar *target* (make-instance 'code-target))
 (target-code (lookup-name "CosNaming") *target*)
-|#
+||#

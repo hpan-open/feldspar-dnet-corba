@@ -59,3 +59,12 @@
 
 (deftype corba:fixed ()
   'rational)
+
+
+;;;; Exception types
+
+(define-condition corba:exception (serious-condition)
+  ())
+
+(define-condition corba:userexception (corba:exception)
+                  ())

@@ -2,20 +2,20 @@
 
 (defun ir-add-all (seq &optional (level 0))
   (map nil 
-    (lambda (x &aux (kind (invoke x "_get_def_kind"))
-                    (id   (invoke x "_get_id"))
+    (lambda (x &aux (kind (op:def_kind x))
+                    (id   (op:id x))
                     (indent (make-string level :initial-element #\. )))
       (mess 3 "-- ~A ~A - ~S - ~A" 
             indent
-            (invoke x "_get_absolute_name") kind id)
+            (op:absolute_name x) kind id)
       (case kind
            (:dk_Module 
-            (ir-add-all (invoke x "contents" :dk_All t)
+            (ir-add-all (op:contents x :dk_All t)
                         (1+ level)))
            (:dk_Interface
             (or (known-interface id)
-                (add-interface (interface-from-def x)))
-            (ir-add-all (corba:funcall "contents" x :dk_All t)
+                (add-interface (interface-from-def x id)))
+            (ir-add-all (op:contents x :dk_All t)
                         (1+ level)))
            ((:dk_Struct :dk_Alias :dk_Exception :dk_Enum)
             ;; IDL - types
@@ -24,4 +24,4 @@
     seq))
 
 (defun download-ir ()
-  (ir-add-all (corba:funcall "contents" (get-ir) :dk_all t)))
+  (ir-add-all (op:contents (get-ir) :dk_all t)))

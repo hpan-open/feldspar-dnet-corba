@@ -1,5 +1,5 @@
 ;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: local-ir.lisp,v 1.15 2002/06/01 05:45:43 lenst Exp $
+;; $Id: local-ir.lisp,v 1.16 2002/09/23 13:37:00 lenst Exp $
 
 (in-package :clorb)
 
@@ -785,6 +785,25 @@
   (declare (ignore args))
   (doseq (member (slot-value self 'members))
     (setf (op:type member) (op:type (op:type_def member)))))
+
+(defmethod idltype-tc ((obj union-def))
+  (flet ((default-label-p (label)
+           (and (eql :tk_octet (op:kind (any-typecode label)))
+                (= 0 (any-value label)))))
+    (let* ((default-index -1)
+          (mfields 
+           (loop for i from 0
+                 for m in (op:members obj)
+                 do (when (default-label-p (op:label m))
+                      (setq default-index i))
+                 collect (list (if (default-label-p (op:label m))
+                                 (arbritary-value (op:discriminator_type obj))
+                                 (op:label m))
+                               (op:name m)
+                               (op:type m))) ))
+      (make-typecode :tk_union (op:id obj) (op:name obj)
+                     (op:discriminator_type obj) default-index mfields))))
+                       
 
 
 ;;; struct UnionMember {
