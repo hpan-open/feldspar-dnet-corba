@@ -17,8 +17,9 @@
       (pushnew 'clorb::clisp-ext *features*))
   #+clisp
   (pushnew 'clorb::clisp-new-socket-status *features*)
-  #+openmcl
-  (pushnew :use-acl-socket *features*)
+;;  #+openmcl
+;;  (pushnew :use-acl-socket *features*)
+;;(setq *features* (delete :use-acl-socket *features*))
   #+digitool
   (when (find-package "BSD")
     (pushnew 'clorb::mcl-bsd *features*)))
@@ -49,7 +50,7 @@
       (error "No system dependent code to ~A" desc))
   (car forms))
 
-
+
 ;;;; TCP/IP sockets implementation glue
 
 #+digitool
@@ -61,6 +62,7 @@
    (stream :initform nil :accessor listener-stream)))
 
 
+
 ;; the unconnected socket is returned by OPEN-PASSIVE-SOCKET and used
 ;; in ACCEPT-CONNECTION-ON-PORT and COERCE-TO-WAITABLE-THING
 
@@ -68,22 +70,31 @@
   "Returns an UNCONNECTED-SOCKET for a TCP socket listening on PORT.  Set SO_REUSEADDDR if possible"
   (%SYSDEP
    "open listener socket"
+
    #+dummy-tcp
    (list 'dummy-listener (or port 115577))
+
    #+(or allegro use-acl-socket)
    (socket:make-socket :connect :passive :local-port port
-                       :format :binary
-                       :reuse-address t)
+                       :format :binary :reuse-address t)
+
+   #+openmcl
+   (openmcl-socket:make-socket :connect :passive :local-port port
+                               :format :binary :reuse-address t)
+
    #+clisp 
    (if port (socket-server port) (socket-server))
+
    #+clorb::cmucl-sockets 
    (ext:create-inet-listener port)
+
    #+clorb::db-sockets
    (let ((s (sockets:make-inet-socket :stream :tcp)))
      (setf (sockets:sockopt-reuse-address s) t)
      (sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sockets:socket-listen s 5)
      s)
+
    #+clorb::sb-bsd-sockets
    (let ((s (make-instance 'sb-bsd-sockets:inet-socket
                            :type :stream :protocol :tcp)))
@@ -91,19 +102,27 @@
      (sb-bsd-sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sb-bsd-sockets:socket-listen s 5)
      s)
+
    #+digitool
    (let ((listener (make-instance 'mcl-listener-socket :port port)))
      (accept-connection-on-socket listener)
      listener)))
 
+
+;; name of local host from passive socket, this is the local host, and
+;; will be used to default the hostname used in object references
+
 (defun passive-socket-host (socket)
   (declare (ignorable socket))
   (%SYSDEP
    "Get the hostname/IP of socket"
+
    #+dummy-tcp
    "localhost"
+
    #+clisp
    (socket-server-host socket)
+
    #+(and digitool (not use-acl-socket))
    (let ((host (ccl::stream-local-host (listener-stream socket))))
      (handler-case
@@ -111,40 +130,60 @@
        (ccl::tcp-unknown-domain-name 
         nil
         (ccl::tcp-addr-to-str host))))
-      
-   ;;#+Allegro (socket:ipaddr-to-hostname (socket:local-host socket))
+
+   #+Allegro
+   (socket:ipaddr-to-hostname (socket:local-host socket))
+
+   #+openmcl
+   (or (ignore-errors (openmcl-socket:ipaddr-to-hostname
+                       (openmcl-socket:local-host socket)))
+       "localhost")
+
    ;; Default
    "localhost"))
 
+
+
+;; the port of a passive socket, will be used in object references
 
 (defun passive-socket-port (socket)
   (declare (ignorable socket))
   (%SYSDEP
    "Get the port of socket"
+
    #+dummy-tcp
    (second socket)
+
    #+clisp
    (if socket (socket-server-port socket) *port*)
+
    #+(or Allegro use-acl-socket)
    (socket:local-port socket)
+
+   #+openmcl
+   (openmcl-socket:local-port socket)
+
    #+clorb::db-sockets
    (multiple-value-bind (adr port)
        (sockets:socket-name socket)
      (declare (ignore adr))
      port)
+
    #+clorb::sb-bsd-sockets
    (multiple-value-bind (adr port)
        (sb-bsd-sockets:socket-name socket)
      (declare (ignore adr))
      port)
+
    #+cmu
    (nth-value 1 (ext:get-socket-host-and-port socket))
+
    #+digitool
    (mcl-listener-port socket)))
 
 
 
-
+
 (defparameter *connect-timeout* 120)
 
 (defun open-active-socket (host port &optional (binary t))
@@ -153,13 +192,17 @@
     (declare (ignorable type))
     (%SYSDEP
      "open socket to host/port"
+
      #+dummy-tcp
      (error "Dummy TCP cannot connect")
+
      #+clisp 
      (socket-connect port host :element-type type) 
+
      #+clorb::cmucl-sockets
      (system:make-fd-stream (ext:connect-to-inet-socket host port)
                             :input t :output t :element-type type)
+
      #+clorb::db-sockets
      (let ((s (sockets:make-inet-socket :stream :tcp))
            (num (car (sockets:host-ent-addresses
@@ -175,24 +218,32 @@
        (sb-bsd-sockets:socket-connect s num port)
        (sb-bsd-sockets:socket-make-stream s :element-type type
                                    :input t :output t :buffering :none))
+
      #+(or allegro use-acl-socket)
      (socket:make-socket 
       :remote-host host :remote-port port
       :format (if binary :binary :text))
-     
+
+     #+openmcl
+     (openmcl-socket:make-socket 
+      :remote-host host :remote-port port
+      :format (if binary :binary :text))
+
      #+digitool
      (ccl::open-tcp-stream host port :element-type type 
                            :connect-timeout *connect-timeout*))))
 
-
+
 (defun accept-connection-on-socket (socket &optional (blocking nil))
   "Accept a connection on SOCKET and return the stream associated
 with the new connection.  Do not block unless BLOCKING is non-NIL"
   (declare (ignorable blocking))
   (%SYSDEP
    "accept a connection"
+
    #+dummy-tcp
    nil
+
    #+clorb::cmucl-sockets
    (when blocking
      (let ((new (ext:accept-tcp-connection socket)))
@@ -203,6 +254,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (mess 2 " - to stream: ~S" new)
        new))
    ;;  (error "non-blocking accept() not yet implemented for cmucl sockets")
+
    #+clorb::db-sockets
    (let ((before (sockets:non-blocking-mode socket)))
      (unwind-protect
@@ -216,6 +268,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                                              :input t :output t )))
            (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
+
    #+clorb::sb-bsd-sockets
    (let ((before (sb-bsd-sockets:non-blocking-mode socket)))
      (unwind-protect
@@ -229,6 +282,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                                              :input t :output t )))
            (sb-bsd-sockets:interrupted-error nil))
        (setf (sb-bsd-sockets:non-blocking-mode socket) before)))
+
    #+clisp 
    (when (socket-wait socket (if blocking 10 0))
      (let* ((conn (socket-accept socket 
@@ -236,6 +290,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (mess 4 "Accepting connection from ~A"
              (socket-stream-peer conn))
        conn))
+
    #+(or allegro use-acl-socket)
    (let ((conn (socket:accept-connection socket :wait blocking)))
      (when conn
@@ -245,6 +300,20 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                  (acl-socket:ipaddr-to-dotted (socket:remote-host conn)))
              (socket:remote-port conn)))
      conn)
+
+   #+openmcl
+   (let ((conn (openmcl-socket:accept-connection socket :wait blocking)))
+     (when conn
+       (mess 4 "Accepting connection ~S" conn)
+       #+(or)
+       (mess 4 "Accepting connection from ~A:~D"
+             (let ((host (openmcl-socket:remote-host conn)))
+               (or (ignore-errors
+                     (openmcl-socket:ipaddr-to-hostname host))
+                   (openmcl-socket:ipaddr-to-dotted host)))
+             (openmcl-socket:remote-port conn)))
+     conn)
+
    #+digitool
    (let* ((s (listener-stream socket)))
      (when (and s blocking)
@@ -270,8 +339,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                                      :reuse-local-port-p t)))
        new))))
 
-
-
+
 (defun socket-stream-closed-p (stream)
   (%SYSDEP
    "check if the stream has been closed (by other side presumably)"
@@ -312,7 +380,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    ;; default
    (close socket)))
 
-
+
 ;;;; HTTP GET
 
 (defun http-get-ior (host port path)
@@ -623,8 +691,21 @@ Returns select result to be used in getting status for streams."
    "suspend process until function returns true"
    #+mcl
    (apply #'ccl:process-wait-with-timeout whostate timeout wait-func args)
+
    ;; Default: ignore
    nil ))
+
+(defun process-wait (whostate wait-func &rest args)
+  (declare (ignorable whostate))
+  (%SYSDEP
+   "wait for condition to come true"
+   #+CCL 
+   (apply #'ccl:process-wait whostate wait-func args)
+
+   ;; Default
+   (loop until (apply wait-func args)
+         do (sleep 0.1))))
+
 
 
 ;;;; Running external programs
