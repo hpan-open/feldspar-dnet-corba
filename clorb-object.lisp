@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.6 2002/06/01 05:44:45 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.7 2002/10/01 13:58:22 lenst Exp $
 
 (in-package :clorb)
 
@@ -77,10 +77,15 @@
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
-    (format stream "~S @ ~A:~A"
-            (object-id o)
-            (object-host o)
-            (object-port o))))
+    (if (eql (class-of o)
+             (find-class 'corba:proxy))
+        (format stream "~S @ ~A:~A"
+                (object-id o)
+                (object-host o)
+                (object-port o))
+      (format stream "~A:~A"
+              (object-host o)
+              (object-port o)))))
 
 (define-method _is_nil ((x null))
   t)
@@ -263,6 +268,16 @@
   (op:send_deferred req)
   (op:get_response req))
 
+
+;; Used in static stubs, shorter code then op:_create_request
+(defun request-create (obj operation result-type )
+  (make-instance 'request
+    :target obj
+    :operation operation
+    :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
+                                       :argument (CORBA:Any :any-typecode result-type)))
+    :ctx nil))
+
 (defun request-funcall (req)
   (op:invoke req)
   (let ((retval (any-value (op:return_value req))))
@@ -294,6 +309,8 @@
 
 (defun object-narrow (obj id)
   "Return an equivalent proxy with class for the repository id."
+  (when (symbolp id)
+    (setq id (symbol-ifr-id id)))
   (assert (op:_is_a obj id))
   (make-instance (find-proxy-class id)
     :id id
