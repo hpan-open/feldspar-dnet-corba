@@ -32,7 +32,11 @@
                        :accessor orb-initial-references)
    (default-initial-reference
     :initform nil
-    :accessor orb-default-initial-reference)))
+    :accessor orb-default-initial-reference)
+   (pending-client-request
+    :initform nil
+    :accessor pending-client-request)))
+
 
 
 
@@ -56,6 +60,23 @@
     :the-orb orb
     :profiles profiles
     :raw-profiles raw-profiles ))
+
+
+(defmethod add-pending-client-request ((orb clorb-orb) client-request)
+  (push client-request (pending-client-request orb)))
+
+(defmethod remove-pending-request ((orb clorb-orb) client-request)
+  (let ((pos (member client-request (pending-client-request orb))))
+    (when pos
+      (if (cdr pos)
+        (setf (car pos) (cadr pos)
+              (cdr pos) (cddr pos))
+        (setf (pending-client-request orb)
+              (delete client-request (pending-client-request orb)))))
+    pos))
+
+(defmethod has-pending-request ((orb clorb-orb) client-request)
+  (member client-request (pending-client-request orb)))
 
 
 ;; initial ref:
@@ -149,12 +170,20 @@
                                    (marshal-object obj buffer))
                                  orb))))
 
+
+
+;;;; Initial reference operations
+
+
 ;;;    ObjectIdList list_initial_services ();
+
 (define-method list_initial_references ((orb orb))
   (mapcar #'car (orb-initial-references orb)))
 
+
 ;;;    Object resolve_initial_references (in ObjectId identifier)
 ;;;      raises (InvalidName);
+
 (define-method resolve_initial_references ((orb orb) name)
   (let ((ref-entry
          (assoc name (orb-initial-references orb)
@@ -177,17 +206,39 @@
         (setf (cddr ref-entry) obj))
       obj)))
 
+
+;;; void register_initial_reference (in ObjectId id, in Object obj)
+;;;    raises (InvalidName);
+
+(define-method register_initial_reference ((orb clorb-orb) id obj)
+  (when (or (not (stringp id)) (equal id "")
+            (assoc id (orb-initial-references orb)
+                    :test #'string=))
+    (error (CORBA:ORB/InvalidName)))
+  (unless obj
+    (raise-system-exception 'CORBA:BAD_PARAM 24 :completed_no))
+  (set-initial-reference orb id nil obj))
+
+
+
+;;;; Thread related operations
+
+
 ;;;    boolean work_pending(  );
+
 (define-method work_pending ((orb orb))
-  ;; FIXME
-  t)
+  (io-work-pending-p))
+
 
 ;;;    void perform_work( );
+
 (define-method perform_work ((orb orb))
   (let ((*running-orb* t))
-    (orb-wait)))
+    (orb-work)))
+
 
 ;;;    void run();
+
 (define-method run ((orb orb))
   (unless *running-orb*
     (cerror "Run anyway"
@@ -197,13 +248,22 @@
     (unwind-protect 
       (let ((*running-orb* t))
         (loop while (orb-active orb)
-              do (orb-wait)))
+              do (orb-work)))
       (setq *running-orb* old))))
 
 
 
+;;;; Dynamic Invokation related operations
+
+
 ;;;    Status create_list ( in long    count,
 ;;;                         out NVList new_list );
+
+(define-method create_list ((orb CORBA:ORB) count)
+  (loop repeat count
+        collect (CORBA:NamedValue :name "" 
+                                  :argument (CORBA:Any :any-typecode CORBA:tc_void)
+                                  :arg_modes CORBA:ARG_IN)))
 
 
 ;;;    Status create_operation_list ( in OperationDef oper,
@@ -222,33 +282,71 @@
        (op:params opdef)))
 
 
-
 ;;;    Status get_default_context (out Context ctx);
+
+(define-method get_default_context ((orb clorb-orb))
+  ;;FIXME
+  (raise-system-exception 'corba:no_implement))
+
+
+;;;    void send_multiple_requests_oneway(
+;;;        in RequestSeq               req
+;;;    );
+
+(define-method op::send_multiple_requests_oneway ((orb clorb-orb) req-list)
+  (map nil #'op:send_oneway req-list))
+
+
+;;;    void send_multiple_requests_deferred(
+;;;        in RequestSeq               req
+;;;    );
+
+(define-method op::send_multiple_requests_deferred ((orb clorb-orb) req-list)
+  (map nil #'op:send_deferred req-list))
+
+
+;;;    boolean poll_next_response();
+
+(define-method op::poll_next_response ((orb clorb-orb))
+  (unless (pending-client-request orb)
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
+  (some #'request-status (pending-client-request orb)))
+
+
+;;;    void get_next_response(
+;;;        out Request                 req
+;;;    ); // raises(WrongTransaction);
+
+(define-method op::get_next_response ((orb clorb-orb))
+  (unless (pending-client-request orb)
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
+  (orb-wait #'op:poll_next_response orb)
+  (let ((result nil))
+    (setf (pending-client-request orb)
+          (loop for req in (pending-client-request orb)
+                if (and (null result) (request-status req))
+                do (setq result (progn (op:get_response req) req))
+                else collect req))
+    (or result 
+        ;; OOPS, some other thread interfered ??
+        (op::get_next_response orb))))
+
+
+
+;;;; Service Information operations
+
+
 ;;;    boolean get_service_information (in ServiceType         service_type,
 ;;;                                     out ServiceInformation service_information );
+
+;;;    ObjectIdList list_initial_services ();
+
+
+
 ;;;    // get_current deprecated operation - should not be used by new code
 ;;;    // new code should use resolve_initial_reference operation instead
 ;;;    Current get_current();
 ;;;    // deprecate get_current in the next major printing of CORBA
-;;;
-;;;
-;;;    typedef string ObjectId;
-;;;    typedef sequence <ObjectId> ObjectIdList;
-;;;
-
-
-
-;;; void register_initial_reference (in ObjectId id, in Object obj)
-;;;    raises (InvalidName);
-
-(define-method register_initial_reference ((orb clorb-orb) id obj)
-  (when (or (not (stringp id)) (equal id "")
-            (assoc id (orb-initial-references orb)
-                    :test #'string=))
-    (error (CORBA:ORB/InvalidName)))
-  (unless obj
-    (raise-system-exception 'CORBA:BAD_PARAM 24 :completed_no))
-  (set-initial-reference orb id nil obj))
 
 
 
