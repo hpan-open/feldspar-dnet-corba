@@ -10,6 +10,9 @@
 
 ;;;  interface ORB {				// PIDL
 
+(defclass CORBA:TYPECODEFACTORY ()
+  ())
+
 (define-corba-class ORB (CORBA:TypeCodeFactory)
   :slots
   ((adaptor :initform nil :accessor adaptor)
@@ -177,7 +180,6 @@ Can be set to true globally for singel-process / development.")
 
 ;;;    string object_to_string (in Object obj);
 (define-method object_to_string ((orb orb) obj)
-  (declare (ignore orb))
   (object-to-string obj))
 
 (defun object-to-string (objref)
@@ -558,8 +560,6 @@ Can be set to true globally for singel-process / development.")
 ;; :ID "IDL:omg.org/CORBA/TypeCodeFactory:1.0"
 ;; :NAME "TypeCodeFactory")
 
-(defclass CORBA:TYPECODEFACTORY ()
-  ())
 
 
 (define-method "CREATE_RECURSIVE_TC" ((obj corba:typecodefactory) id)
