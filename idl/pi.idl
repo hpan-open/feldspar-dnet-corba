@@ -91,8 +91,7 @@ module PortableInterceptor {
     readonly attribute any sending_exception;
     readonly attribute CORBA::OctetSeq object_id;
     readonly attribute CORBA::OctetSeq adapter_id;
-    readonly attribute CORBA::RepositoryId
-    target_most_derived_interface;
+    readonly attribute CORBA::RepositoryId target_most_derived_interface;
     CORBA::Policy get_server_policy (in CORBA::PolicyType type);
     void set_slot (in SlotId id, in any data) raises (InvalidSlot);
     boolean target_is_a (in CORBA::RepositoryId id);
