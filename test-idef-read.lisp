@@ -36,6 +36,18 @@
       (ensure-equalp (op:id i) "IDL:Foo/Bar:1.0")
       (ensure-equalp (op:kind (op:type i)) :tk_objref)))
 
+  (define-test "Read Interface 3"
+    (idef-read '((define-interface "A" (:bases ("B"))
+                   (define-type "x" "y"))
+                 (define-interface "B" ()
+                   (define-type "y" long))
+                 (define-interface "C" (:bases ("A"))
+                   (define-type "z" "x")))
+               r)
+    (ensure-pattern r (repository-pattern 
+                       "A::x" (def-pattern :dk_alias)
+                       "C::z" (def-pattern :dk_alias))))
+
   (define-test "Read Operation" 
     (idef-read '((define-module "Foo" ()
                      (define-interface "Bar" ()
