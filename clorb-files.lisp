@@ -17,13 +17,14 @@
     "clorb-object"
     ("clorb-buffer" t)
     "clorb-marshal"
-    ("clorb-unmarshal" )
-    "clorb-ifr-base"
+    "clorb-unmarshal"
     "clorb-io"
+    "clorb-ifr-base"
     "clorb-iiop"
     "clorb-orb"
     ("clorb-opdef" t)
-    ("clorb-iir" t)
+    "clorb-iir"
+    "cosnaming-stub"
     "clorb-util"
     "clorb-ifr"
     "clorb-target"
@@ -32,7 +33,7 @@
 
 (defparameter *server-files*
   '("clorb-objkey"
-    ("clorb-srvreq" t)
+    ;;("clorb-srvreq" t)
     "clorb-servant"
     "clorb-trie"
     "clorb-poamgr"
@@ -49,13 +50,13 @@
     ("idef-macros" t)
     ;; Services
     "cosnaming-idl"
-    "cosnaming-stub"
-    ;;"cosnaming-skel"
-    ;;"pns-server"
+    "cosnaming-skel"
+    "pns-server"
     ;"ec-server"
     ;; Example
     "hello-idl"
-    ;;"hello-server"
+    "hello-new-servant"
+    "hello-server"
     "hello-client"
     ))
 

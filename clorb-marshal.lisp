@@ -57,6 +57,11 @@
                             ,bvar))))
       form))
 
+(defun marshal-short (n buffer)
+  (declare (type (or CORBA:ushort CORBA:short) n)
+           (optimize speed))
+  (marshal-number n 2 buffer))
+
 (defun marshal-ushort (n buffer)
   (declare (type (or CORBA:ushort CORBA:short) n)
            (optimize speed))
@@ -198,7 +203,7 @@
                           (marshal-ushort (iiop-profile-port p) buffer)
                           (marshal-osequence (iiop-profile-key p) buffer)))))
                (object-profiles objref))))
-  (marshal-string (object-id objref) buffer)
+  (marshal-string (proxy-id objref) buffer)
   (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
 
 
@@ -217,31 +222,15 @@
     (marshal discriminant discriminant-type buffer)
     (marshal value (third member) buffer)))
 
-#+unused-defuns
-(defun construct-typecode-for-value (value)
-  (etypecase value
-    ;;((integer -32768 32766) ':tk_short)
-    ((integer 0 65535) ':tk_ushort)
-    ((signed-byte 32) ':tk_long)
-    ((unsigned-byte 32) ':tk_ulong)
-    ((signed-byte 64) ':tk_longlong)
-    ((unsigned-byte 64) ':tk_ulonglong)
-    (number    ':tk_float)
-    (string    ':tk_string)
-    (sequence
-     (let ((elem (construct-typecode-for-value (elt value 0))))
-       (make-typecode :tk_sequence elem 0)))
-    (struct (typecode value))))
-
 (defun marshal-any (arg buffer)
   (let ((tc (any-typecode arg)))
-    (marshal tc :tk_typecode buffer)
+    (marshal-typecode tc buffer)
     (marshal (any-value arg) tc buffer)))
 
 (defun marshal-enum (arg enum-tc buffer)
-  (check-type arg (or symbol integer)
-    "a CORBA enum (ingeger or keyword)")
-  (let ((symbols (tcp-member-symbols (typecode-params enum-tc))))
+  (declare (optimize speed))
+  ;;(check-type arg (or symbol integer) "a CORBA enum (ingeger or keyword)")
+  (let ((symbols (tc-keywords enum-tc)))
     (marshal-ulong 
      (if (integerp arg)
          arg
@@ -249,7 +238,13 @@
            (error 'type-error 
                   :datum arg 
                   :expected-type (concatenate 'list '(member) symbols))))
-     buffer)))
+     buffer))) 
+
+(defun marshal-except (arg tc buffer)
+  (marshal-string (op:id tc) buffer)
+  (let ((values (all-fields arg)))
+    (doseq (member (tc-members tc))
+      (marshal (pop values) (second member) buffer))))
 
 (defun marshal (arg type buffer)
   (multiple-value-bind (kind params) 
@@ -294,15 +289,17 @@
       ((:tk_struct)
        (unless (typep arg 'CORBA:struct)
          (error 'CORBA:MARSHAL))
-       (struct-out arg type #'marshal buffer))
+       (marshal-struct arg type buffer))
+      ((:tk_except)
+       (marshal-except arg type buffer))
       ((:tk_union)
        (marshal-union arg params buffer))
       ((anon-struct)
        (marshal-multiple arg params buffer))
       (t
-       (marshal arg 
+       (marshal arg
                 (or (get kind 'corba-typecode)
-                    (error "MARSHAL: ~S" kind)) 
+                    (error "MARSHAL: ~S" kind))
                 buffer)))))
 
 (defun marshal-multiple (values types buffer)
@@ -312,19 +309,6 @@
 
 
 ;;;; GIOP extras
-
-(defun marshal-giop-header (type buffer)
-  (loop for c across "GIOP"
-	do (marshal-octet (char-code c) buffer))
-  (marshal-octet 1 buffer)				;Version 
-  (marshal-octet 0 buffer)
-  (marshal-octet 1 buffer)				;byte-order
-  (marshal-octet (cond ((numberp type) type)
-		       ((eq type 'request) 0)
-		       ((eq type 'reply) 1)
-		       (t (error "Message type ~S" type))) buffer)
-  ;; Place for message length to be patched in later
-  (marshal-ulong 0 buffer))
 
 (defun marshal-giop-set-message-length (buffer)
   (let ((len (fill-pointer (buffer-octets buffer))))

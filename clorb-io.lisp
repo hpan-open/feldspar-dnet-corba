@@ -130,7 +130,8 @@
         (io-descriptor-read-pos desc) start
         (io-descriptor-read-limit desc) end)
   (when (and *io-multi-process* buf (> end start))
-    (push desc *io-ready-for-read*)))
+    (push desc *io-ready-for-read*))
+  nil)
 
 
 (defun io-desc-write (desc)
@@ -213,29 +214,25 @@
   (unless *io-event-queue*
     (let ((ready-streams
            (loop for desc in *io-ready-for-read*
-                 unless (io-descriptor-write-process desc)
                  collect (io-descriptor-stream desc))))
       (process-wait-with-timeout "waiting for event" 120
                                  (lambda (streams) 
                                    (or (not (null *io-event-queue*))
                                        (some #'listen streams)))
                                  ready-streams))
-    (loop for (desc . rest) on *io-ready-for-read*
-          with prev = nil
-          for remove = nil
-          when (listen (io-descriptor-stream desc))
-          do (setf (io-descriptor-read-process desc)
-                   (start-process "read" #'io-desc-read desc)
-                   remove t)
-          when (or remove (eq :broken (io-descriptor-status desc)))
-          do (if prev (setf (cdr prev) rest)
-                 (setq *io-ready-for-read* rest))))
+    (setq *io-ready-for-read*
+         (delete-if (lambda (desc)
+                      (or (eq :broken (io-descriptor-status desc))                       
+                          (if (listen (io-descriptor-stream desc))
+                            (setf (io-descriptor-read-process desc)
+                                  (start-process "read" #'io-desc-read desc)))))
+                    *io-ready-for-read*)) )
   (let ((event (pop *io-event-queue*)))
     (values-list (or event '(nil)))))
 
 
 (defun io-driver ()
-  (declare (optimize debug))
+  (declare (optimize (speed 2)))
 
   (when *io-multi-process*
     (io-start-bg-listen)

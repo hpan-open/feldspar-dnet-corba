@@ -173,10 +173,9 @@
     (make-opdef
      :name name
      :params (map 'list (lambda (pardesc)
-                          (make-param
-                           (struct-get pardesc :name)
-                           (struct-get pardesc :mode)
-                           (simplify-type (struct-get pardesc :type))))
+                          (make-param (op:name pardesc)
+                                      (op:mode pardesc)
+                                      (simplify-type (op:type pardesc))))
                   (get-attribute irdef "_get_params" parseq))
      :result (simplify-type result)
      :raises (map 'list

@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.9 2002/06/01 05:49:05 lenst Exp $
+ $Id: TODO,v 1.10 2002/10/28 18:27:07 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -22,10 +22,6 @@ But lots of variantions possible in operation name. And also
 exceptions should be returned not raised.
 
 - 5.12 CORBA:ORBid,
-  (CORBA:ORB_init argv orb_identifier ) -> ORB, argv'
-  (CORBA:ORB_init ) = (CORBA:ORB_init nil "") -> ORB
-
-- 6.6 CodeGen: class-SERVANT implements all attributes
 
 - 6.7.1 corba:define-method -- a little more advandced than clorb:define-method
 
@@ -33,15 +29,13 @@ exceptions should be returned not raised.
 * Misc
 
 - string_to_object
-  Should handle more URL variants: corbname:, http:
+  Should handle more URL variants: corbname:
 
 - Marshalling of fixed
 
 - Bounds cheking on marshaling bounded sequences.
 
 - DynAny interface (5.16)
-
-- IDL parser
 
 
 * Future
