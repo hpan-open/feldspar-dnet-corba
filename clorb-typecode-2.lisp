@@ -3,73 +3,7 @@
 (in-package :clorb)
 
 
-(defgeneric tc-members (tc))
-
-(defgeneric compact-params (tc)
-  (:method ((tc CORBA:TypeCode)) (typecode-params tc)))
-
-
-(eval-when (:compile-toplevel :execute)
-  (defun make-compact-params (class-name params member-params)
-    (let ((member-name-p (and (consp member-params) (find 'member_name member-params))))
-      (when (or (find 'name params) member-name-p)
-        `(defmethod compact-params ((tc ,class-name))
-           (let ((params (typecode-params tc)))
-             (list
-              ,@(loop for p in params and i from 0 collect
-                      (cond ((eql p 'name) "")
-                            ((and member-name-p (eql p :members))
-                             `(map 'vector
-                                   (lambda (member)
-                                     (list
-                                      ,@(loop for mp in member-params and j from 0
-                                              collect (cond ((eql mp 'member_name) "")
-                                                            (t `(elt member ,j))))))
-                                   (elt params ,i)))
-                            (t `(elt params ,i)))))))))))
-
-
-(defmacro tcp-elt (x i)
-  (case i
-    (0 `(first (typecode-params ,x)))
-    (1 `(second (typecode-params ,x)))
-    (2 `(third (typecode-params ,x)))
-    (3 `(fourth (typecode-params ,x)))
-    (4 `(fifth (typecode-params ,x)))
-    (otherwise `(elt (typecode-params ,x) ,i))))
-
-
-(defmacro define-typecode (class-name &key kind cdr-syntax params member-params constant )
-  `(progn
-     (defclass ,class-name (CORBA:TypeCode)
-       ())
-     (setf (get ',kind 'tk-params) ',cdr-syntax)
-     (setf (get ',kind 'tk-class) ',class-name)
-     ,@(loop for param in params
-             for i from 0
-             collect (if (eq param :members)
-                       `(defmethod tc-members ((tc ,class-name))
-                          (tcp-elt tc ,i))
-                       `(define-method ,param ((tc ,class-name))
-                          (tcp-elt tc ,i))))
-     ,@(cond ((consp member-params)
-              (loop for mp in member-params 
-                    for i from 0
-                    collect `(define-method ,mp ((tc ,class-name) index)
-                               (elt (elt (tc-members tc) index) ,i))))
-             ((null member-params) nil)
-             ((symbolp member-params)
-              `((define-method ,member-params ((tc ,class-name) index)
-                 (elt (tc-members tc) index)))))
-     ,(make-compact-params class-name params member-params)
-     ,@(if constant
-         `((defparameter ,(if (consp constant) (car constant) constant)
-             (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
-                                                      (cdr constant)))))))))
-
-
-
-
+;;;; Basic Types
 
 (define-typecode null-typecode
   :kind :tk_null
@@ -139,10 +73,55 @@
   :kind :tk_typecode
   :constant corba:tc_typecode)
 
+
+;;;; Fixed 
+
 (define-typecode fixed-typecode
   :kind :tk_fixed
   :cdr-syntax (:tk_ushort :tk_short)
   :params (fixed_digits fixed_scale))
+
+
+(defmethod marshal (arg (tc fixed-typecode) buffer)
+  (let ((digits (op:fixed_digits tc))
+        (scale  (op:fixed_scale tc)))
+    (unless (typep arg `(fixed ,digits ,scale))
+      (error 'type-error :datum arg :expected-type `(fixed ,digits ,scale)))
+    (multiple-value-bind (scaled rest)
+                         (floor (* (abs arg) (expt 10 scale)))
+      (unless (zerop rest)
+        (warn "Fixed<~D,~D> precision loss in ~S" digits scale arg))
+      (let ((marshal-digits digits))
+        (when (evenp digits) (incf marshal-digits))
+        (let ((string (format nil "~v,'0D~A"
+                              marshal-digits scaled 
+                              (if (< arg 0) "D" "C"))))
+          (with-out-buffer (buffer)
+            (do ((i 0 (+ i 2)))
+                ((> i marshal-digits))
+              (put-octet (logior (* (digit-char-p (char string i) 16) 16)
+                                 (digit-char-p (char string (+ i 1)) 16))))))))))
+          
+
+(defmethod unmarshal ((tc fixed-typecode) buffer)
+  (let ((digits (op:fixed_digits tc))
+        (scale  (op:fixed_scale tc)))
+    (let ((octet-count (ceiling (+ digits 1) 2)))
+      (with-in-buffer (buffer)
+        (do ((i 0 (+ i 1))
+             (n 0))
+            ((>= i octet-count) 
+             (/ n (expt 10 scale)))
+          (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
+            (let ((octet (get-octet)))
+              (accumulate (ash octet -4))
+              (let ((digit (logand octet #xF)))
+                (cond ((< digit 10) (accumulate digit))
+                      ((= digit #xD) (setf n (- n))))))))))))
+      
+
+
+;;;; Objref
 
 (define-typecode objref-typecode
   :kind :tk_objref
@@ -150,6 +129,12 @@
   :params (id name)
   :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
 
+(defmethod unmarshal ((tc objref-typecode) buffer)
+  (unmarshal-object buffer (op:id tc)))
+
+
+
+;;;; Enum
 
 (define-typecode enum-typecode
   :kind :tk_enum
@@ -170,7 +155,14 @@
                   :expected-type (concatenate 'list '(member) symbols))))
      buffer)))
 
+(defmethod unmarshal ((tc enum-typecode) buffer)
+  (let ((index (unmarshal-ulong buffer)))
+    (elt (tc-keywords tc) index)))
 
+
+
+
+;;;; Sequence
 
 (define-typecode sequence-typecode
   :kind :tk_sequence
@@ -187,6 +179,15 @@
     (marshal-ulong length buffer)
     (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
+(defmethod unmarshal ((tc sequence-typecode) buffer)
+  (let ((eltype (op:content_type tc)))
+    (typecase eltype
+      (octet-typecode (unmarshal-osequence buffer))
+      (t (unmarshal-sequence-m (buffer) (unmarshal eltype buffer))))))
+
+
+
+;;;; Strings
 
 (define-typecode string-typecode
   :kind :tk_string
@@ -201,6 +202,8 @@
   :constant (corba:tc_wstring 0))
 
 
+;;;; Array
+
 (define-typecode array-typecode
   :kind :tk_array
   :cdr-syntax (complex :tk_typecode :tk_ulong)
@@ -214,6 +217,17 @@
       (error 'CORBA:MARSHAL))
     (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
+(defmethod unmarshal ((tc array-typecode) buffer)
+  (let ((eltype (op:content_type tc))
+        (len (op:length tc)))
+    (let ((arr (make-array len)))
+      (loop for i below len 
+            do (setf (aref arr i) (unmarshal eltype buffer)))
+      arr)))
+
+
+
+;;;; Alias
 
 (define-typecode alias-typecode
   :kind :tk_alias
@@ -223,6 +237,12 @@
 (defmethod marshal (arg (tc alias-typecode) buffer) 
   (marshal arg (op:content_type tc) buffer))
 
+(defmethod unmarshal ((tc alias-typecode) buffer)
+  (unmarshal (op:content_type tc) buffer))
+
+
+
+;;;; Value
 
 (define-typecode value-typecode
   :kind :tk_value
@@ -252,7 +272,6 @@
   :kind :tk_local_interface
   :cdr-syntax (complex :tk_string :tk_string)
   :params (id name))
-
 
 
 

@@ -52,6 +52,27 @@
             (test-roundtrip float 'CORBA:double CORBA:tc_double)
             (test-roundtrip float 'CORBA:longdouble CORBA:tc_longdouble)))))
     
+    (define-test "Fixed"
+      (let ((f10-2-tc (create-fixed-tc 10 2))
+            (f3--4-tc (create-fixed-tc 3 -4)))
+        (labels ((test-value (value tc)
+                   (let ((buffer (get-work-buffer)))
+                     (marshal value tc buffer)
+                     (ensure-equalp (unmarshal tc buffer) value)))
+                 (test-value-list (list tc)
+                   (with-sub-test ((format nil "fixed<~D,~D>" (op:fixed_digits tc)
+                                           (op:fixed_scale tc)))
+                     (dolist (v list)
+                       (test-value v tc)
+                       (test-value (- v) tc)))))
+          (test-value-list '(917899/100 1234567890/100) f10-2-tc)
+          (test-value-list '(0 010000 110000 990000) f3--4-tc)))
+      (marshal-res
+       #( #x07 #x8C )
+       (marshal 78/10 (create-fixed-tc 2 1) buffer)))
+    
+
+
     (define-test "encapsulation"
       (marshal-res 
        #(28 0 0 0                     ; encaps size
