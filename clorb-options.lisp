@@ -16,9 +16,9 @@ If nil, let implementation choose a port.")
 
 
 (defvar *default-include-directories*
-  (list (make-pathname :directory '(:relative "idl")
-                       :name nil :type nil
-                       :defaults *clorb-pathname-defaults*)))
+  (list (merge-pathnames (make-pathname :directory '(:relative "idl")
+                                        :name nil :type nil)
+                         *clorb-pathname-defaults*)))
 
 
 (defvar *name-service* "file:///tmp/NameService"

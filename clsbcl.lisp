@@ -8,7 +8,7 @@
 
 
 ;;(require :db-sockets)
-(require :asdf)
+;;(require :asdf)
 (require :sb-bsd-sockets)
 
 #+use-my-idlparser
@@ -29,7 +29,7 @@
 
 (load "clorb:src;examples;hello;auto")
 
-(defvar *orb* 
+(defvar *the-orb* 
   (CORBA:ORB_init
    (list ;;"-ORBPort" "4712"
          "-ORBInitRef" "NameService=corbaloc::127.0.0.1:4744/NameService"
