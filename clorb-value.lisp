@@ -12,7 +12,8 @@
   :member-params (member_name member_type member_visibility)
   :constant (corba::TC_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
                                  CORBA::VM_NONE nil ())
-  :extra-slots (truncatable-interfaces member-types))
+  :share named-typecode :shared-params 2
+  :extra-slots (truncatable-interfaces member-types feature-symbols))
 
 
 (defmacro define-value (symbol &key id name base_value 
@@ -20,7 +21,6 @@
                                supported_interfaces abstract_base_values members)
   (let ((value-bases (append (if base_value (list base_value))
                              abstract_base_values)))
-
   `(progn
      (defclass ,symbol 
        (,@(or value-bases (list 'CORBA::ValueBase))
@@ -50,22 +50,6 @@
                                      collect `(list ,name ,tc ,access))))))))
 
 
-
-(defmacro with-cache-slot ((object slot &key 
-                                   (dont-cache-types nil)
-                                   (cache-types t))
-                           &body body)
-  (let ((objvar (gensym)))
-    `(let ((,objvar ,object))
-       (if (slot-boundp ,objvar ',slot)
-         (slot-value ,objvar ',slot)
-         (let ((new-value (progn ,@body)))
-           (typecase new-value
-             ,@(if dont-cache-types
-                 `((,dont-cache-types new-value)))
-             (,cache-types (setf (slot-value ,objvar ',slot) new-value))
-             ,@(if (not (eql cache-types t))
-                 `((t new-value)))))))))
 
 
 (defun truncatable-interfaces (tc)
@@ -166,7 +150,7 @@
 ;;;; marshall value
 
 
-(defvar *chunking-level* 0)
+
 (defvar *chunk-tail* nil)
 
 
@@ -210,14 +194,9 @@
 (defvar *chunk-start*)
 
 
-(defun tc-member-types (tc)
-  (with-cache-slot (tc member-types)
-    (loop for i from 0 below (op:member_count tc)
-          collect (op:member_type tc i))))
-
 (defun tc-feature-values (tc value)
-  (loop for i from 0 below (op:member_count tc)
-        collect (slot-value value (feature (op:member_name tc i)))))
+  (loop for feature in (tc-feature-symbols tc)
+        collect (slot-value value feature)))
 
 
 (defun marshal-value-state (chunking values types buffer)
@@ -293,71 +272,57 @@
              (values (not (zerop chunked-flag)) repoid url))))))
          
 
-(defvar *chunk-end* nil)
-
 (defun unmarshal-value-state (chunked truncate keys types buffer)
   (labels 
-    ((in-chunk ()
-       (or (and *chunk-end*
-                (< (buffer-position buffer) *chunk-end*))
-           (setq *chunk-end* nil)))
-     (start-chunk (size)
-       (setq *chunk-end* (+ (buffer-position buffer) size)))
-     (read-tag () (unmarshal-long buffer))
+    ((read-tag () (unmarshal-long buffer))
      (rewind-tag () (incf (buffer-position buffer) -4))
-     (chunk-or-value ()
-       (unless (in-chunk)
-         (let ((tag (read-tag)))
-           (cond ((< 0 tag min-value-tag) (start-chunk tag))
-                 ((< tag 0) (error 'CORBA:MARSHAL))
-                 (t (rewind-tag))))))
-     (unmarshal-state-member (tc buffer)
-       (unless (zerop *chunking-level*)
-         (chunk-or-value))
-       (unmarshal tc buffer))    
-     (do-it ()
-       (loop for key in keys for tc in types
-             collect key collect (unmarshal-state-member tc buffer)))
      (truncating ()
        (unless truncate
          (mess 4 "Truncating a non truncatable value")
          (error 'CORBA:MARSHAL)))
      (truncate-chunk ()
-       (truncating)
-       (setf (buffer-position buffer) *chunk-end*))
+       (when *chunk-end*
+         (truncating)
+         (setf (buffer-position buffer) *chunk-end*)
+         (setf *chunk-end* nil)
+         t))
      (find-end-of-value ()
        (loop 
-         (if (in-chunk) (truncate-chunk)
-           (let ((tag (read-tag)))
-             (cond ((eql tag (- *chunking-level*))
-                    (return))
-                   ((< (- *chunking-level*) tag 0)
-                    ;; end of enclosing value also
-                    (rewind-tag)
-                    (return))
-                   ((< tag (- *chunking-level*))
-                    ;; end of sub value presumably
-                    (truncating))
-                   ((< tag min-value-tag)
-                    (start-chunk tag))
-                   (t ; value tag
-                    ;; need to skip this value
-                    (let ((chunked (unmarshal-value-header tag buffer)))
-                      (assert chunked)))))))))
+         (or (truncate-chunk)
+             (let ((tag (without-chunking (buffer) (read-tag))))
+               (cond ((eql tag (- *chunking-level*))
+                      (return))
+                     ((< (- *chunking-level*) tag 0)
+                      ;; end of enclosing value also
+                      (rewind-tag)
+                      (return))
+                     ((< tag (- *chunking-level*))
+                      ;; end of sub value presumably
+                      (truncating))
+                     ((< tag min-value-tag)
+                      ;; skip a chunk
+                      (truncating)
+                      (incf (buffer-position buffer) tag))
+                     (t ; value tag
+                      ;; need to skip this value
+                      (let ((chunked (without-chunking (buffer)
+                                       (unmarshal-value-header tag buffer))))
+                        (assert chunked)))))))))
     ;; ------------------------------------------------
-    (if (or chunked (not (zerop *chunking-level*)))
-      (let ((*chunking-level* (1+ *chunking-level*))
-            (*chunk-end* nil))
-        (prog1 (do-it) (find-end-of-value)))
-      (do-it))))
+    (with-in-chunking (chunked)
+      (prog1
+        (loop for key in keys for tc in types
+              collect key collect (unmarshal tc buffer)) 
+        (if chunking-p (find-end-of-value))))))
 
 
 (defun unmarshal-value (buffer &optional expected-id)
   (unmarshal-record
    (lambda (buffer) 
-     (let ((valuetag (unmarshal-long buffer)))
-       (unless (zerop valuetag)
-         (unmarshal-value-1 valuetag buffer expected-id))))
+     (without-chunking (buffer)
+       (let ((valuetag (unmarshal-long buffer)))
+         (unless (zerop valuetag)
+           (unmarshal-value-1 valuetag buffer expected-id)))))
    buffer))
 
 (defun unmarshal-value-1 (valuetag buffer expected-id)
@@ -405,7 +370,9 @@
 (define-typecode value_box-typecode
   :kind :tk_value_box
   :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
-  :params (id name content_type))
+  :params (id name content_type)
+  :share alias-typecode                 ; ? realy share non abstract class ?
+  :shared-params 3)
 
 
 (defclass value-box ()

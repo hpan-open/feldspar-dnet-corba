@@ -8,6 +8,7 @@
   (declare (type buffer buffer)
            (optimize speed (debug 0)))
   (with-in-buffer (buffer)
+    (align 0)
     (get-octet)))
 
 (defun unmarshal-char (buffer)
@@ -17,25 +18,20 @@
   (/= (unmarshal-octet buffer) 0))
 
 
-#+unused-functions
-(defun unmarshal-align (n buffer)
-  (declare (type (integer 0 100) n)
-           (type buffer buffer)
-           (optimize speed))
-  (incf (buffer-position buffer)
-        (logand (- n (logand (the buffer-index (buffer-rel-pos buffer)) (- n 1))) (- n 1))))
-
-
-
 (defmacro %unmarshal-number (size signed buffer &optional (align size))
   (let ((code1 `(get-octet))
         (code2 nil)
         (code nil))
+    ;; some numbers are 16 octets, align on 8 and possibly broken in the middel
+    ;; by chunk, (align 0) will ensure that the new chunk is recognized.
     (loop for c from 1 below size 
-          do (setf code1 `(logior ,code1 (ash (get-octet) ,(* c 8)))))
+          do (setf code1 `(logior ,code1
+                                  (progn ,@(if (= c 8) `((align 0)))
+                                         (ash (get-octet) ,(* c 8))))))
     (setf code2 `(logior
                   ,@(loop for c from (1- size) downto 1 
-                          collect `(ash (get-octet) ,(* c 8)))
+                          collect `(progn ,@(if (= c 7) `((align 0)))
+                                          (ash (get-octet) ,(* c 8))))
                   (get-octet)))
     
     (setf code `(if (= (buffer-byte-order buffer) 1)
@@ -128,15 +124,27 @@
          (str (make-string (- len 1))))
     (with-in-buffer (buffer :check nil)
       (loop for i from 0 below (1- len)
-            do (setf (aref str i) (code-char (get-octet))))
+            do (align 0) (setf (aref str i) (code-char (get-octet))))
       (get-octet))
     str))
 
 
 (defun unmarshal-osequence (buffer)
-  (let ((len (unmarshal-ulong buffer)))
+  (let ((len (unmarshal-ulong buffer))
+        (result nil))
     (with-in-buffer (buffer :check nil)
-      (subseq octets pos (incf pos len)))))
+      (loop
+        (let ((seg-len (if (or (not chunking-p) (zerop len))
+                         len
+                         (progn (align 0) (min len (- *chunk-end* pos))))))
+          (let ((segment (subseq octets pos (incf pos seg-len))))
+            (if result
+              (setq result (concatenate 'vector result segment))
+              (setq result segment)))
+          (incf len (- seg-len)))
+        (if (zerop len) (return))))
+    result))
+    
 
 
 (defmacro with-encapsulation (buffer &body body)

@@ -154,6 +154,24 @@
         (ensure-pattern* obj 'op:name "foo")
         (ensure-eql (unmarshal tc1 buffer) obj))))
 
+  (define-test "mid state chunking"
+    (flet ((l (x) (marshal-long x buffer))
+           (o (x) (marshal-octet x buffer))
+           (c (x) (marshal-octet (char-code x) buffer)))
+      ;; value tag
+      (l (+ min-value-tag value-flag-chunking))
+      ;; state: (string) "hx"
+      (l 5)                             ; chunk length
+      (l 3) (c #\h)                     ; first chunk
+      (l 2)                             ; chunk length
+      (c #\x) (o 0)                     ; second chunk
+      (l -1)                            ; end tag
+      ;; --
+      (let ((obj (unmarshal tc1 buffer)))
+        (ensure-pattern* obj 
+                         'identity (isa 'test-value-1)
+                         'op:name "hx")))) 
+
 
 ;; 
 
