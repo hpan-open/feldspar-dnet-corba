@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.4 2002/04/23 12:35:37 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.5 2002/05/02 20:40:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -28,7 +28,7 @@
 (define-method _is_a ((servant servant) logical-type-id)
   (or (equal logical-type-id "IDL:omg.org/CORBA/Object:1.0")
       (equal logical-type-id (current-primary-interface servant))
-      (op::is_a (op::_get_interface servant) logical-type-id)))
+      (op:is_a (op::_get_interface servant) logical-type-id)))
 
 (define-method _get_interface ((servant servant))
   (handler-case
@@ -63,37 +63,31 @@
 (defmethod servant-invoke ((servant DynamicImplementation) sreq)
   (let ((op (op:operation sreq)))
     (cond ((equal op "_is_a")
-           (let (repid)
-             (op:arguments sreq 
-                           (list 
-                            (CORBA:NamedValue
-                             :argument (setq repid
-                                         (CORBA:Any
-                                          :any-typecode corba:tc_string)))))
+           (let ((repid (CORBA:Any :any-typecode corba:tc_string)))
+             (op:arguments sreq (list (CORBA:NamedValue :argument repid)))
              (op:set_result sreq
                             (CORBA:Any
                              :any-typecode corba:tc_boolean
-                             :any-value (op::_is_a 
-                                         servant (any-value repid))))))
+                             :any-value (op:_is_a servant (any-value repid))))))
           
           ((equal op "_non_existent")
            (op:arguments sreq nil)
            (op:set_result sreq
-                          (corba:any
+                          (CORBA:Any
                            :any-typecode corba:tc_boolean
-                           :any-value (op::_non_existent servant))))
+                           :any-value (op:_non_existent servant))))
           ((equal op "_interface")
            (op:arguments sreq nil)
            (op:set_result sreq
-                          (corba:any
+                          (CORBA:Any
                            :any-typecode corba:tc_objref
-                           :any-value (op::_get_interface servant))))
+                           :any-value (op:_get_interface servant))))
           (t 
-           (op::invoke servant sreq)))))
+           (op:invoke servant sreq)))))
 
 
 (defmethod primary-interface ((servant DynamicImplementation) oid poa)
-  (op::primary_interface servant oid poa))
+  (op:primary_interface servant oid poa))
 
 
 ;;;; Implementation details

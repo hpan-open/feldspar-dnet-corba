@@ -43,7 +43,7 @@
 
 
 (defun ORB_init (&optional args (orbid ""))
-  (declare (ignore args orbid))
+  (declare (ignore orbid))
   (unless *the-orb*
     (setq *the-orb* (make-instance 'CORBA:ORB
                       :active t
@@ -56,8 +56,30 @@
                              *interface-repository*))
     (dolist (fn *orb-initializers*)
       (funcall fn *the-orb*)))
+  (setq args (process-orb-args *the-orb* args))
   (setf (orb-active *the-orb*) t)
-  *the-orb*)
+  (values *the-orb* args))
+
+(defun process-orb-args (orb args)
+  (let ((new-args '()))
+
+    (loop while args do
+      (let ((option (pop args)))
+        (cond ((equal option "-ORBInitialReference")
+               (process-opt-initial-reference orb (pop args)))
+              ((string-starts-with option "-ORB")
+               (pop args))
+              (t (push option new-args)))))
+
+    (nreverse new-args)))
+
+(defun process-opt-initial-reference (orb arg)
+  (let ((eq-pos (position #\= arg)))
+    (unless eq-pos (error "Illegal InitialReferences option: ~A" arg))
+    (let ((name (subseq arg 0 eq-pos))
+          (ior  (subseq arg (+ eq-pos 1))))
+      (set-initial-reference orb name ior))))
+
 
 ;;;    void shutdown( in boolean wait_for_completion );
 (define-method shutdown ((orb orb) wait_for_completion)
@@ -85,7 +107,6 @@ Can be set to true globally for singel-process / development.")
 	  (map 'list #'identity (marshal-make-encapsulation
 				 (lambda (buffer) 
                                    (marshal-ior objref buffer))))))
-
 
 ;;;    ObjectIdList list_initial_services (); 
 (define-method list_initial_references ((orb orb))
@@ -304,3 +325,8 @@ Can be set to true globally for singel-process / development.")
     (assert (eq (char str pos) #\.))
     (let ((minor (parse-integer str :start (+ pos 1))))
       (cons major minor))))
+
+
+;;;; CORBA::Current
+
+(define-corba-class CORBA:Current ())

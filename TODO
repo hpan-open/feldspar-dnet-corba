@@ -1,16 +1,19 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.6 2002/03/21 19:31:12 lenst Exp $
+ $Id: TODO,v 1.7 2002/05/02 20:40:11 lenst Exp $
 
 - string_to_object
 Should handle more URL variants:
-       corbaloc:, corbname:, file:, (http:)
+       corbname:, http:
 
 Then change the *name-service*, *interface-repository*
 to be something that can be passed to string_to_object.
 Like: "file:///tmp/NameService"
        
+- Support INS
+  -ORBInitRef <ObjectID>=<ObjectURL>
 
-+ Final Lisp Mapping
+
+* Final Lisp Mapping
 
 - 2.2 marshal should signal CORBA:MARSHAL on type errors.
 
@@ -34,23 +37,29 @@ exceptions should be returned not raised.
   (CORBA:ORB_init argv orb_identifier ) -> ORB, argv'
   (CORBA:ORB_init ) = (CORBA:ORB_init nil "") -> ORB
 
-- 6.2 PortableServer:Servant (?? CORBA:Object),
 - 6.6 CodeGen: class-SERVANT implements all attributes
+
 - 6.7.1 corba:define-method -- a little more advandced than clorb:define-method
 
-+ 
+
+* Misc
 
 - Mapping for UserExceptions
 
-- Marshaling of floats, fixed
+- Marshalling of fixed
+
+- unmarshalling of floats
 
 - Bounds cheking on marshaling bounded sequences.
 
 - DynAny interface (5.16)
 
-- Multi-Threading
-
 - IDL parser
+
+
+* Future
+
+- Multi-Threading
 
 - Values types
 
@@ -59,9 +68,6 @@ exceptions should be returned not raised.
 - Consider rewriting TypeCode to use CLOS better, and then making
   marshal/unmarshal generic functions dispatching on the TypeCode
   class
-
-- Support INS
-  -ORBInitRef <ObjectID>=<ObjectURL>
 
 - Connection management: The mapping from <host, port> to a network
   stream could be done with a weak mapping (weak hash?) and perhaps

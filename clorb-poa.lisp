@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.6 2002/04/23 12:35:37 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.7 2002/05/02 20:40:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -129,7 +129,7 @@
 (defvar *poa-current* nil
   "The PortableServer::Current object for the current invocation.")
 
-(defstruct poa-current 
+(defstruct poa-current
   POA
   object-id)
 
@@ -433,8 +433,7 @@
 
 ;;;; PortableServer::Current
 
-(defclass PortableServer::Current ()
-  ;;FIXME: should sublcass CORBA:Current
+(defclass PortableServer:Current (CORBA:Current)
   ())
 
 (define-user-exception Current/NoContext

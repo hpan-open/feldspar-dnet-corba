@@ -5,10 +5,8 @@
 (eval-when (:compile-toplevel :execute)
   (import '(corba:define-method)))
 
-
-
-(defvar *naming-base-path*
-    (pathname "/tmp/naming/foo.obj"))
+(defvar *naming-ior-file*  #P"/tmp/NameService")
+(defvar *naming-base-path* #P"/tmp/naming/foo.obj")
 
 (defvar *naming-start-time*
     (- (get-universal-time) 3191179173))
@@ -302,7 +300,7 @@
 
 (defun setup-pns ()
   (setup-naming-poa)
-  (with-open-file (out clorb::*name-service*
+  (with-open-file (out *naming-ior-file*
                        :direction :output
                        :if-exists :supersede)
     (princ

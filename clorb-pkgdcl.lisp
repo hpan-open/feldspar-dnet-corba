@@ -5,7 +5,7 @@
   (:use)
   (:export
    :ORB_init :ORB
-   :Request :Object :Proxy
+   :Request :Object :Proxy "CURRENT"
    :FUNCALL :DEFINE-METHOD
    ;; NamedValue
    :Flags :Identifier :NamedValue

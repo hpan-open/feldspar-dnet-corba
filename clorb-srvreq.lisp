@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.8 2002/04/23 12:34:24 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.9 2002/05/02 20:40:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -39,8 +39,9 @@
   ;; Called when message header has been read
   (let* ((buffer (server-request-buffer sreq))
          (conn (server-request-connection sreq)))
-    (setf (server-request-msgtype sreq)
-      (unmarshal-giop-header buffer))
+    (multiple-value-bind (msgtype iiop-version) (unmarshal-giop-header buffer)
+      (setf (server-request-msgtype sreq) msgtype)
+      (setf (server-request-iiop-version sreq) iiop-version))
     (let ((size (+ (unmarshal-ulong buffer) *iiop-header-size*)))
       (mess 1 "Message type ~A size ~A" (server-request-msgtype sreq) size)
       (connection-init-read conn t size decode-fun))))

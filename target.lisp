@@ -109,7 +109,6 @@
 (defmethod target-type ((obj primitive-def) target)
   (declare (ignore target))
   (ecase (op:kind obj)
-    ;;(:pk_null 'CORBA:null)
     (:pk_short 'CORBA:short)
     (:pk_long 'CORBA:long)
     (:pk_ushort 'CORBA:ushort)
@@ -125,11 +124,9 @@
     (:pk_objref 'CORBA:Object)
     (:pk_longlong 'CORBA:longlong)
     (:pk_ulonglong 'CORBA:ulonglong)
-    ;;(:pk_longdouble 'CORBA:longdouble)
+    (:pk_longdouble 'CORBA:longdouble)
     (:pk_wchar 'CORBA:wchar)
-    ;;(:pk_wstring 'CORBA:wstring)
-))
-
+    (:pk_wstring 'CORBA:wstring)))
 
 
 (defmethod target-type ((obj sequence-def) target)
@@ -142,8 +139,24 @@
 (defmethod target-typecode ((obj primitive-def) target)
   (declare (ignore target))
   (ecase (op:kind obj)
-    (:pk_string `'CORBA:tc_string))
-)
+   (:pk_any `'CORBA:tc_any)
+   (:pk_boolean `'CORBA:tc_boolean)
+   (:pk_char `'CORBA:tc_char)
+   (:pk_double `'CORBA:tc_double)
+   (:pk_float `'CORBA:tc_float)
+   (:pk_long `'CORBA:tc_long)
+   (:pk_longdouble `'CORBA:tc_longdouble)
+   (:pk_longlong `'CORBA:tc_longlong)
+   (:pk_objref `'CORBA:tc_objref)
+   (:pk_octet `'CORBA:tc_octet)
+   (:pk_short `'CORBA:tc_short)
+   (:pk_string `'CORBA:tc_string)
+   (:pk_typecode `'CORBA:tc_typecode)
+   (:pk_ulong `'CORBA:tc_ulong)
+   (:pk_ulonglong `'CORBA:tc_ulonglong)
+   (:pk_ushort `'CORBA:tc_ushort)
+   (:pk_wchar `'CORBA:tc_wchar)))
+
 
 (defmethod target-typecode ((x sequence-def) target)
   `(make-sequence-typecode 

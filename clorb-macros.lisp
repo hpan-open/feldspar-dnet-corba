@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.5 2001/07/02 16:38:41 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.6 2002/05/02 20:40:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -84,6 +84,7 @@
 ||#
 
 (defmacro define-operation (name)
+  ;; Define NAME as the name of an operation, creating symbol and generic functions.
   (multiple-value-bind (opsym setf-form sym-expr)
       (opname-helper name)
     `(progn
@@ -93,6 +94,8 @@
            `(defgeneric ,opsym (obj &rest args))))))
 
 (defmacro define-deferred (name args)
+  ;; Declare a operation where it logically belongs, deferring the body
+  ;; to later.
   (declare (ignore args))
   `(define-operation ,name))
 

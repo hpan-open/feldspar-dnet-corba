@@ -3,12 +3,23 @@
 (load "CLORB:SRC;CLORB-PKGDCL")
 
 (defparameter clorb:*port*  4711)
-(defparameter clorb::*name-service* "NameService")
 
 (defparameter *naming-base-path*
   (make-pathname :directory '(:relative "naming")
                  :name "foo"
                  :type "obj"))
+
+(defparameter *naming-ior-file* #P"ccl:NameService")
+
+(setq clorb::*name-service*
+      #+file-url-does-the-right-thing
+      (format nil "file:~{/~A~}/~A"
+              (cdr (pathname-directory (full-pathname *naming-ior-file*)))
+              (pathname-name *naming-ior-file*))
+      (format nil "file:~A"
+              (namestring *naming-ior-file*)))
+
+;;(clorb::set-initial-reference clorb::*the-orb* "NameService" clorb::*name-service*)
 
 (ensure-directories-exist *naming-base-path* :verbose t)
 
@@ -39,7 +50,7 @@
 (setf clorb::*running-orb* (CORBA:ORB_init))
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(clorb::load-ir)
+(clorb:load-ir)
 
 #|
 (setq clorb::*host*

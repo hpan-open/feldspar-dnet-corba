@@ -287,8 +287,6 @@
 
 ;;;; GIOP extras
 
-(defvar *giop-version* )
-
 (defun unmarshal-giop-header (buffer)
   (unless (loop for c in '(#\G #\I #\O #\P)
 		always (eql c (unmarshal-char buffer)))
@@ -296,12 +294,11 @@
            (map 'string 'code-char (buffer-octets buffer))))
   (let* ((major (unmarshal-octet buffer))
 	 (minor (unmarshal-octet buffer))
+         (iiop-version (cons major minor))
 	 (byte-order (unmarshal-octet buffer))
 	 (msgtype (unmarshal-octet buffer)))
-    (setq *giop-version* (+ (* 100 major) minor))
     (setf (buffer-byte-order buffer) byte-order)
-    msgtype))
-
+    (values msgtype iiop-version)))
 
 (defun unmarshal-service-context (buffer)
   (unmarshal-sequence-m (buffer) (unmarshal-tagged-component buffer)))

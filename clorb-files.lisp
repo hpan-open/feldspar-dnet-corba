@@ -44,8 +44,9 @@
     "idef-read"
     "idef-write"
     ("idef-macros" t)
+    "test-suite"
     "internalize"
-    "code-gen"
+    ;"code-gen"
     ;; Services
     "cosnaming-idl"
     "cosnaming-stub"
@@ -66,33 +67,34 @@
 
 (defun compile-changed (files)
   (loop
-   with defs-date = 0
-   for x in files
-   for (base defs) = (if (consp x) x (list x nil))
-   do (let* ((cf (compile-file-pathname base))
-             (sf (make-pathname :type "lisp" :defaults base)))
-        (when (or (not (probe-file cf))
-                  (let ((dcf (file-write-date cf))
-                        (dsf (file-write-date sf)))
-                    (or (null dcf) (null dsf)
-                        (progn
-                          #+ignore
-                          (format t "~&;; Exam comp ~A(~A):~A(~A)~%"
-                                  sf dsf cf dcf )
-                          nil)
-                        (> dsf dcf)
-                        (> defs-date dcf))))
-          (format t "~&;;;; Compiling ~A ~%" sf )
-          (compile-file base))
-        (let ((dcf (file-write-date cf))
-              (last (gethash base *load-dates*)))
-          (when defs
-            (setq defs-date (max (or dcf 0) defs-date)))
-          (when (or (null last) (null dcf)
-                    (> dcf last))
-            (format t "~&;;;; Loading ~A ~%" base)
-            (load base)
-            (setf (gethash base *load-dates*) dcf))))))
+    with *default-pathname-defaults* = (make-pathname :host "clorb")
+    with defs-date = 0
+    for x in files
+    for (base defs) = (if (consp x) x (list x nil))
+    do (let* ((cf (compile-file-pathname base))
+              (sf (make-pathname :type "lisp" :defaults base)))
+         (when (or (not (probe-file cf))
+                   (let ((dcf (file-write-date cf))
+                         (dsf (file-write-date sf)))
+                     (or (null dcf) (null dsf)
+                         (progn
+                           #+ignore
+                           (format t "~&;; Exam comp ~A(~A):~A(~A)~%"
+                                   sf dsf cf dcf )
+                           nil)
+                         (> dsf dcf)
+                         (> defs-date dcf))))
+           (format t "~&;;;; Compiling ~A ~%" sf )
+           (compile-file base))
+         (let ((dcf (file-write-date cf))
+               (last (gethash base *load-dates*)))
+           (when defs
+             (setq defs-date (max (or dcf 0) defs-date)))
+           (when (or (null last) (null dcf)
+                     (> dcf last))
+             (format t "~&;;;; Loading ~A ~%" base)
+             (load base)
+             (setf (gethash base *load-dates*) dcf))))))
 
 
 (defun reload ()

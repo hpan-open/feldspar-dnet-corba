@@ -1,3 +1,6 @@
+;;;; local-ir.lisp -- An Interface Repository Implementation
+;; $Id: local-ir.lisp,v 1.13 2002/05/02 20:40:11 lenst Exp $
+
 (in-package :clorb)
 
 
@@ -889,12 +892,11 @@
 
 (defvar *ifr-servant* nil)
 
-(defun setup-ifr ()
+(defun setup-ifr (&key (ior-file "/tmp/InterfaceRepository"))
   (unless *ifr-servant*
     (setq *ifr-servant* (make-instance 'repository)))
-  (with-open-file (out *interface-repository*
-                   :direction :output 
-                   :if-exists :supersede)
+  (with-open-file (out ior-file :direction :output 
+                       :if-exists :supersede)
     (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 
 
