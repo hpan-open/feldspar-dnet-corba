@@ -47,9 +47,10 @@
         (make-instance 'log-window :window-title "Log")))
 |#
 
-(setf clorb::*running-orb* (CORBA:ORB_init))
+(defvar *orb* (CORBA:ORB_init))
 (format t "~&;;; Activating the POA~%")
-(op:activate (op:the_poamanager (clorb::root-poa)))
+(ignore-errors
+ (op:activate (op:the_poamanager (clorb::root-poa))))
 (clorb:load-ir)
 
 #|
@@ -58,8 +59,9 @@
        (clorb::listner-socket (clorb::adaptor clorb::*the-orb*))))
 |#
 
-(setq clorb:*host*
-      (ccl::tcp-addr-to-str (ccl::local-interface-ip-address)))
+(ignore-errors
+ (setq clorb:*host*
+       (ccl::tcp-addr-to-str (ccl::local-interface-ip-address))))
 
 #+t2-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
@@ -98,3 +100,11 @@
 (defun run ()
   (setup-pns)
   (op:run clorb::*the-orb*))
+
+(defvar *calc-ior* "file:Mac_OS_X:tmp:ObjectID")
+(defvar *calc*)
+
+(defun do-calc ()
+  (setq *calc* (op:string_to_object *orb* *calc-ior*))
+  (corba:funcall "add" *calc* 12.5 5.8)
+  (corba:funcall "div" *calc* 9.9 3))
