@@ -148,17 +148,6 @@
     (or (request-funcall req)
         (error "InterfaceRepository does not know about ~A" id))))
 
-(defun get-attribute (obj getter result-tc)
-  (multiple-value-bind (result req)
-      (op:_create_request
-       obj nil getter  nil
-       (CORBA:NamedValue
-        :argument (CORBA:Any :any-typecode result-tc)
-        :arg_modes ARG_OUT)
-       0)
-    (declare (ignore result))
-    (request-funcall req)))
-
 (defun opdef-from-attrdef (irdef)
   (let ((name (get-attribute irdef "_get_name" CORBA:tc_string))
         (mode (get-attribute irdef "_get_mode"

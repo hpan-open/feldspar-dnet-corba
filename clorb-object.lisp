@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.7 2002/10/01 13:58:22 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.8 2002/10/05 11:13:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -92,6 +92,12 @@
 
 (define-method _is_nil ((x CORBA:Object))
   nil)
+
+(defstruct iiop-profile
+  (version '(1 . 0))
+  (host    nil)
+  (port    0    :type fixnum)
+  (key     nil))
 
 ;;;| boolean	is_equivalent (in Object other_object);
 ;;; _is_equivalent in lisp mapping
@@ -275,8 +281,23 @@
     :target obj
     :operation operation
     :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
-                                       :argument (CORBA:Any :any-typecode result-type)))
-    :ctx nil))
+                                       :argument (CORBA:Any :any-typecode result-type)))))
+
+(defun get-attribute (obj getter result-tc)
+  (request-funcall 
+   (request-create obj getter result-tc)))
+
+(defun set-attribute (obj setter result-tc newval)
+  (request-funcall 
+   (make-instance 'request
+     :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
+                                        :argument (CORBA:Any :any-typecode CORBA:tc_void))
+                      (CORBA:NamedValue :arg_modes ARG_IN
+                                        :argument (CORBA:Any :any-typecode result-tc
+                                                             :any-value newval)))
+     :target obj
+     :operation setter )))
+
 
 (defun request-funcall (req)
   (op:invoke req)
