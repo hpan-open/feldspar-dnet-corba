@@ -1,6 +1,7 @@
 
 (in-package :cl-user)
 
+(pushnew :no-idlcomp *features*)
 (pushnew :use-my-idlparser *features*)
 (net.cddr.packer:require-package :net.cddr.redpas)
 

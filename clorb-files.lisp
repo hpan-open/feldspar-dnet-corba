@@ -118,7 +118,7 @@
   (compile-changed (append *base-files*
                            *server-files*
                            *x-files*
-                           #+use-idlcomp *idlcomp*
+                           #-no-idlcomp *idlcomp*
                            #+use-my-idlparser *my-idlparser* )))
 
 

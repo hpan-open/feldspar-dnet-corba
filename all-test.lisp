@@ -3,7 +3,7 @@
 (let ((*test-suite-result* (make-instance 'test-result
                              :parent nil
                              :suite "All Tests"))) 
-  (loop for pn in (directory (or #+(or allegro clisp openmcl) "test-*.lisp"
+  (loop for pn in (directory (or #+(or allegro clisp openmcl cmu) "test-*.lisp"
                                  "CLORB:SRC;test-*.lisp"))
         unless (string= "test-suite" (pathname-name pn))
         do (format t "~&;;;; ~A~%" (pathname-name pn))

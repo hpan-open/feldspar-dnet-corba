@@ -1,5 +1,8 @@
 (in-package :cl-user)
 
+(pushnew :use-my-idlparser *features*)
+(net.cddr.packer:require-package :net.cddr.redpas)
+
 (load "clorb-pkgdcl")
 (load "clorb-files")
 (clorb:reload)
