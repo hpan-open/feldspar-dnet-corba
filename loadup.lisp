@@ -1,9 +1,6 @@
-;;; code moved to download-ir.lisp
+;;;; loadup.lisp --- Load the CLORB system
 
-(let ((*default-pathname-defaults* 
-       (or *load-pathname*
-           #+ccl (front-window))))
-  (load "clorb-pkgdcl")
-  (load "clorb-files"))
+(load (merge-pathnames "clorb-files.lisp" *load-pathname*))
+(net.cddr.clorb.system:reload)
 
-(clorb:reload)
+(provide :clorb)

@@ -11,13 +11,16 @@
 
 ;;; Frob with the *features* to make this all a bit easier.
 
-(eval-when (:compile-toplevel :execute)
-;;  #+openmcl
-;;  (pushnew :use-acl-socket *features*)
-;;(setq *features* (delete :use-acl-socket *features*))
-  #+digitool
-  (when (find-package "BSD")
-    (pushnew 'clorb::mcl-bsd *features*)))
+#+digitool
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  #-clorb-mcl-task-evaluator
+  (progn 
+    (pushnew 'clorb::mcl-bsd *features*)
+    (cond ((find-package "BSD"))
+          ((find-package "NET.CDDR.PACKER")
+           (net.cddr.packer:require-package "BSD"))
+          (t
+           (require "BSD")))))
   
 
 
