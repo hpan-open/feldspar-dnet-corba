@@ -18,6 +18,23 @@
                 feature-symbols all-feature-symbols ))
 
 
+(defun create-value-tc (id name type-modifier concrete-base members)
+  "members: (name type visibility)*"
+  (check-type id string)
+  (check-type name string)
+  (check-type type-modifier fixnum) ; ValueModifier
+  (check-type concrete-base (or null CORBA:TypeCode))
+  (check-type members sequence)
+  (map nil (lambda (m)
+             (check-type m 
+                         (cons string 
+                               (cons CORBA:TypeCode (cons fixnum null)))))
+       members)
+  (make-typecode :tk_value id name type-modifier 
+                 (or concrete-base CORBA:tc_null)
+                 (coerce members 'vector)))
+
+
 (defmacro define-value (symbol &key id name base_value 
                                is_abstract is_custom is_truncatable
                                supported_interfaces abstract_base_values members)
@@ -211,17 +228,24 @@
         (repoid (marshal-string-record repoid buffer))))
 
 
-(defun all-member-types (tc)
-  (and tc
-       (with-cache-slot (tc all-member-types)
-         (append (all-member-types (op:concrete_base_type tc))
-                 (tc-member-types tc)))))
 
-(defun all-feature-symbols (tc)
-  (and tc
-       (with-cache-slot (tc all-feature-symbols)
-         (append (all-feature-symbols (op:concrete_base_type tc))
-                 (tc-feature-symbols tc)))))
+(defmethod all-member-types (tc)
+  (declare (ignore tc))
+  '())
+
+(defmethod all-member-types ((tc value-typecode))
+  (with-cache-slot (tc all-member-types)
+    (append (all-member-types (op:concrete_base_type tc))
+            (tc-member-types tc))))
+
+(defmethod all-feature-symbols (tc)
+  (declare (ignore tc))
+  '())
+
+(defmethod all-feature-symbols ((tc value-typecode))
+  (with-cache-slot (tc all-feature-symbols)
+    (append (all-feature-symbols (op:concrete_base_type tc))
+            (tc-feature-symbols tc))))
 
 (defun all-feature-values (tc value)
   (loop for feature in (all-feature-symbols tc) 
@@ -385,7 +409,7 @@
         (let ((keys nil) (types nil))
           (let ((tc-stack nil))
             (do ((base-tc tc (op:concrete_base_type base-tc)))
-                ((null base-tc))
+                ((typep base-tc 'null-typecode))
               (push base-tc tc-stack))
             (dolist (tc tc-stack)
               (dotimes (i (op:member_count tc))
