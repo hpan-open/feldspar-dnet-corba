@@ -97,7 +97,6 @@ of contained."))
 ;;;; Contained
 
 (define-ir-class Contained (CORBA:Contained irobject)
-  :id "IDL:omg.org/CORBA/Contained:1.0"
   :attributes ((id :readonly            ; setter defined below
                    :initarg :subject-id
                    :accessor subject-id)
@@ -168,11 +167,9 @@ of contained."))
 ;;;; Container
 
 (define-ir-class Container (CORBA:Container irobject)
-  :id "IDL:omg.org/CORBA/Container:1.0"
   :slots ((contents :initarg :contents
                     :initform '()
-                    :accessor contents))
-  :defaults ())
+                    :accessor contents)))
 
 
 (defmethod slot-updated :after ((obj Container))
@@ -474,12 +471,9 @@ of contained."))
 
 		
 
-;;;; Repository
-
-;;; interface Repository : Container
+;;;; interface Repository : Container
 
 (define-ir-class Repository (CORBA:Repository Container)
-  :id "IDL:omg.org/CORBA/Repository:1.0"
   :def_kind :dk_repository
   :slots ((idmap :initform (make-hash-table :test #'equal)
                  :reader idmap)
@@ -605,9 +599,7 @@ of contained."))
 ;;;; ModuleDef
 
 (define-ir-class module-def (CORBA:ModuleDef container contained)
-  :id "IDL:omg.org/CORBA/ModuleDef:1.0"
-  :def_kind :dk_module
-  :defaults ())
+  :def_kind :dk_module)
 
 
 (defmethod describe-contained ((module module-def))
@@ -623,10 +615,10 @@ of contained."))
 ;;;   attribute any value; };
 
 (define-ir-class constant-def (CORBA:ConstantDef contained)
-  :id "IDL:omg.org/CORBA/ConstantDef:1.0"
+  :def_kind :dk_constant
   :attributes ((type_def)
-               (value))
-  :def_kind :dk_constant)
+               (value)))
+
 
 (define-method type ((obj constant-def))
   (op:type (op:type_def obj)))
@@ -726,11 +718,10 @@ of contained."))
 ;;;; AttributeDef
 
 (define-ir-class attribute-def (CORBA:AttributeDef contained)
-  :id "IDL:omg.org/CORBA/AttributeDef:1.0"
-  :attributes ((type_def)
-               (mode))
   :def_kind :dk_attribute
-  :defaults ())
+  :attributes ((type_def)
+               (mode)))
+
 
 (define-method type ((adef attribute-def))
   (op:type (op:type_def adef)))
@@ -754,14 +745,14 @@ of contained."))
 ;;;; OperationDef
 
 (define-ir-class operation-def (CORBA:OperationDef contained)
-  :id "IDL:omg.org/CORBA/OperationDef:1.0"
+  :def_kind :dk_operation
   :attributes ((result :readonly :virtual result)
                (result_def)
                (params nil)
                (mode ':op_normal)
                (contexts nil)
-               (exceptions nil))
-  :def_kind :dk_operation )
+               (exceptions nil)))
+
 
 (defun validate-operation-def (mode result params exceptions)
   (when (eq mode :op_oneway)
@@ -851,9 +842,8 @@ of contained."))
 ;;;; TypedefDef
 
 (define-ir-class typedef-def (CORBA:TypedefDef contained idltype)
-  :id "IDL:omg.org/CORBA/TypedefDef:1.0"
-  :def_kind :dk_typedef
-  :defaults ())
+  :def_kind :dk_typedef)
+
 
 (defmethod describe-contained ((obj typedef-def))
   (CORBA:TypeDescription
@@ -872,10 +862,9 @@ of contained."))
 ;;  attribute IDLType original_type_def;
 
 (define-ir-class alias-def (corba:AliasDef typedef-def)
-  :id "IDL:omg.org/CORBA/AliasDef:1.0"
-  :attributes ((original_type_def))
   :def_kind :dk_alias
-  :defaults ())
+  :attributes ((original_type_def)))
+
 
 (defmethod idltype-tc ((def alias-def))
   (create-alias-tc (op:id def) (op:name def)
@@ -899,7 +888,6 @@ of contained."))
 ;;  IDLType type_def;
 
 (define-ir-class struct-def (corba:StructDef typedef-def container)
-  :id "IDL:omg.org/CORBA/StructDef:1.0"
   :def_kind :dk_struct
   :attributes ((members)))
 
@@ -935,10 +923,9 @@ of contained."))
 ;;; typedef sequence <UnionMember> UnionMemberSeq;
 
 (define-ir-class union-def (CORBA:UnionDef typedef-def container)
-  :id "IDL:omg.org/CORBA/UnionDef:1.0"
+  :def_kind :dk_union
   :attributes ((discriminator_type_def)
-               (members))
-  :def_kind :dk_union)
+               (members)))
 
 (defmethod moveto :before ((c union-def) (object contained) new-name new-version)
   (declare (ignore new-name new-version))
@@ -975,20 +962,19 @@ of contained."))
 ;;;; EnumDef
 
 (define-ir-class enum-def (corba:EnumDef typedef-def)
-  :id "IDL:omg.org/CORBA/EnumDef:1.0"
-  :attributes ((members))
   :def_kind :dk_enum
-  :defaults ())
+  :attributes ((members)))
+
 
 (defmethod idltype-tc ((obj enum-def))
   (create-enum-tc (op:id obj) (op:name obj) (op:members obj)))
 
-;;;; interface ExceptionDef : Contained
+;;;; interface ExceptionDef : Contained, Container
 ;;;  readonly attribute TypeCode type;
 ;;;  attribute StructMemberSeq members;
 
-(define-ir-class exception-def (corba:ExceptionDef contained container irtypecode-mixin)
-  :id "IDL:omg.org/CORBA/ExceptionDef:1.0"
+(define-ir-class exception-def (corba:ExceptionDef contained container
+                                                   irtypecode-mixin)
   :def_kind :dk_exception
   :attributes ((members)))
 
@@ -1029,11 +1015,11 @@ of contained."))
 ;;;; PrimitiveDef
 
 (define-ir-class primitive-def (corba:PrimitiveDef idltype)
-  :id "IDL:omg.org/CORBA/PrimitiveDef:1.0"
-  :attributes ((kind))
   :def_kind :dk_primitive
+  :attributes ((kind))
   :slots ((type :initarg :type)) ; add initarg
-  :defaults ())
+)
+
 
 (defmethod print-object ((obj primitive-def) stream)
   (print-unreadable-object (obj stream :type t :identity t)
@@ -1048,9 +1034,8 @@ of contained."))
 ;;;  attribute unsigned long bound;
 
 (define-ir-class string-def (corba:StringDef idltype)
-  :id "IDL:omg.org/CORBA/StringDef:1.0"
-  :attributes ((bound 0))
-  :def_kind :dk_string)
+  :def_kind :dk_string
+  :attributes ((bound 0)))
 
 (defmethod idltype-tc ((obj string-def))
   (create-string-tc (op:bound obj)))
@@ -1060,9 +1045,9 @@ of contained."))
 ;;;  attribute unsigned long bound;
 
 (define-ir-class wstring-def (corba:WstringDef idltype)
-  :id "IDL:omg.org/CORBA/WstringDef:1.0"
-  :attributes ((bound 0))
-  :def_kind :dk_wstring)
+  :def_kind :dk_wstring
+  :attributes ((bound 0)))
+
 
 (defmethod idltype-tc ((obj wstring-def))
   (create-wstring-tc (op:bound obj)))
@@ -1074,7 +1059,6 @@ of contained."))
 ;;  attribute IDLType element_type_def;
 
 (define-ir-class sequence-def (corba:SequenceDef IDLType)
-  :id "IDL:omg.org/CORBA/SequenceDef:1.0"
   :def_kind :dk_sequence
   :attributes ((bound 0)                  ; long
                ;;(element_type :readonly) ; TypeCode
@@ -1094,7 +1078,6 @@ of contained."))
 ;;        attribute IDLType               element_type_def;
 
 (define-ir-class array-def (CORBA:ArrayDef idltype)
-  :id "IDL:omg.org/CORBA/ArrayDef:1.0"
   :def_kind :dk_array
   :attributes ((length 0)
                (element_type_def)))
