@@ -78,11 +78,10 @@ where label = symbol clorb:default or value"
 
 
 (defmethod compute-unmarshal-function ((tc union-typecode))
-  ;; FIXME: use official accessors, cleanup
-  (let* ((params (typecode-params tc))
-         (discriminant-type (third params))
-         (default-used (fourth params))
-         (members      (fifth params)))
+  (let* ((id (op:id tc))
+         (discriminant-type (op:discriminator_type tc))
+         (default-used (op:default_index tc))
+         (members      (tc-members tc)))
     (lambda (buffer)
       (let* ((discriminant (unmarshal discriminant-type buffer))
              (index
@@ -91,20 +90,18 @@ where label = symbol clorb:default or value"
                        (and (not (eql i default-used))
                             (eql discriminant (first (aref members i)))))
                    (if (>= i (length members))
-                       default-used
-                       i))))
+                     default-used
+                     i))))
              (tc (third (aref members index))))
-        (corba:union :id (first params)
+        (corba:union :id id
                      :union-discriminator discriminant
                      :union-value (unmarshal tc buffer))))))
 
 
 (defmethod compute-marshal-function ((tc union-typecode))
-  ;; FIXME: use official accessors
-  (let* ((params (typecode-params tc))
-         (discriminant-type (third params))
-         (default-used (fourth params))
-         (members (fifth params)))
+  (let* ((discriminant-type (op:discriminator_type tc))
+         (default-used (op:default_index tc))
+         (members (tc-members tc)))
     (lambda (union buffer)
       (let* ((discriminant (union-discriminator union))
              (value (union-value union))
@@ -112,7 +109,8 @@ where label = symbol clorb:default or value"
         (when (and (null member)
                    (>= default-used 0))
           (setq member (aref members default-used)))
-        (assert (not (null member)))    ; FIXME: raise MARSHAL ?
+        (unless member
+          (raise-system-exception 'CORBA:MARSHAL))
         (marshal discriminant discriminant-type buffer)
         (marshal value (third member) buffer)))))
 
