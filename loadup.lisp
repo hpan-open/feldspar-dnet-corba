@@ -14,11 +14,13 @@
                         (1+ level)))
            (:dk_Interface
             (or (known-interface id)
-                (add-interface (interface-from-def x))))
+                (add-interface (interface-from-def x)))
+            (ir-add-all (invoke x "contents" :dk_All t)
+                        (1+ level)))
            ((:dk_Struct :dk_Alias :dk_Exception :dk_Enum)
             ;; IDL - types
             (or (known-idl-type id)
-                (typecode-from-def x)))))
+                (add-typecode-with-id id (typecode-from-def x))))))
     seq))
 
 (defun download-ir ()
