@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.25 2004/02/09 18:19:01 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.26 2004/06/09 21:09:59 lenst Exp $
 
 
 ;; io-reset ()
@@ -497,9 +497,14 @@
 ;;;; Driver
 
 
+(defun io-event-waiting-p ()
+  *io-event-queue*)
+
+(defun io-get-event ()
+  (pop *io-event-queue*))
+
 (defun io-driver (poll)
   (if poll
     (io-system-driver *io-system* t)
-    (loop repeat 10 until *io-event-queue* do (io-system-driver *io-system* nil)))
-  (pop *io-event-queue*))
+    (loop repeat 10 until *io-event-queue* do (io-system-driver *io-system* nil))))
 
