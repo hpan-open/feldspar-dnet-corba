@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.3 2002/03/21 19:31:12 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.4 2002/05/24 10:06:17 lenst Exp $
 
 (in-package :clorb)
 
@@ -193,8 +193,6 @@
               :accessor request-paramlist) ;result + arguments
    (req-id :initform nil :accessor request-req-id)
    (connection :initform nil :accessor request-connection)
-   (opdef :initform nil :initarg :opdef
-          :accessor request-opdef)
    (reply :initform nil  :accessor request-reply)
    (service-context :initform nil :accessor request-service-context)))
 
