@@ -54,11 +54,6 @@
     "cosnaming-skel"
     "pns-server"
     ;"ec-server"
-    ;; Example
-    "hello-idl"
-    "hello-new-servant"
-    "hello-server"
-    "hello-client"
     ))
 
 (defparameter *idlcomp*
