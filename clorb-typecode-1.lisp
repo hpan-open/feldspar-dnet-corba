@@ -29,16 +29,16 @@
    (*print-readably*
     (format stream "#.(CLORB::MAKE-TYPECODE '~S~{ '~S~})"
             (slot-value tc 'kind) (slot-value tc 'params)))
-   (*print-pretty*
-    (format stream "~<#<TYPECODE~;~:I~@{~:_ ~W~}~;>~:>" (cons (slot-value tc 'kind) (slot-value tc 'params))))
    (t
     (print-unreadable-object (tc stream :type t :identity t)
-      (let ((params (slot-value tc 'params)))
-        (let ((name (cadr params)))
-          (if (and (stringp name)
-                   (not (equal name "")))
-            (prin1 name stream)
-            (format stream "~@[~A~]~@[/~A~]" (car params) (cadr params)))))))))
+      (if (slot-boundp tc 'params)
+          (let ((params (slot-value tc 'params)))
+            (let ((name (cadr params)))
+              (if (and (stringp name)
+                       (not (equal name "")))
+                  (prin1 name stream)
+                  (format stream "~@[~A~]~@[/~A~]" (car params) (cadr params)))))
+          (format stream "unbound"))))))
 
 
 (eval-when (load eval)
@@ -72,7 +72,11 @@
   (setf (slot-value tc 'kind) (slot-value new-tc 'kind)
         (slot-value tc 'params) (slot-value new-tc 'params))
   (unset-extra-slots tc)
-  (change-class tc (class-of new-tc)))
+  (let ((old-class (class-of tc))
+        (new-class (class-of new-tc)))
+    (unless (eq old-class new-class)
+      (change-class tc new-class))))
+
 
 (defun map-typecode (func tc &optional (params (typecode-params tc)))
   (if (null params)
