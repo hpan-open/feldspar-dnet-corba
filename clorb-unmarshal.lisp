@@ -243,12 +243,12 @@
        (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
       ((:tk_struct)
-       (make-instance 'generic-struct
-         :type-id (first params)
-	 :fields (map 'list (lambda (nt-pair)
-                              (cons (lispy-name (first nt-pair))
-                                    (unmarshal (second nt-pair) buffer)))
-                      (third params))))
+       (make-struct-internal 
+        (first params) 
+        (map 'list (lambda (nt-pair)
+                     (cons (lispy-name (first nt-pair))
+                           (unmarshal (second nt-pair) buffer)))
+             (third params))))
       ((:tk_except)
        (make-condition 'corba:userexception
 	 :id (first params)
@@ -259,7 +259,7 @@
       ((object :tk_objref) (unmarshal-ior buffer (first params)))
       ((anon-struct)
        (loop for type in params
-	     collect (unmarshal type buffer)))
+           collect (unmarshal type buffer)))
       ((:tk_TypeCode) (unmarshal-typecode buffer))
       ((:tk_union)    (unmarshal-union params buffer))
       (t

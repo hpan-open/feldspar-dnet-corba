@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.2 2001/02/13 22:21:57 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.3 2001/05/06 15:45:49 lenst Exp $
 
 (in-package :clorb)
 
@@ -64,6 +64,23 @@ of fields can be defaulted (numbers and strings)."
         (make-instance 'generic-struct
           :type-id (op::id typecode)
           :fields fields)))))
+
+
+(defun make-struct-internal (id nv-alist &optional nv-plist)
+  "Make a CORBA structure of type ID.
+NV-PAIRS is a list field names and field values."
+  (let ((class (gethash id *specialized-structs*)))
+    (if class
+        (apply #'make-instance class 
+               (or nv-plist
+                   (mapcan (lambda (x) (list (car x) (cdr x)))
+                           nv-alist)))
+      (make-instance 'generic-struct
+        :type-id id
+        :fields (or nv-alist
+                    (loop for (name val) on nv-plist by #'cddr
+                        collect (cons name val)))))))
+
 
 
 ;; Interface:
