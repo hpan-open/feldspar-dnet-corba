@@ -79,6 +79,10 @@ types will be converterd by this GF."))
   ;; Assume an octet vector
   objid)
 
+(defmethod to-object-id ((objid sequence))
+  (coerce objid 'vector))
+
+
 (defmethod to-object-id ((objid integer))
   ;; FIXME: if this is actually useful it should handle
   ;;  more than ulong compatible integers?
