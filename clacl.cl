@@ -1,17 +1,20 @@
-(load "clorb-sysdcl")
-(excl:load-system :clorb :compile t)
-(setq clorb::*host* "pc-lennarts.infotek.no")
+;;(load "clorb-sysdcl")
+;;(excl:load-system :clorb :compile t)
+;;(setq clorb::*host* "pc-lennarts.infotek.no")
+
+(load "clorb-pkgdcl")
+(load "clorb-files")
+(clorb::reload)
+(clorb::load-ir)
 
 (setf clorb::*running-orb* t)
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(clorb::load-ir)
-
 
 (defun describe-repo (r)
   (let ((l (coerce (op:contents r :dk_all t) 'list))
         (k (op:def_kind r)))
-    (pprint-logical-block (*standard-output* l :prefix "> ")
+    (pprint-logical-block (*standard-output* l :per-line-prefix "| ")
       (loop for x in l
           for f = nil then t
           do (when f (pprint-newline (if (eq k :dk_Interface)
