@@ -1,3 +1,7 @@
+2005-02-10  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-ifr.lisp (describe-contained): new method for constant-def
+
 2005-02-03  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-value.lisp (value_box-typecode): sharing alias-typecode
