@@ -141,7 +141,7 @@
            (req (nth-value 1 (op:_create_request obj nil "op" nil nil 0))))
       (op:send_deferred req)
       (test-write-response req nil)
-      (orb-work)
+      (orb-work orb nil t)
       (ensure (op:poll_next_response orb) "response should be ready")
       (let ((req1 (omg.org/features:get_next_response orb)))
         (ensure-eql req1 req)
