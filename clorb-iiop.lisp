@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.32 2004/01/29 19:49:41 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.33 2004/02/03 17:04:19 lenst Exp $
 
 
 (in-package :clorb)
@@ -285,8 +285,7 @@
                        ;;(break "id=~d" id)
                        id ))
          (req (find-waiting-request conn request-id))
-         (status (unmarshal (load-time-value (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE))
-                            buffer)))
+         (status (%jit-unmarshal (symbol-typecode 'GIOP:ReplyStatusType) buffer)))
     (setup-outgoing-connection conn)
     (when req
       (request-reply req status buffer service-context))))
@@ -294,7 +293,7 @@
 (defun get-response-locate-reply (conn &aux (buffer (connection-read-buffer conn)))
   (setup-outgoing-connection conn)
   (let* ((request-id (unmarshal-ulong buffer))
-         (status (unmarshal (%symbol-typecode giop:locatestatustype) buffer))
+         (status (%jit-unmarshal (symbol-typecode 'giop:locatestatustype) buffer))
          (req (find-waiting-request conn request-id)))
     (when req
       (request-locate-reply req status buffer))))

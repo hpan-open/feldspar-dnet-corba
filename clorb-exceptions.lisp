@@ -177,9 +177,45 @@ Members on form: (name TypeCode)"
       (make-condition 'unknown-user-exception
                       :id id :values initargs))))
 
+(defun unmarshal-userexception (id typecode buffer)
+  (let* ((class (id-exception-class id))
+         (initargs 
+          (loop for tc in (tc-member-types typecode)
+                for key across (tc-keywords typecode)
+                collect key
+                collect (unmarshal tc buffer))))
+    (if class
+      (apply #'make-condition class initargs)
+      (make-condition 'unknown-user-exception
+                      :id id :values initargs))))
+
 
 (defmethod marshal (arg (tc except-typecode) buffer)
   (marshal-string (op:id tc) buffer)
   (loop for type in (tc-member-types tc)
         for feature in (tc-feature-symbols tc)
         do (marshal (funcall feature arg) type buffer)))
+
+
+(defmethod compute-marshal-function ((tc except-typecode))
+  (let ((features (tc-feature-symbols tc))
+        (mfuns (mapcar #'marshal-function (tc-member-types tc)))
+        (id (op:id tc)))
+    (lambda (v buffer)
+      (marshal-string id buffer)
+      (loop for f in features
+            for m in mfuns
+            do (funcall m (funcall f v) buffer))))) 
+
+(defmethod compute-unmarshal-function ((tc except-typecode))
+  (let ((ufuns (mapcar #'unmarshal-function (tc-member-types tc)))
+        (keys  (tc-keywords tc))
+        (id    (op:id tc)))
+    (let ((class (id-exception-class id)))
+      (if class
+        (lambda (buffer)
+          (apply #'make-condition class (loop for u in ufuns for key across keys
+                                              collect key collect (funcall u buffer))))
+        (lambda (buffer) 
+          (declare (ignore buffer))
+          (system-exception 'corba:no_implement))))))

@@ -171,5 +171,25 @@ of fields can be defaulted (numbers and strings)."
         do (marshal (struct-get struct name) tc buffer)))
 
 
+(defmethod compute-marshal-function ((tc struct-typecode))
+  (let ((features nil)
+        (marshallers nil))
+    (loop for i from 0 below (op:member_count tc)
+          do (push (feature (op:member_name tc i)) features)
+          (push (marshal-function (op:member_type tc i)) marshallers))
+    (setf features (mapcar #'fdefinition (nreverse features))
+          marshallers (nreverse marshallers))
+    (case (length features)
+      (2 (let ((f1 (first features))
+               (f2 (second features))
+               (m1 (first marshallers))
+               (m2 (second marshallers)))
+           (lambda (struct buffer)
+             (funcall m1 (funcall f1 struct) buffer)
+             (funcall m2 (funcall f2 struct) buffer))))
+      (t (lambda (struct buffer)
+           (loop for accssor in features and marshal in marshallers
+                 do (funcall marshal (funcall accssor struct) buffer)))))))
+
 
 ;;; clorb-struct.lisp ends here

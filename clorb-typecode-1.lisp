@@ -22,6 +22,8 @@
 (defclass CORBA:TYPECODE ()
   ((kind :initarg :kind)
    (params :initarg :params)
+   (marshal-func   :initarg :marshal)
+   (unmarshal-func :initarg :unmarshal)
    (keywords )))
 
 (defmethod print-object ((tc corba:typecode) stream)
@@ -95,6 +97,32 @@
 (defgeneric tc-members (tc))
 
 
+(defgeneric compute-marshal-function (tc))
+(defgeneric compute-unmarshal-function (tc))
+
+
+(defmacro with-cache-slot ((object slot &key (dont-cache-types nil) (cache-types t))
+                           &body body)
+  (let ((objvar (gensym)))
+    `(let ((,objvar ,object))
+       (if (slot-boundp ,objvar ',slot)
+         (slot-value ,objvar ',slot)
+         (let ((new-value (progn ,@body)))
+           (typecase new-value
+             ,@(if dont-cache-types
+                 `((,dont-cache-types new-value)))
+             (,cache-types (setf (slot-value ,objvar ',slot) new-value))
+             ,@(if (not (eql cache-types t))
+                 `((t new-value)))))))))
+
+
+(defun marshal-function (tc)
+  (with-cache-slot (tc marshal-func)
+    (compute-marshal-function tc)))
+
+(defun unmarshal-function (tc)
+  (with-cache-slot (tc unmarshal-func)
+    (compute-unmarshal-function tc)))
 
 
 ;;;; PIDL interface to TypeCode
@@ -190,10 +218,14 @@
 
 
 (defmacro define-typecode (class-name &key kind cdr-syntax params member-params 
-                                       constant extra-slots share (shared-params 0))
+                                       constant extra-slots share (shared-params 0)
+                                       marshal unmarshal)
   `(progn
      (defclass ,class-name (,(or share 'CORBA:TypeCode))
-       ,extra-slots)
+       ,extra-slots
+       (:default-initargs
+         ,@(if marshal `(:marshal ,marshal))
+         ,@(if unmarshal `(:unmarshal ,unmarshal))))
      ,@(if kind
          `((setf (get ',kind 'tk-params) ',cdr-syntax)
            (setf (get ',kind 'tk-class) ',class-name)
@@ -230,21 +262,6 @@
            (slot-makunbound tc 'keywords)))
 
 
-(defmacro with-cache-slot ((object slot &key 
-                                   (dont-cache-types nil)
-                                   (cache-types t))
-                           &body body)
-  (let ((objvar (gensym)))
-    `(let ((,objvar ,object))
-       (if (slot-boundp ,objvar ',slot)
-         (slot-value ,objvar ',slot)
-         (let ((new-value (progn ,@body)))
-           (typecase new-value
-             ,@(if dont-cache-types
-                 `((,dont-cache-types new-value)))
-             (,cache-types (setf (slot-value ,objvar ',slot) new-value))
-             ,@(if (not (eql cache-types t))
-                 `((t new-value)))))))))
 
 
 

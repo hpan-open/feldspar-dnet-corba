@@ -15,43 +15,63 @@
 
 (define-typecode short-typecode
   :kind :tk_short
-  :constant corba:tc_short)
+  :constant corba:tc_short
+  :marshal 'marshal-short 
+  :unmarshal 'unmarshal-short)
 
 (define-typecode long-typecode
   :kind :tk_long
-  :constant corba:tc_long)
+  :constant corba:tc_long
+  :marshal 'marshal-long
+  :unmarshal 'unmarshal-long)
 
 (define-typecode ushort-typecode
   :kind :tk_ushort
-  :constant corba:tc_ushort)
+  :constant corba:tc_ushort
+  :marshal 'marshal-ushort
+  :unmarshal 'unmarshal-ushort)
 
 (define-typecode ulong-typecode
   :kind :tk_ulong
-  :constant corba:tc_ulong)
+  :constant corba:tc_ulong
+  :marshal 'marshal-ulong
+  :unmarshal 'unmarshal-ulong)
 
 (define-typecode float-typecode
   :kind :tk_float
-  :constant corba:tc_float)
+  :constant corba:tc_float
+  :marshal 'marshal-float
+  :unmarshal 'unmarshal-float)
 
 (define-typecode double-typecode
   :kind :tk_double
-  :constant corba:tc_double)
+  :constant corba:tc_double
+  :marshal 'marshal-double
+  :unmarshal 'unmarshal-double)
 
 (define-typecode boolean-typecode
   :kind :tk_boolean
-  :constant corba:tc_boolean)
+  :constant corba:tc_boolean
+  :marshal 'marshal-bool
+  :unmarshal 'unmarshal-bool)
 
 (define-typecode longlong-typecode
   :kind :tk_longlong
-  :constant corba:tc_longlong)
+  :constant corba:tc_longlong
+  :marshal 'marshal-longlong
+  :unmarshal 'unmarshal-longlong)
 
 (define-typecode ulonglong-typecode
   :kind :tk_ulonglong
-  :constant corba:tc_ulonglong)
+  :constant corba:tc_ulonglong
+  :marshal 'marshal-ulonglong
+  :unmarshal 'unmarshal-ulonglong)
 
 (define-typecode longdouble-typecode
   :kind :tk_longdouble
-  :constant corba:tc_longdouble)
+  :constant corba:tc_longdouble
+  :marshal 'marshal-longdouble
+  :unmarshal 'unmarshal-longdouble)
 
 (define-typecode wchar-typecode
   :kind :tk_wchar
@@ -59,19 +79,27 @@
 
 (define-typecode char-typecode
   :kind :tk_char
-  :constant corba:tc_char)
+  :constant corba:tc_char
+  :marshal 'marshal-char
+  :unmarshal 'unmarshal-char)
 
 (define-typecode octet-typecode
   :kind :tk_octet
-  :constant corba:tc_octet)
+  :constant corba:tc_octet
+  :marshal 'marshal-octet
+  :unmarshal 'unmarshal-octet)
 
 (define-typecode any-typecode
   :kind :tk_any
-  :constant corba:tc_any)
+  :constant corba:tc_any
+  :marshal 'marshal-any
+  :unmarshal 'unmarshal-any)
 
 (define-typecode typecode-typecode
   :kind :tk_typecode
-  :constant corba:tc_typecode)
+  :constant corba:tc_typecode
+  :marshal 'marshal-typecode
+  :unmarshal 'unmarshal-typecode)
 
 
 
@@ -170,6 +198,40 @@
       (t (unmarshal-sequence-m (buffer) (unmarshal eltype buffer))))))
 
 
+(defgeneric tc-unalias (tc)
+  (:method ((tc t)) tc))
+
+(defmethod compute-marshal-function ((tc sequence-typecode))
+  (let ((member-tc (tc-unalias (op:content_type tc))))
+    (let ((member-marshal (marshal-function member-tc))
+          (max-length (op:length tc)))
+      (if (zerop max-length)
+        (typecase member-tc
+          (octet-typecode
+           #'marshal-osequence)
+          (t
+           (lambda (v b)
+             (let ((length (length v)))
+               (marshal-ulong length b)
+               (map nil member-marshal v (repeated b))))))
+        (lambda (v b)
+          (let ((length (length v)))
+            (when (> length max-length) (error 'CORBA:MARSHAL))
+            (marshal-ulong length b)
+            (map nil member-marshal v (repeated b))))))))
+
+(defmethod compute-unmarshal-function ((tc sequence-typecode))
+  (let ((member-tc (tc-unalias (op:content_type tc))))
+    (typecase member-tc
+      (octet-typecode
+       #'unmarshal-osequence)
+      (t
+       (let ((member-unmarshal (unmarshal-function member-tc))) 
+         (lambda (buffer)
+           (unmarshal-sequence-m (buffer) 
+             (funcall member-unmarshal buffer))))))))
+
+
 
 ;;;; Strings
 
@@ -177,7 +239,8 @@
   :kind :tk_string
   :cdr-syntax (:tk_ulong)
   :params (length)
-  :constant (corba:tc_string 0))
+  :constant (corba:tc_string 0)
+  :unmarshal 'unmarshal-string)
 
 (define-typecode wstring-typecode
   :kind :tk_wstring
@@ -185,6 +248,14 @@
   :params (length)
   :constant (corba:tc_wstring 0))
 
+(defmethod compute-marshal-function ((tc string-typecode))
+  (let ((max-length (op:length tc)))
+    (if (zerop max-length)
+      #'marshal-string
+      (lambda (string buffer)
+        (when (> (length string) max-length)
+          (error 'CORBA:MARSHAL))
+        (marshal-string string buffer)))))
 
 
 ;;;; Array
@@ -222,13 +293,19 @@
   :cdr-syntax (complex :tk_string :tk_string)
   :params (id name)
   :share named-typecode :shared-params 2
-  :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object"))
+  :constant (corba:tc_object "IDL:omg.org/CORBA/Object:1.0" "Object")
+  :marshal 'marshal-object)
 
 (defmethod marshal (arg (tc objref-typecode) buffer)
   (marshal-object arg buffer))
 
 (defmethod unmarshal ((tc objref-typecode) buffer)
   (unmarshal-object buffer (op:id tc)))
+
+(defmethod compute-unmarshal-function ((tc objref-typecode))
+  (let ((id (op:id tc)))
+    (lambda (buffer)
+      (unmarshal-object buffer id))))
 
 
 
@@ -260,6 +337,32 @@
     (elt (tc-keywords tc) index)))
 
 
+(defmethod compute-marshal-function ((tc enum-typecode))
+  (let ((keys (tc-keywords tc)))
+    (declare (simple-vector keys))
+    (case (length keys)
+      (2
+       (let ((k1 (elt keys 0))
+             (k2 (elt keys 1)))
+       (lambda (sym buffer)
+         (marshal-ulong 
+          (cond ((eql sym k1) 0)
+                ((eql sym k2) 1)
+                (t (error 'CORBA:MARSHAL)))
+          buffer))))
+      (t
+       (lambda (sym buffer)
+         (declare (optimize speed))
+         (marshal-ulong (or (position sym keys)
+                            (error 'CORBA:MARSHAL)) buffer))))))
+
+(defmethod compute-unmarshal-function ((tc enum-typecode))
+  (let ((keys (tc-keywords tc)))
+    (declare (simple-vector keys))
+    (lambda (buffer)
+      (svref keys (unmarshal-ulong buffer)))))
+
+
 
 ;;;; Alias
 
@@ -270,11 +373,53 @@
   :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
   :params (id name content_type))
 
+(defmethod tc-unalias ((tc alias-typecode))
+  (tc-unalias (op:content_type tc)))
+
 (defmethod marshal (arg (tc alias-typecode) buffer) 
   (marshal arg (op:content_type tc) buffer))
 
 (defmethod unmarshal ((tc alias-typecode) buffer)
   (unmarshal (op:content_type tc) buffer))
+
+(defmethod compute-marshal-function ((tc alias-typecode))
+  (marshal-function (op:content_type tc)))
+
+(defmethod compute-unmarshal-function ((tc alias-typecode))
+  (unmarshal-function (op:content_type tc)))
+
+
+
+;;;; compute-[un]marshal-function
+
+;; Base case (use old):
+(defmethod compute-marshal-function ((tc CORBA:TypeCode))
+   (lambda (v b) (marshal v tc b)))
+
+(defmethod compute-unmarshal-function ((tc CORBA:TypeCode))
+  (lambda (b) (unmarshal tc b)))
+
+
+;;;; Marshal / UnMarshal
+
+(defun jit-marshal (v tc buffer)
+  (funcall (marshal-function tc) v buffer))
+
+(defmacro %jit-marshal (v tc buffer)
+  `(funcall (let ((.cache. (load-time-value (list nil))))
+              (or (car .cache.)
+                  (setf (car .cache.) (marshal-function ,tc))))
+            ,v ,buffer))
+
+(defun jit-unmarshal (tc buffer)
+  (funcall (unmarshal-function tc) buffer))
+
+(defmacro %jit-unmarshal (tc buffer)
+  `(funcall (let ((.cache. (load-time-value (list nil))))
+              (or (car .cache.)
+                  (setf (car .cache.) (unmarshal-function ,tc))))
+            ,buffer))
+
 
 
 
@@ -352,9 +497,11 @@
 (define-method concrete_base_type ((tc corba:typecode))
   (error 'CORBA:typecode/badkind))
 
-(defgeneric tc-unalias (tc)
-  (:method ((tc t)) tc)
-  (:method ((tc alias-typecode)) (op:content_type tc)))
+
+
+
+
+
 (define-feature equivalent)
 
 (define-method equivalent ((tc1 CORBA:TypeCode) tc2)
