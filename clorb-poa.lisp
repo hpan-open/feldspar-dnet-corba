@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.3 2001/06/11 01:15:55 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.4 2001/07/02 16:43:07 lenst Exp $
 
 (in-package :clorb)
 
@@ -317,12 +317,8 @@
                            :transient)
                          (poa-poaid poa) oid
                          :poa-name (poa-name poa))
-   :host (or *host* (orb-host (the-orb poa)))
+   :host (orb-host (the-orb poa))
    :port (orb-port (the-orb poa))))
-
-(defun object-key-id (object-key)
-  (map 'string #'code-char
-       (subseq object-key (1+ (position 0 object-key :from-end t)))))
 
 
 ;; ----------------------------------------------------------------------
