@@ -250,7 +250,9 @@
 
 (define-method member_name ((tc corba:typecode) index)
   (case (typecode-kind tc)
-    ((:tk_struct :tk_except :tk_enum)
+    ((:tk_enum)
+     (elt (tc-members tc) index))
+    ((:tk_struct :tk_except)
      (first (elt (tc-members tc) index)))
     ((:tk_union)
      (second (elt (fifth (typecode-params tc)) index)))
@@ -304,6 +306,27 @@
     (:tk_wstring corba:tc_wchar)
     (otherwise
      (error 'corba:typecode/badkind))))
+
+
+;;;; Accessing typecodes of defined types
+
+(defun symbol-typecode (symbol)
+  ;; Return the type code for the scoped symbol of an idltype.
+  (let ((typecode (get symbol 'typecode)))
+    (if (functionp typecode) 
+      (setf (get symbol 'typecode) (funcall typecode))
+      typecode)))
+
+(defun set-symbol-typecode (symbol typecode)
+  ;; Set the typecode for a scoped symbol. Typecode can also be a function to compute the typecode.
+  (setf (get symbol 'typecode) typecode))
+
+(defun symbol-ifr-id (symbol)
+  ;; Return the interface repository id for the scoped symbol.
+  (get symbol 'ifr-id))
+
+(defun set-symbol-ifr-id (symbol id)
+  (setf (get symbol 'ifr-id) id))
 
 
 ;;;; Convenience ?
