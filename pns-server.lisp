@@ -5,7 +5,9 @@
 
 
 (defvar *naming-ior-file*  nil)
-(defvar *naming-base-path* #P"clorb:naming;foo.obj")
+(defvar *naming-base-path* (merge-pathnames
+                            (make-pathname :directory '(:relative "naming"))
+                            clorb::*clorb-pathname-defaults*))
 
 
 ;;;; Generating ID
