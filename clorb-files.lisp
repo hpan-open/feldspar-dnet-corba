@@ -31,7 +31,8 @@
   (:server t "Load the code needed to server objects")
   (:idlcomp nil "Load the old IDL parser")
   (:my-idlparser t "Load the new IDL parser")
-  (:portable-interceptor nil "Load support for Portable Interceptors"))
+  (:portable-interceptor nil "Load support for Portable Interceptors")
+  (:support-test t "Load support code for test suite"))
 
 
 ;;; Files
@@ -53,13 +54,15 @@
     "clorb-struct"
     "clorb-union"
     "clorb-exceptions"
+    "clorb-io"
+    "clorb-conn"
     "clorb-object"
     "clorb-request"
     "clorb-iop"
     "clorb-value"
-    "clorb-io"
     "clorb-ifr-base"
     "clorb-orb"
+    "clorb-codec"
     "clorb-iiop"
     "cosnaming-stub"
     "clorb-util"
@@ -82,7 +85,7 @@
     "redpas;lexer"
     "redpas;parsys"))
 
-(defparameter *dev-pre-files*
+(defparameter *luna-files*
   '("luna;package"
     "luna;pattern"
     "luna;testsuite"))
@@ -118,10 +121,16 @@
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
-(defvar *source-pathname-defaults* (make-pathname :name nil :type nil
-                                                  :defaults *load-pathname*))
+(defvar *source-pathname-defaults*
+  (make-pathname :name nil :type nil
+                 :defaults
+                 (if (eq :absolute
+                         (first (pathname-directory  *load-pathname*)))
+                     *load-pathname*
+                     (truename *load-pathname*))))
 
-(defvar *binary-folder* (or #+clisp "fasl"))
+
+(defvar *binary-folder* "fasl")
 
 
 (defun dir-split (base)
@@ -179,17 +188,22 @@
 
 
 (defun reload ()
+  #+clorb-packer-luna   (packer:require-package :net.cddr.luna)
   #+clorb-packer-redpas (packer:require-package :net.cddr.redpas)
   (compile-changed 
-   (append #+clorb-dev *dev-pre-files*
+   (append #-clorb-packer-luna   *luna-files*
            #-clorb-packer-redpas *redpas-files*
            *base-files*
            (if (load-opt :server) *server-files*)
            *x-files*
            (if (load-opt :portable-interceptor) *portable-interceptor-files*)
-           #+clorb-dev *dev-post-files*
            (if (load-opt :idlcomp) *idlcomp*)
-           (if (load-opt :my-idlparser) *my-idlparser*) )))
+           (if (load-opt :my-idlparser) *my-idlparser*)
+           (if (load-opt :support-test) *dev-post-files*) ))
+  (let ((clorb (find-package "NET.CDDR.CLORB")))
+    (import 'reload clorb)
+    (export 'reload clorb)))
+
 
 
 (defun acl-defsys ()

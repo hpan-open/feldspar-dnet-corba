@@ -236,21 +236,18 @@
 
 (defpackage "NET.CDDR.CLORB"
   (:nicknames "CLORB")
-  (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS" "NET.CDDR.REDPAS"
-        #+clorb-dev "NET.CDDR.CLORB.SYSTEM"
-        #+clorb-dev "NET.CDDR.LUNA"
-        #+cmu "MOP" #-(or sbcl cmu mcl) "CLOS")
+  (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS" 
+        "NET.CDDR.REDPAS" "NET.CDDR.LUNA"
+        #+cmu "MOP")
   #+cmu
   (:shadowing-import-from "MOP"
               "CLASS-NAME" "BUILT-IN-CLASS" "CLASS-OF" "FIND-CLASS")
   (:export "STRUCT-GET"
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
-           ;; Development tools
-           #+clorb-dev "RELOAD"
            ;; Useful internals
            "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
-           "*HOST*" "*PORT*" )
+           "*HOST*" )
   (:import-from "OMG.ORG/PORTABLESERVER"
                 "POA" "STRING-TO-OID" "OID-TO-STRING")
   #+clisp
