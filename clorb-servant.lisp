@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.11 2002/11/20 16:42:05 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.12 2003/02/24 17:37:42 lenst Exp $
 
 (in-package :clorb)
 
@@ -47,16 +47,16 @@
 (defmethod servant-invoke :around ((servant PortableServer:Servant) operation input handler)
   (cond ((string= operation "_locate") nil)
         ((string= operation "_is_a")
-         (let ((output (funcall handler :no_exception)))
+         (let ((output (get-normal-response handler)))
            (marshal-bool (op:_is_a servant (unmarshal-string input)) output)
            output))
         ((string= operation "_non_existent")
-         (let ((output (funcall handler :no_exception)))
+         (let ((output (get-normal-response handler)))
            (marshal-bool (op:_non_existent servant) output)
            output))
         ((or (string= operation "_interface")
              (string= operation "_get_interface"))
-         (let ((output (funcall handler :no_exception)))
+         (let ((output (get-normal-response handler)))
            (marshal-ior (op:_get_interface servant) output)
            output))
         (t
@@ -90,10 +90,10 @@
 
     (let (buffer)
       (cond ((request-exception req)
-             (setq buffer (funcall handler :user_exception))
+             (setq buffer (get-exception-response handler))
              (marshal-any-value (request-exception req) buffer))
             (t
-             (setq buffer (funcall handler :no_exception))
+             (setq buffer (get-normal-response handler))
              (let ((res (request-result req)))
                (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
                  (marshal-any-value res buffer)))

@@ -567,7 +567,7 @@
   `(,(scoped-target-symbol target exc-def)
     (exc)
     (declare (ignorable exc))
-    (let ((output (funcall handler :user_exception)))
+    (let ((output (get-exception-response handler)))
       (marshal-string ,(op:id exc-def) output)
       ,@(map 'list 
              (lambda (member) 
@@ -593,7 +593,7 @@
                                        unless (eq :param_out (op:mode p))
                                        collect (target-unmarshal (op:type_def p) target 'input)))
            
-           (let ((output (funcall handler :no_exception)))
+           (let ((output (get-normal-response handler)))
              ,(if result
                 (target-marshal (op:result_def def) target (car result) 'output))
              ,@(loop for p in params

@@ -20,17 +20,18 @@
 
 (DEFMETHOD SERVANT-INVOKE ((SERVANT COSNAMING:BINDINGITERATOR-SERVANT)
                            OPERATION INPUT HANDLER)
+  (DECLARE (IGNORABLE INPUT))
   (COND ((STRING= OPERATION "destroy")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND NIL
                            (OMG.ORG/FEATURES:DESTROY SERVANT)
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))))
         ((STRING= OPERATION "next_n")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (RESULT _BL)
                            (OMG.ORG/FEATURES:NEXT_N SERVANT
                                                     (UNMARSHAL-ULONG INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL-BOOL RESULT OUTPUT)
                            (MARSHAL-SEQUENCE
                              _BL
@@ -41,7 +42,7 @@
         ((STRING= OPERATION "next_one")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (RESULT _B)
                            (OMG.ORG/FEATURES:NEXT_ONE SERVANT)
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL-BOOL RESULT OUTPUT)
                            (STRUCT-WRITE _B 'COSNAMING:BINDING OUTPUT)
                            OUTPUT))))
@@ -55,11 +56,12 @@
 
 (DEFMETHOD SERVANT-INVOKE ((SERVANT COSNAMING:NAMINGCONTEXT-SERVANT) OPERATION
                            INPUT HANDLER)
+  (DECLARE (IGNORABLE INPUT))
   (COND ((STRING= OPERATION "list")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (_BL _BI)
                            (OMG.ORG/FEATURES:LIST SERVANT
                                                   (UNMARSHAL-ULONG INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            (MARSHAL-SEQUENCE
                              _BL
@@ -74,13 +76,13 @@
         ((STRING= OPERATION "destroy")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND NIL
                            (OMG.ORG/FEATURES:DESTROY SERVANT)
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTEMPTY
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0"
                              OUTPUT)
@@ -93,7 +95,7 @@
                                (LAMBDA (BUFFER)
                                  (STRUCT-READ 'COSNAMING:NAMECOMPONENT BUFFER))
                                INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL RESULT
                                     (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT)
                                     OUTPUT)
@@ -101,7 +103,7 @@
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -120,7 +122,7 @@
                        (COSNAMING:NAMINGCONTEXT/ALREADYBOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
                              OUTPUT)
@@ -128,7 +130,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -146,7 +148,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -154,7 +156,7 @@
         ((STRING= OPERATION "new_context")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (RESULT)
                            (OMG.ORG/FEATURES:NEW_CONTEXT SERVANT)
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL RESULT
                                     (SYMBOL-TYPECODE 'COSNAMING:NAMINGCONTEXT)
                                     OUTPUT)
@@ -169,13 +171,13 @@
                                                        'COSNAMING:NAMECOMPONENT
                                                        BUFFER))
                                                      INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -194,7 +196,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -212,7 +214,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -227,13 +229,13 @@
                                                         'COSNAMING:NAMECOMPONENT
                                                         BUFFER))
                                                       INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL RESULT OMG.ORG/CORBA:TC_OBJREF OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -252,7 +254,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -270,7 +272,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -286,13 +288,13 @@
                              (UNMARSHAL (SYMBOL-TYPECODE
                                          'COSNAMING:NAMINGCONTEXT)
                                         INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -311,7 +313,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -329,7 +331,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -348,13 +350,13 @@
                                                            (SYMBOL-TYPECODE
                                                             'COSNAMING:NAMINGCONTEXT)
                                                            INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -373,7 +375,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -391,7 +393,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -399,7 +401,7 @@
                        (COSNAMING:NAMINGCONTEXT/ALREADYBOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
                              OUTPUT)
@@ -417,13 +419,13 @@
                                                     (UNMARSHAL
                                                      OMG.ORG/CORBA:TC_OBJREF
                                                      INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -442,7 +444,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -460,7 +462,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -478,13 +480,13 @@
                                                   (UNMARSHAL
                                                    OMG.ORG/CORBA:TC_OBJREF
                                                    INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            NIL
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -503,7 +505,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -521,7 +523,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -529,7 +531,7 @@
                        (COSNAMING:NAMINGCONTEXT/ALREADYBOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
                              OUTPUT)
@@ -544,18 +546,19 @@
 
 (DEFMETHOD SERVANT-INVOKE ((SERVANT COSNAMING:NAMINGCONTEXTEXT-SERVANT)
                            OPERATION INPUT HANDLER)
+  (DECLARE (IGNORABLE INPUT))
   (COND ((STRING= OPERATION "resolve_str")
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (RESULT)
                            (OMG.ORG/FEATURES:RESOLVE_STR SERVANT
                                                          (UNMARSHAL-STRING
                                                           INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL RESULT OMG.ORG/CORBA:TC_OBJREF OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/NOTFOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/NotFound:1.0"
                              OUTPUT)
@@ -574,7 +577,7 @@
                        (COSNAMING:NAMINGCONTEXT/CANNOTPROCEED
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0"
                              OUTPUT)
@@ -592,7 +595,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -600,7 +603,7 @@
                        (COSNAMING:NAMINGCONTEXT/ALREADYBOUND
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"
                              OUTPUT)
@@ -610,13 +613,13 @@
                            (OMG.ORG/FEATURES:TO_URL SERVANT
                                                     (UNMARSHAL-STRING INPUT)
                                                     (UNMARSHAL-STRING INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL-STRING RESULT OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXTEXT/INVALIDADDRESS
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0"
                              OUTPUT)
@@ -624,7 +627,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -633,7 +636,7 @@
          (HANDLER-CASE (MULTIPLE-VALUE-BIND (RESULT)
                            (OMG.ORG/FEATURES:TO_NAME SERVANT
                                                      (UNMARSHAL-STRING INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL-SEQUENCE
                              RESULT
                              (LAMBDA (OBJ BUFFER)
@@ -645,7 +648,7 @@
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
@@ -660,13 +663,13 @@
                                                           'COSNAMING:NAMECOMPONENT
                                                           BUFFER))
                                                         INPUT))
-                         (LET ((OUTPUT (FUNCALL HANDLER :NO_EXCEPTION)))
+                         (LET ((OUTPUT (GET-NORMAL-RESPONSE HANDLER)))
                            (MARSHAL-STRING RESULT OUTPUT)
                            OUTPUT))
                        (COSNAMING:NAMINGCONTEXT/INVALIDNAME
                          (EXC)
                          (DECLARE (IGNORABLE EXC))
-                         (LET ((OUTPUT (FUNCALL HANDLER :USER_EXCEPTION)))
+                         (LET ((OUTPUT (GET-EXCEPTION-RESPONSE HANDLER)))
                            (MARSHAL-STRING
                              "IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0"
                              OUTPUT)
