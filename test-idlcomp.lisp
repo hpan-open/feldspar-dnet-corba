@@ -27,9 +27,17 @@
                        (make-instance 'repository-pattern :args (list ,@pattern))))))
 
 
+;;(trace repository-from-string)
+;;(trace load-repository <specification> shell-to-string shell-to-stream)
 
 (define-test-suite "idlcomp"
   
+  (define-idl-test "comments"
+    "// Test
+    module Foo { /* bar */ interface Bar; };"
+    "Foo" (def-pattern :dk_module))
+
+
   ;; ---------------------------------
   
   (define-idl-test "short"
@@ -323,10 +331,13 @@ typedef long a[y];
                            'op:id "IDL:omg.org/CosNaming/Istring:1.0" ))
 
   (define-idl-test "ID Pragma"
-    "interface Foo {
+    "struct knoll {long n;};
+     #pragma ID knoll \"DCE:1293789123791873892:1\"
+     interface Foo {
 	#pragma ID Foo \"DCE:1293789123791873891:1\"
 	}; "
-    "Foo" (pattern 'op:id "DCE:1293789123791873891:1"))
+    "Foo" (pattern 'op:id "DCE:1293789123791873891:1")
+    "knoll" (pattern 'op:id "DCE:1293789123791873892:1"))
 
   (define-idl-test "Version Pragma"
     "interface Foo {

@@ -1,10 +1,18 @@
 (in-package :cl-user)
 
+(format t "~&;;;; Loading CLORB~%")
+
+(pushnew :use-my-idlparser *features*)
+(pushnew :no-idlcomp *features*)
+(pushnew :clorb-dev *features*)
+
+
 ;;(require :db-sockets)
 (require :asdf)
 (require :sb-bsd-sockets)
 
-(pushnew :clorb-dev *features*)
+#+use-my-idlparser
+(packer:require-package "NET.CDDR.REDPAS")
 
 (let* ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname)))
        (clorb-fasl (merge-pathnames "fasl/" clorb-home)))
@@ -18,8 +26,6 @@
 (load "clorb:src;clorb-files")
 ;;(setq net.cddr.clorb.system:*source-pathname-defaults* (pathname "clorb:src;"))
 (net.cddr.clorb.system:reload)
-
-;;(clorb::load-ir)
 
 (load "clorb:src;examples;hello;auto")
 

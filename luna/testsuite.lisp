@@ -48,7 +48,7 @@
 (defmethod print-result ((self test-result))
   (format t "~&;;; ------------- Suite '~A' result -----------------~%"
           (result-suite self))
-  (format t ";;; ~D tests executed with ~D errors~%"
+  (format t ";;; ~D test~:p executed with ~D error~:p~%"
           (result-count self)
           (result-errors self)))
 

@@ -173,8 +173,18 @@
                        'op:kind :tk_local_interface
                        'op:id "IDL:CORBA/local:1.0" 'op:name "local")
 
-      ;;(ensure-pattern* (op:create_value_tc factory ))
-      
+      (ensure-pattern* (op:create_value_tc factory "IDL:CORBA/vt:1.0" "vt" 
+                                           corba:vm_none
+                                           nil
+                                           (list (omg.org/corba:valuemember
+                                                  :name "m1" 
+                                                  :id "IDL:Hoopp:1.0"
+                                                  :version "1.0"
+                                                  :type CORBA:tc_long
+                                                  :type_def nil
+                                                  :access omg.org/corba:public_member)))
+                       'op:kind :tk_value)
+
       (let ((recursive_tc (op:create_recursive_tc factory "IDL:V:1.0")))
         (let ((tc (op:create_struct_tc factory "IDL:V:1.0" "V" 
                                        (list (CORBA:StructMember

@@ -27,14 +27,23 @@
   
   (define-test "Read Interface 2" 
     (idef-read '((define-module "Foo" ()
-                     (define-interface "Bar" ()))) 
-                 r)
-    (let* ((m (op:lookup r "Foo"))
-           (i (op:lookup m "Bar")))
-      (ensure i "lookup name")
-      (ensure-equalp (op:def_kind i) :dk_interface)
-      (ensure-equalp (op:id i) "IDL:Foo/Bar:1.0")
-      (ensure-equalp (op:kind (op:type i)) :tk_objref)))
+                   (define-interface "Bar" ())
+                   (define-interface "F" ()
+                     (define-exception "e" ()))
+                   (define-interface "Bar" (:bases ("F"))
+                     (define-operation "op" ()
+                       :result-type void
+                       :exceptions ("e")))))
+               r)
+    (ensure-pattern 
+     r
+     (repository-pattern
+      "Foo" (def-pattern :dk_module)
+      "Foo::Bar" (def-pattern :dk_interface
+              'op:id "IDL:Foo/Bar:1.0"
+              'op:type (pattern 'op:kind :tk_objref))
+      "Foo::Bar::op" (def-pattern :dk_operation
+                       'op:exceptions (sequence-pattern (pattern 'op:name "e"))))))
 
   (define-test "Read Interface 3"
     (idef-read '((define-interface "A" (:bases ("B"))

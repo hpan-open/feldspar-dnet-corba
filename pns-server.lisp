@@ -4,8 +4,8 @@
 (in-package "NET.CDDR.CLORB.PERSISTENT-NAMING")
 
 
-(defvar *naming-ior-file*  #P"/tmp/NameService")
-(defvar *naming-base-path* #P"/tmp/naming/foo.obj")
+(defvar *naming-ior-file*  nil)
+(defvar *naming-base-path* #P"clorb:naming;foo.obj")
 
 
 ;;;; Generating ID

@@ -19,9 +19,11 @@
 (net.cddr.clorb.system:reload)
 
 (setq clorb:*host* "localhost")
-(setq clorb:*port* 5111)
 
-(defvar *orb* (CORBA:ORB_init))
+(defvar *orb* 
+    (CORBA:ORB_init
+     (list "-ORBPort" "5111"
+           "-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService")))
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
@@ -30,7 +32,7 @@
 (defun run ()
   (op:run *orb*))
 
-;;(op:object_to_string *orb* cl-user::root)
+
 
 
 (defun describe-repo (r)

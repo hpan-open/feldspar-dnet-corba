@@ -1,10 +1,5 @@
 (in-package :clorb)
 
-
-(defmacro ensure-repository (&rest args)
-  `(ensure-pattern repository (repository-pattern ,@args)))
-
-
 (define-test-suite "Local IFR test"
   (variables
    (repository (make-instance 'repository))
@@ -126,10 +121,13 @@
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
       (ensure-pattern obj (def-pattern :dk_sequence 
-                            'op:bound 0 'op:element_type CORBA:tc_ulong))
+                            'op:bound 0 'op:element_type CORBA:tc_ulong
+                            'op:type (create-sequence-tc 0 CORBA:tc_ulong)))
       ;; Write interface
       (setf (op:element_type_def obj) a-string)
-      (ensure-typecode (op:element_type obj) :tk_string)))
+      (ensure-typecode (op:element_type obj) :tk_string)
+      (setf (op:bound obj) 10)
+      (ensure-typecode (op:type obj) (create-sequence-tc 10 CORBA:tc_string))))
 
   (define-test "ArrayDef"
     (let ((obj (op:create_array repository 10 a-string)))
@@ -138,7 +136,9 @@
       (ensure-equalp (op:kind (op:element_type obj)) :tk_string)
       ;; Write interface
       (setf (op:element_type_def obj) a-ulong)
-      (ensure-equalp (op:kind (op:element_type obj)) :tk_ulong)))
+      (ensure-equalp (op:kind (op:element_type obj)) :tk_ulong)
+      (setf (op:length obj) 11)
+      (ensure-typecode (op:type obj) (create-array-tc 11 corba:tc_ulong))))
 
   (define-test "ExceptionDef"
     (let* ((members (list (CORBA:StructMember :name "a"
@@ -166,7 +166,9 @@
       (setf (op:members obj) (cdr members))
       (ensure-equalp (length (op:members obj)) (1- (length members)))
       (ensure-equalp (op:member_count (op:type obj)) (1- (length members)))
-      (ensure-equalp (op:kind (op:member_type (op:type obj) 0)) :tk_ulong)))
+      (ensure-equalp (op:kind (op:member_type (op:type obj) 0)) :tk_ulong)
+      (ensure-eql (op:member_count (op:type obj)) (1- (length members)))))
+  
 
   (define-test "InterfaceDef"
     (let* ((id "IDL:my/Interface:1.1")
@@ -181,7 +183,7 @@
         (ensure-typep (op:operations desc) 'sequence)
         (let ((attrs (op:attributes desc)))
           (ensure-equalp (length attrs) 1)
-          (ensure-typep (elt attrs 0) 'omg.org/corba:attributedescription)))))
+          (ensure-typep (elt attrs 0) 'CORBA:AttributeDescription)))))
 
 
   (define-test "AttributeDef"
@@ -228,10 +230,22 @@
       (setf (op:result_def obj) a-string)
       (ensure-equalp (op:kind (op:result obj)) :tk_string)
       (setf (op:mode obj) :op_normal)
-      (handler-case                     ; oneway can't have non void result
-        (progn (setf (op:mode obj) :op_oneway)
-               (ensure nil "Missing exception"))
-        (CORBA:BAD_PARAM (c) (ensure-eql (op:minor c) 31)))))
+      (ensure-exception
+       (setf (op:mode obj) :op_oneway)
+       CORBA:BAD_PARAM  'op:minor 31)))
+
+
+  (define-test "PrimitiveDef"
+    (loop for kind in '(:PK_VOID :PK_SHORT :PK_LONG :PK_USHORT :PK_ULONG :PK_FLOAT :PK_DOUBLE
+                        :PK_BOOLEAN :PK_CHAR :PK_OCTET :PK_ANY :PK_TYPECODE ;:PK_PRINCIPAL
+                        :PK_STRING :PK_OBJREF :PK_LONGLONG :PK_ULONGLONG :PK_LONGDOUBLE 
+                        :PK_WCHAR :PK_WSTRING :PK_VALUE_BASE)
+          do (with-sub-test (kind)
+               (ensure-pattern* (op:get_primitive repository kind)
+                                'op:def_kind :dk_primitive
+                                'op:kind kind
+                                'op:type (pattern 'struct-class-name 'CORBA:TypeCode)))))
+
 
 
   (define-test "StringDef"
@@ -239,6 +253,12 @@
                      'op:def_kind :dk_string
                      'op:bound 10
                      'op:type (make-typecode :tk_string 10)))
+
+  (define-test "WStringDef"
+    (ensure-pattern* (op:create_wstring repository 10)
+                     'op:def_kind :dk_wstring
+                     'op:bound 10
+                     'op:type (create-wstring-tc 10)))
   
 
   (define-test "FixedDef"
@@ -248,5 +268,55 @@
       (ensure-typecode (op:type obj) :tk_fixed)
       (setf (op:scale obj) 3)
       (ensure-equalp (op:fixed_scale (op:type obj)) 3)))
+
+  (define-test "ValueBox"
+    (let* ((type a-ulong)
+           (id "IDL:my/ValueBox:1.1")
+           (name "ValueBox")
+           (version "1.1")
+           (obj (op:create_value_box repository id name version type)))
+      (ensure-pattern obj
+                      (def-pattern :dk_valuebox
+                        'op:id id 'op:name name 'op:version version
+                        'op:original_type_def type
+                        'op:type (pattern 'op:kind :tk_value_box
+                                          'op:id id)))))
+
+  (define-test "Native"
+    (let* ((id "IDL:my/servant:1.1")
+           (name "servant")
+           (version "1.1")
+           (obj (op:create_native repository id name version)))
+      (ensure-pattern obj
+                      (def-pattern :dk_native
+                        'op:id id 'op:name name 'op:version version
+                        'op:type (pattern 'op:kind :tk_native
+                                          'op:id id)))))
+
+  (define-test "AbstractInterfaceDef"
+    (let* ((id "IDL:my/Interface:1.1")
+           (name "Interface")
+           (version "1.1")
+           (obj (op:create_abstract_interface repository id name version '())))
+      (ensure (op:is_a obj id) "isa Self")
+      (ensure (op:is_a obj "IDL:omg.org/CORBA/AbstractBase:1.0") "isa AbstractBase")
+      (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)))
+
+  (define-test "LocalInterfaceDef"
+    (let* ((id "IDL:my/Interface:1.1")
+           (name "Interface")
+           (version "1.1")
+           (obj (op:create_local_interface repository id name version '())))
+      (ensure (op:is_a obj id) "isa Self")
+      (ensure (op:is_a obj "IDL:omg.org/CORBA/LocalBase:1.0") "isa LocalBase"))
+
+    ;; Setting the inherited base_interfaces attribute causes a
+    ;; BAD_PARAM exception with standard minor code 5 to be raised if
+    ;; the name attribute of any object contained by this
+    ;; LocalInterfaceDef conflicts with the name attribute of any
+    ;; object contained by any of the specified base InterfaceDefs
+    ;; (local or otherwise).
+
+    )
     
 )

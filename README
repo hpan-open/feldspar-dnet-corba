@@ -13,7 +13,7 @@
 
 CLORB is an Object Request Broker implementing CORBA 2. It currently
 supports DII, DSI and the POA. The goal is to make the mapping follow
-the proposed mapping for LISP, but currently this is only 89.3% (?) done.
+the proposed mapping for LISP.
 
 It lacks:
 
@@ -29,7 +29,7 @@ Ports:
    MCL 5        only tested with Max OS X
    OpenMCL      seems to work
    CMUCL        partially working (some test cases fail)
-   SBCL         not tested lately
+   SBCL         minimal test on Mac OS X
    ACL 6.2      seems to work, but the trial version can't compile the IDL
                 compiler due to heap limitation
    --
@@ -41,9 +41,9 @@ Ports:
 
                                 MCL 5
 
-MCL 5 beta is the current main development environment. I also use
-the BSD package [find good reference]. The networking code can either
-use OpenTransport directly or use the ACL-COMPAT code from portable
+MCL 5.0 is the current main development environment. I also use the
+BSD package [find good reference]. The networking code can either use
+OpenTransport directly or use the ACL-COMPAT code from portable
 allegro server [fix reference].
 
 The file clmcl.lisp is what I have used during development to load
