@@ -36,7 +36,7 @@
 ;; ~ status member nil :connected :broken
 
 (defparameter *io-multi-process* (or #+mcl t ))
-(defparameter *io-background-write-treshold* 1000)
+(defparameter *io-background-write-treshold* 200)
 
 (defvar *io-event-queue* nil)
 (defvar *io-ready-for-read* nil)
@@ -99,6 +99,8 @@
         (delete desc *io-descriptions*)))
 
 (defun io-descriptor-connect (desc host port)
+  ;; FIXME:
+  (setq host (if (string= host "saturn") "10.0.1.2" host))
   (setf (io-descriptor-stream desc)
         (open-active-socket host port))
   (mess 3 "connect to ~A:~A = ~A" host port (io-descriptor-stream desc))
@@ -127,20 +129,29 @@
   (when (and *io-multi-process* buf (> end start))
     (push desc *io-ready-for-read*)))
 
+
 (defun io-desc-write (desc)
-  (write-octets (io-descriptor-write-buffer desc)
-               (io-descriptor-write-pos desc) (io-descriptor-write-limit desc)
-               (io-descriptor-stream desc))
-  (setf (io-descriptor-write-pos desc) (io-descriptor-write-limit desc))
-  (io-queue-event :write-ready desc))
-  
+  (handler-case
+    (progn
+      (write-octets (io-descriptor-write-buffer desc)
+                    (io-descriptor-write-pos desc) (io-descriptor-write-limit desc)
+                    (io-descriptor-stream desc))
+      (setf (io-descriptor-write-pos desc) (io-descriptor-write-limit desc))
+      (io-queue-event :write-ready desc))
+    (stream-error
+     (e)
+     (setf (io-descriptor-status desc) :broken)
+     (setf (io-descriptor-error desc)  e)
+     (io-queue-event :error desc) ))
+  (setf (io-descriptor-write-process desc) nil))
+
 (defun io-descriptor-set-write (desc buf start end)
   (setf (io-descriptor-write-buffer desc) buf
         (io-descriptor-write-pos desc) start
         (io-descriptor-write-limit desc) end)
   (when (and *io-multi-process* buf (> end start))
     (if (> (- end start) *io-background-write-treshold*)
-      (start-process "write" #'io-desc-write desc)
+      (setf (io-descriptor-write-process desc) (start-process "write" #'io-desc-write desc))
       (io-desc-write desc))))
 
 
@@ -188,7 +199,7 @@
            (incf write-pos n)
            (if (>= write-pos write-limit)
              :write-ready))
-         (error (e)
+         (stream-error (e)
                 (setf (io-descriptor-status desc) :broken)
                 (setf (io-descriptor-error desc)  e)
                 :error)))
