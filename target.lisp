@@ -57,6 +57,25 @@
                    "OMG.ORG/ROOT"))))))
     (make-target-symbol target name package)))
 
+(defun scoped-target-symbol-in (target name container)
+  (let* ((container-type (and container (op:def_kind container)))
+         (name
+          (if (or (null container)
+                  (eq container-type :dk_Repository))
+            name
+            (concatenate 'string
+                         (symbol-name (scoped-target-symbol target container))
+                         "/" name)))
+         (package
+          ;; Find enclosing Module
+          (do* ((container container (op:defined_in container))
+                (container-type container-type
+                                (and container (op:def_kind container))))
+               ((or (null container) (eq container-type :dk_Module))
+                (if container (scoped-target-symbol target container)
+                    "OMG.ORG/ROOT")))))
+    (make-target-symbol target name package)))
+
 
 (defun make-progn (l)
   (cons 'progn
@@ -79,8 +98,7 @@
 
 (defun make-idltype (symbol id typecode &rest forms)
   (make-progn
-   `((set-symbol-ifr-id ',symbol ,id)
-     (set-symbol-typecode ',symbol ,typecode)
+   `((set-symbol-id/typecode ',symbol ,id ,typecode)
      ,@forms)))
 
 (defun target-base-list (target bases make-symbol-fun root-class)
@@ -149,7 +167,15 @@
   (declare (ignore target))
   `sequence)
 
+(defmethod target-type ((obj CORBA:ArrayDef) target)
+  (declare (ignore target))
+  ;;FIXME: handle multi dim arrays
+  `(array t (,(op:length obj))))
+
 (defmethod target-type ((obj CORBA:AliasDef) target)
+  (scoped-target-symbol target obj))
+
+(defmethod target-type ((obj CORBA:StructDef) target)
   (scoped-target-symbol target obj))
 
 (defmethod target-typecode ((obj CORBA:PrimitiveDef) target)
@@ -174,17 +200,26 @@
    (:pk_wchar `CORBA:tc_wchar)
    (:pk_void `CORBA:tc_void)))
 
+(defmethod target-typecode ((x CORBA:StringDef) target)
+  (declare (ignore target))
+  (if (zerop (op:bound x))
+     `CORBA:tc_string
+     `(make-typecode :tk_string ,(op:bound x))))
 
 (defmethod target-typecode ((x CORBA:SequenceDef) target)
   `(make-sequence-typecode
     ,(target-typecode (op:element_type_def x) target)
     ,(op:bound x)))
 
-(defmethod target-typecode ((x CORBA:IDLType) target)
+(defmethod target-typecode ((x CORBA:Contained) target)
   `(symbol-typecode ',(scoped-target-symbol target x)))
 
 (defmethod target-typecode ((x CORBA:ExceptionDef) target)
   `(symbol-typecode ',(scoped-target-symbol target x)))
+
+(defmethod target-typecode ((x CORBA:ArrayDef) target)
+  `(make-array-typecode ,(target-typecode (op:element_type_def x) target)
+                        ,(op:length x)))
 
 
 ;;;; target-code methods
@@ -217,9 +252,7 @@
    `(make-typecode :tk_objref ,(op:id idef) ,(op:name idef))
    (target-defclass target idef)
    (target-defproxyclass target idef)
-   (make-progn
-    (map 'list (lambda (x) (target-code x target))
-         (op:contents idef :dk_all t)))))
+   (call-next-method)))
 
 (defmethod target-code ((op CORBA:OperationDef) target)
   (let* ((op-name (op:name op))
@@ -227,8 +260,8 @@
     (if (target-dynamic-stubs target)
       (let ((lisp-name (make-target-symbol target op-name :op)))
         `(defmethod ,lisp-name ((obj ,class) &rest args)
-           (apply 'clorb::invoke obj ,op-name args)))
-      (let* ((lisp-name (make-target-symbol target op-name :clorb))
+           (apply #'invoke obj ,op-name args)))
+      (let* ((lisp-name (string-upcase op-name))
              (params (coerce (op:params op) 'list))
              (args (loop for p in params
                          unless (eq (op:mode p) :param_out)
@@ -254,15 +287,20 @@
 
 (defmethod target-code ((op CORBA:AttributeDef) target)
   (let* ((att-name (op:name op))
-         (lisp-name (make-target-symbol target att-name :op))
+         (lisp-name (string-upcase att-name))
          (class (target-proxy-class-symbol target (op:defined_in op))))
     `(progn
-       (defmethod ,lisp-name ((obj ,class) &rest args)
-         (apply 'clorb::invoke obj ,(getter-name att-name) args))
+       (define-method ,lisp-name ((obj ,class))
+         ,(if (target-dynamic-stubs target)
+            `(corba:funcall ,(getter-name att-name) obj)
+            `(get-attribute obj ,(getter-name att-name) 
+                            ,(target-typecode (op:type_def op) target))))
        ,@(if (eq (op:mode op) :attr_normal)
-             (list `(defmethod (setf ,lisp-name) (newval (obj ,class))
-                      (apply 'clorb::invoke obj ,(setter-name att-name)
-                             newval)))))))
+             (list `(define-method (setf ,lisp-name) (newval (obj ,class))
+                      ,(if (target-dynamic-stubs target)                      
+                         `(corba:funcall ,(setter-name att-name) obj newval)
+                         `(set-attribute obj ,(setter-name att-name) 
+                                         ,(target-typecode (op:type_def op) target) newval))))))))
 
 
 (defmethod target-code ((mdef CORBA:Container) target)
@@ -271,22 +309,16 @@
                    (op:contents mdef :dk_All t))))
 
 (defmethod target-code ((sdef CORBA:StructDef) target)
-  (make-idltype
-   (scoped-target-symbol target sdef)
-   (op:id sdef)
-   `(lambda ()
-      (struct-typecode ,(op:id sdef) ,(op:name sdef)
-                       ,@(loop for smember in (coerce (op:members sdef) 'list)
-                               nconc (list (op:name smember)
-                                           (target-typecode (op:type_def smember) target)))))
-   `(define-corba-struct ,(scoped-target-symbol target sdef)
-      :id ,(op:id sdef)
-      :members ,(map 'list
-                     (lambda (smember)
-                       (list (make-target-symbol target (op:name smember)
-                                                 'clorb)
-                             nil))
-                     (op:members sdef)))))
+  `(define-struct ,(scoped-target-symbol target sdef)
+     :id ,(op:id sdef)
+     :name ,(op:name sdef)
+     :members ,(map 'list
+                    (lambda (smember)
+                      (list (op:name smember)
+                            (target-typecode (op:type_def smember) target)
+                            (make-target-symbol target (op:name smember)
+                                                'clorb)))
+                    (op:members sdef))))
 
 (defmethod target-code ((enum CORBA:EnumDef) target)
   (make-idltype
@@ -306,6 +338,38 @@
                         (let ((m-name (op:name smember)))
                           (list m-name (target-typecode (op:type_def smember) target))))
                       (op:members exc))))
+
+
+(defmethod target-code ((def CORBA:UnionDef) target)
+  (let ((collected-members '())
+        (default-member nil)
+        (used-labels '())
+        (default-index (op:default_index (op:type def))))
+    (doseq (m (op:members def))
+      (let* ((name (op:name m))
+             (raw-label (op:label m))
+             (label (any-value raw-label))
+             (defaultp (zerop default-index)))
+        (push (list label (target-typecode (op:type_def m) target)
+                    :name name :default defaultp
+                    :creator (scoped-target-symbol-in target name def))
+              collected-members)
+        (cond (defaultp
+                (setq default-member collected-members))
+              (t
+               (push label used-labels))))
+      (decf default-index))
+    (when default-member
+      (setf (caar default-member)
+            (block nil
+              (typecode-values-do (lambda (x) (unless (member x used-labels) (return x)))
+                                  (op:discriminator_type def))))) 
+    `(define-union ,(scoped-target-symbol target def)
+       :id   ,(op:id def)
+       :name ,(op:name def)
+       :discriminator-type ,(target-typecode (op:discriminator_type_def def) target)
+       :members ,(nreverse collected-members))))
+
 
 
 ;;;; Stub code generator
@@ -366,7 +430,8 @@
       (write-char #\Space)
       (write (pprint-pop)))))
 
-(set-pprint-dispatch '(cons (member define-user-exception define-corba-struct))
+(set-pprint-dispatch '(cons (member define-user-exception define-corba-struct
+                                    define-struct define-union))
                      'pprint-def-and-keys)
 
 #||
