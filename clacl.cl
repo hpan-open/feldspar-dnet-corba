@@ -1,7 +1,8 @@
 (load "clorb-sysdcl")
 (excl:load-system :clorb :compile t)
+(setq clorb::*host* "pc-lennarts.infotek.no")
 
-(setf clorb::*running-orb* (CORBA:ORB_init))
+(setf clorb::*running-orb* t)
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
 (clorb::load-ir)

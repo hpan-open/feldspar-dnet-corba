@@ -28,7 +28,7 @@
 ;;;; Server proper
 
 (defvar *server-socket* nil
-  "The `master' socket that we accept new conections on")
+  "The `master' socket that we accept new connections on")
 
 (defclass clorb-adaptor ()
   ((orb :initarg :orb  :accessor adaptor-orb)
