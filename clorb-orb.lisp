@@ -663,11 +663,25 @@ Can be set to true globally for singel-process / development.")
                                       id name boxed_type)
   (fix-recursive-tc (create-value-box-tc id name boxed_type)))
 
+(DEFINE-ALIAS OMG.ORG/CORBA:VALUEMODIFIER
+  :ID "IDL:omg.org/CORBA/ValueModifier:1.0"
+  :NAME "ValueModifier"
+  :TYPE OMG.ORG/CORBA:SHORT
+  :TYPECODE OMG.ORG/CORBA:TC_SHORT)
 
 (define-method "CREATE_VALUE_TC" ((OBJ CORBA:TYPECODEFACTORY)
-                                  id name type_modifier concrete_base members)
-  
-  )
+                                      id name type_modifier concrete_base members)
+  (fix-recursive-tc
+   (create-value-tc id name type_modifier concrete_base
+                    (simple-value-members members))))
+
+(defun simple-value-members (members)
+  (map 'vector
+       (lambda (member)
+         (list (op:name member)
+               (op:type member)
+               (op:access member)))
+       members))
 
 (define-method "CREATE_LOCAL_INTERFACE_TC" ((OBJ CORBA:TYPECODEFACTORY) id name)
   (create-local-interface-tc id name))
