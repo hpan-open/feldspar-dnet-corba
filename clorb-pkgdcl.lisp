@@ -108,6 +108,12 @@
    "MSGTYPE_1_1" "PRINCIPAL" "REPLYHEADER" "REPLYSTATUSTYPE" "REQUESTHEADER_1_0"
    "REQUESTHEADER_1_1" "VERSION"))
 
+(defpackage "OMG.ORG/IIOP"
+  (:use)
+  (:nicknames "IIOP")
+  (:export
+   "PROFILEBODY_1_0" "PROFILEBODY_1_1" "VERSION"))
+
 (defpackage "OMG.ORG/FEATURES"
   (:use)
   (:nicknames "OP")
