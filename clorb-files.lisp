@@ -2,9 +2,12 @@
 
 (defpackage "NET.CDDR.CLORB.SYSTEM"
   (:use "COMMON-LISP")
-  (:export "RELOAD"))
+  (:export "RELOAD" *use-server* *use-portable-interceptor*))
 
 (in-package "NET.CDDR.CLORB.SYSTEM")
+
+(defvar *use-server* t)
+(defvar *use-portable-interceptor* t)
 
 (defparameter *base-files*
   '(("clorb-pkgdcl")
@@ -25,7 +28,6 @@
     "clorb-exceptions"
     "clorb-value"
     "clorb-iop"
-    "clorb-pi-base"
     "clorb-object"
     "clorb-io"
     "clorb-ifr-base"
@@ -55,9 +57,12 @@
 (defparameter *dev-post-files*
   '("support-test"))
 
+(defparameter *portable-interceptor-files*
+  '("clorb-pi-base"
+    "clorb-pi-impl"))
+
 (defparameter *x-files*
   '(;; Experimental
-    "clorb-pi-impl"
     "idef-read"
     "idef-write"
     ("idef-macros" t)
@@ -132,8 +137,10 @@
 (defun reload ()
   (compile-changed (append #+clorb-dev *dev-pre-files*
                            *base-files*
-                           *server-files*
+                           (if *use-server* *server-files*)
                            *x-files*
+                           (if *use-portable-interceptor* 
+                             *portable-interceptor-files*)
                            #+clorb-dev *dev-post-files*
                            #-no-idlcomp *idlcomp*
                            #+use-my-idlparser *my-idlparser* )))

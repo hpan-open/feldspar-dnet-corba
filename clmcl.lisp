@@ -15,6 +15,7 @@
   (mapc #'delete-file (directory "clorb:*.cfsl")))
 
 (load "CLORB:SRC;CLORB-FILES")
+(setq net.cddr.clorb.system:*use-portable-interceptor* nil)
 (net.cddr.clorb.system:reload)
 
 (import '(@ @@ @@@) "CLORB")
