@@ -6,6 +6,7 @@
     ("clorb-macros" t)
     "clorb-options"
     "clorb-supp"
+    "socket"
     "clorb-basetypes"
     ("clorb-exceptions" t)
     "clorb-object"
@@ -21,10 +22,8 @@
     "clorb-orb"
     "clorb-request"
     ("clorb-iir" t)
-    "socket"
     "clorb-util"
     "dumpir"))
-
 
 (defparameter *server-files*
   '("clorb-objkey"
