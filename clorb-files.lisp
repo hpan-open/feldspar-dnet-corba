@@ -23,6 +23,7 @@
     "clorb-struct"
     "clorb-union"
     "clorb-exceptions"
+    "clorb-value"
     "clorb-iop"
     "clorb-object"
     "clorb-io"
