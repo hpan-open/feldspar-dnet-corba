@@ -21,9 +21,9 @@
 (deftype corba:string ()
   'string)
 
-(deftype wstring ()
+(deftype corba:wstring ()
   ;; FIXME
-  'string)
+  '(simple-array corba:wchar))
 
 (deftype corba:short ()
   '(signed-byte 16))
@@ -54,7 +54,7 @@
              'double-float))
 
 (deftype corba:longdouble ()
-  (%SYSDEP`"112 bit float"
+  (%SYSDEP "112 bit float"
           'long-float))
 
 (deftype corba:fixed ()

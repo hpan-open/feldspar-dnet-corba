@@ -791,6 +791,7 @@
 
 (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                     define-union define-enum define-alias
+                                    define-value
                                     static-call))
                      #'pprint-def-and-keys)
 

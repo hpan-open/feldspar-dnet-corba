@@ -13,30 +13,32 @@
     ("clorb-macros" t)
     "clorb-sysdep"
     "clorb-basetypes"
-    "clorb-typecode"
-    "clorb-any"
-    "clorb-struct"
-    "clorb-union"
-    ("clorb-macros2" t)
-    "clorb-exceptions"
-    "clorb-iop"
-    "clorb-object"
+    "clorb-typecode-1"
     ("clorb-buffer" t)
     "clorb-marshal"
     "clorb-unmarshal"
+    "clorb-typecode-2"
+    ("clorb-macros2" t)
+    "clorb-any"
+    "clorb-struct"
+    "clorb-union"
+    "clorb-exceptions"
+    "clorb-iop"
+    "clorb-object"
     "clorb-io"
     "clorb-ifr-base"
     "clorb-iiop"
     "clorb-orb"
-    ("clorb-opdef" t)
-    "clorb-iir"
+    ;;("clorb-opdef" t)
+    ;;"clorb-iir"
     "cosnaming-stub"
     "clorb-util"
     "clorb-ifr"
     "clorb-target"
     "clorb-idl"
     "clorb-idlcpp"
-    "dumpir"))
+    ;;"dumpir"
+    ))
 
 (defparameter *server-files*
   '("clorb-objkey"

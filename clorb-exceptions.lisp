@@ -3,6 +3,12 @@
 (in-package :clorb)
 
 
+(defun create-exception-tc (id name members)
+  "Create Exception TypeCode for interface repository ID and NAME, with MEMEBERS.
+Members on form: (name TypeCode)"
+  (make-typecode :tk_except id name members))
+
+
 (defgeneric exception-name (exception)
   (:documentation "The scoped symbol for the exception type"))
 
@@ -15,7 +21,6 @@
 
 (defun exception-id (exception)
   (symbol-ifr-id (exception-name exception)))
-
 
 (define-enum CORBA:completion_status
   :id "IDL:omg.org/CORBA/completion_status:1.0"
@@ -32,7 +37,6 @@
 	  :reader system-exception-minor)
    (completed :initform :completed_maybe
 	      :initarg :completed
-              :type CORBA:completion_status
 	      :reader system-exception-completed))
   (:report report-systemexception))
 
@@ -100,10 +104,31 @@
   (let ((reader (get symbol 'exception-read)))
     (if reader
       (funcall reader buffer)
-      (unmarshal-exception (symbol-typecode symbol) buffer))))
+      (unmarshal (symbol-typecode symbol) buffer))))
 
 (defun unmarshal-systemexception (buffer)
   (make-condition (or (ifr-id-symbol (unmarshal-string buffer))
                       'corba:systemexception)                      
                   :minor (unmarshal-ulong buffer)
-                  :completed (unmarshal CORBA::tc_completion_status buffer)))
+                  :completed (unmarshal (symbol-typecode 'CORBA:completion_status) 
+                                        buffer)))
+
+(defmethod unmarshal ((typecode except-typecode) buffer)
+  (let* ((id (op:id typecode))
+         (class (id-exception-class id))
+         (initargs 
+          (loop for (nil tc) across (tc-members typecode)
+                for key across (tc-keywords typecode)
+                collect key
+                collect (unmarshal tc buffer))))
+    (if class
+      (apply #'make-condition class initargs)
+      (make-condition 'unknown-user-exception
+                      :id id :values initargs))))
+
+
+(defmethod marshal (arg (tc except-typecode) buffer)
+  (marshal-string (op:id tc) buffer)
+  (let ((values (all-fields arg)))
+    (doseq (member (tc-members tc))
+      (marshal (pop values) (second member) buffer))))

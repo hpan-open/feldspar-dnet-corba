@@ -38,14 +38,15 @@ where label = symbol clorb:default or value"
 (defmethod any-value ((obj corba:union))
   obj)
 
+;; FIXME: this is not standard, should not be in CORBA package
 (defun corba:union (&key union-discriminator union-value
                            id typecode)
   (let ((id (or id (and typecode (op:id typecode)))))
     (let ((name (ifr-id-symbol id)))
       (if name
         (funcall name 
-                 :discriminator union-discriminator
-                 :value union-value)
+                 :union-discriminator union-discriminator
+                 :union-value union-value)
         (make-instance 'corba:union
           :discriminator union-discriminator
           :value union-value)))))
@@ -65,6 +66,48 @@ where label = symbol clorb:default or value"
     (:tk_enum (doseq (sym (tc-keywords typecode))
                 (funcall function sym)))
     (otherwise (loop for i from 0 do (funcall function i)))))
+
+
+
+(defmethod unmarshal ((tc union-typecode) buffer)
+  (unmarshal-union (typecode-params tc)
+                   buffer))
+
+(defun unmarshal-union (params buffer)
+  (let* ((discriminant-type (third params))
+         (default-used (fourth params))
+         (members      (fifth params))
+         (discriminant (unmarshal discriminant-type buffer))
+         (index
+          (do ((i 0 (1+ i)))
+              ((or (>= i (length members))
+                   (and (not (eql i default-used))
+                        (eql discriminant (first (aref members i)))))
+               (if (>= i (length members))
+                   default-used
+                 i))))
+         (tc (third (aref members index))))
+    (corba:union :id (first params)
+                 :union-discriminator discriminant
+                 :union-value (unmarshal tc buffer))))
+
+
+(defmethod marshal (union (tc union-typecode) buffer)
+  (marshal-union union (typecode-params tc) buffer))
+
+(defun marshal-union (union params buffer)
+  (let* ((discriminant (union-discriminator union))
+         (value (union-value union))
+         (discriminant-type (third params))
+         (default-used (fourth params))
+         (members (fifth params))
+         (member (find discriminant members :key #'car)))
+    (when (and (null member)
+               (>= default-used 0))
+      (setq member (aref members default-used)))
+    (assert (not (null member)))  ; FIXME: raise MARSHAL ?
+    (marshal discriminant discriminant-type buffer)
+    (marshal value (third member) buffer)))
 
 
 ;;; clorb-union.lisp ends here

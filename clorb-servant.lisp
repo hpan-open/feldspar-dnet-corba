@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.13 2003/07/03 08:47:44 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.14 2003/11/12 07:20:07 lenst Exp $
 
 (in-package :clorb)
 
@@ -57,7 +57,7 @@
         ((or (string= operation "_interface")
              (string= operation "_get_interface"))
          (let ((output (get-normal-response handler)))
-           (marshal-ior (op:_get_interface servant) output)
+           (marshal-object (op:_get_interface servant) output)
            output))
         (t
          (call-next-method))))

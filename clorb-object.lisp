@@ -57,26 +57,52 @@
     :name name :argument argument :arg_modes arg_modes))
 
 
-;;;; CORBA:Object / CORBA:Proxy
+;;;; Generic Functions
+
 
 (defgeneric object-is-a (object id)
   (:method-combination or))
 
+
 (defgeneric object-id (object))
+
+
+(define-operation "_THIS"
+  :documentation "Used for implicit activation during marshalling.")
+
+(define-method "_THIS" ((object t))
+  (error 'CORBA:MARSHAL :minor 4))
+
+
+
+;;;; CORBA:Object
 
 (define-interface CORBA:Object ()
   :id "IDL:omg.org/CORBA/Object:1.0"
   :name "Object")
 
-#+(or)  ;; defined by define-interface
-(defmethod object-id ((obj corba:object))
-  (or (some #'(lambda (x)
-                (let ((n (class-name x)))
-                  (and (symbolp n) (symbol-ifr-id n))))
-            (%SYSDEP "class precedence list"
-                     #+ccl (ccl:class-precedence-list (class-of obj))
-                     (list (class-of obj))))
-      "IDL:omg.org/Object:1.0"))
+
+;;;| boolean	 is_nil();
+
+(define-method _is_nil ((x null))
+  t)
+
+(define-method _is_nil ((x CORBA:Object))
+  nil)
+
+
+;;;| boolean is_a (in string logical_type_id);
+
+(define-method _is_a ((obj t) interface-id)
+  (declare (ignore interface-id))
+  (error 'corba:no_implement :minor 3))
+
+(define-method _is_a ((obj CORBA:Object) interface-id)
+  (object-is-a obj interface-id))
+
+
+
+;;;; CORBA:Proxy
 
 
 (defclass CORBA:PROXY (corba:object)
@@ -87,6 +113,7 @@
    (profiles :initform nil :initarg :profiles :accessor object-profiles)
    (selected-profile :initform nil :accessor selected-profile)
    (forward :initform nil :initarg :forward :accessor object-forward)))
+
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
@@ -105,20 +132,6 @@
 
 
 
-(defun object-key (proxy)
-  "Return a key for the proxy."
-  ;; FIXME: this is insufficient in the long run,
-  ;; there need to be two accessors one that always gives the same key
-  ;; and one that gives the key for the selected profile.
-  (iiop-profile-key (first (object-profiles proxy))))
-
-
-(define-method _is_nil ((x null))
-  t)
-
-(define-method _is_nil ((x CORBA:Object))
-  nil)
-
 (defstruct IIOP-PROFILE
   (version '(1 . 0))
   (host    nil)
@@ -128,6 +141,27 @@
 (defun object-key (object)
   (let ((p (selected-profile object)))
     (and p (iiop-profile-key p))))
+
+
+(defmethod marshal-object ((objref CORBA:Proxy) buffer)
+  (unless (object-raw-profiles objref)
+    (setf (object-raw-profiles objref)
+          (map 'list
+               (lambda (p)
+                 (cons iop:tag_internet_iop
+                       (marshal-make-encapsulation
+                        (lambda (buffer)
+                          (let ((version (iiop-profile-version p)))
+                            (marshal-octet (car version) buffer)
+                            (marshal-octet (cdr version) buffer))
+                          (marshal-string (iiop-profile-host p) buffer)
+                          (marshal-ushort (iiop-profile-port p) buffer)
+                          (marshal-osequence (iiop-profile-key p) buffer)))))
+               (object-profiles objref))))
+  (marshal-string (proxy-id objref) buffer)
+  (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
+
+
 
 
 ;;;| boolean	is_equivalent (in Object other_object);
@@ -195,15 +229,6 @@
      :ctx ctx)))
 
 
-;;;| boolean is_a (in string logical_type_id);
-;;; _is_a in lisp mapping (in clorb-request)
-
-(define-method _is_a ((obj t) interface-id)
-  (declare (ignore interface-id))
-  (error 'corba:no_implement :minor 3))
-
-(define-method _is_a ((obj CORBA:Object) interface-id)
-  (object-is-a obj interface-id))
 
 (define-method _is_a ((obj CORBA:Proxy) interface-id)
   (or (object-is-a obj interface-id)
@@ -381,6 +406,41 @@
         (t
          (error "Object of wrong type for narrowing"))))
 
+(defun nobject-narrow (obj id &optional no-error)
+  "Return an equivalent proxy with class for the repository id.
+Might destructivley change the original object."
+  (when (symbolp id)
+    (setq id (symbol-ifr-id id)))
+  (cond ((op:_is_a obj id)
+         (setf (proxy-id obj) id)
+         (change-class obj (find-proxy-class id)))
+        (no-error nil)
+        (t
+         (error "Object of wrong type for narrowing"))))
+
+(defun auto-narrow (obj)
+  ;; Try convert to a type-specific proxy
+  (when (eql (class-of obj) (find-class 'CORBA:Proxy))
+    (when (equal (proxy-id obj) "")
+      (unless (object-forward obj)
+        (locate obj))
+      (let ((forward (object-forward obj)))
+        (when forward
+          (auto-narrow forward)
+        (unless (eql (class-of forward) (find-class 'CORBA:Proxy))
+          (setf (proxy-id obj) (proxy-id forward))
+          (change-class obj (class-of forward))))))))
+
+
+;;; Something like this, but with a clorb specific meta class for generic function
+#+(or)
+(defmethod no-applicable-method ((generic-function standard-generic-function) &rest args)
+  (cond ((and (cdr args)
+              (typep (car args) 'CORBA:Proxy)
+              (auto-narrow (car args)))
+         (apply generic-function args))
+        (t 
+         (call-next-method))))
 
 
 ;;;; ValueBase

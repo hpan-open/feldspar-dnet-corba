@@ -10,9 +10,7 @@
       (marshal-res #(88 1) (marshal-ushort 344 buffer) ))
     
     (define-test "short 2"
-      ;; ushort??  short would use the exact same marshaling code ...
-      ;; but
-      (marshal-res #(168 254) (marshal-ushort -344 buffer)))
+      (marshal-res #(168 254) (marshal-short -344 buffer)))
     
     (define-test "Float 1"
       (let ((test-data '((1.25d0 #16R3fa00000 #16R3ff4000000000000)
@@ -111,14 +109,9 @@
           (ensure-equalp (unmarshal-string buffer)
                          "ParameterDescription")
           (ensure-equalp (unmarshal-ulong buffer) 4))
-        
         (setf (buffer-position buffer) 0)
         (let ((new-tc (unmarshal-typecode buffer)))
-          (ensure-equalp (typecode-kind tc)
-                         (typecode-kind new-tc))
-          (ensure-equalp
-           (map 'list #'car (tcp-members (typecode-params tc))) 
-           (map 'list #'car (tcp-members (typecode-params new-tc)))))))
+          (ensure-typecode new-tc tc))))
     
     (define-test "Typecode Union"
       (let* ((buffer (get-work-buffer))
@@ -144,6 +137,31 @@
         (let ((tc (unmarshal CORBA:tc_TypeCode buffer)))
           (ensure-equalp (op:id struct-filter) (op:id tc))
           (ensure-equalp tc (op:member_type tc 0)))))
-    
-    t))
+
+
+    (define-test "Object"
+      (let ((obj1 nil)
+            (obj2 (make-instance 'CORBA:Proxy :id "Hello World"
+                                 :profiles (list (make-iiop-profile 
+                                                  :version '(1 . 0)
+                                                  :host "h1"
+                                                  :port 12
+                                                  :key #(1 2 3))))))
+        (with-sub-test ("Nil object cdr")
+          (marshal-res #(1 0 0 0  0       ; id ""
+                         0 0 0            ; padding
+                         0 0 0 0)
+                       (marshal-object obj1 buffer)))
+        (with-sub-test ("Nil object unmarshal")
+          (let ((buffer (get-work-buffer)))
+            (marshal-object obj1 buffer)
+            (let ((obj (unmarshal-object buffer)))
+              (ensure-equalp obj nil))))
+        (with-sub-test ("Object unmarshal")
+          (let ((buffer (get-work-buffer)))
+            (marshal-object obj2 buffer)
+            (let ((obj (unmarshal-object buffer)))
+              (ensure (omg.org/features:_is_equivalent obj obj2)))))))
+
+t))
 

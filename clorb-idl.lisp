@@ -41,8 +41,6 @@
                           repository)
       repository)))
 
-(defun mklist (x)
-  (if (consp x) x (list x)))
 
 
 ;;; clorb-idl.lisp ends here

@@ -265,7 +265,7 @@
                (ensure-pattern* (op:get_primitive repository kind)
                                 'op:def_kind :dk_primitive
                                 'op:kind kind
-                                'op:type (pattern 'struct-class-name 'CORBA:TypeCode)))))
+                                'op:type (isa 'CORBA:TypeCode)))))
 
 
 

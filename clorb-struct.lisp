@@ -15,7 +15,6 @@
   (make-typecode :tk_struct id name (coerce members 'vector)))
 
 
-
 (defmethod any-typecode ((struct corba:struct))
   (symbol-typecode (class-name (class-of struct))))
 
@@ -29,48 +28,15 @@
 
 (defgeneric fields (struct))
 
+(defmethod raw-fields ((struct corba:struct))
+  (loop for (key . val) in (fields struct)
+        collect key collect val))
 
+(defmethod struct-get ((struct corba:struct) (field symbol))
+  (funcall (feature (symbol-name field)) struct))
 
-;;;; Generic struct
-
-(defclass GENERIC-STRUCT (corba:struct)
-  ((typecode :initarg :typecode :reader generic-struct-typecode)
-   (fields  :initarg :fields  :accessor fields)))
-
-(defmethod type-id ((struct generic-struct))
-  (op:id (generic-struct-typecode struct)))
-
-(defmethod any-typecode ((struct generic-struct))
-  (generic-struct-typecode struct))
-
-
-(defmethod print-object ((obj corba:struct) stream)
-  (cond (*print-readably*
-         (format stream "#.(~S~:{ ~S '~S~})"
-                 (class-name (class-of obj))
-                 (mapcar (lambda (x) (list (car x) (cdr x)))
-                         (fields obj))))
-        (*print-pretty*
-         (let ((fields (map 'list (lambda (pair) (list (car pair) (cdr pair)))
-                            (fields obj))))
-           (pprint-logical-block (stream fields
-                                         :prefix "#<" :suffix ">")
-             (pprint-indent :block 4)
-             (typecase obj
-               (generic-struct (princ (type-id obj) stream))
-               (t (princ (type-of obj) stream)))
-             (format stream "~{ ~_~{~W ~W~}~}" fields) )))
-        (t
-         (print-unreadable-object (obj stream :type t)
-           (format stream "~{~S ~S~^ ~}"
-                   (loop for (k . v) in (fields obj)
-                         collect k collect v))))))
-
-
-(defun make-generic-struct (typecode fields)
-  (make-instance 'generic-struct
-    :typecode typecode
-    :fields (loop for (key val) on fields by #'cddr collect (cons key val))))
+(defmethod struct-get ((struct corba:struct) (field string))
+  (funcall (feature field) struct))
 
 
 (defun make-struct (typecode &rest nv-pairs)
@@ -85,6 +51,25 @@ of fields can be defaulted (numbers and strings)."
         (make-generic-struct typecode nv-pairs))))
 
 
+(defmethod print-object ((obj corba:struct) stream)
+  (cond (*print-readably*
+         (format stream "#.(~S~{ ~S '~S~})"
+                 (class-name (class-of obj))
+                 (raw-fields obj)))
+        (*print-pretty*
+         (let ((fields (raw-fields obj)))
+           (pprint-logical-block (stream fields
+                                         :prefix "#<" :suffix ">")
+             (pprint-indent :block 4)
+             (typecase obj
+               (generic-struct (princ (type-id obj) stream))
+               (t (princ (type-of obj) stream)))
+             (format stream "~{ ~_~W ~W~}" fields) )))
+        (t
+         (print-unreadable-object (obj stream :type t)
+           (format stream "~{~S~^ ~}" (raw-fields obj))))))
+
+
 (defun map-struct (fn struct)
   (let* ((tc (any-typecode struct))
          (keys (tc-keywords tc)))
@@ -94,30 +79,58 @@ of fields can be defaulted (numbers and strings)."
                  collect (funcall fn (struct-get struct key))))))
 
 
-(defmethod struct-get ((struct corba:struct) (field symbol))
-  (funcall (feature (symbol-name field)) struct))
+
+;;;; Generic struct
+
+
+(defclass GENERIC-STRUCT (corba:struct)
+  ((typecode :initarg :typecode :reader generic-struct-typecode)
+   (fields  :initarg :fields  :accessor raw-fields)))
+
+(defmethod fields ((struct GENERIC-STRUCT))
+  (loop for (key val) on (raw-fields struct) by #'cddr
+        collect (cons key val)))
+
+
+(defmethod type-id ((struct generic-struct))
+  (op:id (generic-struct-typecode struct)))
+
+(defmethod any-typecode ((struct generic-struct))
+  (generic-struct-typecode struct))
+
+
+(defun make-generic-struct (typecode fields)
+  (make-instance 'generic-struct
+    :typecode typecode :fields fields))
+
 
 (defmethod struct-get ((struct generic-struct) (field symbol))
-  (cdr (assoc field (fields struct))))
+  (getf (raw-fields struct) field))
 
-(defmethod struct-get ((struct corba:struct) (field string))
+(defmethod struct-get ((struct generic-struct) (field string))
   (struct-get struct (key field)))
 
 
-;; more marshalling support
+
+;;;; Struct marshalling
+
 
 (defgeneric struct-read (symbol buffer))
+
 (defgeneric struct-write (obj symbol buffer))
+
 
 (defmethod struct-read ((symbol symbol) buffer)
   (unmarshal-struct-2 symbol (symbol-typecode symbol) buffer))
 
-(defun unmarshal-struct (tc buffer)
+
+(defmethod unmarshal ((tc struct-typecode) buffer)
   (let* ((id (op:id tc))
          (symbol (ifr-id-symbol id)))
     (if symbol 
       (struct-read symbol buffer)
       (unmarshal-struct-2 symbol tc buffer))))
+
 
 (defun unmarshal-struct-2 (symbol tc buffer)
   (let* ((constructor
@@ -132,9 +145,10 @@ of fields can be defaulted (numbers and strings)."
 
 
 (defmethod struct-write (obj (symbol symbol) buffer)
-  (marshal-struct obj (symbol-typecode symbol) buffer))
+  (marshal obj (symbol-typecode symbol) buffer))
 
-(defun marshal-struct (struct typecode buffer)
+
+(defmethod marshal (struct (typecode struct-typecode) buffer)
   (loop for (nil tc) across (tc-members typecode)
         for name across (tc-keywords typecode)
         do (marshal (struct-get struct name) tc buffer)))

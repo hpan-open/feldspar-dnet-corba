@@ -82,6 +82,13 @@
 (defun unmarshal-long (buffer)
   (unmarshal-number 4 t buffer))
 
+(defun unmarshal-longlong (buffer) 
+  (unmarshal-number 8 t buffer))
+
+(defun unmarshal-ulonglong (buffer)
+  (unmarshal-number 8 nil buffer))
+
+
 (defun ieee-integer-to-float (raw float-type-zero sign-bit expn-bits fraction-bits bias)
   (if (zerop raw)
     float-type-zero
@@ -94,6 +101,23 @@
                       (+ exponent 
                          (- bias)
                          (- fraction-bits)))))))
+
+(defun unmarshal-float (buffer)
+  (ieee-integer-to-float (unmarshal-ulong buffer) 
+                         (coerce 0 'corba:float)
+                         31 8 23 127))
+
+(defun unmarshal-double (buffer)
+  (ieee-integer-to-float (unmarshal-number 8 nil buffer) 
+                         (coerce 0 'corba:double)
+                         63 11 52 1023))
+
+(defun unmarshal-longdouble (buffer)
+  (ieee-integer-to-float (unmarshal-number 16 nil buffer 8) 
+                         (coerce 0 'corba:longdouble)
+                         127 15 112 16383))
+
+
 
 
 (defmacro unmarshal-sequence-m ((buffer &key (el-type t)) &body el-read)
@@ -137,8 +161,7 @@
          (tki (unmarshal-ulong buffer))
 	 (tk (if (= tki #16rFFFFFFFF)
                  :indirection
-               (svref TCKind tki)))
-	 (params (get tk 'tk-params)))
+               (svref TCKind tki))))
     (if (eq tk :indirection)
         (let ((abs-pos (buffer-abs-pos buffer))
               (indirection (unmarshal-long buffer)))
@@ -153,21 +176,48 @@
       (let* ((typecode (make-typecode tk))
              (*indirection-record*
               (list* start typecode *indirection-record*)))
-        (cond
-         ((eq 'complex (car params))
-          (with-encapsulation buffer
-            (let ((vals (unmarshal-multiple (cdr params) buffer)))
-              (when (eq tk :tk_union)
-                (nconc vals
-                       (list (unmarshal-sequence-m (buffer)
-                               (list (unmarshal (third vals) buffer)
-                                     (unmarshal-string buffer)
-                                     (unmarshal-typecode buffer))))))
-              (setf (typecode-params typecode) vals))))
-         (t
-          (setf (typecode-params typecode) 
-            (unmarshal-multiple params buffer))))
+        (setf (typecode-params typecode)
+              (unmarshal-spec (get tk 'tk-params) buffer))
+        
         typecode))))
+
+(defun unmarshal-spec (pspec buffer &optional top-level)
+  (cond ((null pspec) nil)
+        ((consp pspec)
+         (case (car pspec)
+           (complex
+            (with-encapsulation buffer
+              (unmarshal-spec (cdr pspec) buffer top-level)))
+           (sequence
+            (unmarshal-sequence-m (buffer)
+              (unmarshal-spec (second pspec) buffer top-level)))
+           (otherwise 
+            ;; normal parameter record, declared special to allow
+            ;; reference from unmarshaling sub-parts of the record
+            (let ((record (cons nil nil)))
+              (flet ((add (x)
+                       (let ((new (cons x nil)))
+                         (cond ((car record)
+                                (setf (cdr (car record)) new
+                                      (car record) new))
+                               (t
+                                (setf (car record) new
+                                      (cdr record) new))))))
+                
+                (dolist (s pspec)
+                  (add (unmarshal-spec s buffer (or top-level record))))
+                (cdr record))))))
+        ((numberp pspec)
+         ;; reference to enclosing record
+         (unmarshal (elt (cdr top-level) pspec) buffer))
+        (t
+         (ecase pspec
+           (:tk_string (unmarshal-string buffer))
+           (:tk_long   (unmarshal-long buffer))
+           (:tk_ulong  (unmarshal-ulong buffer))
+           (:tk_short  (unmarshal-short buffer))
+           (:tk_ushort (unmarshal-ushort buffer))
+           (:tk_typecode (unmarshal-typecode buffer))))))
 
 
 (defun unmarshal-any (buffer)
@@ -176,23 +226,7 @@
         (corba:any :any-typecode tc :any-value (unmarshal tc buffer))
       (unmarshal tc buffer))))
 
-(defun unmarshal-union (params buffer)
-  (let* ((discriminant-type (third params))
-         (default-used (fourth params))
-         (members      (fifth params))
-         (discriminant (unmarshal discriminant-type buffer))
-         (index
-          (do ((i 0 (1+ i)))
-              ((or (>= i (length members))
-                   (and (not (eql i default-used))
-                        (eql discriminant (first (aref members i)))))
-               (if (>= i (length members))
-                   default-used
-                 i))))
-         (tc (third (aref members index))))
-    (corba:union :id (tcp-id params)
-                 :union-discriminator discriminant
-                 :union-value (unmarshal tc buffer))))
+
 
 (defun unmarshal-tagged-component (buffer)
   (cons (unmarshal-ulong buffer)
@@ -206,26 +240,37 @@
    :port (unmarshal-ushort buffer)
    :key (unmarshal-osequence buffer)))
 
-(defun unmarshal-ior (buffer &optional expected-id)
+
+(defgeneric decode-ior-profile (tag encaps))
+
+(defun unmarshal-object (buffer &optional expected-id)
   (let* ((type-id (unmarshal-string buffer))
          (n-profiles (unmarshal-ulong buffer))
-         (reference 'nil))
-    (when (> n-profiles 0)
-      (setq reference (make-instance 
-                          (find-proxy-class 
-                           (if (equal type-id "")
-                               expected-id type-id))
-                        :id type-id))
-      (setf (object-raw-profiles reference)
-            (loop repeat n-profiles
-                  for tag = (unmarshal-ulong buffer)
-                  for encaps = (unmarshal-osequence buffer)
-                  collect (cons tag encaps)
-                  when (= tag 0)
-                  do (push (unmarshal-encapsulation
-                            encaps #'unmarshal-iiop-profile-body)
-                           (object-profiles reference)))))
-    reference))
+         (profiles '()))
+    (let ((raw-profiles 
+           (loop repeat n-profiles
+                 for tag = (unmarshal-ulong buffer)
+                 for encaps = (unmarshal-osequence buffer)
+                 for profile = (decode-ior-profile tag encaps)
+                 collect (cons tag encaps)
+                 when profile do (push profile profiles))))
+      (unless (zerop n-profiles)
+        (setq profiles (nreverse profiles))
+        (unless profiles
+          (error 'omg.org/corba:inv_objref))
+        (create-objref :ior-id type-id :expected-id expected-id
+                       :profiles profiles :raw-profiles raw-profiles)))))
+
+(defun create-objref (&key ior-id expected-id raw-profiles profiles)
+  (make-instance (find-proxy-class 
+                  (if (equal ior-id "") expected-id ior-id))
+    :id ior-id
+    :profiles profiles
+    :raw-profiles raw-profiles ))
+
+(defmethod decode-ior-profile ((tag (eql 0)) encaps)
+  (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
+
 
 
 ;;; Enum
@@ -234,29 +279,17 @@
   (let ((index (unmarshal-ulong buffer)))
     (elt (tc-keywords tc) index)))
 
-;;; Exception
-
-(defun unmarshal-exception (typecode buffer)
-  (let* ((id (op:id typecode))
-         (class (id-exception-class id))
-         (initargs 
-          (loop for (nil tc) across (tc-members typecode)
-                for key across (tc-keywords typecode)
-                collect key
-                collect (unmarshal tc buffer))))
-    (if class
-      (apply #'make-condition class initargs)
-      (make-condition 'unknown-user-exception
-                      :id id :values initargs))))
 
 
 ;;; Main entry
 
-(defun unmarshal (type buffer)
+(defgeneric unmarshal (type buffer))
+
+(defmethod unmarshal ((type CORBA:TypeCode) buffer)
   (declare (optimize (speed 2)))
-  (multiple-value-bind (kind params) 
-                       (type-expand type)
-    (case kind
+  (let ((kind (typecode-kind type))
+        (params (typecode-params type)))
+    (ecase kind
       ((:tk_octet) (unmarshal-octet buffer))
       ((:tk_char) (unmarshal-char buffer))
       ((:tk_boolean) (unmarshal-bool buffer))
@@ -265,23 +298,14 @@
       ((:tk_ulong) (unmarshal-ulong buffer))
       ((:tk_enum) (unmarshal-enum type buffer))
       ((:tk_long) (unmarshal-long buffer))
-      ((:tk_longlong) (unmarshal-number 8 t buffer))
-      ((:tk_ulonglong) (unmarshal-number 8 nil buffer))
-      ((:tk_float) 
-       (ieee-integer-to-float (unmarshal-ulong buffer) 
-                              (coerce 0 'corba:float)
-                              31 8 23 127))
-      ((:tk_double) 
-       (ieee-integer-to-float (unmarshal-number 8 nil buffer) 
-                              (coerce 0 'corba:double)
-                              63 11 52 1023))
-      ((:tk_longdouble) 
-       (ieee-integer-to-float (unmarshal-number 16 nil buffer 8) 
-                              (coerce 0 'corba:longdouble)
-                              127 15 112 16383))
+      ((:tk_longlong) (unmarshal-longlong buffer))
+      ((:tk_ulonglong) (unmarshal-ulonglong buffer))
+      ((:tk_float) (unmarshal-float buffer))
+      ((:tk_double) (unmarshal-double buffer))
+      ((:tk_longdouble) (unmarshal-longdouble buffer))
       ((:tk_string) (unmarshal-string buffer))
       ((:tk_any) (unmarshal-any buffer))
-      ((:tk_sequence sequence)
+      ((:tk_sequence)
        (let ((eltype (car params)))
 	 (if (or (eq eltype :tk_octet)
 		 (and (consp eltype)
@@ -295,25 +319,11 @@
            (loop for i below len 
                  do (setf (aref arr i) (unmarshal tc buffer)))
            arr)))
-      ((:tk_alias)
-       (unmarshal (third params) buffer))
+      ((:tk_alias) (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
-      ((:tk_struct) (unmarshal-struct type buffer))
-      ((:tk_except) 
-       (unmarshal-exception type buffer))
-      ((object :tk_objref) 
-       (unmarshal-ior buffer (first params)))
-      ((anon-struct)
-       (loop for type in params
-             collect (unmarshal type buffer)))
-      ((:tk_typecode) 
-       (unmarshal-typecode buffer))
-      ((:tk_union)    
-       (unmarshal-union params buffer))
-      (t
-       (unmarshal (or (get kind 'corba-typecode)
-                      (error "Can't handle TypeCode of kind ~a" kind))
-                  buffer)))))
+      ((:tk_objref) (unmarshal-object buffer (first params)))
+      ((:tk_typecode) (unmarshal-typecode buffer)))))
+
 
 (defun unmarshal-multiple (typecodes buffer)
   (declare (optimize speed))

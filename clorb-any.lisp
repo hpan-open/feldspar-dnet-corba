@@ -41,7 +41,8 @@
 
 (defmethod any-typecode ((obj t))
   (etypecase obj
-    (corba:char      corba:tc_char   )
+    (character (if (< (char-code obj) 256) corba:tc_char corba:tc_wchar))
+    #+clorb-distinct-wchar-type
     (corba:wchar     corba:tc_wchar)
     (CORBA:short     CORBA:tc_short)
     (CORBA:ushort    CORBA:tc_ushort)

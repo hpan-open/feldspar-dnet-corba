@@ -1,5 +1,5 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.6 2002/05/24 10:06:58 lenst Exp $
+;; $Id: clorb-supp.lisp,v 1.7 2003/11/12 07:20:07 lenst Exp $
 
 (in-package :clorb)
 
@@ -31,6 +31,25 @@
       (setq package (make-package name :nicknames nicknames :use '())))
     (export (mapcar (lambda (sym-name) (intern sym-name package)) export)
             package)))
+
+
+
+;;;; Helper functions
+
+(defun kwote (x)
+  (list 'quote x))
+
+
+(defun mklist (x)
+  (if (consp x) x (list x)))
+
+
+(defun repeted (item)
+  (let ((x (list item)))
+    (setf (cdr x) x)
+    x))
+
+
 
 
 ;;; clorb-supp.lisp ends here

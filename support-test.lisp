@@ -72,6 +72,18 @@
   (class-name (class-of struct)))
 
 
+;;;; ISA Pattern
+
+(defclass isa-pattern (pattern)
+  ())
+
+(defun isa (type)
+  (make-instance 'isa-pattern :args type))
+
+(defmethod match ((pattern isa-pattern) object)
+  (boolean-match pattern object (typep object (pattern-args pattern))))
+
+
 ;;;; Additional ensure operators
 
 (defmacro ensure-exception (code exception &rest pattern)

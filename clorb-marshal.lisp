@@ -197,6 +197,8 @@
 
 (defvar *marshal-typecode-record* nil)
 
+(defvar *typecode-params*)
+
 (defun marshal-typecode (tc buffer)
   (let ((recursive-typecode-pos
          (loop for (rtc octets pos) on *marshal-typecode-record* by #'cdddr
@@ -215,26 +217,36 @@
                     (fill-pointer (buffer-octets buffer))
                     *marshal-typecode-record*))
             (kind (typecode-kind tc))
-            (params (typecode-params tc)))
+            (*typecode-params* (typecode-params tc)))
         (marshal-ulong (position kind TCKind) buffer)
-        (let ((pspec (get kind 'tk-params)))
-          (cond ((null pspec))
-                ((eq 'complex (car pspec))
-                 (marshal-add-encapsulation
-                  (lambda (buffer)
-                    (marshal-multiple params (cdr pspec) buffer)
-                    (when (eq kind :tk_union)
-                      (let ((label-tc (third params)))
-                        (marshal-sequence (fifth (typecode-params tc))
-                                          (lambda (el buffer)
-                                            (marshal (first el) label-tc buffer)
-                                            (marshal-string (second el) buffer)
-                                            (marshal-typecode (third el) buffer))
-                                          buffer))))
-                  buffer))
-                (t
-                 (marshal-multiple params pspec buffer)))))))))
+        (marshal-spec *typecode-params* (get kind 'tk-params) buffer))))))
 
+
+(defun marshal-spec (params pspec buffer)
+  (cond ((null pspec))
+        ((numberp pspec)
+         (marshal params (elt *typecode-params* pspec) buffer))
+        ((consp pspec)
+         (case (car pspec)
+           (complex
+            (marshal-add-encapsulation
+             (lambda (buffer) (marshal-spec params (cdr pspec) buffer))
+             buffer))
+           (sequence
+            (marshal-sequence params 
+                              (lambda (val buf)
+                                (marshal-spec val (second pspec) buf))
+                              buffer))
+           (otherwise
+            (mapc #'marshal-spec params pspec (repeted buffer)))))
+        (t
+         (ecase pspec
+           (:tk_string (marshal-string params buffer))
+           (:tk_long   (marshal-long params buffer))
+           (:tk_ulong  (marshal-ulong params buffer))
+           (:tk_short  (marshal-short params buffer))
+           (:tk_ushort (marshal-ushort params buffer))
+           (:tk_typecode (marshal-typecode params buffer))))))
 
 
 (defun marshal-tagged-component (component buffer)
@@ -242,53 +254,18 @@
   (marshal-osequence (cdr component) buffer))
 
 
-(define-operation "_THIS"
-  :documentation "Used for implicit activation during marshalling.")
 
-(define-method "_THIS" ((object t))
-  (error 'CORBA:MARSHAL :minor 4))
+;;(defparameter *nil-objref*
+;;  (make-instance 'CORBA:Proxy :id "" :raw-profiles '()))
 
+(defmethod marshal-object ((object null) buffer)
+  (marshal-string "" buffer)
+  (marshal-ulong 0 buffer))
 
-(defparameter *nil-objref*
-  (make-instance 'CORBA:Proxy :id "" :raw-profiles '()))
-
-(defun marshal-ior (objref buffer)
-  (cond ((null objref) (setq objref *nil-objref*))
-        ((not (typep objref 'CORBA:Proxy))
-         ;; Implicit activation is implemented by this
-         (setq objref (op:_this objref))))
-  (unless (object-raw-profiles objref)
-    (setf (object-raw-profiles objref)
-          (map 'list
-               (lambda (p)
-                 (cons iop:tag_internet_iop
-                       (marshal-make-encapsulation
-                        (lambda (buffer)
-                          (let ((version (iiop-profile-version p)))
-                            (marshal-octet (car version) buffer)
-                            (marshal-octet (cdr version) buffer))
-                          (marshal-string (iiop-profile-host p) buffer)
-                          (marshal-ushort (iiop-profile-port p) buffer)
-                          (marshal-osequence (iiop-profile-key p) buffer)))))
-               (object-profiles objref))))
-  (marshal-string (proxy-id objref) buffer)
-  (marshal-sequence (object-raw-profiles objref) #'marshal-tagged-component buffer))
+(defmethod marshal-object ((object t) buffer)
+  (marshal-object (op:_this object) buffer))
 
 
-
-(defun marshal-union (union params buffer)
-  (let* ((discriminant (union-discriminator union))
-         (value (union-value union))
-         (discriminant-type (third params))
-         (default-used (fourth params))
-         (members (fifth params))
-         (member (find discriminant members :key #'car)))
-    (when (and (null member)
-               (>= default-used 0))
-      (setq member (aref members default-used)))
-    (assert (not (null member)))  ; FIXME: raise MARSHAL ?
-    (marshal discriminant discriminant-type buffer)
-    (marshal value (third member) buffer)))
 
 (defun marshal-any (arg buffer)
   (let ((tc (any-typecode arg)))
@@ -308,16 +285,15 @@
                   :expected-type (concatenate 'list '(member) symbols))))
      buffer))) 
 
-(defun marshal-except (arg tc buffer)
-  (marshal-string (op:id tc) buffer)
-  (let ((values (all-fields arg)))
-    (doseq (member (tc-members tc))
-      (marshal (pop values) (second member) buffer))))
 
-(defun marshal (arg type buffer)
-  (multiple-value-bind (kind params) 
-                       (type-expand type)
-    (case kind
+
+
+(defgeneric marshal (arg tc buffer))
+
+(defmethod marshal (arg (type CORBA:TypeCode) buffer)
+  (let ((kind (typecode-kind type))
+        (params (typecode-params type)))
+    (ecase kind
       ((:tk_any) (marshal-any arg buffer))
       ((:tk_octet) (marshal-octet arg buffer))
       ((:tk_char) (marshal-octet (char-code arg) buffer))
@@ -330,15 +306,14 @@
       ((:tk_float) (marshal-float arg buffer))
       ((:tk_double) (marshal-double arg buffer))
       ((:tk_longdouble) (marshal-longdouble arg buffer))
-      ((:tk_string string) (marshal-string arg buffer))
-      ((osequence) (marshal-osequence arg buffer))
-      ((:tk_objref object) (marshal-ior arg buffer))
+      ((:tk_string) (marshal-string arg buffer))
+      ((:tk_objref object) (marshal-object arg buffer))
       ((:tk_alias) (marshal arg (third params) buffer))
       ((:tk_typecode) (marshal-typecode arg buffer))
       ((:tk_null))
-      ((sequence :tk_sequence)
+      ((:tk_sequence)
        (let ((el_type (first params)))
-         (marshal-sequence 
+         (marshal-sequence
           arg 
           (lambda (arg buffer) (marshal arg el_type buffer)) 
           buffer)))
@@ -347,22 +322,7 @@
              (len (second params)))
          (unless (= len (length arg))
            (error 'CORBA:MARSHAL))
-         (doseq (el arg) (marshal el tc buffer))))
-      ((:tk_struct)
-       (unless (typep arg 'CORBA:struct)
-         (error 'CORBA:MARSHAL))
-       (marshal-struct arg type buffer))
-      ((:tk_except)
-       (marshal-except arg type buffer))
-      ((:tk_union)
-       (marshal-union arg params buffer))
-      ((anon-struct)
-       (marshal-multiple arg params buffer))
-      (t
-       (marshal arg
-                (or (get kind 'corba-typecode)
-                    (error "MARSHAL: ~S" kind))
-                buffer)))))
+         (doseq (el arg) (marshal el tc buffer)))))))
 
 (defun marshal-multiple (values types buffer)
   (loop for val in values

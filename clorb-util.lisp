@@ -55,28 +55,49 @@
 
 ;;;; Easy DII
 
-(defun invoke (obj op &rest args)
-  (request-funcall
-   (object-create-request obj op args)))
-
 (defun corba:funcall (op obj &rest args)
   (request-funcall
    (object-create-request obj op args)))
 
+(defun invoke (obj op &rest args)
+  (apply #'corba:funcall op obj args))
+
 
 (defun object-interface (obj)
-  (handler-case (interface-from-def-cached (invoke obj "_interface"))
-    (corba:systemexception (exc)
-      (if (member (exception-id exc)
-                  '("IDL:omg.org/CORBA/BAD_OPERATION:1.0"
-                    "IDL:CORBA/BAD_OPERATION:1.0" ; -dan / for ORBit
-                    "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
-                    "IDL:omg.org/CORBA/INTF_REPOS:1.0"
-                    "IDL:omg.org/CORBA/OBJ_ADAPTER:1.0" ; mico
-                    )
-                  :test #'equal)
-          nil
-        (error exc)))))
+  (handler-case 
+    (static-call ("_interface" obj)
+                 :input ((buffer)
+                         (unmarshal (symbol-typecode 'corba:interfacedef) buffer)))
+    (CORBA:SystemException
+     (exc)
+     (if (member (exception-id exc)
+                 '("IDL:omg.org/CORBA/BAD_OPERATION:1.0"
+                   "IDL:CORBA/BAD_OPERATION:1.0" ; -dan / for ORBit
+                   "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
+                   "IDL:omg.org/CORBA/INTF_REPOS:1.0"
+                   "IDL:omg.org/CORBA/OBJ_ADAPTER:1.0" ; mico
+                   )
+                 :test #'equal)
+       nil
+       (error exc)))))
+
+
+;;; from clorb-object.lisp
+;;;| InterfaceDef get_interface ();
+;;; Strange that the lisp mapping does not rename this.
+
+(define-method _get_interface ((obj CORBA:Object))
+  (or (op:lookup_id *internal-interface-repository* (object-id obj))
+      (error 'omg.org/corba:intf_repos)))
+
+(define-method _get_interface ((obj CORBA:Proxy))
+  (let ((id (proxy-id obj)))
+    (or (unless (equal id "")
+          (op:lookup_id *internal-interface-repository* (object-id obj)))
+        (object-interface obj)
+        (error 'omg.org/corba:intf_repos))))
+
+
 
 
 (defun analyze-operation-name (name)
@@ -88,35 +109,8 @@
     (values (subseq name 5) :setter))
    (t name)))
 
-(defmethod find-opdef ((interface corba:interfacedef) operation)
-  "Find in INTERFACE the OPERATION and return the opdef object."
-  ;; Compatibility with clorb-iir for use in dii and auto-servants.
-  (multiple-value-bind (name type)
-      (analyze-operation-name operation)
-    (let ((def (op:lookup interface name)))
-      (case type
-        (:setter
-         (assert (eq (op:def_kind def) :dk_attribute))
-         (make-setter-opdef operation def))
-        (:getter
-         (assert (eq (op:def_kind def) :dk_attribute))
-         (make-getter-opdef operation def))
-        (otherwise
-         (assert (eq (op:def_kind def) :dk_operation))
-         (make-opdef :name operation
-                     :params (op:params def)
-                     :result (op:result def)
-                     :raises (map 'list #'op:type (op:exceptions def))))))))
 
 
-(defun object-opdef (object op)
-  (let ((effective-id (proxy-id object)))
-    (or (find-opdef *object-interface* op)
-        (find-opdef (or (known-interface effective-id)
-                        (op:lookup_id *internal-interface-repository* effective-id)
-                        (object-interface object)
-                        (get-interface effective-id)) 
-                    op))))
 
 #|
 This operation, which creates a pseudo-object, is defined in the ORB interface.
@@ -130,35 +124,61 @@ Invocation requests. The arguments are returned in the same order as they were d
 for the operation.
 The list free operation is used to free the returned information.
 |#
-(defun object-create-request (object op args)
-  (let* ((opdef (object-opdef object op)))
-    (unless opdef
-      (error "Operation (~A) not defined for interface" op))
-    (unless (= (length args)
-	       (length (opdef-inparams opdef)))
-      (error "Wrong number of arguments to operation"))
-    (make-instance 'request
-     :target object
-     :operation (opdef-name opdef)
-     :paramlist
-     (cons 
-      (CORBA:NamedValue
-       :argument (CORBA:Any :any-typecode (opdef-result opdef))
-       :arg_modes ARG_OUT)
-      (loop for param in (opdef-params opdef)
-          collect 
-            (CORBA:NamedValue
-             :name (op:name param)
-             :argument (CORBA:Any :any-typecode (op:type param)
-                                  :any-value (if (eq (op:mode param) 
-                                                     :param_out)
-                                                 nil
-                                               (pop args)))
-             :arg_modes (ecase (op:mode param)
-                          (:param_in ARG_IN)
-                          (:param_out ARG_OUT)
-                          (:param_inout ARG_INOUT)))))
-     :exceptions (opdef-raises opdef))))
+
+(defun create-operation-list (opdef)
+  (map 'list
+       (lambda (pd) 
+         (CORBA:NamedValue
+          :name (op:name pd)
+          :argument (CORBA:Any :any-typecode (op:type pd))
+          :arg_modes (ecase (op:mode pd)
+                       (:param_in ARG_IN)
+                       (:param_out ARG_OUT)
+                       (:param_inout ARG_INOUT))))
+       (op:params opdef)))
+
+(defun object-create-request (object operation args)
+  (let* ((interface (op:_get_interface object))
+         (result CORBA:tc_void)
+         (paramlist nil)
+         (raises nil))
+    (multiple-value-bind (name type) (analyze-operation-name operation)
+      (let ((def (op:lookup interface name)))
+        (case type
+          (:setter
+           (unless def
+             (error "Attribute ~A not defined for interface [in ~A]" name operation))
+           (assert (eq (op:def_kind def) :dk_attribute))
+           (assert (eq (op:mode def) :attr_normal))
+           (setf paramlist (list (CORBA:NamedValue :arg_modes ARG_IN
+                                                   :argument (CORBA:Any :any-typecode (op:type def))))))
+          (:getter
+           (unless def
+             (error "Attribute ~A not defined for interface" name))
+           (assert (eq (op:def_kind def) :dk_attribute))
+           (setf result (op:type def)))
+          (otherwise
+           (unless def
+             (error "Operation (~A) not defined for interface" operation))
+           (assert (eq (op:def_kind def) :dk_operation))
+           (setf paramlist (create-operation-list def)
+                 result (op:result def)
+                 raises (map 'list #'op:type (op:exceptions def))))))
+      (dolist (nv paramlist)
+        (unless (zerop (logand ARG_IN (op:arg_modes nv)))
+          (unless args 
+            (error "To few arguments to operation: ~A" operation))
+          (setf (any-value (op:argument nv)) (pop args))))
+      (when args
+        (error "To many arguments to operation: ~A" operation))
+      (make-instance 'request
+        :target object
+        :operation operation
+        :paramlist (cons (CORBA:NamedValue
+                          :argument (CORBA:Any :any-typecode result)
+                          :arg_modes ARG_OUT)
+                         paramlist)
+        :exceptions raises))))
 
 
 ;;;; Easy name service access
@@ -201,18 +221,13 @@ The list free operation is used to free the returned information.
 
 (defun get-ns ()
   (let ((ns (op:resolve_initial_references (orb_init) "NameService")))
-    (cond ((and (eq ns *pre-narrowed-ns*)
-                *narrowed-ns*)
+    (cond ((and (eq ns *pre-narrowed-ns*) *narrowed-ns*)
            *narrowed-ns*)
           (t
-           (setq *pre-narrowed-ns* ns
-                 *narrowed-ns* nil)
-           (typecase ns
-             (cosnaming:namingcontext ns)
-             (t
-              (or
-               (setq *narrowed-ns* (object-narrow ns 'cosnaming:namingcontextext t))
-               (setq *narrowed-ns* (object-narrow ns 'cosnaming:namingcontext)))))))))
+           (setq *pre-narrowed-ns* ns *narrowed-ns* nil)
+           (setq *narrowed-ns* (or (nobject-narrow ns 'cosnaming:namingcontextext t)
+                                   (nobject-narrow ns 'cosnaming:namingcontext)))))))
+  
 
 (defun resolve (&rest names)
   (op:resolve (get-ns) (ns-name* names)))

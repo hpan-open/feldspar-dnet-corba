@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.13 2003/03/01 16:19:31 lenst Exp $
+ $Id: TODO,v 1.14 2003/11/12 07:20:08 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -54,10 +54,6 @@ exceptions should be returned not raised.
 - Values types
 
 - IIOP 1.1
-
-- Consider rewriting TypeCode to use CLOS better, and then making
-  marshal/unmarshal generic functions dispatching on the TypeCode
-  class
 
 - Connection management: The mapping from <host, port> to a network
   stream could be done with a weak mapping (weak hash?) and perhaps

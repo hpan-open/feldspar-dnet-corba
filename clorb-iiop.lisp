@@ -111,12 +111,17 @@
 
 ;;;; Connection Layer
 
+(defvar *default-trace-connection* nil)
+
 (defstruct CONNECTION
   (read-buffer)
   (read-callback)
   (write-buffer)
   (write-callback)
-  (io-descriptor))
+  (io-descriptor)
+  (trace *default-trace-connection*)
+  (trace-send nil)
+  (trace-recv nil))
 
 
 (defvar *desc-conn* (make-hash-table))
@@ -192,9 +197,14 @@
           (setf (request-status req) :error ))))
 
 (defun connection-read-ready (conn)
+  (when (and (connection-trace conn)
+             (> (length (buffer-octets (connection-read-buffer conn))) *iiop-header-size*))
+    (push (connection-read-buffer conn) (connection-trace-recv conn)))
   (funcall (connection-read-callback conn) conn))
 
 (defun connection-write-ready (conn)
+  (when (connection-trace conn)
+    (push (connection-write-buffer conn) (connection-trace-send conn)))
   (funcall (connection-write-callback conn) conn))
 
 
@@ -221,7 +231,7 @@
         (request-send-buffer req buffer nil))
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
-             (setf (object-forward obj) (unmarshal-ior (request-buffer req))))
+             (setf (object-forward obj) (unmarshal-object (request-buffer req))))
             (t 
              (return (request-status req)))))))
 
@@ -469,7 +479,7 @@ Where host is a string and port an integer.")
     (case status
       (:location_forward
        (setf (object-forward (request-target req))
-             (unmarshal-ior buffer))
+             (unmarshal-object buffer))
        (values status))
       (:system_exception
        (let ((condition (unmarshal-systemexception buffer)))
@@ -536,7 +546,7 @@ Where host is a string and port an integer.")
         (case status
           (:location_forward
            (setf (object-forward (request-target req))
-                 (unmarshal-ior buffer))
+                 (unmarshal-object buffer))
            (request-send req))
           (otherwise
            (ecase status

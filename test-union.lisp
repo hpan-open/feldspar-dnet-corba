@@ -73,7 +73,31 @@
         (ensure-typep tc 'corba:typecode)
         (loop for i from 0 for l in '(0 3) 
               do (ensure-equalp (op:member_label tc i) l))
-        (ensure-eql (op:default_index tc) 2))
-      ))
+        (ensure-eql (op:default_index tc) 2))))
 
+
+  (define-test "Union marshalling"
+    (let* ((type-sym (gensym "UNION"))
+           (expr `(define-union ,type-sym :name "aunion" :id "IDL:myUnion:1.0"
+                    :discriminator-type corba:tc_long
+                    :members (( 0 corba:tc_short :name "a" )
+                              ( 3 corba:tc_short :name "a" )
+                              ( 1 corba:tc_string :name "b" :default t)))))
+      (eval expr)
+      (let ((buffer (get-work-buffer))
+            (u1 (funcall type-sym :union-value 12 :union-discriminator 0))
+            (u2 (funcall type-sym)))
+        (setf (op:default u2) "hello")
+        (marshal u1 (symbol-typecode type-sym) buffer)
+        (marshal u2 (symbol-typecode type-sym) buffer)
+        (let ((u (unmarshal (symbol-typecode type-sym) buffer)))
+          (ensure-pattern* u
+                          'op::a 12 
+                          'union-discriminator 0))
+        (let ((u (unmarshal (symbol-typecode type-sym) buffer)))
+          (ensure-pattern* u
+                          'union-discriminator 1
+                          'op::b "hello")))))
+  
 )
+  
