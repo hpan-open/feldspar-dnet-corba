@@ -6,9 +6,10 @@
 (defun idef-read (sexps repository)
   (let ((*idef-read-agenda* nil))
     (idef-read-contents sexps repository)
-    (setq *idef-read-agenda* (nreverse *idef-read-agenda*))
-    (loop while *idef-read-agenda*
-        do (funcall (pop *idef-read-agenda*)))))
+    (loop while *idef-read-agenda* do
+          (let ((agenda (nreverse *idef-read-agenda*)))
+            (setq *idef-read-agenda* nil)
+            (mapc #'funcall agenda)))))
 
 
 (defun idef-read-contents (list container)
@@ -62,13 +63,24 @@
                            sexp container)
   (destructuring-bind (name (&key bases id version) &rest forms) sexp
     (setq name (string name))
-    (let ((idef (create-contained
-                 container 'interface-def
-                 :name name :version version :id id
-                 :base_interfaces (mapcar #'(lambda (i-name)
-                                              (lookup-name-in container i-name))
-                                          bases))))
+    (let* ((base-interfaces
+            (loop for i-name in bases
+                  for iface = (lookup-name-in container i-name nil)
+                  when (null iface) return :delayed
+                  collect iface))
+           (idef (create-contained
+                  container 'interface-def
+                  :name name :version version :id id
+                  :base_interfaces (and (consp base-interfaces) base-interfaces))))
       (idef-read-contents forms idef)
+      (when (eq base-interfaces :delayed)
+        (setq *idef-read-agenda*
+              (nconc *idef-read-agenda*
+                     (list (lambda ()
+                             (setf (op:base_interfaces idef)
+                                   (mapcar #'(lambda (i-name)
+                                               (lookup-name-in container i-name))
+                                           bases)))))))
       nil)))
 
 
