@@ -1,5 +1,5 @@
 ;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: local-ir.lisp,v 1.14 2002/05/24 10:08:06 lenst Exp $
+;; $Id: local-ir.lisp,v 1.15 2002/06/01 05:45:43 lenst Exp $
 
 (in-package :clorb)
 
@@ -28,7 +28,7 @@
 
 (defgeneric addto (container contained)
   (:documentation "Add a contained to a container")
-  (:method ((c null) x) x))
+)
 
 
 ;;;; Base Clases
@@ -81,7 +81,7 @@
 
 (define-ir-class Contained (CORBA:Contained irobject)
   :id "IDL:omg.org/CORBA/Contained:1.0"
-  :attributes ((id :readonly            ; FIXME: shouldn't be readonly
+  :attributes ((id :readonly            ; setter defined below
                    :initarg :subject-id
                    :accessor subject-id)
                (name "")
@@ -95,10 +95,13 @@
   (print-unreadable-object (obj stream :type t :identity t)
     (format stream "~A" (slot-value obj 'name))))
 
-(defmethod addto :after (r (c contained))
-  (setf (slot-value c 'containing_repository)
-    (op:containing_repository r))
-  c)
+(defmethod (setf op:id) (new-id (obj Contained))
+  (let ((repository (omg.org/features:containing_repository obj))
+        (old-id (op:id obj)))
+    (unless (equal new-id old-id)
+      (register-irobj repository new-id obj)
+      (unregister-irobj repository old-id)
+      (setf (slot-value obj 'id) new-id))))
 
 (define-method absolute_name ((obj contained))
   (unless (and (slot-boundp obj 'absolute_name)
@@ -129,14 +132,19 @@
   :defaults ())
 
 (defmethod addto ((c container) (object contained))
-  ;;(pushnew value (contents c))
-  (setf (contents c)
-    (cons object
-          (delete-if (lambda (old)
-                       (or (equalp (op:name old) (op:name object))
-                           (equal (op:id old) (op:id object))))
-                     (contents c))))
-  (setf (slot-value object 'defined_in) c)
+  (setf (slot-value object 'containing_repository)
+        (op:containing_repository c))
+  (let ((id (op:id object))
+        (name (op:name object)))
+    (setf (contents c)
+          (cons object
+                (delete-if (lambda (old)
+                             (or (equalp (op:name old) name)
+                                 (equal (op:id old) id)))
+                           (contents c))))
+    (unregister-irobj c id)
+    (setf (slot-value object 'defined_in) c)
+    (register-irobj c id object))
   object)
 
 (define-method contents ((obj container) limit-type exclude-inherit)
@@ -166,12 +174,35 @@
   (:method ((x t)) nil)
   (:method ((x container)) t))
 
+
+(define-method lookup ((obj null) search_name)
+  (declare (ignore search_name))
+  nil)
+
 (define-method lookup ((obj container) search_name)
-  ;; FIXME: search_name is a scoped name.
-  ;; I.e. should work more like clorb::lookup-name-in
-  (loop for contained in (op:contents obj :dk_all nil)
-      when (equal search_name (op:name contained))
-      do (return contained)))
+  (cond ((string-starts-with search_name "::")
+         (op:lookup (op:containing_repository obj) 
+                    (subseq search_name 2)))
+        (t
+         (multiple-value-bind (first-name rest-name)
+                              (split-name search_name)
+           (let ((contained
+                  (find first-name (op:contents obj :dk_all nil)
+                        :key #'op:name
+                        :test #'string-equal)))
+             (cond ((null contained)
+                    (op:lookup (op:defined_in obj) search_name))
+                   (rest-name 
+                    (op:lookup contained rest-name))
+                   (t
+                    contained)))))))
+
+(defun split-name (str)
+  (let ((method-end (position #\: str)))
+    (if method-end
+      (values (subseq str 0 method-end)
+              (subseq str (+ method-end 2)))
+      str )))
 
 
 ;;;  ModuleDef create_module (
@@ -291,7 +322,9 @@
 (define-ir-class Repository (CORBA:Repository Container)
   :id "IDL:omg.org/CORBA/Repository:1.0"
   :def_kind :dk_Repository
-  :defaults ())
+  :slots ((idmap :initform (make-hash-table :test #'equal)
+                 :reader idmap)))
+
 
 ;;; Method to simplify computation of absolute_name
 (define-method absolute_name ((obj Repository))
@@ -305,18 +338,23 @@
 
 ;;;  Contained lookup_id (in RepositoryId search_id);
 
-(define-method lookup_id ((container Repository) search-id)
-  (block lookup
-    (let ((content-stack
-           (list (contents container))))
-      (loop while content-stack
-          do (map nil (lambda (obj)
-                        (if (equal (op:id obj) search-id)
-                            (return-from lookup obj)
-                          (if (typep obj 'container)
-                              (push (contents obj) content-stack))))
-                  (pop content-stack)))
-      nil)))
+(define-method lookup_id ((rep repository) id)
+  (gethash id (idmap rep)))
+
+(defmethod register-irobj ((r repository) id obj)
+  (when (gethash id (idmap r))
+    (error 'CORBA:BAD_PARAM :minor 2))
+  (setf (gethash id (idmap r)) obj))
+
+(defmethod unregister-irobj ((r repository) id)
+  (remhash id (idmap r)))
+
+(defmethod register-irobj ((x irobject) id obj)
+  (register-irobj (op:containing_repository x) id obj))
+
+(defmethod unregister-irobj ((x irobject) id)
+  (unregister-irobj (op:containing_repository x) id))
+
 
 
 ;;;  PrimitiveDef get_primitive (in PrimitiveKind kind);
@@ -448,7 +486,9 @@
    :operations (map 'list
                     #'operation-description
                     (op:contents def :dk_Operation nil)  )
-   :attributes (op:contents def :dk_Attribute nil)
+   :attributes (map 'list
+                    #'describe-contained
+                    (op:contents def :dk_Attribute nil))
    :base_interfaces (map 'list #'subject-id
                          (op:base_interfaces def))
    :type (op:type def) ))
