@@ -1,40 +1,6 @@
 
 (IN-PACKAGE :CLORB)
 
-(DEFCLASS OMG.ORG/CORBA:IROBJECT (OBJECT) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:IROBJECT-PROXY (OMG.ORG/CORBA:IROBJECT
-                                        OMG.ORG/CORBA:PROXY)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:IDLTYPE (OMG.ORG/CORBA:IROBJECT) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:IDLTYPE-PROXY (OMG.ORG/CORBA:IDLTYPE
-                                       OMG.ORG/CORBA:IROBJECT-PROXY)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:CONTAINER (OMG.ORG/CORBA:IROBJECT) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:CONTAINER-PROXY (OMG.ORG/CORBA:CONTAINER
-                                         OMG.ORG/CORBA:IROBJECT-PROXY)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:CONTAINED (OMG.ORG/CORBA:IROBJECT) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:CONTAINED-PROXY (OMG.ORG/CORBA:CONTAINED
-                                         OMG.ORG/CORBA:IROBJECT-PROXY)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:TYPEDEFDEF (OMG.ORG/CORBA:CONTAINED
-                                    OMG.ORG/CORBA:IDLTYPE)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:TYPEDEFDEF-PROXY (OMG.ORG/CORBA:TYPEDEFDEF
-                                          OMG.ORG/CORBA:CONTAINED-PROXY
-                                          OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-
 (DEFINE-STRUCT OMG.ORG/CORBA:INTERFACEDESCRIPTION
  :ID "IDL:omg.org/CORBA/InterfaceDescription:1.0"
  :NAME "InterfaceDescription"
@@ -46,167 +12,9 @@
            ("base_interfaces" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYIDSEQ)
             BASE_INTERFACES)))
 
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:INTERFACEDEF
-  "IDL:omg.org/CORBA/InterfaceDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:INTERFACEDEF
-  (MAKE-TYPECODE
-    :TK_OBJREF
-    "IDL:omg.org/CORBA/InterfaceDef:1.0"
-    "InterfaceDef"))
-
-(DEFCLASS OMG.ORG/CORBA:INTERFACEDEF (OMG.ORG/CORBA:CONTAINER
-                                      OMG.ORG/CORBA:CONTAINED
-                                      OMG.ORG/CORBA:IDLTYPE)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:INTERFACEDEF-PROXY (OMG.ORG/CORBA:INTERFACEDEF
-                                            OMG.ORG/CORBA:CONTAINER-PROXY
-                                            OMG.ORG/CORBA:CONTAINED-PROXY
-                                            OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/InterfaceDef:1.0"
-  'OMG.ORG/CORBA:INTERFACEDEF-PROXY)
-
-(DEFINE-METHOD "CREATE_OPERATION" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) ID
-                                   NAME VERSION RESULT MODE PARAMS EXCEPTIONS
-                                   CONTEXTS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_operation"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "result"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             RESULT)
-    (ADD-ARG _REQUEST
-             "mode"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE)
-             MODE)
-    (ADD-ARG _REQUEST
-             "params"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARDESCRIPTIONSEQ)
-             PARAMS)
-    (ADD-ARG _REQUEST
-             "exceptions"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEFSEQ)
-             EXCEPTIONS)
-    (ADD-ARG _REQUEST
-             "contexts"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDSEQ)
-             CONTEXTS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_ATTRIBUTE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) ID
-                                   NAME VERSION TYPE MODE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_attribute"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             TYPE)
-    (ADD-ARG _REQUEST
-             "mode"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)
-             MODE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "DESCRIBE_INTERFACE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY))
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "describe_interface"
-           (SYMBOL-TYPECODE
-             'OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION))))
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-STRUCT OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION
- :ID "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
- :NAME "FullInterfaceDescription"
- :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
-           ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
-           ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-            DEFINED_IN)
-           ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
-           ("operations" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPDESCRIPTIONSEQ)
-            OPERATIONS)
-           ("attributes" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ)
-            ATTRIBUTES)
-           ("base_interfaces" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYIDSEQ)
-            BASE_INTERFACES)
-           ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)))
-
-(DEFINE-METHOD "IS_A" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) INTERFACE_ID)
-  (LET ((_REQUEST (REQUEST-CREATE OBJ "is_a" OMG.ORG/CORBA:TC_BOOLEAN)))
-    (ADD-ARG _REQUEST
-             "interface_id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             INTERFACE_ID)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFMETHOD OMG.ORG/FEATURES:BASE_INTERFACES ((OBJ
-                                              OMG.ORG/CORBA:INTERFACEDEF-PROXY)
-                                             &REST
-                                             ARGS)
-  (APPLY 'INVOKE OBJ "_get_base_interfaces" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:BASE_INTERFACES) (NEWVAL
-                                                    (OBJ
-                                                     OMG.ORG/CORBA:INTERFACEDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_base_interfaces" NEWVAL))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ
-  "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ
+  "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/AttrDescriptionSeq:1.0"
@@ -217,12 +25,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:OPDESCRIPTIONSEQ
-  "IDL:omg.org/CORBA/OpDescriptionSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:OPDESCRIPTIONSEQ
+  "IDL:omg.org/CORBA/OpDescriptionSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/OpDescriptionSeq:1.0"
@@ -233,12 +38,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:OPDESCRIPTIONSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:REPOSITORYIDSEQ
-  "IDL:omg.org/CORBA/RepositoryIdSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:REPOSITORYIDSEQ
+  "IDL:omg.org/CORBA/RepositoryIdSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/RepositoryIdSeq:1.0"
@@ -265,84 +67,9 @@
            ("exceptions" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCDESCRIPTIONSEQ)
             EXCEPTIONS)))
 
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:OPERATIONDEF
-  "IDL:omg.org/CORBA/OperationDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:OPERATIONDEF
-  (MAKE-TYPECODE
-    :TK_OBJREF
-    "IDL:omg.org/CORBA/OperationDef:1.0"
-    "OperationDef"))
-
-(DEFCLASS OMG.ORG/CORBA:OPERATIONDEF (OMG.ORG/CORBA:CONTAINED) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:OPERATIONDEF-PROXY (OMG.ORG/CORBA:OPERATIONDEF
-                                            OMG.ORG/CORBA:CONTAINED-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/OperationDef:1.0"
-  'OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:EXCEPTIONS ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-                                        &REST
-                                        ARGS)
-  (APPLY 'INVOKE OBJ "_get_exceptions" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:EXCEPTIONS) (NEWVAL
-                                               (OBJ
-                                                OMG.ORG/CORBA:OPERATIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_exceptions" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:CONTEXTS ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-                                      &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_contexts" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:CONTEXTS) (NEWVAL
-                                             (OBJ
-                                              OMG.ORG/CORBA:OPERATIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_contexts" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:MODE ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_mode" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MODE) (NEWVAL
-                                         (OBJ
-                                          OMG.ORG/CORBA:OPERATIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_mode" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:PARAMS ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-                                    &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_params" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:PARAMS) (NEWVAL
-                                           (OBJ
-                                            OMG.ORG/CORBA:OPERATIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_params" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:RESULT_DEF ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-                                        &REST
-                                        ARGS)
-  (APPLY 'INVOKE OBJ "_get_result_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:RESULT_DEF) (NEWVAL
-                                               (OBJ
-                                                OMG.ORG/CORBA:OPERATIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_result_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:RESULT ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY)
-                                    &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_result" ARGS))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:EXCDESCRIPTIONSEQ
-  "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:EXCDESCRIPTIONSEQ
+  "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ExcDescriptionSeq:1.0"
@@ -353,12 +80,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:EXCDESCRIPTIONSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:EXCEPTIONDEFSEQ
-  "IDL:omg.org/CORBA/ExceptionDefSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:EXCEPTIONDEFSEQ
+  "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"
@@ -369,12 +93,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:EXCEPTIONDEFSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:CONTEXTIDSEQ
-  "IDL:omg.org/CORBA/ContextIdSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTEXTIDSEQ
+  "IDL:omg.org/CORBA/ContextIdSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ContextIdSeq:1.0"
@@ -385,12 +106,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:CONTEXTIDSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:CONTEXTIDENTIFIER
-  "IDL:omg.org/CORBA/ContextIdentifier:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTEXTIDENTIFIER
+  "IDL:omg.org/CORBA/ContextIdentifier:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ContextIdentifier:1.0"
@@ -399,12 +117,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:CONTEXTIDENTIFIER () 'OMG.ORG/CORBA:IDENTIFIER)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:PARDESCRIPTIONSEQ
-  "IDL:omg.org/CORBA/ParDescriptionSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:PARDESCRIPTIONSEQ
+  "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ParDescriptionSeq:1.0"
@@ -423,12 +138,9 @@
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF)
            ("mode" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERMODE) MODE)))
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:PARAMETERMODE
-  "IDL:omg.org/CORBA/ParameterMode:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:PARAMETERMODE
+  "IDL:omg.org/CORBA/ParameterMode:1.0"
   (MAKE-TYPECODE
     :TK_ENUM
     "IDL:omg.org/CORBA/ParameterMode:1.0"
@@ -438,12 +150,9 @@
 (DEFTYPE OMG.ORG/CORBA:PARAMETERMODE ()
   '(MEMBER :PARAM_IN :PARAM_OUT :PARAM_INOUT))
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:OPERATIONMODE
-  "IDL:omg.org/CORBA/OperationMode:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:OPERATIONMODE
+  "IDL:omg.org/CORBA/OperationMode:1.0"
   (MAKE-TYPECODE
     :TK_ENUM
     "IDL:omg.org/CORBA/OperationMode:1.0"
@@ -463,55 +172,9 @@
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("mode" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE) MODE)))
 
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:ATTRIBUTEDEF
-  "IDL:omg.org/CORBA/AttributeDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ATTRIBUTEDEF
-  (MAKE-TYPECODE
-    :TK_OBJREF
-    "IDL:omg.org/CORBA/AttributeDef:1.0"
-    "AttributeDef"))
-
-(DEFCLASS OMG.ORG/CORBA:ATTRIBUTEDEF (OMG.ORG/CORBA:CONTAINED) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY (OMG.ORG/CORBA:ATTRIBUTEDEF
-                                            OMG.ORG/CORBA:CONTAINED-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/AttributeDef:1.0"
-  'OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:MODE ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_mode" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MODE) (NEWVAL
-                                         (OBJ
-                                          OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_mode" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE_DEF ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY)
-                                      &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:TYPE_DEF) (NEWVAL
-                                             (OBJ
-                                              OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_type_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_type" ARGS))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:ATTRIBUTEMODE
-  "IDL:omg.org/CORBA/AttributeMode:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ATTRIBUTEMODE
+  "IDL:omg.org/CORBA/AttributeMode:1.0"
   (MAKE-TYPECODE
     :TK_ENUM
     "IDL:omg.org/CORBA/AttributeMode:1.0"
@@ -530,345 +193,6 @@
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)))
 
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:EXCEPTIONDEF
-  "IDL:omg.org/CORBA/ExceptionDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:EXCEPTIONDEF
-  (MAKE-TYPECODE
-    :TK_OBJREF
-    "IDL:omg.org/CORBA/ExceptionDef:1.0"
-    "ExceptionDef"))
-
-(DEFCLASS OMG.ORG/CORBA:EXCEPTIONDEF (OMG.ORG/CORBA:CONTAINED) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:EXCEPTIONDEF-PROXY (OMG.ORG/CORBA:EXCEPTIONDEF
-                                            OMG.ORG/CORBA:CONTAINED-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/ExceptionDef:1.0"
-  'OMG.ORG/CORBA:EXCEPTIONDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:MEMBERS ((OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY)
-                                     &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_members" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MEMBERS) (NEWVAL
-                                            (OBJ
-                                             OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_members" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE ((OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_type" ARGS))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:ARRAYDEF "IDL:omg.org/CORBA/ArrayDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ARRAYDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/ArrayDef:1.0" "ArrayDef"))
-
-(DEFCLASS OMG.ORG/CORBA:ARRAYDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:ARRAYDEF-PROXY (OMG.ORG/CORBA:ARRAYDEF
-                                        OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/ArrayDef:1.0"
-  'OMG.ORG/CORBA:ARRAYDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:ELEMENT_TYPE_DEF ((OBJ
-                                               OMG.ORG/CORBA:ARRAYDEF-PROXY)
-                                              &REST
-                                              ARGS)
-  (APPLY 'INVOKE OBJ "_get_element_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:ELEMENT_TYPE_DEF) (NEWVAL
-                                                     (OBJ
-                                                      OMG.ORG/CORBA:ARRAYDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_element_type_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:ELEMENT_TYPE ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY)
-                                          &REST
-                                          ARGS)
-  (APPLY 'INVOKE OBJ "_get_element_type" ARGS))
-
-(DEFMETHOD OMG.ORG/FEATURES:LENGTH ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY) &REST
-                                    ARGS)
-  (APPLY 'INVOKE OBJ "_get_length" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:LENGTH) (NEWVAL
-                                           (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_length" NEWVAL))
-
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:SEQUENCEDEF
-  "IDL:omg.org/CORBA/SequenceDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:SEQUENCEDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/SequenceDef:1.0" "SequenceDef"))
-
-(DEFCLASS OMG.ORG/CORBA:SEQUENCEDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:SEQUENCEDEF-PROXY (OMG.ORG/CORBA:SEQUENCEDEF
-                                           OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/SequenceDef:1.0"
-  'OMG.ORG/CORBA:SEQUENCEDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:ELEMENT_TYPE_DEF ((OBJ
-                                               OMG.ORG/CORBA:SEQUENCEDEF-PROXY)
-                                              &REST
-                                              ARGS)
-  (APPLY 'INVOKE OBJ "_get_element_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:ELEMENT_TYPE_DEF) (NEWVAL
-                                                     (OBJ
-                                                      OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_element_type_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:ELEMENT_TYPE ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY)
-                                          &REST
-                                          ARGS)
-  (APPLY 'INVOKE OBJ "_get_element_type" ARGS))
-
-(DEFMETHOD OMG.ORG/FEATURES:BOUND ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY) &REST
-                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_bound" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:BOUND) (NEWVAL
-                                          (OBJ
-                                           OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_bound" NEWVAL))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:FIXEDDEF "IDL:omg.org/CORBA/FixedDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:FIXEDDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/FixedDef:1.0" "FixedDef"))
-
-(DEFCLASS OMG.ORG/CORBA:FIXEDDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:FIXEDDEF-PROXY (OMG.ORG/CORBA:FIXEDDEF
-                                        OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/FixedDef:1.0"
-  'OMG.ORG/CORBA:FIXEDDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:SCALE ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY) &REST
-                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_scale" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:SCALE) (NEWVAL
-                                          (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_scale" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:DIGITS ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY) &REST
-                                    ARGS)
-  (APPLY 'INVOKE OBJ "_get_digits" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:DIGITS) (NEWVAL
-                                           (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_digits" NEWVAL))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:WSTRINGDEF "IDL:omg.org/CORBA/WstringDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:WSTRINGDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/WstringDef:1.0" "WstringDef"))
-
-(DEFCLASS OMG.ORG/CORBA:WSTRINGDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:WSTRINGDEF-PROXY (OMG.ORG/CORBA:WSTRINGDEF
-                                          OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/WstringDef:1.0"
-  'OMG.ORG/CORBA:WSTRINGDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:BOUND ((OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY) &REST
-                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_bound" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:BOUND) (NEWVAL
-                                          (OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_bound" NEWVAL))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:STRINGDEF "IDL:omg.org/CORBA/StringDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:STRINGDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/StringDef:1.0" "StringDef"))
-
-(DEFCLASS OMG.ORG/CORBA:STRINGDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:STRINGDEF-PROXY (OMG.ORG/CORBA:STRINGDEF
-                                         OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/StringDef:1.0"
-  'OMG.ORG/CORBA:STRINGDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:BOUND ((OBJ OMG.ORG/CORBA:STRINGDEF-PROXY) &REST
-                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_bound" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:BOUND) (NEWVAL
-                                          (OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_bound" NEWVAL))
-
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:PRIMITIVEDEF
-  "IDL:omg.org/CORBA/PrimitiveDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:PRIMITIVEDEF
-  (MAKE-TYPECODE
-    :TK_OBJREF
-    "IDL:omg.org/CORBA/PrimitiveDef:1.0"
-    "PrimitiveDef"))
-
-(DEFCLASS OMG.ORG/CORBA:PRIMITIVEDEF (OMG.ORG/CORBA:IDLTYPE) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:PRIMITIVEDEF-PROXY (OMG.ORG/CORBA:PRIMITIVEDEF
-                                            OMG.ORG/CORBA:IDLTYPE-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/PrimitiveDef:1.0"
-  'OMG.ORG/CORBA:PRIMITIVEDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:KIND ((OBJ OMG.ORG/CORBA:PRIMITIVEDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_kind" ARGS))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:ALIASDEF "IDL:omg.org/CORBA/AliasDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ALIASDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/AliasDef:1.0" "AliasDef"))
-
-(DEFCLASS OMG.ORG/CORBA:ALIASDEF (OMG.ORG/CORBA:TYPEDEFDEF) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:ALIASDEF-PROXY (OMG.ORG/CORBA:ALIASDEF
-                                        OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/AliasDef:1.0"
-  'OMG.ORG/CORBA:ALIASDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:ORIGINAL_TYPE_DEF ((OBJ
-                                                OMG.ORG/CORBA:ALIASDEF-PROXY)
-                                               &REST
-                                               ARGS)
-  (APPLY 'INVOKE OBJ "_get_original_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:ORIGINAL_TYPE_DEF) (NEWVAL
-                                                      (OBJ
-                                                       OMG.ORG/CORBA:ALIASDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_original_type_def" NEWVAL))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:ENUMDEF "IDL:omg.org/CORBA/EnumDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ENUMDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/EnumDef:1.0" "EnumDef"))
-
-(DEFCLASS OMG.ORG/CORBA:ENUMDEF (OMG.ORG/CORBA:TYPEDEFDEF) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:ENUMDEF-PROXY (OMG.ORG/CORBA:ENUMDEF
-                                       OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/EnumDef:1.0"
-  'OMG.ORG/CORBA:ENUMDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:MEMBERS ((OBJ OMG.ORG/CORBA:ENUMDEF-PROXY) &REST
-                                     ARGS)
-  (APPLY 'INVOKE OBJ "_get_members" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MEMBERS) (NEWVAL
-                                            (OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_members" NEWVAL))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:UNIONDEF "IDL:omg.org/CORBA/UnionDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:UNIONDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/UnionDef:1.0" "UnionDef"))
-
-(DEFCLASS OMG.ORG/CORBA:UNIONDEF (OMG.ORG/CORBA:TYPEDEFDEF) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:UNIONDEF-PROXY (OMG.ORG/CORBA:UNIONDEF
-                                        OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/UnionDef:1.0"
-  'OMG.ORG/CORBA:UNIONDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:MEMBERS ((OBJ OMG.ORG/CORBA:UNIONDEF-PROXY) &REST
-                                     ARGS)
-  (APPLY 'INVOKE OBJ "_get_members" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MEMBERS) (NEWVAL
-                                            (OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_members" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:DISCRIMINATOR_TYPE_DEF ((OBJ
-                                                     OMG.ORG/CORBA:UNIONDEF-PROXY)
-                                                    &REST
-                                                    ARGS)
-  (APPLY 'INVOKE OBJ "_get_discriminator_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:DISCRIMINATOR_TYPE_DEF) (NEWVAL
-                                                           (OBJ
-                                                            OMG.ORG/CORBA:UNIONDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_discriminator_type_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:DISCRIMINATOR_TYPE ((OBJ
-                                                 OMG.ORG/CORBA:UNIONDEF-PROXY)
-                                                &REST
-                                                ARGS)
-  (APPLY 'INVOKE OBJ "_get_discriminator_type" ARGS))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:STRUCTDEF "IDL:omg.org/CORBA/StructDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:STRUCTDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/StructDef:1.0" "StructDef"))
-
-(DEFCLASS OMG.ORG/CORBA:STRUCTDEF (OMG.ORG/CORBA:TYPEDEFDEF) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:STRUCTDEF-PROXY (OMG.ORG/CORBA:STRUCTDEF
-                                         OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/StructDef:1.0"
-  'OMG.ORG/CORBA:STRUCTDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:MEMBERS ((OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY) &REST
-                                     ARGS)
-  (APPLY 'INVOKE OBJ "_get_members" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:MEMBERS) (NEWVAL
-                                            (OBJ
-                                             OMG.ORG/CORBA:STRUCTDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_members" NEWVAL))
-
 (DEFINE-STRUCT OMG.ORG/CORBA:TYPEDESCRIPTION
  :ID "IDL:omg.org/CORBA/TypeDescription:1.0"
  :NAME "TypeDescription"
@@ -878,16 +202,6 @@
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:TYPEDEFDEF "IDL:omg.org/CORBA/TypedefDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:TYPEDEFDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/TypedefDef:1.0" "TypedefDef"))
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/TypedefDef:1.0"
-  'OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
 
 (DEFINE-STRUCT OMG.ORG/CORBA:CONSTANTDESCRIPTION
  :ID "IDL:omg.org/CORBA/ConstantDescription:1.0"
@@ -900,46 +214,6 @@
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("value" OMG.ORG/CORBA:TC_ANY VALUE)))
 
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:CONSTANTDEF
-  "IDL:omg.org/CORBA/ConstantDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONSTANTDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/ConstantDef:1.0" "ConstantDef"))
-
-(DEFCLASS OMG.ORG/CORBA:CONSTANTDEF (OMG.ORG/CORBA:CONTAINED) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:CONSTANTDEF-PROXY (OMG.ORG/CORBA:CONSTANTDEF
-                                           OMG.ORG/CORBA:CONTAINED-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/ConstantDef:1.0"
-  'OMG.ORG/CORBA:CONSTANTDEF-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:VALUE ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY) &REST
-                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_value" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:VALUE) (NEWVAL
-                                          (OBJ
-                                           OMG.ORG/CORBA:CONSTANTDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_value" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE_DEF ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY)
-                                      &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_type_def" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:TYPE_DEF) (NEWVAL
-                                             (OBJ
-                                              OMG.ORG/CORBA:CONSTANTDEF-PROXY))
-  (APPLY 'INVOKE OBJ "_set_type_def" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_type" ARGS))
-
 (DEFINE-STRUCT OMG.ORG/CORBA:MODULEDESCRIPTION
  :ID "IDL:omg.org/CORBA/ModuleDescription:1.0"
  :NAME "ModuleDescription"
@@ -949,132 +223,9 @@
             DEFINED_IN)
            ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)))
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:MODULEDEF "IDL:omg.org/CORBA/ModuleDef:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:MODULEDEF
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/ModuleDef:1.0" "ModuleDef"))
-
-(DEFCLASS OMG.ORG/CORBA:MODULEDEF (OMG.ORG/CORBA:CONTAINER
-                                   OMG.ORG/CORBA:CONTAINED)
-  NIL)
-
-(DEFCLASS OMG.ORG/CORBA:MODULEDEF-PROXY (OMG.ORG/CORBA:MODULEDEF
-                                         OMG.ORG/CORBA:CONTAINER-PROXY
-                                         OMG.ORG/CORBA:CONTAINED-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/ModuleDef:1.0"
-  'OMG.ORG/CORBA:MODULEDEF-PROXY)
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:REPOSITORY "IDL:omg.org/CORBA/Repository:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:REPOSITORY
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/Repository:1.0" "Repository"))
-
-(DEFCLASS OMG.ORG/CORBA:REPOSITORY (OMG.ORG/CORBA:CONTAINER) NIL)
-
-(DEFCLASS OMG.ORG/CORBA:REPOSITORY-PROXY (OMG.ORG/CORBA:REPOSITORY
-                                          OMG.ORG/CORBA:CONTAINER-PROXY)
-  NIL)
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/Repository:1.0"
-  'OMG.ORG/CORBA:REPOSITORY-PROXY)
-
-(DEFINE-METHOD "CREATE_FIXED" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) DIGITS
-                               SCALE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_fixed"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:FIXEDDEF))))
-    (ADD-ARG _REQUEST "digits" ARG_IN OMG.ORG/CORBA:TC_USHORT DIGITS)
-    (ADD-ARG _REQUEST "scale" ARG_IN OMG.ORG/CORBA:TC_SHORT SCALE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_ARRAY" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) LENGTH
-                               ELEMENT_TYPE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_array"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ARRAYDEF))))
-    (ADD-ARG _REQUEST "length" ARG_IN OMG.ORG/CORBA:TC_ULONG LENGTH)
-    (ADD-ARG _REQUEST
-             "element_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             ELEMENT_TYPE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_SEQUENCE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) BOUND
-                                  ELEMENT_TYPE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_sequence"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:SEQUENCEDEF))))
-    (ADD-ARG _REQUEST "bound" ARG_IN OMG.ORG/CORBA:TC_ULONG BOUND)
-    (ADD-ARG _REQUEST
-             "element_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             ELEMENT_TYPE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_WSTRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) BOUND)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_wstring"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:WSTRINGDEF))))
-    (ADD-ARG _REQUEST "bound" ARG_IN OMG.ORG/CORBA:TC_ULONG BOUND)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_STRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) BOUND)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_string"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRINGDEF))))
-    (ADD-ARG _REQUEST "bound" ARG_IN OMG.ORG/CORBA:TC_ULONG BOUND)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "GET_PRIMITIVE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) KIND)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "get_primitive"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEDEF))))
-    (ADD-ARG _REQUEST
-             "kind"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEKIND)
-             KIND)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "LOOKUP_ID" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) SEARCH_ID)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "lookup_id"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED))))
-    (ADD-ARG _REQUEST
-             "search_id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             SEARCH_ID)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:PRIMITIVEKIND
-  "IDL:omg.org/CORBA/PrimitiveKind:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:PRIMITIVEKIND
+  "IDL:omg.org/CORBA/PrimitiveKind:1.0"
   (MAKE-TYPECODE
     :TK_ENUM
     "IDL:omg.org/CORBA/PrimitiveKind:1.0"
@@ -1107,380 +258,9 @@
            :PK_WCHAR
            :PK_WSTRING))
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:IDLTYPE "IDL:omg.org/CORBA/IDLType:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:IDLTYPE
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/IDLType:1.0" "IDLType"))
-
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/IDLType:1.0"
-  'OMG.ORG/CORBA:IDLTYPE-PROXY)
-
-(DEFMETHOD OMG.ORG/FEATURES:TYPE ((OBJ OMG.ORG/CORBA:IDLTYPE-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_type" ARGS))
-
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:CONTAINER "IDL:omg.org/CORBA/Container:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTAINER
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/Container:1.0" "Container"))
-
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/Container:1.0"
-  'OMG.ORG/CORBA:CONTAINER-PROXY)
-
-(DEFINE-METHOD "CREATE_INTERFACE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                                   VERSION BASE_INTERFACES)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_interface"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "base_interfaces"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEFSEQ)
-             BASE_INTERFACES)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_ALIAS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                               VERSION ORIGINAL_TYPE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_alias"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ALIASDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "original_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             ORIGINAL_TYPE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_ENUM" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                              VERSION MEMBERS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_enum"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "members"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMMEMBERSEQ)
-             MEMBERS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_UNION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                               VERSION DISCRIMINATOR_TYPE MEMBERS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_union"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "discriminator_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             DISCRIMINATOR_TYPE)
-    (ADD-ARG _REQUEST
-             "members"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBERSEQ)
-             MEMBERS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_EXCEPTION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                                   VERSION MEMBERS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_exception"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "members"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)
-             MEMBERS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_STRUCT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                                VERSION MEMBERS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_struct"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "members"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)
-             MEMBERS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_CONSTANT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                                  VERSION TYPE VALUE)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_constant"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONSTANTDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (ADD-ARG _REQUEST
-             "type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
-             TYPE)
-    (ADD-ARG _REQUEST "value" ARG_IN OMG.ORG/CORBA:TC_ANY VALUE)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CREATE_MODULE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) ID NAME
-                                VERSION)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "create_module"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:MODULEDEF))))
-    (ADD-ARG _REQUEST
-             "id"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
-             ID)
-    (ADD-ARG _REQUEST
-             "name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NAME)
-    (ADD-ARG _REQUEST
-             "version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             VERSION)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "DESCRIBE_CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY)
-                                    LIMIT_TYPE EXCLUDE_INHERITED
-                                    MAX_RETURNED_OBJS)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "describe_contents"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ))))
-    (ADD-ARG _REQUEST
-             "limit_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
-             LIMIT_TYPE)
-    (ADD-ARG _REQUEST
-             "exclude_inherited"
-             ARG_IN
-             OMG.ORG/CORBA:TC_BOOLEAN
-             EXCLUDE_INHERITED)
-    (ADD-ARG _REQUEST
-             "max_returned_objs"
-             ARG_IN
-             OMG.ORG/CORBA:TC_LONG
-             MAX_RETURNED_OBJS)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(SET-SYMBOL-IFR-ID
-  'OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ
-  "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ
-  (LAMBDA NIL
-    (MAKE-TC-ALIAS
-      "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
-      "DescriptionSeq"
-      (MAKE-SEQUENCE-TYPECODE
-        (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)
-        0))))
-
-(DEFTYPE OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ () 'SEQUENCE)
-
-(DEFINE-STRUCT OMG.ORG/CORBA:CONTAINER/DESCRIPTION
- :ID "IDL:omg.org/CORBA/Container/Description:1.0"
- :NAME "Description"
- :MEMBERS (("contained_object" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
-            CONTAINED_OBJECT)
-           ("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
-           ("value" OMG.ORG/CORBA:TC_ANY VALUE)))
-
-(DEFINE-METHOD "LOOKUP_NAME" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) SEARCH_NAME
-                              LEVELS_TO_SEARCH LIMIT_TYPE EXCLUDE_INHERITED)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "lookup_name"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINEDSEQ))))
-    (ADD-ARG _REQUEST
-             "search_name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             SEARCH_NAME)
-    (ADD-ARG _REQUEST
-             "levels_to_search"
-             ARG_IN
-             OMG.ORG/CORBA:TC_LONG
-             LEVELS_TO_SEARCH)
-    (ADD-ARG _REQUEST
-             "limit_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
-             LIMIT_TYPE)
-    (ADD-ARG _REQUEST
-             "exclude_inherited"
-             ARG_IN
-             OMG.ORG/CORBA:TC_BOOLEAN
-             EXCLUDE_INHERITED)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) LIMIT_TYPE
-                           EXCLUDE_INHERITED)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "contents"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINEDSEQ))))
-    (ADD-ARG _REQUEST
-             "limit_type"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
-             LIMIT_TYPE)
-    (ADD-ARG _REQUEST
-             "exclude_inherited"
-             ARG_IN
-             OMG.ORG/CORBA:TC_BOOLEAN
-             EXCLUDE_INHERITED)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "LOOKUP" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) SEARCH_NAME)
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "lookup"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED))))
-    (ADD-ARG _REQUEST
-             "search_name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:SCOPEDNAME)
-             SEARCH_NAME)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:ENUMMEMBERSEQ
-  "IDL:omg.org/CORBA/EnumMemberSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:ENUMMEMBERSEQ
+  "IDL:omg.org/CORBA/EnumMemberSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/EnumMemberSeq:1.0"
@@ -1489,12 +269,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:ENUMMEMBERSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:UNIONMEMBERSEQ
-  "IDL:omg.org/CORBA/UnionMemberSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:UNIONMEMBERSEQ
+  "IDL:omg.org/CORBA/UnionMemberSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/UnionMemberSeq:1.0"
@@ -1511,12 +288,9 @@
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF)))
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:STRUCTMEMBERSEQ
-  "IDL:omg.org/CORBA/StructMemberSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:STRUCTMEMBERSEQ
+  "IDL:omg.org/CORBA/StructMemberSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/StructMemberSeq:1.0"
@@ -1534,12 +308,9 @@
            ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)
            ("type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) TYPE_DEF)))
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:CONTAINEDSEQ
-  "IDL:omg.org/CORBA/ContainedSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTAINEDSEQ
+  "IDL:omg.org/CORBA/ContainedSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ContainedSeq:1.0"
@@ -1548,12 +319,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:CONTAINEDSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:INTERFACEDEFSEQ
-  "IDL:omg.org/CORBA/InterfaceDefSeq:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:INTERFACEDEFSEQ
+  "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/InterfaceDefSeq:1.0"
@@ -1564,97 +332,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:INTERFACEDEFSEQ () 'SEQUENCE)
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:CONTAINED "IDL:omg.org/CORBA/Contained:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:CONTAINED
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/Contained:1.0" "Contained"))
-
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/Contained:1.0"
-  'OMG.ORG/CORBA:CONTAINED-PROXY)
-
-(DEFINE-METHOD "MOVE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) NEW_CONTAINER
-                       NEW_NAME NEW_VERSION)
-  (LET ((_REQUEST (REQUEST-CREATE OBJ "move" OMG.ORG/CORBA:TC_VOID)))
-    (ADD-ARG _REQUEST
-             "new_container"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER)
-             NEW_CONTAINER)
-    (ADD-ARG _REQUEST
-             "new_name"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
-             NEW_NAME)
-    (ADD-ARG _REQUEST
-             "new_version"
-             ARG_IN
-             (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
-             NEW_VERSION)
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-METHOD "DESCRIBE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
-  (LET ((_REQUEST
-         (REQUEST-CREATE
-           OBJ
-           "describe"
-           (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED/DESCRIPTION))))
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFINE-STRUCT OMG.ORG/CORBA:CONTAINED/DESCRIPTION
- :ID "IDL:omg.org/CORBA/Contained/Description:1.0"
- :NAME "Description"
- :MEMBERS (("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
-           ("value" OMG.ORG/CORBA:TC_ANY VALUE)))
-
-(DEFMETHOD OMG.ORG/FEATURES:CONTAINING_REPOSITORY ((OBJ
-                                                    OMG.ORG/CORBA:CONTAINED-PROXY)
-                                                   &REST
-                                                   ARGS)
-  (APPLY 'INVOKE OBJ "_get_containing_repository" ARGS))
-
-(DEFMETHOD OMG.ORG/FEATURES:ABSOLUTE_NAME ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY)
-                                           &REST
-                                           ARGS)
-  (APPLY 'INVOKE OBJ "_get_absolute_name" ARGS))
-
-(DEFMETHOD OMG.ORG/FEATURES:DEFINED_IN ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY)
-                                        &REST
-                                        ARGS)
-  (APPLY 'INVOKE OBJ "_get_defined_in" ARGS))
-
-(DEFMETHOD OMG.ORG/FEATURES:VERSION ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) &REST
-                                     ARGS)
-  (APPLY 'INVOKE OBJ "_get_version" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:VERSION) (NEWVAL
-                                            (OBJ
-                                             OMG.ORG/CORBA:CONTAINED-PROXY))
-  (APPLY 'INVOKE OBJ "_set_version" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:NAME ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) &REST
-                                  ARGS)
-  (APPLY 'INVOKE OBJ "_get_name" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:NAME) (NEWVAL
-                                         (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
-  (APPLY 'INVOKE OBJ "_set_name" NEWVAL))
-
-(DEFMETHOD OMG.ORG/FEATURES:ID ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) &REST ARGS)
-  (APPLY 'INVOKE OBJ "_get_id" ARGS))
-
-(DEFMETHOD (SETF OMG.ORG/FEATURES:ID) (NEWVAL
-                                       (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
-  (APPLY 'INVOKE OBJ "_set_id" NEWVAL))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:VERSIONSPEC
-  "IDL:omg.org/CORBA/VersionSpec:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:VERSIONSPEC
+  "IDL:omg.org/CORBA/VersionSpec:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/VersionSpec:1.0"
@@ -1663,31 +343,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:VERSIONSPEC () 'OMG.ORG/CORBA:STRING)
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:IROBJECT "IDL:omg.org/CORBA/IRObject:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:IROBJECT
-  (MAKE-TYPECODE :TK_OBJREF "IDL:omg.org/CORBA/IRObject:1.0" "IRObject"))
-
-
-(REGISTER-PROXY-CLASS
-  "IDL:omg.org/CORBA/IRObject:1.0"
-  'OMG.ORG/CORBA:IROBJECT-PROXY)
-
-(DEFINE-METHOD "DESTROY" ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY))
-  (LET ((_REQUEST (REQUEST-CREATE OBJ "destroy" OMG.ORG/CORBA:TC_VOID)))
-    (REQUEST-FUNCALL _REQUEST)))
-
-(DEFMETHOD OMG.ORG/FEATURES:DEF_KIND ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY) &REST
-                                      ARGS)
-  (APPLY 'INVOKE OBJ "_get_def_kind" ARGS))
-
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:DEFINITIONKIND
-  "IDL:omg.org/CORBA/DefinitionKind:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:DEFINITIONKIND
+  "IDL:omg.org/CORBA/DefinitionKind:1.0"
   (MAKE-TYPECODE
     :TK_ENUM
     "IDL:omg.org/CORBA/DefinitionKind:1.0"
@@ -1719,12 +377,9 @@
            :DK_WSTRING
            :DK_FIXED))
 
-(SET-SYMBOL-IFR-ID
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:REPOSITORYID
-  "IDL:omg.org/CORBA/RepositoryId:1.0")
-
-(SET-SYMBOL-TYPECODE
-  'OMG.ORG/CORBA:REPOSITORYID
+  "IDL:omg.org/CORBA/RepositoryId:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/RepositoryId:1.0"
@@ -1733,10 +388,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:REPOSITORYID () 'OMG.ORG/CORBA:STRING)
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:SCOPEDNAME "IDL:omg.org/CORBA/ScopedName:1.0")
-
-(SET-SYMBOL-TYPECODE
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:SCOPEDNAME
+  "IDL:omg.org/CORBA/ScopedName:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/ScopedName:1.0"
@@ -1745,10 +399,9 @@
 
 (DEFTYPE OMG.ORG/CORBA:SCOPEDNAME () 'OMG.ORG/CORBA:STRING)
 
-(SET-SYMBOL-IFR-ID 'OMG.ORG/CORBA:IDENTIFIER "IDL:omg.org/CORBA/Identifier:1.0")
-
-(SET-SYMBOL-TYPECODE
+(SET-SYMBOL-ID/TYPECODE
   'OMG.ORG/CORBA:IDENTIFIER
+  "IDL:omg.org/CORBA/Identifier:1.0"
   (LAMBDA NIL
     (MAKE-TC-ALIAS
       "IDL:omg.org/CORBA/Identifier:1.0"
@@ -1756,3 +409,845 @@
       OMG.ORG/CORBA:TC_STRING)))
 
 (DEFTYPE OMG.ORG/CORBA:IDENTIFIER () 'OMG.ORG/CORBA:STRING)
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:IROBJECT (OBJECT)
+ :PROXY (OMG.ORG/CORBA:IROBJECT-PROXY OMG.ORG/CORBA:IROBJECT
+         OMG.ORG/CORBA:PROXY)
+ :ID "IDL:omg.org/CORBA/IRObject:1.0"
+ :NAME "IRObject")
+
+(DEFINE-METHOD "DESTROY" ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY))
+  (STATIC-CALL ("destroy" OBJ)
+   :OUTPUT ((OUTPUT))
+   :INPUT ((INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "DEF_KIND" ((OBJ OMG.ORG/CORBA:IROBJECT-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_def_kind"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:IDLTYPE (OMG.ORG/CORBA:IROBJECT)
+ :PROXY (OMG.ORG/CORBA:IDLTYPE-PROXY OMG.ORG/CORBA:IDLTYPE
+         OMG.ORG/CORBA:IROBJECT-PROXY)
+ :ID "IDL:omg.org/CORBA/IDLType:1.0"
+ :NAME "IDLType")
+
+(DEFINE-METHOD "TYPE" ((OBJ OMG.ORG/CORBA:IDLTYPE-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:CONTAINER (OMG.ORG/CORBA:IROBJECT)
+ :PROXY (OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINER
+         OMG.ORG/CORBA:IROBJECT-PROXY)
+ :ID "IDL:omg.org/CORBA/Container:1.0"
+ :NAME "Container")
+
+(DEFINE-METHOD "CREATE_INTERFACE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID
+                                   _NAME _VERSION _BASE_INTERFACES)
+  (STATIC-CALL ("create_interface" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL-SEQUENCE
+              _BASE_INTERFACES
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF)
+                         BUFFER))
+              OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_ALIAS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                               _VERSION _ORIGINAL_TYPE)
+  (STATIC-CALL ("create_alias" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL _ORIGINAL_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+                     OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ALIASDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_ENUM" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                              _VERSION _MEMBERS)
+  (STATIC-CALL ("create_enum" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL-SEQUENCE _MEMBERS #'MARSHAL-STRING OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_UNION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                               _VERSION _DISCRIMINATOR_TYPE _MEMBERS)
+  (STATIC-CALL ("create_union" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL _DISCRIMINATOR_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+                     OUTPUT)
+            (MARSHAL-SEQUENCE
+              _MEMBERS
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBER)
+                         BUFFER))
+              OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_EXCEPTION" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID
+                                   _NAME _VERSION _MEMBERS)
+  (STATIC-CALL ("create_exception" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL-SEQUENCE
+              _MEMBERS
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBER)
+                         BUFFER))
+              OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_STRUCT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                                _VERSION _MEMBERS)
+  (STATIC-CALL ("create_struct" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL-SEQUENCE
+              _MEMBERS
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBER)
+                         BUFFER))
+              OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_CONSTANT" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                                  _VERSION _TYPE _VALUE)
+  (STATIC-CALL ("create_constant" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL _TYPE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
+            (MARSHAL _VALUE OMG.ORG/CORBA:TC_ANY OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONSTANTDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_MODULE" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _ID _NAME
+                                _VERSION)
+  (STATIC-CALL ("create_module" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:MODULEDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "DESCRIBE_CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY)
+                                    _LIMIT_TYPE _EXCLUDE_INHERITED
+                                    _MAX_RETURNED_OBJS)
+  (STATIC-CALL ("describe_contents" OBJ)
+   :OUTPUT ((OUTPUT)
+            (MARSHAL _LIMIT_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
+                     OUTPUT)
+            (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT)
+            (MARSHAL-LONG _MAX_RETURNED_OBJS OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL-SEQUENCE
+             (LAMBDA (BUFFER)
+               (UNMARSHAL (SYMBOL-TYPECODE
+                            'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)
+                          BUFFER))
+             INPUT))
+   :EXCEPTIONS NIL))
+
+(SET-SYMBOL-ID/TYPECODE
+  'OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ
+  "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
+  (LAMBDA NIL
+    (MAKE-TC-ALIAS
+      "IDL:omg.org/CORBA/Container/DescriptionSeq:1.0"
+      "DescriptionSeq"
+      (MAKE-SEQUENCE-TYPECODE
+        (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER/DESCRIPTION)
+        0))))
+
+(DEFTYPE OMG.ORG/CORBA:CONTAINER/DESCRIPTIONSEQ () 'SEQUENCE)
+
+(DEFINE-STRUCT OMG.ORG/CORBA:CONTAINER/DESCRIPTION
+ :ID "IDL:omg.org/CORBA/Container/Description:1.0"
+ :NAME "Description"
+ :MEMBERS (("contained_object" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED)
+            CONTAINED_OBJECT)
+           ("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
+           ("value" OMG.ORG/CORBA:TC_ANY VALUE)))
+
+(DEFINE-METHOD "LOOKUP_NAME" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _SEARCH_NAME
+                              _LEVELS_TO_SEARCH _LIMIT_TYPE _EXCLUDE_INHERITED)
+  (STATIC-CALL ("lookup_name" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT)
+            (MARSHAL-LONG _LEVELS_TO_SEARCH OUTPUT)
+            (MARSHAL _LIMIT_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
+                     OUTPUT)
+            (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL-SEQUENCE
+             (LAMBDA (BUFFER)
+               (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) BUFFER))
+             INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CONTENTS" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _LIMIT_TYPE
+                           _EXCLUDE_INHERITED)
+  (STATIC-CALL ("contents" OBJ)
+   :OUTPUT ((OUTPUT)
+            (MARSHAL _LIMIT_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND)
+                     OUTPUT)
+            (MARSHAL-BOOL _EXCLUDE_INHERITED OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL-SEQUENCE
+             (LAMBDA (BUFFER)
+               (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) BUFFER))
+             INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "LOOKUP" ((OBJ OMG.ORG/CORBA:CONTAINER-PROXY) _SEARCH_NAME)
+  (STATIC-CALL ("lookup" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_NAME OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:CONTAINED (OMG.ORG/CORBA:IROBJECT)
+ :PROXY (OMG.ORG/CORBA:CONTAINED-PROXY OMG.ORG/CORBA:CONTAINED
+         OMG.ORG/CORBA:IROBJECT-PROXY)
+ :ID "IDL:omg.org/CORBA/Contained:1.0"
+ :NAME "Contained")
+
+(DEFINE-METHOD "MOVE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY) _NEW_CONTAINER
+                       _NEW_NAME _NEW_VERSION)
+  (STATIC-CALL ("move" OBJ)
+   :OUTPUT ((OUTPUT)
+            (MARSHAL _NEW_CONTAINER
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER)
+                     OUTPUT)
+            (MARSHAL-STRING _NEW_NAME OUTPUT)
+            (MARSHAL-STRING _NEW_VERSION OUTPUT))
+   :INPUT ((INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "DESCRIBE" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (STATIC-CALL ("describe" OBJ)
+   :OUTPUT ((OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED/DESCRIPTION)
+                      INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-STRUCT OMG.ORG/CORBA:CONTAINED/DESCRIPTION
+ :ID "IDL:omg.org/CORBA/Contained/Description:1.0"
+ :NAME "Description"
+ :MEMBERS (("kind" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:DEFINITIONKIND) KIND)
+           ("value" OMG.ORG/CORBA:TC_ANY VALUE)))
+
+(DEFINE-METHOD "CONTAINING_REPOSITORY" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_containing_repository"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORY)))
+
+(DEFINE-METHOD "ABSOLUTE_NAME" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_absolute_name"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:SCOPEDNAME)))
+
+(DEFINE-METHOD "DEFINED_IN" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_defined_in"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINER)))
+
+(DEFINE-METHOD "VERSION" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_version"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)))
+
+(DEFINE-METHOD (SETF "VERSION") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_version"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC)
+    NEWVAL))
+
+(DEFINE-METHOD "NAME" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)))
+
+(DEFINE-METHOD (SETF "NAME") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_name"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER)
+    NEWVAL))
+
+(DEFINE-METHOD "ID" ((OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)))
+
+(DEFINE-METHOD (SETF "ID") (NEWVAL (OBJ OMG.ORG/CORBA:CONTAINED-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_id"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
+    NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:INTERFACEDEF (OMG.ORG/CORBA:CONTAINER
+                                              OMG.ORG/CORBA:CONTAINED
+                                              OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:INTERFACEDEF-PROXY OMG.ORG/CORBA:INTERFACEDEF
+         OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINED-PROXY
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/InterfaceDef:1.0"
+ :NAME "InterfaceDef")
+
+(DEFINE-METHOD "CREATE_OPERATION" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _ID
+                                   _NAME _VERSION _RESULT _MODE _PARAMS
+                                   _EXCEPTIONS _CONTEXTS)
+  (STATIC-CALL ("create_operation" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL _RESULT (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
+            (MARSHAL _MODE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE)
+                     OUTPUT)
+            (MARSHAL-SEQUENCE
+              _PARAMS
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARAMETERDESCRIPTION)
+                         BUFFER))
+              OUTPUT)
+            (MARSHAL-SEQUENCE
+              _EXCEPTIONS
+              (LAMBDA (OBJ BUFFER)
+                (MARSHAL OBJ
+                         (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEF)
+                         BUFFER))
+              OUTPUT)
+            (MARSHAL-SEQUENCE _CONTEXTS #'MARSHAL-STRING OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_ATTRIBUTE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _ID
+                                   _NAME _VERSION _TYPE _MODE)
+  (STATIC-CALL ("create_attribute" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _ID OUTPUT) (MARSHAL-STRING _NAME OUTPUT)
+            (MARSHAL-STRING _VERSION OUTPUT)
+            (MARSHAL _TYPE (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE) OUTPUT)
+            (MARSHAL _MODE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)
+                     OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "DESCRIBE_INTERFACE" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY))
+  (STATIC-CALL ("describe_interface" OBJ)
+   :OUTPUT ((OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE
+                        'OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION)
+                      INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-STRUCT OMG.ORG/CORBA:INTERFACEDEF/FULLINTERFACEDESCRIPTION
+ :ID "IDL:omg.org/CORBA/InterfaceDef/FullInterfaceDescription:1.0"
+ :NAME "FullInterfaceDescription"
+ :MEMBERS (("name" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDENTIFIER) NAME)
+           ("id" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID) ID)
+           ("defined_in" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYID)
+            DEFINED_IN)
+           ("version" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:VERSIONSPEC) VERSION)
+           ("operations" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPDESCRIPTIONSEQ)
+            OPERATIONS)
+           ("attributes" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRDESCRIPTIONSEQ)
+            ATTRIBUTES)
+           ("base_interfaces" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:REPOSITORYIDSEQ)
+            BASE_INTERFACES)
+           ("type" OMG.ORG/CORBA:TC_TYPECODE TYPE)))
+
+(DEFINE-METHOD "IS_A" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY) _INTERFACE_ID)
+  (STATIC-CALL ("is_a" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _INTERFACE_ID OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL-BOOL INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "BASE_INTERFACES" ((OBJ OMG.ORG/CORBA:INTERFACEDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_base_interfaces"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEFSEQ)))
+
+(DEFINE-METHOD (SETF "BASE_INTERFACES") (NEWVAL
+                                         (OBJ
+                                          OMG.ORG/CORBA:INTERFACEDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_base_interfaces"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:INTERFACEDEFSEQ)
+    NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:OPERATIONDEF (OMG.ORG/CORBA:CONTAINED)
+ :PROXY (OMG.ORG/CORBA:OPERATIONDEF-PROXY OMG.ORG/CORBA:OPERATIONDEF
+         OMG.ORG/CORBA:CONTAINED-PROXY)
+ :ID "IDL:omg.org/CORBA/OperationDef:1.0"
+ :NAME "OperationDef")
+
+(DEFINE-METHOD "EXCEPTIONS" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_exceptions"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEFSEQ)))
+
+(DEFINE-METHOD (SETF "EXCEPTIONS") (NEWVAL
+                                    (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_exceptions"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:EXCEPTIONDEFSEQ)
+    NEWVAL))
+
+(DEFINE-METHOD "CONTEXTS" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_contexts"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDSEQ)))
+
+(DEFINE-METHOD (SETF "CONTEXTS") (NEWVAL
+                                  (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_contexts"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTEXTIDSEQ)
+    NEWVAL))
+
+(DEFINE-METHOD "MODE" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_mode"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE)))
+
+(DEFINE-METHOD (SETF "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_mode"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:OPERATIONMODE)
+    NEWVAL))
+
+(DEFINE-METHOD "PARAMS" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_params"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARDESCRIPTIONSEQ)))
+
+(DEFINE-METHOD (SETF "PARAMS") (NEWVAL (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_params"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PARDESCRIPTIONSEQ)
+    NEWVAL))
+
+(DEFINE-METHOD "RESULT_DEF" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_result_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "RESULT_DEF") (NEWVAL
+                                    (OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_result_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "RESULT" ((OBJ OMG.ORG/CORBA:OPERATIONDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_result" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:ATTRIBUTEDEF (OMG.ORG/CORBA:CONTAINED)
+ :PROXY (OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY OMG.ORG/CORBA:ATTRIBUTEDEF
+         OMG.ORG/CORBA:CONTAINED-PROXY)
+ :ID "IDL:omg.org/CORBA/AttributeDef:1.0"
+ :NAME "AttributeDef")
+
+(DEFINE-METHOD "MODE" ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_mode"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)))
+
+(DEFINE-METHOD (SETF "MODE") (NEWVAL (OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_mode"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ATTRIBUTEMODE)
+    NEWVAL))
+
+(DEFINE-METHOD "TYPE_DEF" ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "TYPE_DEF") (NEWVAL
+                                  (OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "TYPE" ((OBJ OMG.ORG/CORBA:ATTRIBUTEDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:EXCEPTIONDEF (OMG.ORG/CORBA:CONTAINED)
+ :PROXY (OMG.ORG/CORBA:EXCEPTIONDEF-PROXY OMG.ORG/CORBA:EXCEPTIONDEF
+         OMG.ORG/CORBA:CONTAINED-PROXY)
+ :ID "IDL:omg.org/CORBA/ExceptionDef:1.0"
+ :NAME "ExceptionDef")
+
+(DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)))
+
+(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)
+    NEWVAL))
+
+(DEFINE-METHOD "TYPE" ((OBJ OMG.ORG/CORBA:EXCEPTIONDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:ARRAYDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:ARRAYDEF-PROXY OMG.ORG/CORBA:ARRAYDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/ArrayDef:1.0"
+ :NAME "ArrayDef")
+
+(DEFINE-METHOD "ELEMENT_TYPE_DEF" ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_element_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "ELEMENT_TYPE_DEF") (NEWVAL
+                                          (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_element_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "ELEMENT_TYPE" ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_element_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-METHOD "LENGTH" ((OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_length" OMG.ORG/CORBA:TC_ULONG))
+
+(DEFINE-METHOD (SETF "LENGTH") (NEWVAL (OBJ OMG.ORG/CORBA:ARRAYDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_length" OMG.ORG/CORBA:TC_ULONG NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:SEQUENCEDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:SEQUENCEDEF-PROXY OMG.ORG/CORBA:SEQUENCEDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/SequenceDef:1.0"
+ :NAME "SequenceDef")
+
+(DEFINE-METHOD "ELEMENT_TYPE_DEF" ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_element_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "ELEMENT_TYPE_DEF") (NEWVAL
+                                          (OBJ
+                                           OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_element_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "ELEMENT_TYPE" ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_element_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
+
+(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:SEQUENCEDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:FIXEDDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:FIXEDDEF-PROXY OMG.ORG/CORBA:FIXEDDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/FixedDef:1.0"
+ :NAME "FixedDef")
+
+(DEFINE-METHOD "SCALE" ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_scale" OMG.ORG/CORBA:TC_SHORT))
+
+(DEFINE-METHOD (SETF "SCALE") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_scale" OMG.ORG/CORBA:TC_SHORT NEWVAL))
+
+(DEFINE-METHOD "DIGITS" ((OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_digits" OMG.ORG/CORBA:TC_USHORT))
+
+(DEFINE-METHOD (SETF "DIGITS") (NEWVAL (OBJ OMG.ORG/CORBA:FIXEDDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_digits" OMG.ORG/CORBA:TC_USHORT NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:WSTRINGDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:WSTRINGDEF-PROXY OMG.ORG/CORBA:WSTRINGDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/WstringDef:1.0"
+ :NAME "WstringDef")
+
+(DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
+
+(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:WSTRINGDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:STRINGDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:STRINGDEF-PROXY OMG.ORG/CORBA:STRINGDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/StringDef:1.0"
+ :NAME "StringDef")
+
+(DEFINE-METHOD "BOUND" ((OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_bound" OMG.ORG/CORBA:TC_ULONG))
+
+(DEFINE-METHOD (SETF "BOUND") (NEWVAL (OBJ OMG.ORG/CORBA:STRINGDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_bound" OMG.ORG/CORBA:TC_ULONG NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:PRIMITIVEDEF (OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:PRIMITIVEDEF-PROXY OMG.ORG/CORBA:PRIMITIVEDEF
+         OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/PrimitiveDef:1.0"
+ :NAME "PrimitiveDef")
+
+(DEFINE-METHOD "KIND" ((OBJ OMG.ORG/CORBA:PRIMITIVEDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_kind"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEKIND)))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:TYPEDEFDEF (OMG.ORG/CORBA:CONTAINED
+                                            OMG.ORG/CORBA:IDLTYPE)
+ :PROXY (OMG.ORG/CORBA:TYPEDEFDEF-PROXY OMG.ORG/CORBA:TYPEDEFDEF
+         OMG.ORG/CORBA:CONTAINED-PROXY OMG.ORG/CORBA:IDLTYPE-PROXY)
+ :ID "IDL:omg.org/CORBA/TypedefDef:1.0"
+ :NAME "TypedefDef")
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:CONSTANTDEF (OMG.ORG/CORBA:CONTAINED)
+ :PROXY (OMG.ORG/CORBA:CONSTANTDEF-PROXY OMG.ORG/CORBA:CONSTANTDEF
+         OMG.ORG/CORBA:CONTAINED-PROXY)
+ :ID "IDL:omg.org/CORBA/ConstantDef:1.0"
+ :NAME "ConstantDef")
+
+(DEFINE-METHOD "VALUE" ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_value" OMG.ORG/CORBA:TC_ANY))
+
+(DEFINE-METHOD (SETF "VALUE") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+  (SET-ATTRIBUTE OBJ "_set_value" OMG.ORG/CORBA:TC_ANY NEWVAL))
+
+(DEFINE-METHOD "TYPE_DEF" ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type_def" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "TYPE_DEF") (NEWVAL (OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "TYPE" ((OBJ OMG.ORG/CORBA:CONSTANTDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:MODULEDEF (OMG.ORG/CORBA:CONTAINER
+                                           OMG.ORG/CORBA:CONTAINED)
+ :PROXY (OMG.ORG/CORBA:MODULEDEF-PROXY OMG.ORG/CORBA:MODULEDEF
+         OMG.ORG/CORBA:CONTAINER-PROXY OMG.ORG/CORBA:CONTAINED-PROXY)
+ :ID "IDL:omg.org/CORBA/ModuleDef:1.0"
+ :NAME "ModuleDef")
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:REPOSITORY (OMG.ORG/CORBA:CONTAINER)
+ :PROXY (OMG.ORG/CORBA:REPOSITORY-PROXY OMG.ORG/CORBA:REPOSITORY
+         OMG.ORG/CORBA:CONTAINER-PROXY)
+ :ID "IDL:omg.org/CORBA/Repository:1.0"
+ :NAME "Repository")
+
+(DEFINE-METHOD "CREATE_FIXED" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _DIGITS
+                               _SCALE)
+  (STATIC-CALL ("create_fixed" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-USHORT _DIGITS OUTPUT)
+            (MARSHAL-SHORT _SCALE OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:FIXEDDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_ARRAY" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _LENGTH
+                               _ELEMENT_TYPE)
+  (STATIC-CALL ("create_array" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _LENGTH OUTPUT)
+            (MARSHAL _ELEMENT_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+                     OUTPUT))
+   :INPUT ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ARRAYDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_SEQUENCE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND
+                                  _ELEMENT_TYPE)
+  (STATIC-CALL ("create_sequence" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT)
+            (MARSHAL _ELEMENT_TYPE
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+                     OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:SEQUENCEDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_WSTRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND)
+  (STATIC-CALL ("create_wstring" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:WSTRINGDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "CREATE_STRING" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _BOUND)
+  (STATIC-CALL ("create_string" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-ULONG _BOUND OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRINGDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "GET_PRIMITIVE" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _KIND)
+  (STATIC-CALL ("get_primitive" OBJ)
+   :OUTPUT ((OUTPUT)
+            (MARSHAL _KIND
+                     (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEKIND)
+                     OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:PRIMITIVEDEF) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-METHOD "LOOKUP_ID" ((OBJ OMG.ORG/CORBA:REPOSITORY-PROXY) _SEARCH_ID)
+  (STATIC-CALL ("lookup_id" OBJ)
+   :OUTPUT ((OUTPUT) (MARSHAL-STRING _SEARCH_ID OUTPUT))
+   :INPUT ((INPUT)
+           (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:CONTAINED) INPUT))
+   :EXCEPTIONS NIL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:ALIASDEF (OMG.ORG/CORBA:TYPEDEFDEF)
+ :PROXY (OMG.ORG/CORBA:ALIASDEF-PROXY OMG.ORG/CORBA:ALIASDEF
+         OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
+ :ID "IDL:omg.org/CORBA/AliasDef:1.0"
+ :NAME "AliasDef")
+
+(DEFINE-METHOD "ORIGINAL_TYPE_DEF" ((OBJ OMG.ORG/CORBA:ALIASDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_original_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "ORIGINAL_TYPE_DEF") (NEWVAL
+                                           (OBJ OMG.ORG/CORBA:ALIASDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_original_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:ENUMDEF (OMG.ORG/CORBA:TYPEDEFDEF)
+ :PROXY (OMG.ORG/CORBA:ENUMDEF-PROXY OMG.ORG/CORBA:ENUMDEF
+         OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
+ :ID "IDL:omg.org/CORBA/EnumDef:1.0"
+ :NAME "EnumDef")
+
+(DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMMEMBERSEQ)))
+
+(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:ENUMDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:ENUMMEMBERSEQ)
+    NEWVAL))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:UNIONDEF (OMG.ORG/CORBA:TYPEDEFDEF)
+ :PROXY (OMG.ORG/CORBA:UNIONDEF-PROXY OMG.ORG/CORBA:UNIONDEF
+         OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
+ :ID "IDL:omg.org/CORBA/UnionDef:1.0"
+ :NAME "UnionDef")
+
+(DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBERSEQ)))
+
+(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:UNIONMEMBERSEQ)
+    NEWVAL))
+
+(DEFINE-METHOD "DISCRIMINATOR_TYPE_DEF" ((OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_discriminator_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)))
+
+(DEFINE-METHOD (SETF "DISCRIMINATOR_TYPE_DEF") (NEWVAL
+                                                (OBJ
+                                                 OMG.ORG/CORBA:UNIONDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_discriminator_type_def"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:IDLTYPE)
+    NEWVAL))
+
+(DEFINE-METHOD "DISCRIMINATOR_TYPE" ((OBJ OMG.ORG/CORBA:UNIONDEF-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_discriminator_type" OMG.ORG/CORBA:TC_TYPECODE))
+
+(DEFINE-INTERFACE OMG.ORG/CORBA:STRUCTDEF (OMG.ORG/CORBA:TYPEDEFDEF)
+ :PROXY (OMG.ORG/CORBA:STRUCTDEF-PROXY OMG.ORG/CORBA:STRUCTDEF
+         OMG.ORG/CORBA:TYPEDEFDEF-PROXY)
+ :ID "IDL:omg.org/CORBA/StructDef:1.0"
+ :NAME "StructDef")
+
+(DEFINE-METHOD "MEMBERS" ((OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY))
+  (GET-ATTRIBUTE
+    OBJ
+    "_get_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)))
+
+(DEFINE-METHOD (SETF "MEMBERS") (NEWVAL (OBJ OMG.ORG/CORBA:STRUCTDEF-PROXY))
+  (SET-ATTRIBUTE
+    OBJ
+    "_set_members"
+    (SYMBOL-TYPECODE 'OMG.ORG/CORBA:STRUCTMEMBERSEQ)
+    NEWVAL))
