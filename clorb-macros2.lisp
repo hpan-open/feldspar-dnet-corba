@@ -213,6 +213,12 @@
        (mapcar #'symbol-typecode ',exceptions)))))
 
 
+(defmacro %jit-call (sym obj &rest args)
+  `(funcall (load-time-value (compute-static-call ',sym))
+            ,obj ,@args))
+
+
+      
 ;;;; Interface
 
 (defmacro define-interface (symbol super &key (id "") proxy (name ""))

@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.10 2004/01/29 19:53:15 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.11 2004/02/03 17:01:23 lenst Exp $
 
 (in-package :clorb)
 
@@ -266,7 +266,7 @@
          (let ((tc (find id (request-exceptions req)
                          :key #'op:id :test #'equal)))
          (setf (request-exception req) 
-               (cond (tc (unmarshal tc buffer))
+               (cond (tc (unmarshal-userexception id tc buffer))
                      (t
                       (setf (request-status req) :system_exception)
                       (system-exception 'corba:unknown 1 :completed_yes))))))
@@ -357,6 +357,40 @@
 (defun dii-error-handler (condition)
   (declare (ignore condition)))
 
+
+
+;;;; Stub support
+
+(defun compute-static-call (sym)
+  (let (input-func output-func exceptions op response-expected)
+    (lambda (obj &rest args)
+      (unless input-func
+        (let ((name (get sym 'ifr-name))
+              (result (get sym 'ifr-result))
+              (params (get sym 'ifr-params))
+              (exc-syms (get sym 'ifr-exceptions))
+              (mode (get sym 'ifr-mode)))
+          (setq input-func
+                (let ((ufuns (loop for (nil pmode tc) in params
+                                   unless (eql pmode :param_in) collect (unmarshal-function tc))))
+                  (typecase result
+                    (void-typecode)
+                    (t (push (unmarshal-function result) ufuns)))
+                  (lambda (req buffer)
+                    (declare (ignore req))
+                    (values-list (loop for u in ufuns collect (funcall u buffer))))))
+          (setq output-func 
+                (let ((mfuns (loop for (nil pmode tc) in params
+                                   unless (eql pmode :param_out) collect (marshal-function tc))))
+                  (lambda (req buffer args)
+                    (declare (ignore req))
+                    (loop for a in args for m in mfuns do (funcall m a buffer)))))
+          (setq exceptions (mapcar #'symbol-typecode exc-syms))
+          (setq op name)
+          (setq response-expected (eq mode :op_normal))))
+      (do-static-call obj op response-expected 
+                      (lambda (req buffer) (funcall output-func req buffer args))
+                      input-func exceptions))))
 
 
 ;;; clorb-request.lisp ends here
