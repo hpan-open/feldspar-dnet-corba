@@ -216,8 +216,8 @@
   (setf (connection-write-buffer conn) nil))
 
 (defun connection-send-buffer (conn buffer)
-  (loop while (connection-write-buffer conn)
-        do (orb-wait))
+  (when (connection-write-buffer conn)
+    (orb-wait (lambda (conn) (not (connection-write-buffer conn)) conn)))
   (setf (connection-write-buffer conn) buffer)
   (setf (connection-write-callback conn) #'write-done)
   (let ((desc (connection-io-descriptor conn))
@@ -407,9 +407,7 @@
       req)))
 
 (defun request-wait-response (req)
-  (loop
-   while (not (request-status req))
-   do (orb-wait)))
+  (orb-wait #'request-status req))
 
 
 
@@ -433,35 +431,45 @@
     t))
 
 
-(defun orb-wait ()
-  (declare (optimize (debug 3)))
-  ;; Check special shortcut connection
-  (when (or (shortcut-transfer *shortcut-out* *shortcut-in*)
-            (shortcut-transfer *shortcut-in* *shortcut-out*))
-    (return-from orb-wait))
+(defun orb-wait (&optional wait-func &rest wait-args)
+  (if *running-orb* 
+    (if wait-func
+      (loop until (apply wait-func wait-args) do (orb-work))
+      (orb-work))
+    (if wait-func
+      (apply #'process-wait "orb-wait" wait-func wait-args)
+      (sleep 0.1))))
 
-  (multiple-value-bind (event desc) (io-driver)
-    (when event
-      (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
-    (let ((conn (gethash desc *desc-conn*)))
-      (case event
-        (:read-ready
-         ;;(io-descriptor-set-read desc nil 0 0)
-         (connection-read-ready conn))
-        (:write-ready
-         (io-descriptor-set-write desc nil 0 0)
-         (connection-write-ready conn))
-        (:new
-         (funcall *new-connection-callback* desc))
-        (:connected
-         ;; Not implemented yet..; for outgoing connections setup
-         nil)
-        (:error
-         (mess 4 "Error: ~A" (io-descriptor-error desc))
-         (io-descriptor-destroy desc)
-         (connection-error conn))
-        ((nil)
-         (mess 1 "time out"))))))
+
+(defun orb-work ()
+  (declare (optimize (debug 3)))
+  (or ;; Check special shortcut connection
+   (shortcut-transfer *shortcut-out* *shortcut-in*)
+   (shortcut-transfer *shortcut-in* *shortcut-out*)
+   ;; normal processing
+   (multiple-value-bind (event desc) (io-driver)
+     (when event
+       (mess 2 "io-event: ~S ~A" event (io-descriptor-stream desc)))
+     (let ((conn (gethash desc *desc-conn*)))
+       (case event
+         (:read-ready
+          ;;(io-descriptor-set-read desc nil 0 0)
+          (connection-read-ready conn))
+         (:write-ready
+          (io-descriptor-set-write desc nil 0 0)
+          (connection-write-ready conn))
+         (:new
+          (funcall *new-connection-callback* desc))
+         (:connected
+          ;; Not implemented yet..; for outgoing connections setup
+          nil)
+         (:error
+          (mess 4 "Error: ~A" (io-descriptor-error desc))
+          (io-descriptor-destroy desc)
+          (connection-error conn))
+         ((nil)
+          (mess 1 "time out")))))))
+
 
 
 ;;;; IIOP - Manage outgoing connections
