@@ -29,8 +29,9 @@
         ,@supported_interfaces)
        (,@(loop for (name) in members
                 collect `(,(feature name) :initarg ,(key name)))))
-     (defmethod shared-initialize ((value ,symbol) slot-names &key factory &allow-other-keys)
-       (declare (ignore slot-names))
+     (defmethod shared-initialize ((value ,symbol) slot-names &key factory
+                                   create-for-unmarshal  &allow-other-keys)
+       (declare (ignore slot-names create-for-unmarshal))
        (if factory (raise-system-exception 'CORBA:BAD_PARAM))
        (call-next-method))
      (defmethod object-id ((value ,symbol))
@@ -243,6 +244,8 @@
          (marshal-multiple values types buffer))))
 
 
+(defparameter *exact-type-value-marshap-opt* t)
+
 (defun marshal-value (value buffer &optional expected-id)
   (flet ((marshal-value-1 (value buffer)
            (let ((id (object-id value)))
@@ -254,7 +257,9 @@
                                          (eql corba:vm_truncatable (op:type_modifier tc)))))
                    (let ((chunking (or truncatable (> *chunking-level* 0)))
                          (repoid (cond (truncatable (truncatable-interfaces tc))
-                                       ((not exact-type) id))))
+                                       ((or (not exact-type) 
+                                            (not *exact-type-value-marshap-opt*))
+                                        id))))
                      (marshal-value-header repoid chunking buffer)
                      (marshal-value-state chunking 
                                           (all-feature-values tc value)
@@ -398,8 +403,8 @@
   :kind :tk_value_box
   :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
   :params (id name content_type)
-  :share alias-typecode                 ; ? realy share non abstract class ?
-  :shared-params 3)
+  :share named-typecode
+  :shared-params 2)
 
 
 (defclass value-box ()
