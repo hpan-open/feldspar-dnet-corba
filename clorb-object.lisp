@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.9 2002/10/19 02:55:55 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.10 2002/10/28 18:25:13 lenst Exp $
 
 (in-package :clorb)
 
@@ -60,8 +60,14 @@
 
 ;;;; CORBA:Object / CORBA:Proxy
 
-(defclass CORBA:Object ()
-  ())
+(defgeneric object-is-a (object id)
+  (:method-combination or))
+
+(defgeneric object-id (object))
+
+(define-interface CORBA:Object ()
+  :id "IDL:omg.org/CORBA/Object:1.0"
+  :name "Object")
 
 (defmethod object-id ((obj CORBA:Object))
   (or (some #'(lambda (x)
@@ -74,26 +80,30 @@
 
 
 (defclass CORBA:Proxy (CORBA:Object)
-  ((id :initform nil :initarg :id :accessor object-id)
+  ((id :initform nil :initarg :id :accessor proxy-id)
    (connection :initform nil :accessor object-connection)
-   (host :initform nil :initarg :host :accessor object-host)
-   (port :initform nil :initarg :port :accessor object-port)
    (raw-profiles :initform nil :initarg :raw-profiles
                  :accessor object-raw-profiles)
    (profiles :initform nil :initarg :profiles :accessor object-profiles)
+   (selected-profile :initform nil :accessor selected-profile)
    (forward :initform nil :initarg :forward :accessor object-forward)))
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
-    (if (eql (class-of o)
-             (find-class 'corba:proxy))
-        (format stream "~S @ ~A:~A"
-                (object-id o)
-                (object-host o)
-                (object-port o))
-      (format stream "~A:~A"
-              (object-host o)
-              (object-port o)))))
+    (when (eql (class-of o) (find-class 'corba:proxy))
+      (format stream "~S @" (object-id o)))
+    (let ((profile (loop with x = o
+                         while (object-forward x)
+                         do (setf x (object-forward x))
+                         finally (return (or (selected-profile x)
+                                             (first (object-profiles x)))))))
+      (if profile
+        (format stream "~A:~A" 
+                (iiop-profile-host profile)
+                (iiop-profile-port profile))
+        (format stream "--" )))))
+
+
 
 (defun object-key (proxy)
   "Return a key for the proxy."
@@ -115,32 +125,37 @@
   (port    0    :type fixnum)
   (key     nil))
 
+(defun object-key (object)
+  (let ((p (selected-profile object)))
+    (and p (iiop-profile-key p))))
+
+
 ;;;| boolean	is_equivalent (in Object other_object);
 ;;; _is_equivalent in lisp mapping
 
 (define-method _is_equivalent ((obj corba:proxy) other)
-  (if (object-host obj)
-      (and
-       (equal (object-host obj) (object-host other))
-       (equal (object-port obj) (object-port other))
-       (equalp (object-key obj) (object-key other)))
-      (if (object-profiles obj)
-          (let ((profile1 (car (object-profiles obj)))
-                (profile2 (car (object-profiles other))))
-            (and
-             (equal (iiop-profile-host profile1) (iiop-profile-host profile2))
-             (equal (iiop-profile-port profile1) (iiop-profile-port profile2))
-             (equalp (iiop-profile-key profile1) (iiop-profile-key profile2)))))))
+  (let ((profile1 (car (object-profiles obj)))
+        (profile2 (car (object-profiles other))))
+    (and profile1 profile2
+         (equal (iiop-profile-host profile1) (iiop-profile-host profile2))
+         (equal (iiop-profile-port profile1) (iiop-profile-port profile2))
+         (equalp (iiop-profile-key profile1) (iiop-profile-key profile2)))))
 
 
 ;;;| unsigned 	long hash(in unsigned long maximum);
 ;;; _hash in lisp mapping
 
 (define-method _hash ((obj corba:proxy) maximum)
-  (rem (sxhash (list* (object-host obj)
-                      (object-port obj)
-                      (coerce (object-key obj) 'list)))
+  (rem (if (object-profiles obj)
+         (iiop-profile-hash (first (object-profiles obj)))
+         0)
        maximum))
+
+(defun iiop-profile-hash (profile)
+  (sxhash (list* (iiop-profile-host profile)
+                 (iiop-profile-port profile)
+                 (coerce (iiop-profile-key profile) 'list))))
+
 
 
 ;;;| Status create_request (			
@@ -171,23 +186,14 @@
 ;;;| boolean is_a (in string logical_type_id);
 ;;; _is_a in lisp mapping (in clorb-request)
 
-(define-method _is_a ((obj object) interface-id)
-  (cond
-   ((equal interface-id (object-id obj)) t)
-   (t   
-    (multiple-value-bind (result req)
-      (op:_create_request
-       obj nil "_is_a"  
-       (list
-        (CORBA:NamedValue
-         :argument interface-id
-         :arg_modes ARG_IN))
-       (CORBA:NamedValue
-        :argument (CORBA:Any :any-typecode CORBA:tc_boolean)
-        :arg_modes ARG_OUT)
-       0)
-      (declare (ignore result))
-      (request-funcall req)))))
+(define-method _is_a ((obj CORBA:Object) interface-id)
+  (object-is-a obj interface-id))
+
+(define-method _is_a ((obj CORBA:Proxy) interface-id)
+  (or (object-is-a obj interface-id)
+      (static-call ("_is_a" obj)
+                   :output ((buffer) (marshal-string interface-id buffer))
+                   :input ((buffer) (unmarshal-bool buffer)))))
 
 
 ;;;| boolean	non_existent();
@@ -195,7 +201,7 @@
 
 (define-method _non_existent ((obj CORBA:Proxy))
   ;;FIXME: Should perhaps send a "_non_existent" message to object ?
-  (= (locate obj) 0))
+  (eq (locate obj) :unknown_object ))
 
 
 ;;; Deferred from Any
@@ -220,7 +226,10 @@
               :accessor request-paramlist) ;result + arguments
    (req-id :initform nil :accessor request-req-id)
    (connection :initform nil :accessor request-connection)
-   (reply :initform nil  :accessor request-reply)
+   ;;(reply :initform nil  :accessor request-reply)
+   (forward :initform nil :accessor request-forward)
+   (status :initform nil :accessor request-status)
+   (buffer :initform nil :accessor request-buffer)
    (service-context :initform nil :accessor request-service-context)
    (exceptions :initform nil :initarg :exceptions :accessor request-exceptions)))
 
@@ -291,7 +300,7 @@
   (op:get_response req))
 
 
-;; Used in static stubs, shorter code then op:_create_request
+;; Used in stubs, shorter code then op:_create_request
 (defun request-create (obj operation result-type )
   (make-instance 'request
     :target obj
@@ -300,19 +309,14 @@
                                        :argument (CORBA:Any :any-typecode result-type)))))
 
 (defun get-attribute (obj getter result-tc)
-  (request-funcall 
-   (request-create obj getter result-tc)))
+  (static-call (getter obj)
+               :output ((buffer))
+               :input ((buffer) (unmarshal result-tc buffer))))
 
 (defun set-attribute (obj setter result-tc newval)
-  (request-funcall 
-   (make-instance 'request
-     :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
-                                        :argument (CORBA:Any :any-typecode CORBA:tc_void))
-                      (CORBA:NamedValue :arg_modes ARG_IN
-                                        :argument (CORBA:Any :any-typecode result-tc
-                                                             :any-value newval)))
-     :target obj
-     :operation setter )))
+  (static-call (setter obj)
+               :output ((buffer) (marshal newval result-tc buffer))
+               :input ((buffer))))
 
 
 (defun request-funcall (req)
@@ -351,9 +355,6 @@
   (assert (op:_is_a obj id))
   (make-instance (find-proxy-class id)
     :id id
-    :host (object-host obj)
-    :port (object-port obj)
-    :profiles (object-profiles obj)
     :forward (object-forward obj)
     :profiles (object-profiles obj)
     :raw-profiles (object-raw-profiles obj)))
