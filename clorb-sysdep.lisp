@@ -1,4 +1,4 @@
-;;;; clorb-sysdep.lisp 
+;;;; clorb-sysdep.lisp
 
 (in-package :clorb)
 
@@ -72,7 +72,13 @@
    #+clisp
    (socket-server-host socket)
    #+mcl
-   (ccl::inet-host-name (ccl::stream-local-host (listner-stream socket)))
+   (let ((host (ccl::stream-local-host (listner-stream socket))))
+     (handler-case
+       (ccl::inet-host-name host)
+       (ccl::tcp-unknown-domain-name 
+        nil
+        (ccl::tcp-addr-to-str host))))
+      
    ;;#+Allegro (socket:ipaddr-to-hostname (socket:local-host socket))
    ;; Default
    "localhost"))
@@ -90,7 +96,10 @@
    (multiple-value-bind (adr port)
        (sockets:socket-name socket)
      (declare (ignore adr))
-     port)))
+     port)
+   #+mcl
+   (mcl-listner-port socket)))
+
 
 
 

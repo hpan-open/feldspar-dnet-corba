@@ -292,6 +292,13 @@ Returns select result to be used in getting status for streams."
      (force-output stream)
      count)
 
+   #+mcl
+   (progn
+     (loop for i from start below end
+         do (write-byte (aref seq i) stream))
+     (force-output stream)
+     (- end start))
+
    ;; Default is possibly blocking
    (progn
      (write-sequence seq stream :start start :end end)
@@ -301,7 +308,7 @@ Returns select result to be used in getting status for streams."
 
 
 (defun io-driver ()
-  (declare (optimize speed))
+  (declare (optimize debug))
   (labels
       ((poll-desc (desc status)
          (with-slots (stream read-buffer read-limit read-pos
