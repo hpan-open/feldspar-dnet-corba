@@ -93,7 +93,7 @@
 (define-method _get_interface ((obj CORBA:Proxy))
   (let ((id (proxy-id obj)))
     (or (unless (equal id "")
-          (op:lookup_id *internal-interface-repository* (object-id obj)))
+          (op:lookup_id *internal-interface-repository* id))
         (object-interface obj)
         (raise-system-exception 'CORBA:intf_repos))))
 
@@ -130,7 +130,7 @@ for the operation.
 The list free operation is used to free the returned information.
 |#
 
-(defun create-operation-list (opdef)
+(defmethod create-operation-list ((opdef CORBA:OperationDef))
   (map 'list
        (lambda (pd) 
          (CORBA:NamedValue
@@ -142,30 +142,89 @@ The list free operation is used to free the returned information.
                        (:param_inout ARG_INOUT))))
        (op:params opdef)))
 
+(defmethod create-operation-list ((opdef corba:operationdescription))
+  (map 'list
+       (lambda (pd) 
+         (CORBA:NamedValue
+          :name (op:name pd)
+          :argument (CORBA:Any :any-typecode (op:type pd))
+          :arg_modes (ecase (op:mode pd)
+                       (:param_in ARG_IN)
+                       (:param_out ARG_OUT)
+                       (:param_inout ARG_INOUT))))
+       (op:parameters opdef)))
+
+
+(defun lookup-in-memory (ifr-id name)
+  (let ((symbol (find-contained (or (ifr-id-symbol ifr-id) 'corba:object) name)))
+    (and symbol (ifr-description symbol))))
+
+
+(defvar *description-cache*
+  (make-hash-table :test #'equal))
+
+(defun add-cache-entry (id interface-description)
+  (setf (gethash id *description-cache*) interface-description))
+  
+(defun lookup-in-cache-entry (entry name)
+  (and entry
+       (or (find name (op:operations entry) :key #'op:name :test #'equal)
+           (find name (op:attributes entry) :key #'op:name :test #'equal))))
+
+(defun lookup-in-cache (id name)
+  (let ((entry (gethash id *description-cache*)))
+    (lookup-in-cache-entry entry name)))
+
+(defun lookup-in-interface-def (id idef name)
+  (and idef 
+       (lookup-in-cache-entry 
+        (add-cache-entry id (op:describe_interface idef))
+        name)))
+
+(defun lookup-idef-in-rir (orb id)
+  (handler-case 
+    (let ((ir (op:resolve_initial_references orb "InterfaceRepository")))
+      (setq ir (nobject-narrow ir 'corba:repository))
+      (when ir 
+        (op:lookup_id ir id)))
+    (corba:orb/invalidname nil nil)))
+
+
+(defun lookup-object-operation (object name)
+  (let ((id (proxy-id object)))
+    (if (equal id "")
+      (setq id (object-id object)))
+    (or (lookup-in-memory id name)
+        (lookup-in-cache id name)
+        (lookup-in-interface-def id (object-interface object) name)
+        (lookup-in-interface-def id (lookup-idef-in-rir (the-orb object) id) name))))
+
+
 (defun object-create-request (object operation args)
-  (let* ((interface (op:_get_interface object))
+  (let* ((orb (the-orb object))
          (result CORBA:tc_void)
          (paramlist nil)
          (raises nil))
     (multiple-value-bind (name type) (analyze-operation-name operation)
-      (let ((def (op:lookup interface name)))
+      (let ((def (lookup-object-operation object name)))
         (case type
           (:setter
            (unless def
              (error "Attribute ~A not defined for interface [in ~A]" name operation))
-           (assert (eq (op:def_kind def) :dk_attribute))
+           ;;(assert (eq (op:def_kind def) :dk_attribute))
            (assert (eq (op:mode def) :attr_normal))
            (setf paramlist (list (CORBA:NamedValue :arg_modes ARG_IN
                                                    :argument (CORBA:Any :any-typecode (op:type def))))))
           (:getter
            (unless def
              (error "Attribute ~A not defined for interface" name))
-           (assert (eq (op:def_kind def) :dk_attribute))
+           ;;(assert (eq (op:def_kind def) :dk_attribute))
            (setf result (op:type def)))
           (otherwise
            (unless def
              (error "Operation (~A) not defined for interface" operation))
-           (assert (eq (op:def_kind def) :dk_operation))
+           (assert (or (typep def 'corba:operationdescription)
+                       (eq (op:def_kind def) :dk_operation)))
            (setf paramlist (create-operation-list def)
                  result (op:result def)
                  raises (map 'list #'op:type (op:exceptions def))))))
@@ -176,14 +235,15 @@ The list free operation is used to free the returned information.
           (setf (any-value (op:argument nv)) (pop args))))
       (when args
         (error "To many arguments to operation: ~A" operation))
-      (make-instance 'request
-        :target object
-        :operation operation
-        :paramlist (cons (CORBA:NamedValue
-                          :argument (CORBA:Any :any-typecode result)
-                          :arg_modes ARG_OUT)
-                         paramlist)
-        :exceptions raises))))
+      (create-client-request
+       orb
+       :target object
+       :operation operation
+       :paramlist (cons (CORBA:NamedValue
+                         :argument (CORBA:Any :any-typecode result)
+                         :arg_modes ARG_OUT)
+                        paramlist)
+       :exceptions raises))))
 
 
 ;;;; Easy name service access
