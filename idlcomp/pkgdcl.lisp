@@ -1,1 +1,5 @@
-;; IDL parser packages(defpackage "CLORB.IDLCOMP"  (:use "COMMON-LISP"))
+;; IDL parser packages
+
+(defpackage "CLORB.IDLCOMP"
+  (:use "COMMON-LISP")
+)
