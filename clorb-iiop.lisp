@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.42 2005/02/25 19:31:40 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.43 2005/02/26 20:23:01 lenst Exp $
 
 
 (in-package :clorb)
@@ -10,7 +10,7 @@
 ;;;; GIOP Module
 
 (define-enum GIOP:MsgType_1_0
-  :id "IDL:GIOP/MsgType_1_0:1.0"
+  :id "IDL:omg.org/GIOP/MsgType_1_0:1.0"
   :name "MsgType_1_0"
   :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" 
             "CloseConnection" "MessageError"))
@@ -22,13 +22,13 @@
             "CloseConnection" "MessageError" "Fragment"))
 
 (DEFINE-STRUCT GIOP:VERSION
-  :id "IDL:GIOP/Version:1.0"
+  :id "IDL:omg.org/GIOP/Version:1.0"
   :name "Version"
   :members (("major" OMG.ORG/CORBA:TC_OCTET)
             ("minor" OMG.ORG/CORBA:TC_OCTET)))
 
 (DEFINE-STRUCT GIOP:MESSAGEHEADER_1_0
-  :id "IDL:GIOP/MessageHeader_1_0:1.0"
+  :id "IDL:omg.org/GIOP/MessageHeader_1_0:1.0"
   :name "MessageHeader_1_0"
   :members (("magic" (create-array-tc 4 OMG.ORG/CORBA:TC_CHAR))
             ("GIOP_version" (SYMBOL-TYPECODE 'GIOP:VERSION))
@@ -46,29 +46,29 @@
            ("message_size" OMG.ORG/CORBA:TC_ULONG)))
 
 (DEFINE-STRUCT GIOP:LOCATEREQUESTHEADER
- :id "IDL:GIOP/LocateRequestHeader:1.0"
+ :id "IDL:omg.org/GIOP/LocateRequestHeader:1.0"
  :name "LocateRequestHeader"
  :members (("request_id" OMG.ORG/CORBA:TC_ULONG)
            ("object_key" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))))
 
 (define-enum GIOP:LocateStatusType
-  :id "IDL:GIOP/LocateStatusType:1.0"
+  :id "IDL:omg.org/GIOP/LocateStatusType:1.0"
   :name "LocateStatusType" 
   :members ("UNKNOWN_OBJECT" "OBJECT_HERE" "OBJECT_FORWARD"))
 
 (DEFINE-STRUCT GIOP:LOCATEREPLYHEADER
- :id "IDL:GIOP/LocateReplyHeader:1.0"
+ :id "IDL:omg.org/GIOP/LocateReplyHeader:1.0"
  :name "LocateReplyHeader"
  :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID) 
            ("locate_status" (SYMBOL-TYPECODE 'GIOP:LOCATESTATUSTYPE))))
 
 (DEFINE-STRUCT GIOP:CANCELREQUESTHEADER
- :id "IDL:GIOP/CancelRequestHeader:1.0"
+ :id "IDL:omg.org/GIOP/CancelRequestHeader:1.0"
  :name "CancelRequestHeader"
  :members (("request_id" OMG.ORG/CORBA:TC_ULONG)))
 
 (DEFINE-STRUCT GIOP:REQUESTHEADER_1_0
-  :id "IDL:GIOP/RequestHeader_1_0:1.0"
+  :id "IDL:omg.org/GIOP/RequestHeader_1_0:1.0"
   :name "RequestHeader_1_0"
   :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST))
             ("request_id" OMG.ORG/CORBA:TC_ULONG)
@@ -90,20 +90,20 @@
             ("requesting_principal" (SYMBOL-TYPECODE 'OMG.ORG/GIOP:PRINCIPAL))))
 
 (define-enum GIOP:REPLYSTATUSTYPE 
-  :id "IDL:GIOP/ReplyStatusType:1.0"
+  :id "IDL:omg.org/GIOP/ReplyStatusType:1.0"
   :name "ReplyStatusType"
   :members ("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION"
                            "LOCATION_FORWARD"))
 
 (DEFINE-STRUCT GIOP:REPLYHEADER
-  :id "IDL:GIOP/ReplyHeader:1.0"
+  :id "IDL:omg.org/GIOP/ReplyHeader:1.0"
   :name "ReplyHeader"
   :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST))
             ("request_id" OMG.ORG/CORBA:TC_ULONG)
             ("reply_status" (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE))))
 
 (define-alias GIOP:Principal
-  :id "IDL:GIOP/Principal:1.0"
+  :id "IDL:omg.org/GIOP/Principal:1.0"
   :name"Principal" 
   :type sequence
   :typecode (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
