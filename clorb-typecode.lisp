@@ -190,7 +190,10 @@
    (corba:tc_ulonglong :tk_ulonglong)
    (corba:tc_longdouble :tk_longdouble)
    (corba:tc_wchar :tk_wchar)
-   (corba:tc_wstring :tk_wstring 0)))
+   (corba:tc_wstring :tk_wstring 0)
+   (corba::TC_ValueBase :tk_value "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
+                       CORBA::VM_NONE nil ())))
+
 
 ;; deprecated
 ;;(defparameter corba:tc_objref corba:tc_object)
@@ -482,13 +485,12 @@ Members on form: (name TypeCode)"
 (defun create-local-interface-tc (id name)
   (make-typecode :tk_local_interface id name))
 
-#|
-    typedef short ValueModifier;                        // PIDL
-    const ValueModifier VM_NONE         = 0;
-    const ValueModifier VM_CUSTOM       = 1;
-    const ValueModifier VM_ABSTRACT     = 2;
-    const ValueModifier VM_TRUNCATABLE  = 3;
-|#
+
+;; ValueModifier constants
+(DEFCONSTANT OMG.ORG/CORBA:VM_TRUNCATABLE (QUOTE 3))
+(DEFCONSTANT OMG.ORG/CORBA:VM_ABSTRACT (QUOTE 2))
+(DEFCONSTANT OMG.ORG/CORBA:VM_CUSTOM (QUOTE 1))
+(DEFCONSTANT OMG.ORG/CORBA:VM_NONE (QUOTE 0))
 
 (defun create-value-tc (id name type-modifier concrete-base members)
   (check-type id string)
