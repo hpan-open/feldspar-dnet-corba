@@ -133,6 +133,9 @@
 ;;;| boolean	is_equivalent (in Object other_object);
 ;;; _is_equivalent in lisp mapping
 
+(define-method _is_equivalent ((obj t) other)
+  (eql obj other))
+
 (define-method _is_equivalent ((obj corba:proxy) other)
   (let ((profile1 (car (object-profiles obj)))
         (profile2 (car (object-profiles other))))
@@ -144,6 +147,10 @@
 
 ;;;| unsigned 	long hash(in unsigned long maximum);
 ;;; _hash in lisp mapping
+
+(define-method _hash ((obj t) maximum)
+  (rem (sxhash obj)
+       maximum))
 
 (define-method _hash ((obj corba:proxy) maximum)
   (rem (if (object-profiles obj)
@@ -167,6 +174,11 @@
 ;;;|     out Request	request,		
 ;;;|     in Flags        req_flags    );
 
+(define-method _create_request ((obj t) ctx operation arg_list result req_flags)
+  (declare (ignore ctx operation arg_list result req_flags))
+  (error 'CORBA:NO_IMPLEMENT :minor 4))
+
+
 (define-method _create_request ((obj CORBA:Object)
                                 ctx operation arg_list result req_flags)
   (declare (ignorable req_flags))
@@ -186,6 +198,10 @@
 ;;;| boolean is_a (in string logical_type_id);
 ;;; _is_a in lisp mapping (in clorb-request)
 
+(define-method _is_a ((obj t) interface-id)
+  (declare (ignore interface-id))
+  (error 'corba:no_implement :minor 3))
+
 (define-method _is_a ((obj CORBA:Object) interface-id)
   (object-is-a obj interface-id))
 
@@ -198,6 +214,9 @@
 
 ;;;| boolean	non_existent();
 ;;; _non_existent in lisp mapping
+
+(define-method _non_existent ((obj t))
+  nil)
 
 (define-method _non_existent ((obj CORBA:Proxy))
   ;;FIXME: Should perhaps send a "_non_existent" message to object ?
@@ -361,6 +380,21 @@
         (no-error nil)
         (t
          (error "Object of wrong type for narrowing"))))
+
+
+
+;;;; ValueBase
+
+(defclass CORBA::ValueBase ()
+  ())
+
+
+;;;; AbstractBase
+
+(defclass CORBA::AbstractBase (CORBA:Object)
+  ())
+
+
 
 
 ;;; clorb-object.lisp ends here
