@@ -2,7 +2,12 @@
 
 (in-package :clorb)
 
-;;; CORBA Object Interface
+;;;; Connection forward
+
+(defgeneric profile-connection (profile orb))
+
+
+;;;; CORBA Object Interface
 
 ;;;| InterfaceDef get_interface ();
 ;;; Strange that the lisp mapping does not rename this.
@@ -121,6 +126,8 @@
    (forward :initform nil :initarg :forward :accessor object-forward)
    (forward-reset :initform nil :accessor object-forward-reset)))
 
+(defgeneric profile-short-desc (profile stream)
+  (:method ((profile t) stream) (write-string "*" stream)))
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
@@ -132,10 +139,8 @@
                          finally (return (or (selected-profile x)
                                              (first (object-profiles x)))))))
       (if profile
-        (format stream "~A:~A" 
-                (iiop-profile-host profile)
-                (iiop-profile-port profile))
-        (format stream "--" )))))
+        (profile-short-desc profile stream)
+        (write-string "--" stream)))))
 
 
 (defmethod (setf object-forward) :before (val (proxy CORBA:Proxy))
@@ -144,12 +149,7 @@
   (setf (object-connection proxy) nil))
 
 
-(defstruct IIOP-PROFILE
-  (version '(1 . 0))
-  (host    nil)
-  (port    0    :type fixnum)
-  (key     nil))
-
+#+unused-functions
 (defun object-key (object)
   (let ((p (selected-profile object)))
     (and p (iiop-profile-key p))))
@@ -161,6 +161,36 @@
   (marshal-sequence (raw-profiles objref) #'marshal-tagged-component buffer))
 
 
+(defun get-object-connection (proxy)
+  ;; get the connection to use for a proxy object.
+  (let ((conn (object-connection proxy)))
+    (unless (and conn (connection-working-p conn))
+      (setf (object-connection proxy) nil)
+      (setq conn (connect-object proxy)))
+    conn))
+
+
+(defun connect-object (proxy)
+  ;; select a profile and create a connection for that profile
+  (or
+   (let ((forward (object-forward proxy)))
+     (if forward
+       (cond ((setf (object-connection proxy) (connect-object forward))
+              (setf (object-forward-reset proxy) nil)
+              (object-connection proxy))
+             ((object-forward-reset proxy)
+              (setf (object-forward proxy) nil)
+              (warn "Object forwarding fail")
+              (return-from connect-object nil))
+             (t
+              (setf (object-forward-reset proxy) t)
+              (setf (object-forward proxy) nil)))))
+   (dolist (profile (object-profiles proxy))
+     (let ((conn (profile-connection profile (the-orb proxy))))
+       (when (and conn (connection-working-p conn))
+         (setf (object-connection proxy) conn)
+         (setf (selected-profile proxy) profile)
+         (return conn))))))
 
 
 ;;;| boolean	is_equivalent (in Object other_object);
@@ -169,13 +199,14 @@
 (define-method _is_equivalent ((obj t) other)
   (eql obj other))
 
+(defgeneric profile-equal (profile1 profile2)
+  (:method ((profile1 t) (profile2 t)) (eq profile1 profile2)))
+
 (define-method _is_equivalent ((obj corba:proxy) other)
   (let ((profile1 (car (object-profiles obj)))
         (profile2 (car (object-profiles other))))
     (and profile1 profile2
-         (equal (iiop-profile-host profile1) (iiop-profile-host profile2))
-         (equal (iiop-profile-port profile1) (iiop-profile-port profile2))
-         (equalp (iiop-profile-key profile1) (iiop-profile-key profile2)))))
+         (profile-equal profile1 profile2))))
 
 
 ;;;| unsigned 	long hash(in unsigned long maximum);
@@ -185,16 +216,14 @@
   (rem (sxhash obj)
        maximum))
 
+(defgeneric profile-hash (profile))
+
 (define-method _hash ((obj corba:proxy) maximum)
   (rem (if (object-profiles obj)
-         (iiop-profile-hash (first (object-profiles obj)))
+         (profile-hash (first (object-profiles obj)))
          0)
        maximum))
 
-(defun iiop-profile-hash (profile)
-  (sxhash (list* (iiop-profile-host profile)
-                 (iiop-profile-port profile)
-                 (coerce (iiop-profile-key profile) 'list))))
 
 
 
@@ -252,155 +281,6 @@
 (defmethod any-value ((obj corba:object))
   obj)
 
-
-
-;;;; CORBA:Request
-
-(defclass CORBA:Request ()
-  ())
-
-(defclass client-request (CORBA:Request)
-  ((the-orb   :initarg :the-orb    :reader the-orb)
-   (target    :initarg :target     :reader request-target)
-   (operation :initarg :operation  :reader request-operation)
-   (paramlist :initform nil :initarg :paramlist
-              :accessor request-paramlist) ;result + arguments
-   (req-id :initform nil :accessor request-req-id)
-   (connection :initform nil :accessor request-connection)
-   (service-context-list :initform nil :accessor service-context-list)
-   (reply-service-context :initform nil :accessor reply-service-context)
-   (response-expected :initform t :initarg :response-expected :accessor response-expected)
-   ;;(forward :initform nil :accessor request-forward)
-   (status :initform nil :accessor request-status)
-   (buffer :initform nil :accessor request-buffer)
-   (exception  :initform nil :initarg :exception  :accessor request-exception
-               :documentation "Reply exception")
-   (exceptions :initform nil :initarg :exceptions :accessor request-exceptions
-               :documentation "Valid exceptions")))
-
-
-(defmethod initialize-instance :before ((req client-request) &key (the-orb nil orb-p))
-  (declare (ignore the-orb))
-  (unless orb-p (error ":the-orb not supplied to client-request")))
-
-(defgeneric create-client-request (orb &rest initargs))
-
-
-(define-method target ((r client-request))
-  (request-target r))
-
-(define-method operation ((r client-request))
-  (request-operation r))
-
-(define-method ctx ((r client-request))
-  (raise-system-exception 'CORBA:no_implement))
-
-(define-method result ((r client-request))
-  (first (request-paramlist r)))
-
-(define-method set_return_type ((r client-request) tc)
-  (setf (any-typecode (op:argument (first (request-paramlist r)))) tc))
-
-(define-method return_value ((r client-request))
-  (let ((params (request-paramlist r)))
-    (unless params
-      (setf params (list (CORBA:NamedValue :argument (CORBA:Any) :arg_modes ARG_OUT)))
-      (setf (request-paramlist r) params))
-    (op:argument (first params))))
-
-(define-method arguments ((r client-request))
-  (cdr (request-paramlist r)))
-
-
-(defun add-arg (req name mode &optional typecode value)
-  (when (or value typecode)
-    (check-type typecode CORBA:TypeCode))
-  (let ((arg (CORBA:Any :any-typecode typecode
-                        :any-value value)))
-    (setf (request-paramlist req)
-      (nconc (request-paramlist req) 
-             (list (CORBA:NamedValue
-                    :name name
-                    :argument arg
-                    :arg_modes mode))))
-    arg))
-
-(define-method add_in_arg ((req client-request))
-  (add-arg req nil ARG_IN))
-
-(define-method add_named_in_arg ((req client-request) name)
-  (add-arg req name ARG_IN))
-
-(define-method add_inout_arg ((req client-request))
-  (add-arg req nil ARG_INOUT))
-
-(define-method add_named_inout_arg ((req client-request) name)
-  (add-arg req name ARG_INOUT))
-
-(define-method add_out_arg ((req client-request) &optional (name ""))
-  (add-arg req name ARG_OUT))
-
-(define-method add_named_out_arg ((req client-request) name)
-  (add-arg req name ARG_OUT))
-
-(defun add-exception (req typecode)
-  (push typecode (request-exceptions  req)))
-
-
-;;; void send_oneway ()
-(define-deferred send_oneway ((req client-request)))
-
-;;; void send_deferred ()
-(define-deferred send_deferred ((req client-request)))
-
-;;; void get_response ()
-(define-deferred get_response ((req client-request)))
-
-;;; boolean poll_response ()
-(define-deferred poll_response ((req client-request)))
-
-;;; void invoke ()
-(define-method invoke ((req client-request))
-  (op:send_deferred req)
-  (op:get_response req))
-
-
-;; Used in stubs, shorter code then op:_create_request
-(defun request-create (obj operation result-type )
-  (create-client-request
-   (the-orb obj)
-   :target obj
-   :operation operation
-   :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
-                                      :argument (CORBA:Any :any-typecode result-type)))))
-
-(defun get-attribute (obj getter result-tc)
-  (static-call (getter obj)
-               :output ((buffer))
-               :input ((buffer) (unmarshal result-tc buffer))))
-
-(defun set-attribute (obj setter result-tc newval)
-  (static-call (setter obj)
-               :output ((buffer) (marshal newval result-tc buffer))
-               :input ((buffer))))
-
-
-(defun request-funcall (req)
-  (op:invoke req)
-  (let ((retval (any-value (op:return_value req))))
-    (cond ((typep retval 'corba:exception)
-           ;;(signal retval)
-           (cerror "Ignore" retval)
-           ;; or error
-           retval)
-          (t
-           (values-list 
-            (loop for nv in (request-paramlist req)
-                  when (and (/= 0 (logand ARG_OUT (op:arg_modes nv)))
-                            (not (eql :tk_void 
-                                      (typecode-kind 
-                                       (any-typecode (op:argument nv))))))
-                  collect (any-value (op:argument nv))))))))
 
 
 ;;;; Registry for Proxy classes

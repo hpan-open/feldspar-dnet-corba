@@ -54,6 +54,7 @@
     "clorb-union"
     "clorb-exceptions"
     "clorb-object"
+    "clorb-request"
     "clorb-iop"
     "clorb-value"
     "clorb-io"

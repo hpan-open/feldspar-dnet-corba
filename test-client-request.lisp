@@ -11,6 +11,7 @@
                                   :port 9999
                                   :key #()))))
           (conn (make-instance 'connection
+                  :orb (CORBA:ORB_init)
                   :io-descriptor (make-io-descriptor
                                   :shortcut-p t
                                   :stream (make-instance 'shortcut-stream

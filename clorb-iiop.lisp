@@ -122,23 +122,8 @@
            (any-typecode any)
            buffer))
 
-(defun find-waiting-request (request-id)
-  (let ((req (find request-id *corba-waiting-requests*
-                   :key #'request-req-id)))
-    (if req
-        (setq *corba-waiting-requests*
-              (delete req *corba-waiting-requests*))
-        (mess 4 "Unexpected response with request id ~d" request-id))
-    req))
 
-(defun find-connection-requests (conn)
-  "Find all requests sent on connection."
-  (loop for req in *corba-waiting-requests*
-        when (eq conn (request-connection req))
-        collect req
-        else
-        collect req into rest
-        finally (setq *corba-waiting-requests* rest)))
+
 
 
 ;;;; Connection Layer
@@ -153,9 +138,14 @@
                  :initform nil)
    (write-callback :initarg :write-callback :accessor connection-write-callback)
    (io-descriptor :initarg :io-descriptor :initform nil :accessor connection-io-descriptor)
+   (client-requests :initform nil :accessor connection-client-requests)
    (trace :initarg :trace :initform *default-trace-connection* :accessor connection-trace)
    (trace-send :initform nil :accessor connection-trace-send)
    (trace-recv :initform nil :accessor connection-trace-recv)))
+
+
+(defmethod next-request-id ((conn Connection))
+  (incf *request-id-seq*))
 
 
 (defvar *desc-conn* (make-hash-table))
@@ -168,8 +158,8 @@
 (defun connection-destroy (conn)
   (let ((desc (connection-io-descriptor conn)))
     (io-descriptor-destroy desc)
-    ;; FIXME: or is that remhash??
-    (setf (gethash desc *desc-conn*) nil)))
+    (remhash desc *desc-conn*)))
+
 
 (defun create-connection (orb host port)
   (let ((desc (io-create-descriptor)))
@@ -214,26 +204,31 @@
   (setf (connection-write-callback conn) #'write-done)
   (let ((desc (connection-io-descriptor conn))
         (octets (buffer-octets buffer)))
+
     (io-descriptor-set-write desc octets 0 (length octets))))
 
 
-;;; Connection events
+
+;;;; Connection events
+
 
 (defun connection-error (conn)
   ;; Called when there is IO error
   ;; io-descriptor is (usually?) destroyed
-  ;; FIXME: minor code?
-  (let ((requests (find-connection-requests conn)))
-    (loop for req in requests
-          do (setf (any-value (op:return_value req))
-                   (make-condition 'CORBA:COMM_FAILURE))
-          (setf (request-status req) :error ))))
+  (let ((requests (connection-client-requests conn)))
+    (dolist (req requests)
+      (setf (any-value (op:return_value req))
+            (make-condition 'CORBA:COMM_FAILURE))
+      (setf (request-status req) :error )))
+  (setf (connection-client-requests conn) nil))
+
 
 (defun connection-read-ready (conn)
   (when (and (connection-trace conn)
              (> (length (buffer-octets (connection-read-buffer conn))) *iiop-header-size*))
     (push (connection-read-buffer conn) (connection-trace-recv conn)))
   (funcall (connection-read-callback conn) conn))
+
 
 (defun connection-write-ready (conn)
   (when (connection-trace conn)
@@ -242,7 +237,73 @@
 
 
 
+;;;; Connection request preparation
+
+
+(defun connection-start-locate-request (conn req-id profile)
+  (let ((buffer (get-work-buffer (the-orb conn))))
+    (marshal-giop-header :locaterequest buffer)
+    (marshal-ulong req-id buffer)
+    (marshal-osequence (iiop-profile-key profile) buffer)
+    buffer))
+
+
+(defun connection-start-request (conn req-id service-context response-expected
+                                          effective-profile operation)
+  (let ((buffer (get-work-buffer (the-orb conn))))
+    (marshal-giop-header :request buffer)
+    (marshal-service-context service-context buffer)
+    (marshal-ulong req-id buffer)
+    (marshal-octet (if response-expected 1 0) buffer)
+    (marshal-osequence 
+     (iiop-profile-key effective-profile)
+     buffer)
+    (marshal-string operation buffer)
+    (marshal-osequence *principal* buffer)
+    buffer))
+
+
+(defun connection-send-request (conn buffer req)
+  (marshal-giop-set-message-length buffer)
+  (connection-send-buffer conn buffer)
+  (when req
+    (push req (connection-client-requests conn))
+    (push req *corba-waiting-requests*)))
+
+
+(defun find-waiting-request (conn request-id)
+  (let ((req-list (connection-client-requests conn)))
+    (let ((req (find request-id req-list :key #'request-req-id)))
+      (if req
+        (setf (connection-client-requests conn) (delete req req-list))
+        (mess 4 "Unexpected response with request id ~d" request-id))
+      req)))
+
+
 ;;;; IIOP - Profiles
+
+
+(defstruct IIOP-PROFILE
+  (version '(1 . 0))
+  (host    nil)
+  (port    0    :type fixnum)
+  (key     nil))
+
+
+(defmethod profile-short-desc ((profile IIOP-PROFILE) stream)
+  (format stream "~A:~A" 
+          (iiop-profile-host profile)
+          (iiop-profile-port profile)))
+
+(defmethod profile-equal ((profile1 iiop-profile) (profile2 iiop-profile))
+  (and (equal (iiop-profile-host profile1) (iiop-profile-host profile2))
+       (equal (iiop-profile-port profile1) (iiop-profile-port profile2))
+       (equalp (iiop-profile-key profile1) (iiop-profile-key profile2))))
+
+(defmethod profile-hash ((profile iiop-profile))
+  (sxhash (list* (iiop-profile-host profile)
+                 (iiop-profile-port profile)
+                 (coerce (iiop-profile-key profile) 'list))))
 
 (defmethod decode-ior-profile ((tag (eql 0)) encaps)
   (unmarshal-encapsulation encaps #'unmarshal-iiop-profile-body))
@@ -275,59 +336,47 @@
 
 ;;;; IIOP - Sending request
 
+#+unused-functions
 (defun request-prepare (req object)
   (let* ((conn (get-object-connection object)))
     (unless conn
-      (raise-system-exception 'omg.org/corba:comm_failure))
+      (raise-system-exception 'corba:comm_failure))
     (setf (request-connection req) conn)    
     (setf (request-status req) nil)
-    (setf (request-req-id req) (incf *request-id-seq*))
+    (setf (request-req-id req) (next-request-id conn))
     (values
      (or (object-forward object) object)
      (setf (request-buffer req) (get-work-buffer (the-orb req)))
      conn)))
 
-(defun locate (obj)
-  (let ((req (make-instance 'client-request :target obj :operation 'locate)))
-    (loop
-      (multiple-value-bind (object buffer) (request-prepare req obj)
-        (marshal-giop-header :locaterequest buffer)    ; LocateRequest
-        (marshal-ulong (request-req-id req) buffer)
-        (marshal-osequence (object-key object) buffer)
-        (send-request req))
-      (request-wait-response req)
-      (cond ((eql (request-status req) :object_forward)
-             (setf (object-forward obj) (unmarshal-object (request-buffer req))))
-            (t 
-             (return (request-status req)))))))
+
 
 (defun request-marshal-head (req)
-  (multiple-value-bind (object buffer)
-                       (request-prepare req (request-target req))
+  (let ((connection (request-start-request req)))
+    (setf (request-req-id req) (next-request-id connection))
     (will-send-request (the-orb req) req)
-    (marshal-giop-header :request buffer)
-    (marshal-service-context (service-context-list req) buffer)
-    (marshal-ulong (request-req-id req) buffer)
-    (marshal-octet (if (response-expected req) 1 0) buffer)
-    (marshal-osequence (object-key object) buffer)
-    (marshal-string (request-operation req) buffer)
-    (marshal-osequence *principal* buffer)
-    buffer))
+    (setf (request-buffer req) 
+          (connection-start-request
+           connection
+           (request-req-id req)
+           (service-context-list req)
+           (response-expected req)
+           (request-effective-profile req)
+           (request-operation req)))))
+
 
 (defun send-request (req)
   (let ((buffer (request-buffer req)))
-    (marshal-giop-set-message-length buffer)
     (setf (request-buffer req) nil)
     (setf (request-status req) nil)
-    (connection-send-buffer (request-connection req) buffer))
-  (when (response-expected req)
-    (push req *corba-waiting-requests*)))
+    (connection-send-request (request-connection req) buffer
+                             (if (response-expected req) req))))
 
 
 
 ;;;; IIOP - Response handling
 
-(defparameter +message-types+
+(define-symbol-macro message-types
   '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
               :CLOSECONNECTION :MESSAGEERROR))
 
@@ -346,7 +395,7 @@
     (let ((major (get-octet))
           (minor (get-octet))
           (byte-order (get-octet))
-          (msgtype (aref +message-types+ (get-octet))))
+          (msgtype (aref message-types (get-octet))))
       (setf (buffer-byte-order buffer) byte-order)
       (values msgtype (make-iiop-version major minor)))))
 
@@ -360,7 +409,7 @@
                      ((eq type 'request) 0)
                      ((eq type 'reply) 1)
                      (t 
-                      (let ((n (position type +message-types+)))
+                      (let ((n (position type message-types)))
                         (or n (error "Message type ~S" type))))))
     ;; Place for message length to be patched in later
     (incf pos 4)))
@@ -394,27 +443,20 @@
          (request-id (let ((id (unmarshal-ulong buffer)))
                        ;;(break "id=~d" id)
                        id ))
-         (req (find-waiting-request request-id))
+         (req (find-waiting-request conn request-id))
          (status (unmarshal (load-time-value (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE))
                             buffer)))
     (setup-outgoing-connection conn)
     (when req
-      (setf (reply-service-context req) service-context)
-      (setf (request-status req) status)
-      (setf (request-buffer req) buffer))))
+      (request-reply req status buffer service-context))))
 
 (defun get-response-locate-reply (conn &aux (buffer (connection-read-buffer conn)))
   (setup-outgoing-connection conn)
   (let* ((request-id (unmarshal-ulong buffer))
          (status (unmarshal (symbol-typecode 'giop:locatestatustype) buffer))
-         (req (find-waiting-request request-id)))
+         (req (find-waiting-request conn request-id)))
     (when req
-      (setf (request-status req) status)
-      (setf (request-buffer req) buffer)
-      req)))
-
-(defun request-wait-response (req)
-  (orb-wait #'request-status req))
+      (request-locate-repy req status buffer))))
 
 
 
@@ -500,83 +542,13 @@ Where host is a string and port an integer.")
       (setf (cdr holder) conn))
     conn))
 
-
-(defun get-object-connection (proxy)
-  ;; get the connection to use for a proxy object.
-  (let ((conn (object-connection proxy)))
-    (unless (and conn (connection-working-p conn))
-      (setf (object-connection proxy) nil)
-      (setq conn (connect-object proxy)))
-    conn))
-
-
-(defun connect-object (proxy)
-  ;; select a profile and create a connection for that profile
-  (or
-   (let ((forward (object-forward proxy)))
-     (if forward
-       (cond ((setf (object-connection proxy) (connect-object forward))
-              (setf (object-forward-reset proxy) nil)
-              (object-connection proxy))
-             ((object-forward-reset proxy)
-              (setf (object-forward proxy) nil)
-              (warn "Object forwarding fail")
-              (return-from connect-object nil))
-             (t
-              (setf (object-forward-reset proxy) t)
-              (setf (object-forward proxy) nil)))))
-   (dolist (profile (object-profiles proxy))
-     (let* ((host (iiop-profile-host profile))
-            (port (iiop-profile-port profile))
-            (conn (get-connection (the-orb proxy) host port)))
-       (when (and conn
-                  (connection-working-p conn))
-         (setf (object-connection proxy) conn)
-         (setf (selected-profile proxy) profile)
-         (return conn))))))
+(defmethod profile-connection ((profile iiop-profile) orb)
+  (let ((host (iiop-profile-host profile))
+        (port (iiop-profile-port profile)))
+    (get-connection orb host port)))
 
 
 
-;;;; Support for static stubs
-
-(defun start-request (operation object &optional no-response)
-  (let ((req (create-client-request 
-              (the-orb object)
-              :target object :operation operation
-              :response-expected (not no-response))))
-    (values req (request-marshal-head req))))
-
-(defun invoke-request (req)
-  (send-request req)
-  (cond ((response-expected req)
-         (request-wait-response req)
-         (let* ((status (request-status req))
-                (buffer (request-buffer req)))
-           (case status
-             (:location_forward
-              (setf (object-forward (request-target req))
-                    (unmarshal-object buffer))
-              (values status))
-             (:system_exception
-              (let ((condition (unmarshal-systemexception buffer)))
-                (setf (request-exception req) condition)
-                (has-received-exception (the-orb req) req)
-                (setq condition (request-exception req))
-                (if (typep condition 'omg.org/corba:transient)
-                  (values status)
-                  (error condition))))
-             (otherwise
-              (has-received-reply (the-orb req) req)
-              (values status buffer)))))
-        (t
-         :no_exception)))
-                 
-(defun process-exception (buffer legal-exceptions)
-  (let ((id (unmarshal-string buffer)))
-    (loop for exc in legal-exceptions
-          when (string= id (symbol-ifr-id exc))
-          do (error (exception-read exc buffer)))
-    (raise-system-exception 'corba:unknown 1 :completed_yes)))
 
 
 ;;;; CORBA:Request - deferred operations
@@ -590,6 +562,9 @@ Where host is a string and port an integer.")
   (request-marshal req)
   (send-request req))
 
+
+(defun request-wait-response (req)
+  (orb-wait #'request-status req))
 
 (defun request-marshal (req)
   (let ((buffer (request-marshal-head req)))
@@ -617,6 +592,25 @@ Where host is a string and port an integer.")
   (let ((retval (op:return_value req)))
     (setf (any-value retval) (unmarshal-systemexception buffer)
           (any-typecode retval) nil)))
+
+
+
+;;; void get_response () raises (WrongTransaction);
+
+;; get_response returns the result of a request. If get_response is
+;; called before the request has completed, it blocks until the
+;; request has completed. Upon return, the out parameters and return
+;; values defined in the Request are set appropriately and they may be
+;; treated as if the Request invoke operation had been used to perform
+;; the request.
+
+;; A request has an associated transaction context if the thread
+;; originating the request had a non-null transaction context and the
+;; target object is a transactional object. The get_response operation
+;; may raise the WrongTransaction exception if the request has an
+;; associated transaction context, and the thread invoking
+;; get_response either has a null transaction context or a non-null
+;; transaction context that differs from that of the request.
 
 (define-method get_response ((req client-request))
   (loop 
@@ -652,3 +646,79 @@ Where host is a string and port an integer.")
 (defun request-exception-typecode (request id)
   (find id (request-exceptions request)
         :key #'op:id :test #'equal))
+
+
+
+;;;; Support for static stubs
+
+(defun start-request (operation object &optional no-response)
+  (let ((req (create-client-request 
+              (the-orb object)
+              :target object :operation operation
+              :response-expected (not no-response))))
+    (values req (request-marshal-head req))))
+
+(defun invoke-request (req)
+  (send-request req)
+  (cond ((response-expected req)
+         (request-wait-response req)
+         (let* ((status (request-status req))
+                (buffer (request-buffer req)))
+           (case status
+             (:location_forward
+              (setf (object-forward (request-target req))
+                    (unmarshal-object buffer))
+              (values status))
+             (:system_exception
+              (let ((condition (unmarshal-systemexception buffer)))
+                (setf (request-exception req) condition)
+                (has-received-exception (the-orb req) req)
+                (setq condition (request-exception req))
+                (if (typep condition 'corba:transient)
+                  (values status)
+                  (error condition))))
+             (otherwise
+              (has-received-reply (the-orb req) req)
+              (values status buffer)))))
+        (t
+         :no_exception)))
+                 
+(defun process-exception (buffer legal-exceptions)
+  (let ((id (unmarshal-string buffer)))
+    (loop for exc in legal-exceptions
+          when (string= id (symbol-ifr-id exc))
+          do (error (exception-read exc buffer)))
+    (raise-system-exception 'corba:unknown 1 :completed_yes)))
+
+
+;;;; Locate
+
+(defun locate (obj)
+  (let ((req (create-client-request (the-orb obj)
+                                    :target obj :operation 'locate)))
+    (loop
+      (let* ((conn (request-start-request req))
+             (req-id (next-request-id conn)))
+        (setf (request-req-id req) req-id)
+        (connection-start-locate-request conn req-id
+                                         (request-effective-profile req)))
+      (send-request req)
+      (request-wait-response req)
+      (cond ((eql (request-status req) :object_forward)
+             (setf (object-forward obj) (unmarshal-object (request-buffer req))))
+            (t 
+             (return (request-status req)))))))
+
+
+;;;; Attribute accessors
+
+(defun get-attribute (obj getter result-tc)
+  (static-call (getter obj)
+               :output ((buffer))
+               :input ((buffer) (unmarshal result-tc buffer))))
+
+(defun set-attribute (obj setter result-tc newval)
+  (static-call (setter obj)
+               :output ((buffer) (marshal newval result-tc buffer))
+               :input ((buffer))))
+
