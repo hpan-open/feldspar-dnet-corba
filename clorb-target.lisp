@@ -832,7 +832,7 @@
 
 (let ((*print-pprint-dispatch* *target-pprint-dispatch*))
   
-  
+  #-clisp
   (set-pprint-dispatch '(cons (member define-method))
                        (pprint-dispatch '(defmethod foo ()) ))
   
