@@ -147,6 +147,9 @@
   (or (char= char #\Space)
       (char= char #\Tab)))
 
+
+(defvar *warn-unknown-pragma* t)
+
 (defun parse-cpp-line (cpp line)
   (setq line (read-cpp-continuation-lines cpp line))
   (let ((pos (position #\# line))
@@ -200,9 +203,11 @@
                            (version (ident)))
                       (push (list :version name version)
                             (cpp-pragma-list cpp))))
-                   (t (warn "Unknown pragma: ~S" line))))
+                   ((match "GCC"))      ; known system specific pragma
+                   (*warn-unknown-pragma*
+                    (warn "Unknown pragma: ~S" line))))
             (t
-             (warn "Uk#: ~S" line))))))
+             (warn "Unknown preprocessor directive: ~S" line))))))
 
 
 
@@ -217,16 +222,9 @@
 
 ;;;; Run the system cpp command
 
-;; FIXME: add support for defines
 
-(defun cpp-command-string (file include-directories)
-  (format nil "cpp~{ -I'~A'~} '~A'"
-          (mapcar #'external-namestring include-directories)
-          (external-namestring file)))
-
-
-(defun using-cpp-stream (file function &key include-directories)
-  (let ((s (shell-to-string (cpp-command-string file include-directories))))
+(defun using-cpp-stream (file function &key include-directories defines)
+  (let ((s (shell-to-string (cpp-command-string file include-directories defines))))
     (with-input-from-string (in s)
       (let ((cpp (make-instance 'preprocessed-stream
                    :cpp-stream in)))
