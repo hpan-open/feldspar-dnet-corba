@@ -69,9 +69,11 @@
 
 (defmacro define-struct (symbol &key id (name "") members read write)
   "Define a CORBA structure with class, constructor, typecode etc.
-  members = ((name type)*)
-  read = ((buffer) unmarshallingcode*)
-  write = ((obj buffer) marshallingcode*)"
+  members = ((name type)*)"
+  ;; OLD:
+  ;;read = ((buffer) unmarshallingcode*)
+  ;;write = ((obj buffer) marshallingcode*)
+  (declare (ignore read write))
   (let* ((slot-names (mapcar #'first members))
          (slots (mapcar #'feature slot-names))
          (keys  (mapcar #'key slot-names)))
@@ -96,15 +98,7 @@
        (set-symbol-id/typecode ',symbol ,id
                                (create-struct-tc ,id ,name
                                                  (vector ,@(loop for (name type) in members 
-                                                                 collect `(list ,name ,type)))))
-       ,(if read
-          (destructuring-bind ((buffer) &rest forms) read
-            `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
-               ,@forms)))
-       ,(if write
-          (destructuring-bind ((obj buffer) &rest forms) write
-            `(defmethod struct-write (,obj (symbol (eql ',symbol)) ,buffer)
-               ,@forms))))))
+                                                                 collect `(list ,name ,type))))))))
         
 
 
@@ -237,6 +231,8 @@
      ,@(if proxy
          `((defclass ,(CAR PROXY) ,(cdr proxy) ())
            (register-proxy-class ,id ',(car proxy))))
+     (defmethod interface-name ((obj ,symbol))
+       ',symbol)
      (defmethod object-id ((obj ,symbol))
        ,id)
      #-clisp

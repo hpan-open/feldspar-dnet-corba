@@ -139,9 +139,7 @@ of fields can be defaulted (numbers and strings)."
 
 (defmethod unmarshal ((tc struct-typecode) buffer)
   (let* ((symbol (typecode-symbol tc)))
-    (if symbol 
-      (struct-read symbol buffer)
-      (unmarshal-struct-2 symbol tc buffer))))
+    (unmarshal-struct-2 symbol tc buffer)))
 
 
 (defun unmarshal-struct-2 (symbol tc buffer)
@@ -154,6 +152,29 @@ of fields can be defaulted (numbers and strings)."
                  for member-tc in (tc-member-types tc)
                  collect key
                  collect (unmarshal member-tc buffer)))))
+
+
+(defmethod compute-unmarshal-function ((tc struct-typecode))
+  (let ((constructor (typecode-symbol tc)))
+    (if (null constructor)
+      (lambda (buffer) (unmarshal tc buffer))
+      (let ((keys (tc-keywords tc))
+            (unmarshallers
+             (loop for i from 0 below (op:member_count tc)
+                   do (unmarshal-function (op:member_type tc i)))))
+        (case (length keys)
+          (2 (let ((k1 (first keys))
+                   (k2 (second keys))
+                   (m1 (first unmarshallers))
+                   (m2 (second unmarshallers)))
+               (lambda (buffer)
+                 (funcall constructor
+                          k1 (funcall m1 buffer)
+                          k2 (funcall m2 buffer)))))
+          (t (lambda (buffer)
+               (apply constructor
+                      (loop for key in keys and fun in unmarshallers
+                            collect key collect (funcall fun buffer))))))))))
 
 
 (defmethod struct-write (obj (symbol symbol) buffer)
