@@ -139,11 +139,22 @@
              (members (list (list t "on" corba:tc_long)
                             (list nil "off" corba:tc_string)))
              (tc (create-union-tc "IDL:Two:1.0" "Two" corba:tc_boolean members)))
-        (marshal tc omg.org/corba:tc_typecode buffer)
-        (let ((tc2 (unmarshal omg.org/corba:tc_typecode buffer)))
+        (marshal tc corba:tc_typecode buffer)
+        (let ((tc2 (unmarshal corba:tc_typecode buffer)))
           (ensure-eql (op:member_count tc2) (op:member_count tc))
           (ensure (op:equal tc2 tc)))))
     
+    (define-test "any"
+      (let* ((buffer (get-work-buffer *the-orb*)))
+        (marshal-any (CORBA:Any :any-typecode CORBA:tc_null) buffer)
+        (let ((any (unmarshal-any buffer)))
+          (ensure-typecode (corba:any-typecode any) :tk_null)))
+      (let* ((buffer (get-work-buffer *the-orb*)))
+        (marshal-any (CORBA:Any :any-typecode CORBA:tc_long
+                                :any-value -999 ) buffer)
+        (let ((any (unmarshal-any buffer)))
+          (ensure-typecode (corba:any-typecode any) :tk_long)
+          (ensure-eql (corba:any-value any) -999))))
     
     (define-test "RecursiveTypecode"
       (let* ((struct-filter
@@ -186,7 +197,6 @@
             (let ((obj (unmarshal-object buffer)))
               (ensure (op:_is_equivalent obj obj2))
               (ensure-eql (object-component obj iop:tag_orb_type) 4711))))))
-
 
 t))
 
