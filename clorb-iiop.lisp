@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.41 2005/02/23 19:20:06 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.42 2005/02/25 19:31:40 lenst Exp $
 
 
 (in-package :clorb)
@@ -131,6 +131,33 @@
   (unmarshal-sequence-m (buffer) 
     (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
 	                :context_data (unmarshal-osequence buffer))))
+
+
+;;;; IIOP Module
+
+
+(DEFINE-STRUCT IIOP:VERSION
+  :ID "IDL:omg.org/IIOP/Version:1.0"
+  :NAME "Version"
+  :MEMBERS (("major" OMG.ORG/CORBA:TC_OCTET) 
+            ("minor" OMG.ORG/CORBA:TC_OCTET)))
+
+(DEFINE-STRUCT IIOP:PROFILEBODY_1_0
+  :ID "IDL:omg.org/IIOP/ProfileBody_1_0:1.0"
+  :NAME "ProfileBody_1_0"
+  :MEMBERS (("iiop_version" (SYMBOL-TYPECODE 'IIOP:VERSION)) 
+            ("host" OMG.ORG/CORBA:TC_STRING)
+            ("port" OMG.ORG/CORBA:TC_USHORT)
+            ("object_key" (CREATE-SEQUENCE-TC 0 OMG.ORG/CORBA:TC_OCTET))))
+
+(DEFINE-STRUCT IIOP:PROFILEBODY_1_1
+  :ID "IDL:omg.org/IIOP/ProfileBody_1_1:1.0"
+  :NAME "ProfileBody_1_1"
+  :MEMBERS (("iiop_version" (SYMBOL-TYPECODE 'IIOP:VERSION))
+            ("host" OMG.ORG/CORBA:TC_STRING)
+            ("port" OMG.ORG/CORBA:TC_USHORT)
+            ("object_key" (CREATE-SEQUENCE-TC 0 OMG.ORG/CORBA:TC_OCTET))
+            ("components" (CREATE-SEQUENCE-TC 0 (SYMBOL-TYPECODE 'OMG.ORG/IOP:TAGGEDCOMPONENT)))))
 
 
 ;;;; Version
