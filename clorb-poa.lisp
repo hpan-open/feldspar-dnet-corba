@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.1 2000/11/14 22:50:22 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.2 2001/06/03 20:48:56 lenst Exp $
 
 (in-package :clorb)
 
@@ -8,7 +8,12 @@
 
 (defclass ServantManager () ())
 
+;;  interface ServantActivator : ServantManager {
+
 (defclass ServantActivator (ServantManager) ())
+
+;; Servant incarnate (in ObjectId oid, in POA adapter)
+;;    raises (ForwardRequest);
 
 (define-method incarnate ((s ServantActivator) oid adapter)
   ;; Raises ForwardRequest
@@ -58,7 +63,8 @@
           (policies :initarg :policies :accessor poa-policies)
           (poaid :initarg :poaid :accessor poa-poaid)
           (auto-id :accessor poa-auto-id :initform 0)
-          (children :initform nil :accessor poa-children)))
+          (children :initform nil :accessor poa-children)
+          (the-orb :accessor the-orb)))
 
 (defmethod print-object ((p POA) stream)
   (print-unreadable-object (p stream :type t)
@@ -147,12 +153,17 @@
 (defun decode-object-key-poa (objkey)
   (multiple-value-bind (type poaid oid)
       (decode-object-key objkey)
-    (when (consp poaid)
-      (let ((poa *root-POA*))
-        (loop for n in poaid
-            do (setq poa (op:find_poa poa n t)))
-        (setq poaid (poa-poaid poa))))
-    (values type poaid oid)))
+    (let (poa)
+      (if (numberp poaid)
+          (setq poa (gethash poaid *poa-map*))
+          (progn
+            (setq poa *root-POA*)
+            (handler-case
+                (loop for n in poaid
+                      do (setq poa (op:find_poa poa n t)))
+              (POA/AdapterNonExistent ()
+               (setq poa nil)))))
+      (values type poa oid))))
 
 
 ;;;; Create, find and destroy 
@@ -181,7 +192,8 @@
           :policies policies
           :poaid (incf *last-poaid*))))
     (when poa
-      (push newpoa (POA-children poa)))
+      (push newpoa (POA-children poa))
+      (setf (the-orb newpoa) (the-orb poa)))
     (register-poa newpoa)
     newpoa))
 
@@ -298,8 +310,8 @@
                            :transient)
                          (poa-poaid poa) oid
                          :poa-name (poa-name poa))
-   :host *host*
-   :port *port*))
+   :host (or *host* (orb-host (the-orb poa)))
+   :port (orb-port (the-orb poa))))
 
 (defun object-key-id (object-key)
   (map 'string #'code-char
@@ -338,11 +350,11 @@
 ;;;     raises (WrongAdapter, WrongPolicy);
 
 (define-method reference_to_id ((poa POA) reference)
-  (multiple-value-bind (ref-type poaid oid)
+  (multiple-value-bind (ref-type refpoa oid)
       (decode-object-key-poa (object-key reference))
     (declare (ignore ref-type))
-    (unless (eql poaid (poa-poaid poa))
-      (error 'WrongAdaptor))
+    (unless (eql refpoa poa)
+      (error 'POA/WrongAdapter))
     oid))
 
 ;;;   Servant id_to_servant(in ObjectId oid)
@@ -350,7 +362,7 @@
 
 (define-method id_to_servant ((poa POA) id)
   (or (trie-get (to-object-id id) (POA-active-object-map poa))
-      (error 'ObjectNotActive)))
+      (error 'POA/ObjectNotActive)))
 
 ;;;   Object id_to_reference(in ObjectId oid)
 ;;;     raises (ObjectNotActive, WrongPolicy);
