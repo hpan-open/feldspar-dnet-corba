@@ -8,13 +8,13 @@
   (declare (ignore oid poa))
   "IDL:some.example/MyClass:1.0")
 
+
+;;; long foobar(in long x, out long y);
+
 (defmethod foobar ((self my-class) x)
   (let ((result 1)
         (y (1+ x)))
     (values result y)))
-
-
-;;; long foobar(in long x, out long y);
 
 (corba:define-method invoke ((self my-class) r)
   (cond
