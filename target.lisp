@@ -3,7 +3,10 @@
 (defclass code-target ()
   ((packages :initform nil)
    (symbols  :initform nil)
-   (defs     :initform nil)))
+   (defs     :initform nil)
+   (dynamic-stubs :initform t
+                  :initarg :dynamic-stubs
+                  :accessor target-dynamic-stubs)))
 
 (defgeneric target-typecode (obj target)
   (:documentation 
@@ -168,7 +171,8 @@
    (:pk_ulong `CORBA:tc_ulong)
    (:pk_ulonglong `CORBA:tc_ulonglong)
    (:pk_ushort `CORBA:tc_ushort)
-   (:pk_wchar `CORBA:tc_wchar)))
+   (:pk_wchar `CORBA:tc_wchar)
+   (:pk_void `CORBA:tc_void)))
 
 
 (defmethod target-typecode ((x CORBA:SequenceDef) target)
@@ -180,6 +184,9 @@
 (defmethod target-typecode ((x CORBA:IDLType) target)
   `(symbol-typecode ',(scoped-target-symbol target x)))
 
+(defmethod target-typecode ((x CORBA:ExceptionDef) target)
+  `(symbol-typecode ',(scoped-target-symbol target x)))
+
 
 ;;;; target-code methods
 
@@ -187,8 +194,7 @@
   (declare (ignore target))
   (mess 4 "Can't generate code for ~A of kind ~S"
         (op:name x)
-        (op:def_kind x))
-  )
+        (op:def_kind x)))
 
 (defmethod target-code ((x CORBA:AliasDef) target)
   (let ((symbol (scoped-target-symbol target x)))
@@ -218,10 +224,35 @@
 
 (defmethod target-code ((op CORBA:OperationDef) target)
   (let* ((op-name (op:name op))
-         (lisp-name (make-target-symbol target op-name :op))
          (class (target-proxy-class-symbol target (op:defined_in op))))
-    `(defmethod ,lisp-name ((obj ,class) &rest args)
-       (apply 'clorb::invoke obj ,op-name args))))
+    (if (target-dynamic-stubs target)
+      (let ((lisp-name (make-target-symbol target op-name :op)))
+        `(defmethod ,lisp-name ((obj ,class) &rest args)
+           (apply 'clorb::invoke obj ,op-name args)))
+      (let* ((lisp-name (make-target-symbol target op-name :clorb))
+             (params (coerce (op:params op) 'list))
+             (args (loop for p in params 
+                         unless (eq (op:mode p) :param_out)
+                         collect (make-target-symbol target (op:name p) :clorb))))
+        `(define-method ,lisp-name ((obj ,class) ,@args)
+           (multiple-value-bind (_result _request)
+                                (op:_create_request obj nil ,op-name nil nil 0)
+             (declare (ignore _result))
+             (op:set_return_type _request ,(target-typecode (op:result_def op) target))
+             ,@(loop for pd in params
+                     for mode = (op:mode pd)
+                     collect `(add-arg _request ,(op:name pd)
+                                       ,(ecase mode
+                                          (:param_in 'ARG_IN)
+                                          (:param_out 'ARG_OUT)
+                                          (:param_inout 'ARG_INOUT))
+                                       ,(target-typecode (op:type_def pd) target)
+                                       ,@(if (eq mode :param_out) nil (list (pop args)))))
+             ,@(map 'list 
+                    (lambda (ed)
+                      `(add-exception _request ,(target-typecode ed target)))
+                    (op:exceptions op))             
+             (request-funcall _request)))))))
 
 
 (defmethod target-code ((op CORBA:AttributeDef) target)
@@ -237,7 +268,7 @@
                              newval)))))))
 
 
-(defmethod target-code ((mdef CORBA:ModuleDef) target)
+(defmethod target-code ((mdef CORBA:Container) target)
   (make-progn (map 'list (lambda (contained)
                            (target-code contained target))
                    (op:contents mdef :dk_All t))))
@@ -261,19 +292,23 @@
                      (op:members sdef)))))
 
 (defmethod target-code ((enum CORBA:EnumDef) target)
-  `(deftype ,(scoped-target-symbol target enum) ()
-     '(member ,@(map 'list (lambda (name) (make-target-symbol target name :keyword))
-                     (op:members enum)))))
+  (make-idltype
+   (scoped-target-symbol target enum)
+   (op:id enum)
+   `(make-typecode :tk_enum ,(op:id enum) ,(op:name enum) ',(op:members enum))
+   `(deftype ,(scoped-target-symbol target enum) ()
+      '(member ,@(map 'list (lambda (name) (make-target-symbol target name :keyword))
+                      (op:members enum))))))
 
 (defmethod target-code ((exc CORBA:ExceptionDef) target)
-  `(Define-user-exception ,(scoped-target-symbol target exc)
+  `(define-user-exception ,(scoped-target-symbol target exc)
        :id ,(op:id exc)
-       :slots ,(map 'list
-                 (lambda (smember)
-                   (let ((m-name (op:name smember)))
-                     (list (make-target-symbol target m-name 'clorb)
-                           :initarg (make-target-symbol target m-name :keyword))))
-                 (op:members exc))))
+       :name ,(op:name exc)
+       :members ,(map 'list
+                      (lambda (smember)
+                        (let ((m-name (op:name smember)))
+                          (list m-name (target-typecode (op:type_def smember) target))))
+                      (op:members exc))))
 
 
 ;;;; Stub code generator
@@ -295,38 +330,59 @@
         (export (,@(slot-value target 'symbols)))
         ,code))))
 
-(defun gen-stub-file (object filename &key package-def)
+(defun gen-stub-file (object filename &key package-def dynamic-stubs)
   (with-open-file (*standard-output* filename :direction :output :if-exists :supersede)
-    (let* ((target (make-instance 'code-target))
+    (let* ((target (make-instance 'code-target :dynamic-stubs dynamic-stubs))
            (code (target-code object target)))
-      (print '(in-package :clorb))
+      (pprint '(in-package :clorb))
       (when package-def
         (loop for package in (slot-value target 'packages)
                 unless (member package *stub-code-ignored-packages*)
                 do (terpri)
                    (pprint (make-allways-eval 
                             (make-target-ensure-package package target)))))
-      (mapc (lambda (x) (terpri) (pprint x))
-            (remove nil (cdr code)))
+      (dolist (x (remove nil (cdr code)))
+        (terpri)
+        (pprint x))      
       (terpri))))
 
+
+;; ----------------------------------------------------------------------
+;;;; Configure the pretty printer
+;; ----------------------------------------------------------------------
+
+(set-pprint-dispatch '(cons (member define-method)) 
+                     (pprint-dispatch '(defmethod foo ()) ))
+
+(defun pprint-def-and-keys (*standard-output* list)
+  (pprint-logical-block (nil list :prefix "(" :suffix ")")
+    (write (pprint-pop))
+    (write-char #\Space)
+    (pprint-exit-if-list-exhausted)
+    (write (pprint-pop))
+    (loop
+      (pprint-exit-if-list-exhausted)
+      (write-char #\Space)
+      (pprint-newline :linear)
+      (write (pprint-pop))
+      (pprint-exit-if-list-exhausted)
+      (write-char #\Space)
+      (write (pprint-pop)))))
+
+(set-pprint-dispatch '(cons (member define-user-exception define-corba-struct))
+                     'pprint-def-and-keys)
 
 #|
 (load "clorb:src;iop-idl")
 (gen-stub-file (lookup-name "IOP") "clorb:x-iop.lisp")
-(gen-stub-file (lookup-name "CORBA") "clorb:orb-stub.lisp")
 (gen-stub-file (lookup-name "CosNaming") "clorb:x-cosnaming.lisp" :package-def t)
+(gen-stub-file (vsns-get "clorb") "clorb:x-orb-base.lisp")
+(gen-stub-file (vsns-get "ir") "clorb:x-ifr-base.lisp")
+(gen-stub-file (vsns-get "file.i") "clorb:x-file.lisp")
 
+(load "clorb:src;ifr-idl")
+(gen-stub-file (lookup-name "CORBA") "clorb:x-ifr-base.lisp")
 
 (defvar *target* (make-instance 'code-target))
 (target-code (lookup-name "CosNaming") *target*)
-
-(pprint
-(loop for sym in (slot-value *target* 'symbols)
-      collect (cons (package-name (symbol-package sym)) (symbol-name sym))))
-
-(pprint (make-target-ensure-package (elt (slot-value *target* 'packages) 2) *target*))
-
-
-
 |#
