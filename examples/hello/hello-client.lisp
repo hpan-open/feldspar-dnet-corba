@@ -13,5 +13,5 @@
                    (error "Supply :file or :name")))))
     (if count
         (dotimes (n count)
-          (corba:funcall "greet" object))
-      (corba:funcall "greet" object))))
+          (op:greet object))
+      (op:greet object))))
