@@ -1,5 +1,5 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.7 2003/11/12 07:20:07 lenst Exp $
+;; $Id: clorb-supp.lisp,v 1.8 2003/11/14 06:37:21 lenst Exp $
 
 (in-package :clorb)
 
@@ -44,7 +44,7 @@
   (if (consp x) x (list x)))
 
 
-(defun repeted (item)
+(defun repeated (item)
   (let ((x (list item)))
     (setf (cdr x) x)
     x))

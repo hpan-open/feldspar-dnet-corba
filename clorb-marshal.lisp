@@ -238,7 +238,7 @@
                                 (marshal-spec val (second pspec) buf))
                               buffer))
            (otherwise
-            (mapc #'marshal-spec params pspec (repeted buffer)))))
+            (mapc #'marshal-spec params pspec (repeated buffer)))))
         (t
          (ecase pspec
            (:tk_string (marshal-string params buffer))
