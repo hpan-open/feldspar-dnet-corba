@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.18 2003/07/03 08:47:44 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.19 2003/09/25 16:46:49 lenst Exp $
 
 (in-package :clorb)
 
@@ -616,8 +616,10 @@ POA destruction does not occur.
 
 (define-method _get_interface ((servant PortableServer:servant))
   (handler-case
-      (op:lookup_id (get-ir) (current-primary-interface servant))
-    (error ()
+      (op:lookup_id *internal-interface-repository*
+                    (current-primary-interface servant))
+    (error (condition)
+      (break "_get_interface: ~A" condition)
       (error 'CORBA:intf_repos))))
 
 ;; ----------------------------------------------------------------------
