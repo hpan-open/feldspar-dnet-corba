@@ -1,5 +1,5 @@
 ;;; idef-macros --- interface definition macros
-;; $Id: idef-macros.lisp,v 1.5 2002/10/19 02:55:55 lenst Exp $
+;; $Id: idef-macros.lisp,v 1.6 2002/10/28 18:39:00 lenst Exp $
 
 (in-package :clorb)
 
@@ -23,7 +23,21 @@
 (defmacro idef-definitions (&body forms)
   `(idef-read ',forms *idef-repository*))
 
-
+(defmacro idef-code (&body forms)
+  (let ((repository (make-instance 'repository)))
+    (idef-read forms repository)
+    (let* ((target (make-instance 'code-target))
+           (stub (target-code repository target))
+           (skel (target-servant repository target)))
+      (make-progn
+       (list (make-progn
+              (loop for package in (slot-value target 'packages)
+                    unless (member package *stub-code-ignored-packages*)
+                    collect (make-target-ensure-package package target)))
+             stub
+             skel)))))
+      
+
 ;;;; Creating a servant class
 
 (defmacro define-servant (name scoped-name &key id)

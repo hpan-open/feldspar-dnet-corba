@@ -54,6 +54,19 @@
       (ensure (op:equal tc (make-typecode :tk_union id name d-type 0 (copy-list members))))
       (ensure (not (op:equal tc (make-typecode :tk_union id name d-type 0 (cdr members)))))))
 
-
+  (define-test "Recursive"
+    (let ((sym (gensym)))
+      (set-symbol-typecode sym 
+                           (lambda () 
+                             (create-struct-tc
+                              "IDL:Recursive_1/Node:1.0"
+                              "Node"
+                              (list (list "children"
+                                          (make-sequence-typecode (symbol-typecode sym) 0))))))
+      (let ((tc (symbol-typecode sym)))
+        (ensure-typep tc 'corba:typecode)
+        (ensure-eql (typecode-kind tc) :tk_struct)
+        (ensure-eql (op:content_type (op:member_type tc 0))
+                    tc))))
 
 )

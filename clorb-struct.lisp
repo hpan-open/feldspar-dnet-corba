@@ -21,15 +21,12 @@
   (setf (gethash id *specialized-structs*) class))
 
 
-
-
-
 (defgeneric type-id (struct))
 (defgeneric fields (struct))
 
 
 ;; old:
-;;#+unused-defuns
+#+unused-defuns
 (defun struct-typecode (id name &rest fields)
   (make-typecode :tk_struct
                  id
@@ -49,11 +46,10 @@
 
 (defmethod print-object ((obj CORBA:struct) stream)
   (cond (*print-readably*
-         (format stream "#.(CLORB::MAKE-STRUCT ~S~:{ ~S '~S~})"
-                 (type-id obj)
+         (format stream "#.(~S~:{ ~S '~S~})"
+                 (class-name (class-of obj))
                  (mapcar (lambda (x) (list (car x) (cdr x)))
                          (fields obj))))
-
         (*print-pretty*
          (let ((fields (map 'list (lambda (pair) (list (car pair) (cdr pair)))
                             (fields obj))))
@@ -71,76 +67,54 @@
                          collect k collect v))))))
 
 
-;; Interface:
-(defun make-struct (id-or-typecode &rest nv-pairs)
-  "Make a CORBA structure of type ID.
+(defun make-generic-struct (typecode fields)
+  (make-instance 'generic-struct
+    :typecode typecode
+    :fields (loop for (key val) on fields by #'cddr collect (cons key val))))
+
+
+(defun make-struct (typecode &rest nv-pairs)
+  "Make a CORBA structure of type.
 NV-PAIRS is a list field names and field values.
 If ID is nil, then all fields must be supplied. Otherwise some types
 of fields can be defaulted (numbers and strings)."
-  (let* ((id (if (stringp id-or-typecode) 
-              id-or-typecode
-              (op:id id-or-typecode)))
+  (let* ((id (op:id typecode))
          (class (gethash id *specialized-structs*)))
     (if class
         (apply #'make-instance class nv-pairs)
-      (let* ((typecode (if (stringp id-or-typecode)
-                           (get-typecode id-or-typecode)
-                         id-or-typecode))
-             (fields
-              (multiple-value-bind (kind params)
-                  (type-expand typecode)
-                (assert (eq kind :tk_struct))
-                (map 'list (lambda (nv)
-                             (let* ((fname (lispy-name (first nv)))
-                                    (val (getf nv-pairs fname nv)))
-                               (cons fname
-                                     (if (eq val nv)
-                                         (default-from-type (second nv))
-                                       val))))
-                     (tcp-members params)))))
-        (make-instance 'generic-struct
-          :typecode typecode
-          :fields fields)))))
+        (make-generic-struct typecode nv-pairs))))
 
 
 (defun struct-in (typecode function arg)
   (let* ((params (typecode-params typecode))
          (id (tcp-id params))
          (members (tcp-members params))
-         (class (gethash id *specialized-structs*)))
+         (class (gethash id *specialized-structs*))
+         (initargs (loop for (name tc) across members
+                         nconc (list (lispy-name name)
+                                     (funcall function tc arg)))))
     (if class
-      (apply #'make-instance class
-             (loop for (name tc) across members
-                   nconc (list (lispy-name name)
-                               (funcall function tc arg))))
-      (make-instance 'generic-struct
-        :typecode typecode
-        :fields (loop for (name tc) across members
-                      collect (cons (lispy-name name)
-                                    (funcall function tc arg)))))))
+      (apply #'make-instance class initargs )
+      (make-generic-struct typecode initargs))))
 
 
 (defmethod struct-out ((struct CORBA:struct) typecode fn dest)
+  (declare (optimize speed))
   (let* ((params (typecode-params typecode))
-         (members (tcp-members params)))
-    (loop for (name tc) across members
-         do (funcall fn (struct-get struct name) tc dest))))
-
-#|
-(defmethod struct-out ((struct generic-struct) typecode fn dest)
-  (let* ((params (typecode-params typecode))
-         (members (tcp-members params)))
-    (loop for (name . value) in (fields struct)
-         do (funcall fn (field-typecode name members) value dest))))
-
-(defun field-typecode (name members)
-  (doseq (m members)
-         (loop for (field-name tc) across members
-            when (string-equal name field-name)
-            return tc)))
-|#
+         (members (tcp-members params))
+         (keys (tc-keywords typecode)))
+    (loop for (nil tc) across members
+          for name across keys
+          do (funcall fn (struct-get struct name) tc dest))))
 
 
+(defun map-struct (fn struct)
+  (let* ((tc (any-typecode struct))
+         (keys (tc-keywords tc)))
+    (apply #'make-struct tc
+           (loop for key across keys
+                 collect key
+                 collect (funcall fn (struct-get struct key))))))
 
 
 (defmethod struct-get ((struct generic-struct) (field symbol))
@@ -149,11 +123,7 @@ of fields can be defaulted (numbers and strings)."
 (defmethod struct-get ((struct CORBA:struct) (field string))
   (struct-get struct (lispy-name field)))
 
-
-;;(defmethod typecode ((obj CORBA:struct))
-;;  (get-typecode (type-id obj)))
-
-
+#+unused-functions
 (defun default-from-type (typecode)
   ;; FIXME: similary to arbritary-value
   (ecase (typecode-kind typecode)
@@ -166,11 +136,44 @@ of fields can be defaulted (numbers and strings)."
     ((:tk_sequence) nil)
     ((:tk_objref) nil)))
 
-
-;;;; Specialized structs
 
-;; Define methods for:
-;; type-id, fields, struct-get
+;; more marshalling support
 
-
+(defgeneric struct-read (symbol buffer))
+(defgeneric struct-write (obj symbol buffer))
+
+(defmethod struct-read ((symbol symbol) buffer)
+  (unmarshal-struct-2 symbol (symbol-typecode symbol) buffer))
+
+(defun unmarshal-struct (tc buffer)
+  (let* ((id (op:id tc))
+         (symbol (gethash id *specialized-structs*)))
+    (if symbol 
+      (struct-read symbol buffer)
+      (unmarshal-struct-2 symbol tc buffer))))
+
+(defun unmarshal-struct-2 (symbol tc buffer)
+  (let* ((constructor
+          (if symbol 
+            symbol
+            (lambda (&rest fields) (make-generic-struct tc fields)))))
+    (apply constructor
+           (loop for key across (tc-keywords tc) 
+                 for (nil tc) across (tc-members tc)
+                 collect key
+                 collect (unmarshal tc buffer)))))
+
+
+(defmethod struct-write (obj (symbol symbol) buffer)
+  (marshal-struct obj (symbol-typecode symbol) buffer))
+
+(defun marshal-struct (struct tc buffer)
+  (let* ((members (tc-members tc))
+         (keys (tc-keywords tc)))
+    (loop for (nil tc) across members
+          for name across keys
+          do (marshal (struct-get struct name) tc buffer))))
+
+
+
 ;;; clorb-struct.lisp ends here

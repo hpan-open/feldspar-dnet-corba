@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.9 2002/05/02 20:40:11 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.10 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
@@ -96,23 +96,10 @@
                           1))
     (return-from set-request-exception))
   (when (typep condition 'userexception)
-    ;; FIXME: Check that the exeception is defined for the op
     (set-request-result
      sreq
-     (cons (exception-id condition)
-           (userexception-values condition))
-     (cons ':tk_string
-           (if (and (slot-exists-p condition 'types)
-                    (slot-boundp condition 'types))
-               (slot-value condition 'types)
-             (handler-case
-                 (map 'list #'second
-                      (third (typecode-params
-                              (get-typecode (exception-id condition)))))
-               (error (exc)
-                 (mess 8 "~A: ~A" condition exc)
-                 (setf condition
-                   (make-condition 'corba:unknown :minor 1008))))))
+     (list (any-typecode condition))
+     (list condition)
      :status 1))
   (when (not (typep condition 'exception))
     (mess 8 "Unknown exception: ~A" condition)

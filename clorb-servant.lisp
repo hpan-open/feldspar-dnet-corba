@@ -1,14 +1,20 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.9 2002/10/19 02:55:55 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.10 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
 ;;;; Generic functions used by the POA implementation
 
-(defgeneric servant-invoke (servant sreq)
+(defgeneric servant-invoke (servant operation input handler)
   (:documentation "Called by the POA to perform an operation on the object"))
 
 (defgeneric primary-interface (servant oid poa))
+
+;; for the handler
+
+(defgeneric get-normal-response (handler))
+(defgeneric get-exception-response (handler))
+
 
 
 ;;;; Class: PortableServer:Servant
@@ -29,6 +35,36 @@
 (define-method _non_existent ((servant servant))
   nil)
 
+(define-method _is_a ((servant servant) logical-type-id)
+  (object-is-a servant logical-type-id))
+
+(defmethod primary-interface ((servant servant) oid poa)
+  (declare (ignore oid poa))
+  (object-id servant))
+
+(defmethod servant-invoke ((servant Servant) operation input handler)
+  (declare (ignore operation input handler))
+  (error 'omg.org/corba:bad_operation
+         :completed :completed_no))
+
+(defmethod servant-invoke :around ((servant Servant) operation input handler)
+  (cond ((string= operation "_locate") nil)
+        ((string= operation "_is_a")
+         (let ((output (funcall handler :no_exception)))
+           (marshal-bool (op:_is_a servant (unmarshal-string input)) output)
+           output))
+        ((string= operation "_non_existent")
+         (let ((output (funcall handler :no_exception)))
+           (marshal-bool (op:_non_existent servant) output)
+           output))
+        ((or (string= operation "_interface")
+             (string= operation "_get_interface"))
+         (let ((output (funcall handler :no_exception)))
+           (marshal-ior (op:_get_interface servant) output)
+           output))
+        (t
+         (call-next-method))))
+
 
 ;;;; Class: DynamicImplementation
 
@@ -48,34 +84,82 @@
   (declare (ignore oid poa))
   (error 'CORBA:NO_IMPLEMENT))
 
-(defmethod servant-invoke ((servant DynamicImplementation) sreq)
-  (let ((op (op:operation sreq)))
-    (cond ((equal op "_is_a")
-           (let ((repid (CORBA:Any :any-typecode corba:tc_string)))
-             (op:arguments sreq (list (CORBA:NamedValue :argument repid)))
-             (op:set_result sreq
-                            (CORBA:Any
-                             :any-typecode corba:tc_boolean
-                             :any-value (op:_is_a servant (any-value repid))))))
-          
-          ((equal op "_non_existent")
-           (op:arguments sreq nil)
-           (op:set_result sreq
-                          (CORBA:Any
-                           :any-typecode corba:tc_boolean
-                           :any-value (op:_non_existent servant))))
-          ((equal op "_interface")
-           (op:arguments sreq nil)
-           (op:set_result sreq
-                          (CORBA:Any
-                           :any-typecode corba:tc_objref
-                           :any-value (op:_get_interface servant))))
-          (t 
-           (op:invoke servant sreq)))))
+(defmethod servant-invoke ((servant DynamicImplementation) operation input handler)
+  (let ((req (make-instance 'CORBA:ServerRequest
+               :operation operation 
+               :input input )))
+    
+    (op:invoke servant req)
+
+    (let (buffer)
+      (cond ((request-exception req)
+             (setq buffer (funcall handler :user_exception))
+             (marshal-any-value (request-exception req) buffer))
+            (t
+             (setq buffer (funcall handler :no_exception))
+             (let ((res (request-result req)))
+               (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
+                 (marshal-any-value res buffer)))
+             (loop for param in (arguments req)
+                   unless (zerop (logand ARG_OUT (op:arg_modes param)))
+                   do (marshal-any-value (op:argument param) buffer))))
+      buffer)))
+
+
 
 
 (defmethod primary-interface ((servant DynamicImplementation) oid poa)
   (op:primary_interface servant oid poa))
 
 
+;;;; ServerRequest
+#|
+      interface ServerRequest { // PIDL
+        readonly attribute  Identifier operation;
+        void                arguments    (inout NVList nv);
+        Context             ctx();
+        void                set_result   (in any val);
+        void                set_exception(in any val);
+    };
+|#
+
+
+(define-corba-class CORBA:ServerRequest (CORBA:Object)
+  :attributes ((operation :readonly))
+  :slots ((input :initarg :input :initform nil :accessor request-input) 
+          (arguments               :accessor arguments)
+          (result  :initform nil   :accessor request-result)
+          (exception :initform nil :accessor request-exception)))
+
+
+(defun check-before-arg (r)
+  (when (slot-boundp r 'arguments)
+    (error 'omg.org/corba:bad_inv_order )))
+
+(defun check-after-arg (r)
+  (unless (slot-boundp r 'arguments)
+    (error 'omg.org/corba:bad_inv_order )))
+
+(define-method arguments ((self CORBA:ServerRequest) nv)
+  (check-before-arg self)
+  (setf (arguments self) nv)
+  (loop for param in nv
+        unless (zerop (logand ARG_IN (op:arg_modes param)))
+        do (setf (any-value (op:argument param))
+                 (unmarshal (any-typecode (op:argument param))
+                            (request-input self)))
+        unless (op:argument param)
+        do (setf (op:argument param) (corba:any)))
+  nv )
+
+(define-method set_result ((self CORBA:ServerRequest) val)
+  (check-after-arg self)
+  (setf (request-result self) val))
+
+(define-method set_exception ((self CORBA:ServerRequest) val)
+  (check-after-arg self)
+  (setf (request-exception self) val))
+
+
+
 ;;; clorb-servant.lisp ends here

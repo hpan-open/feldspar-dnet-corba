@@ -85,7 +85,7 @@
                      (length members))
       (ensure-equalp (op:kind (op:discriminator_type obj))
                      :tk_ulong)
-      (ensure-equalp (omg.org/features:default_index (op:type obj)) 1)
+      (ensure-equalp (op:default_index (op:type obj)) 1)
       ;; update
       (setf (op:discriminator_type_def obj)
             (op:get_primitive repository :pk_ushort))

@@ -150,8 +150,11 @@
    :name name :type_def type-def
    :mode (case mode (IN :param_in) (OUT :param_out) (INOUT :param_inout))))
 
-(dx (TYPE_STRUCT (name id version) members)
-    (op:create_struct *container* id name version members))
+(dx (TYPE_STRUCT (name id version) 'members)
+  ;; Complicated to handle recursive types
+  (let ((struct (op:create_struct *container* id name version nil)))
+    (setf (op:members struct) (process-list members))
+    struct))
 
 (dx (MEMBER type ((name id ver array-spec)))
   (CORBA:StructMember :name name 
@@ -169,7 +172,7 @@
 (dx (INTEGER 'n) n)
 
 (dx (TYPE_SEQUENCE element-type bound)
-  (op:create_sequence (the-repository) bound element-type))
+  (op:create_sequence (the-repository) (or bound 0) element-type))
 
 (dx (TYPE_ENUM (name id version) 'members)
   (op:create_enum *container* id name version (mapcar #'decode-name members)))
@@ -178,7 +181,7 @@
   (op:create_interface *container* id name version  nil))
 
 (dx (CONST_DCL type (name id version) value)
-  (omg.org/features:create_constant *container* id name version type value))
+  (op:create_constant *container* id name version type value))
 
 
 (dx (TYPE_INTEGER 'unsigned-flag 'base-type)
@@ -191,6 +194,7 @@
 
 (dx (ANY) (primitive :pk_any))
 (dx (BOOLEAN) (primitive :pk_boolean))
+(dx (CHAR) (primitive :pk_char))
 (dx (OCTET) (primitive :pk_octet))
 (dx (OBJECT) (primitive :pk_objref))
 (dx (TYPECODE) (primitive :pk_typecode))
@@ -233,11 +237,13 @@
 (setq *container* (make-instance 'repository))
 ;(process-list (get-idl-sexp "trader"))
 #||
+(process-list (get-idl-sexp "PortableServer.idl"))
+
 (process-list (get-idl-sexp "x-04.idl"))
 ;;(process-list (get-idl-sexp "my-query.idl"))
 (unless (fboundp 'describe-repo)
   (load "CLORB:SRC;describe-repo"))
 (describe-repo *container*)
-(doseq (x (op:contents *container* :dk_all nil)) (pprint (omg.org/features:describe x)))
+(doseq (x (op:contents *container* :dk_all nil)) (pprint (op:describe x)))
 ||#
 

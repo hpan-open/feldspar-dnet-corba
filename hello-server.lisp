@@ -1,10 +1,14 @@
 (in-package :cl-user)
 
-(clorb:define-servant hello-servant "Hello::World"
-  :id "IDL:Hello/World:1.0")
+;;(clorb:define-servant hello-servant "Hello::World"
+;;  :id "IDL:Hello/World:1.0")
 
-(defclass hello-world (hello-servant)
+(defclass hello-world (clorb::hello-servant)
   ((motd :initform "Hello World")))
+
+(defmethod clorb::primary-interface ((s hello-world) oid poa) 
+  (declare (ignore oid poa))
+  "IDL:Hello/World:1.0")
 
 (corba:define-method greet ((self hello-world))
   (slot-value self 'motd))

@@ -20,9 +20,10 @@
 
 (defclass CORBA:TypeCode ()
   ((kind :initarg :kind)
-   (params :initarg :params)))
+   (params :initarg :params)
+   (keywords )))
 
-(define-slot-dumper CORBA:TypeCode)
+;;(define-slot-dumper CORBA:TypeCode)
 
 
 (defmethod print-object ((tc CORBA:TypeCode) stream)
@@ -134,17 +135,23 @@
 (defun (setf typecode-params) (params tc)
   (setf (slot-value tc 'params) params))
 
+(defun typecode-smash (tc new-tc)
+  (setf (slot-value tc 'kind) (slot-value new-tc 'kind)
+        (slot-value tc 'params) (slot-value new-tc 'params))
+  (slot-makunbound tc 'keywords))
+
 (defun type-expand (type)
   (typecase type
     (symbol (values type nil))
     (cons   (values (car type) (cdr type)))
     (t      (values (typecode-kind type) (typecode-params type)))))
 
+
 (defun lispy-name (string)
   (cond ((symbolp string)
 	 string)
 	(t
-         (read-from-string (concatenate 'string ":" string)))))
+         (intern (string-upcase string) :keyword))))
 
 (macrolet
     ((make-tc-constants (&rest specs)
@@ -243,13 +250,14 @@
      (error 'corba:typecode/badkind))))
 
 (defun tc-members (tc)
-  (case (typecode-kind tc)
-    ((:tk_struct :tk_except :tk_enum)
-     (third (typecode-params tc)))
-    (:tk_union
-     (fifth (typecode-params tc)))
-    (otherwise
-     (error 'corba:typecode/badkind))))
+  (coerce (case (typecode-kind tc)
+            ((:tk_struct :tk_except :tk_enum)
+             (third (typecode-params tc)))
+            (:tk_union
+             (fifth (typecode-params tc)))
+            (otherwise
+             (error 'corba:typecode/badkind))) 
+          'vector ))
 
 (define-method member_count ((tc corba:typecode))
   (length (tc-members tc)))
@@ -318,10 +326,24 @@
 
 (defun symbol-typecode (symbol)
   ;; Return the type code for the scoped symbol of an idltype.
+  ;; handling of recursive typecode computation similar to 
+  ;; op:type in IFR.
   (let ((typecode (get symbol 'typecode)))
-    (if (functionp typecode) 
-      (setf (get symbol 'typecode) (funcall typecode))
-      typecode)))
+    (cond ((functionp typecode) 
+           (setf (get symbol 'typecode) t)
+           (let* ((new-tc (funcall typecode))
+                  (old-tc (get symbol 'typecode)))
+             (cond ((eq old-tc t)
+                    (setf (get symbol 'typecode) new-tc))
+                   (t
+                    (typecode-smash old-tc new-tc)
+                    old-tc))))
+          ((eq typecode t)
+           (setf (get symbol 'typecode) (make-typecode t)))
+          (t
+           typecode))))
+
+
 
 (defun set-symbol-typecode (symbol typecode)
   ;; Set the typecode for a scoped symbol. Typecode can also be a function to compute the typecode.
@@ -341,8 +363,23 @@
 
 ;;;; Convenience ?
 
+#+unused-functions
 (defun tcp-member-symbols (params)
   (map 'vector #'lispy-name (tcp-members params)))
+
+(defun tc-keywords (tc)
+  (unless (slot-boundp tc 'keywords)
+    (setf (slot-value tc 'keywords)
+          (map 'vector 
+               (ecase (typecode-kind tc)
+                 ((:tk_struct :tk_except)
+                  (lambda (m) (lispy-name (first m))))
+                 ((:tk_union)
+                  (lambda (m) (lispy-name (second m))))
+                 ((:tk_enum)
+                  #'lispy-name))
+               (tc-members tc))))
+  (slot-value tc 'keywords))
 
 (defun arbritary-value (tc)
   (ecase (op:kind tc)

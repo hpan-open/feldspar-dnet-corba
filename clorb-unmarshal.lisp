@@ -21,9 +21,8 @@
   (declare (type (integer 0 100) n)
            (type buffer buffer)
            (optimize speed))
-  (loop while (/= 0 (rem (buffer-rel-pos buffer) n))
-	do (incf (buffer-position buffer))))
-
+  (incf (buffer-position buffer)
+        (logand (- n (logand (the buffer-index (buffer-rel-pos buffer)) (- n 1))) (- n 1))))
 
 
 (defmacro with-encapsulation (buffer &body body)
@@ -40,34 +39,45 @@
       (funcall thunk buffer))))
 
 (defmacro unmarshal-number (size signed buffer)
-  `(let ((buffer ,buffer))
-     (unmarshal-align ,size buffer)
-     (if (= (buffer-byte-order buffer) 1)
-         (+
-          ,@(loop for c below size collect
-                  `(* ,(expt 2 (* c 8))
-                      ,(if (and signed (= c (- size 1)))
-                           '(let ((b (unmarshal-octet buffer)))
-                             (if (> b 127) (- b 256) b))
-                         '(unmarshal-octet buffer)))))
-       (loop with b = (unmarshal-octet buffer)
-           with r = (if (and ,signed (> b 127)) -1 0)
-           for p from (* (1- ,size) 8) by -8
-           do (setq r (dpb b (byte 8 p) r))
-           while (> p 0)
-           do (setq b (unmarshal-octet buffer))
-           finally (return r)))))
+  (let ((code1 `(the corba:octet (unmarshal-octet buffer)))
+        (code2 nil)
+        (code nil))
+    (loop for c from 1 below size 
+          do (setf code1
+                   `(logior ,code1
+                            (ash (the corba:octet (unmarshal-octet buffer))
+                                 ,(* c 8)))))
+    (setf code2 `(logior
+                  ,@(loop for c from (1- size) downto 1 
+                          collect
+                          `(ash (the corba:octet (unmarshal-octet buffer)) ,(* c 8)))
+                  (the corba:octet (unmarshal-octet buffer))))
+    
+    (setf code `(if (= (buffer-byte-order buffer) 1)
+                  ,code1 ,code2))
+    (when signed
+      (setf code `(let ((n ,code))
+                    (if (>= n ,(expt 2 (1- (* size 8))))
+                      (- n ,(expt 2 (* size 8)))
+                      n))))
+    `(let ((buffer ,buffer))
+       (unmarshal-align ,size buffer)
+       ,code)))
 
 (defun unmarshal-ushort (buffer)
-  (unmarshal-number 2 nil buffer))
+  (declare (optimize speed))
+  (the CORBA:short
+    (unmarshal-number 2 nil buffer)))
 
 (defun unmarshal-short (buffer)
-  (unmarshal-number 2 t buffer))
+  (declare (optimize speed))
+  (the CORBA:Short
+    (unmarshal-number 2 t buffer)))
 
 (defun unmarshal-ulong (buffer)
   (declare (optimize speed))
   (the CORBA:ULong
-      (unmarshal-number 4 nil buffer)))
+    (unmarshal-number 4 nil buffer)))
 
 (defun unmarshal-long (buffer)
   (unmarshal-number 4 t buffer))
@@ -96,7 +106,7 @@
            with ,len = (unmarshal-ulong buffer) 
            with ,r = (make-array ,len :element-type ,el-type)
            for ,i from 0 below ,len
-           do (setf (svref ,r ,i) (progn ,@el-read))
+           do (setf (aref ,r ,i) (progn ,@el-read))
            finally (return ,r))))
 
 (defun unmarshal-sequence (el-reader buffer &optional (el-type t))
@@ -104,16 +114,16 @@
                         (funcall el-reader buffer)))
 
 (defun unmarshal-string (buffer)
-  (declare (optimize speed)
+  (declare (optimize (speed 3) (safety 1) (space 0))
            (type buffer buffer))
-  (loop with len = (1- (unmarshal-ulong buffer))
-	with r = (make-string len)
-	for i from 0 below len
-	do (setf (char r (the buffer-index i))
-                 (the character (unmarshal-char buffer)))
-	finally (progn
-		  (unmarshal-octet buffer)
-		  (return r))))
+  (let* ((len (unmarshal-ulong buffer))
+         (str (make-string (- len 1)))
+         (octets (buffer-octets buffer)))
+    (loop for pos from (buffer-position buffer)
+          for i from 0 below (1- len)
+          do (setf (aref str i) (code-char (aref octets pos))))
+    (incf (buffer-position buffer) len)
+    str))
 
 
 (defun unmarshal-osequence (buffer)
@@ -222,23 +232,24 @@
 
 ;;; Enum
 
-(defun unmarshal-enum (params buffer)
+(defun unmarshal-enum (tc buffer)
   (let ((index (unmarshal-ulong buffer)))
-    (elt (tcp-member-symbols params) index)))
+    (elt (tc-keywords tc) index)))
 
 ;;; Exception
 
-(defun unmarshal-exception (params buffer)
-  (let* ((class (id-exception-class (tcp-id params)))
-         (initargs '()))
-    (doseq (m (tcp-members params))
-      (push (lispy-name (first m)) initargs)
-      (push (unmarshal (second m) buffer) initargs))
-    (setq initargs (nreverse initargs))
+(defun unmarshal-exception (typecode buffer)
+  (let* ((id (op:id typecode))
+         (class (id-exception-class id))
+         (initargs 
+          (loop for (nil tc) across (tc-members typecode)
+                for key across (tc-keywords typecode)
+                collect key
+                collect (unmarshal tc buffer))))
     (if class
       (apply #'make-condition class initargs)
-      (make-condition 'unknown-users-exception
-                      :id (tcp-id params) :values initargs))))
+      (make-condition 'unknown-user-exception
+                      :id id :values initargs))))
 
 
 ;;; Main entry
@@ -254,7 +265,7 @@
       ((:tk_ushort) (unmarshal-ushort buffer))
       ((:tk_short) (unmarshal-short buffer))
       ((:tk_ulong) (unmarshal-ulong buffer))
-      ((:tk_enum) (unmarshal-enum params buffer))
+      ((:tk_enum) (unmarshal-enum type buffer))
       ((:tk_long) (unmarshal-long buffer))
       ((:tk_longlong) (unmarshal-number 8 t buffer))
       ((:tk_ulonglong) (unmarshal-number 8 nil buffer))
@@ -289,10 +300,9 @@
       ((:tk_alias)
        (unmarshal (third params) buffer))
       ((:tk_null :tk_void) nil)
-      ((:tk_struct)
-       (struct-in type #'unmarshal buffer))
+      ((:tk_struct) (unmarshal-struct type buffer))
       ((:tk_except) 
-       (unmarshal-exception params buffer))
+       (unmarshal-exception type buffer))
       ((object :tk_objref) 
        (unmarshal-ior buffer (first params)))
       ((anon-struct)
@@ -314,19 +324,6 @@
 
 
 ;;;; GIOP extras
-
-(defun unmarshal-giop-header (buffer)
-  (unless (loop for c in '(#\G #\I #\O #\P)
-		always (eql c (unmarshal-char buffer)))
-    (error "Not a GIOP message: ~S"
-           (map 'string 'code-char (buffer-octets buffer))))
-  (let* ((major (unmarshal-octet buffer))
-	 (minor (unmarshal-octet buffer))
-         (iiop-version (cons major minor))
-	 (byte-order (unmarshal-octet buffer))
-	 (msgtype (unmarshal-octet buffer)))
-    (setf (buffer-byte-order buffer) byte-order)
-    (values msgtype iiop-version)))
 
 (defun unmarshal-service-context (buffer)
   (unmarshal-sequence-m (buffer) 

@@ -121,32 +121,33 @@
 
 
 
-(defun open-active-socket (host port)
+(defun open-active-socket (host port &optional (binary t))
   "Open a TCP connection to HOST:PORT, and return the stream asociated with it"
-  (%SYSDEP
-   "open socket to host/port"
-   #+dummy-tcp
-   (error "Dummy TCP can connect")
-   #+clisp 
-   (socket-connect port host :element-type '(unsigned-byte 8))
-   #+cmucl-sockets
-   (system:make-fd-stream (ext:connect-to-inet-socket host port)
-                          :input t :output t :element-type
-                          '(unsigned-byte 8))
-   #+db-sockets
-   (let ((s (sockets:make-inet-socket :stream :tcp))
-         (num (car (sockets:host-ent-addresses
-                    (sockets:get-host-by-name host)))))
-     (sockets:socket-connect s num port)
-     (sockets:socket-make-stream s :element-type '(unsigned-byte 8)
-                                 :input t :output t :buffering :none))
-   #+(or allegro use-acl-socket)
-   (socket:make-socket 
-    :remote-host host :remote-port port
-    :format :binary)
-
-   #+mcl
-   (ccl::open-tcp-stream host port :element-type '(unsigned-byte 8))))
+  (let ((type (if binary '(unsigned-byte 8) 'base-char)))
+    (declare (ignorable type))
+    (%SYSDEP
+     "open socket to host/port"
+     #+dummy-tcp
+     (error "Dummy TCP can connect")
+     #+clisp 
+     (socket-connect port host :element-type type) 
+     #+cmucl-sockets
+     (system:make-fd-stream (ext:connect-to-inet-socket host port)
+                            :input t :output t :element-type type)
+     #+db-sockets
+     (let ((s (sockets:make-inet-socket :stream :tcp))
+           (num (car (sockets:host-ent-addresses
+                      (sockets:get-host-by-name host)))))
+       (sockets:socket-connect s num port)
+       (sockets:socket-make-stream s :element-type type
+                                   :input t :output t :buffering :none))
+     #+(or allegro use-acl-socket)
+     (socket:make-socket 
+      :remote-host host :remote-port port
+      :format (if binary :binary :text))
+     
+     #+mcl
+     (ccl::open-tcp-stream host port :element-type type))))
 
 
 (defun accept-connection-on-socket (socket &optional (blocking nil))
@@ -239,6 +240,25 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    ;; default
    (close socket)))
 
+
+;;;; HTTP GET
+
+(defun http-get-ior (host port path)
+  (%SYSDEP
+   "get IOR from http server"
+   (with-open-stream (s (open-active-socket host port nil))
+     (let ((crlf (coerce (vector #\Return #\Linefeed) 'string)))
+       (format s "GET /~A~A" path crlf)
+       (let ((ior (read-line s)))
+         (cond 
+          ((and (stringp ior)
+                (> (length ior) 4)
+                (string= "IOR:" ior :end2 4))
+           (setq ior (string-right-trim crlf ior)))
+          (t
+           (mess 4 "Non IOR from http://~A:~A~A~% >> ~S" 
+                 host port path ior)
+           nil)))))))
 
 
 ;;;; Select interface
@@ -406,7 +426,7 @@ Returns select result to be used in getting status for streams."
 
 ;;;; Read / Write 
 
-(deftype octets () `(unsigned-byte 8))
+(deftype octets () `(vector (unsigned-byte 8)))
 (deftype index () '(integer 0 #.array-dimension-limit))
 
 
@@ -415,18 +435,16 @@ Returns select result to be used in getting status for streams."
   (declare (optimize speed)
            (type octets seq)
            (type index start end))
-  (%SYSDEP
-   "read bytes from stream to sequence"
-   #+(and mcl (not openmcl) )
-   (let ((read-pos start))
-     (declare (type index read-pos))
-     (loop while (< read-pos end)
-         do (setf (aref seq read-pos) (read-byte stream t))
-            (incf read-pos)))
-   ;; Default
-   (let ((n (read-sequence seq stream :start start :end end)))
-     (when (< n (- end start))
-       (error 'end-of-file :stream stream)))))
+  #+(and mcl (not xxuse-acl-socket))
+  (let ((read-pos start))
+    (declare (type index read-pos))
+    (loop while (< read-pos end)
+          do (setf (aref seq read-pos) (read-byte stream t))
+          (incf read-pos)))
+  #-(and mcl (not xxuse-acl-socket))
+  (let ((n (read-sequence seq stream :start start :end end)))
+    (when (< n (- end start))
+      (error 'end-of-file :stream stream))))
 
 
 (defun read-octets-no-hang (seq start end stream)
@@ -455,16 +473,8 @@ Returns select result to be used in getting status for streams."
 
 
 (defun write-octets (seq start end stream)
-  (declare (optimize speed)
-           (type octets seq)
-           (type index start end))
-  (%SYSDEP
-   "write bytes from sequence to stream"
-   #+(and mcl (not openmcl)) 
-   (loop for i from start below end
-       do (write-byte (aref seq i) stream))
-   ;; default
-   (write-sequence seq stream :start start :end end))
+  (loop for i from start below end
+        do (write-byte (aref seq i) stream))
   (force-output stream))
 
 (defun write-octets-no-hang (seq start end stream)
@@ -506,9 +516,6 @@ Returns select result to be used in getting status for streams."
    "start a process"
    #+mcl (apply #'ccl:process-run-function options proc args)
 
-   #+allegro
-   (apply #'multiprocessing:process-run-function options proc args)
-
    ;; Default: just do it
    (progn (apply proc args)
           nil)))
@@ -517,7 +524,6 @@ Returns select result to be used in getting status for streams."
   (and process
        (%SYSDEP "end process"
                 #+mcl (ccl:process-reset process nil :kill)
-                #+allegro (mp:process-reset process nil :kill)
                 nil)))
 
 (defun process-wait-with-timeout (whostate timeout wait-func &rest args)
@@ -526,8 +532,5 @@ Returns select result to be used in getting status for streams."
    "suspend process until function returns true"
    #+mcl
    (apply #'ccl:process-wait-with-timeout whostate timeout wait-func args)
-   #+allegro
-   (apply #'mp:process-wait-with-timeout whostate timeout wait-func args)
-
    ;; Default: ignore
    nil ))

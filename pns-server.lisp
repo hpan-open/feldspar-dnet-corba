@@ -1,6 +1,7 @@
-;;;; NameService v2
+;;;; NameService v2.1
+;;; rewrite to use real (static) skeleton classes
 
-(in-package :cl-user)
+(in-package "NET.CDDR.CLORB.PERSISTENT-NAMING")
 
 (eval-when (:compile-toplevel :execute)
   (import '(corba:define-method)))
@@ -8,22 +9,16 @@
 (defvar *naming-ior-file*  #P"/tmp/NameService")
 (defvar *naming-base-path* #P"/tmp/naming/foo.obj")
 
+
+;;;; Generating ID
+
 (defvar *naming-start-time*
-    (- (get-universal-time) 3191179173))
+  (- (get-universal-time) 3244357381))
 
 (defvar *naming-seqno* 0)
 
-
-
-;;;; NamingContext Servant
-
-(defparameter +naming-context-id+
-  "IDL:omg.org/CosNaming/NamingContext:1.0")
-(defparameter +name-component-id+
-  "IDL:omg.org/CosNaming/NameComponent:1.0")
-(defparameter +binding-id+
-  "IDL:omg.org/CosNaming/Binding:1.0")
-
+(defun generate-id ()
+  (format nil "~A-~A" *naming-start-time* (incf *naming-seqno*)))
 
 
 ;;;; Naming Context Implementation
@@ -75,7 +70,6 @@
 
 ;;;; Method code
 
-
 (defun not-found (why rest-of-name)
   (check-type why COSNAMING:NAMINGCONTEXT/NOTFOUNDREASON)
   ;;(check-type rest-of-name (SEQUENCE COSNAMING:NAMECOMPONENT))
@@ -83,14 +77,13 @@
          :why why
          :rest_of_name rest-of-name))
 
-(defmethod the-orb ((s clorb::auto-servant))
-  (clorb::the-orb (op:_default_POA s)))
+
 
 (define-method new_context ((self naming-context))
-  (let ((new-id (format nil "~A" (get-universal-time))))
+  (let ((new-id (generate-id)))
     (op:create_reference_with_id (op:_default_POA self)
                                  (portableserver:string-to-oid new-id)
-                                 (clorb:servant-interface-id self))))
+                                 (clorb::object-id self))))
 
 (defun pns-path (nc name-component)
   (merge-pathnames
@@ -102,7 +95,7 @@
 
 (defun pns-bind (nc n obj bind-type &optional rebind)
   (assert (= 1 (length n)))
-  (let ((orb (the-orb nc))
+  (let ((orb (op:_orb nc))
         (name-component (elt n 0)))
     (let ((path (pns-path nc name-component)))
       (ensure-directories-exist path)
@@ -126,7 +119,7 @@
       (with-standard-io-syntax ()
         (setq type (read stream))
         (setq ior (read stream))))
-    (values type (op:string_to_object (the-orb self) ior))))
+    (values type (op:string_to_object (op:_orb self) ior))))
 
 (defun opt-local (poa obj)
   (let (oid)
@@ -260,7 +253,7 @@
 ;; void destroy () raises (NotEmpty);
 
 (define-method destroy ((bi binding-iterator))
-  (let* ((current (op:resolve_initial_references (the-orb bi) "POACurrent"))
+  (let* ((current (op:resolve_initial_references (op:_orb bi) "POACurrent"))
          (poa (op:get_POA current))
          (oid (op:get_object_id current)))
     (op:deactivate_object poa oid)))
@@ -288,18 +281,8 @@
                            :user-id :use-servant-manager)))
     (op:set_servant_manager *naming-poa* (make-instance 'naming-manager))))
 
-
-#|
-(setup-naming-poa)
-(setq root
-      (op:create_reference_with_id
-       *naming-poa*
-       (portableserver:string-to-oid "root")
-       +naming-context-id+))
-|#
-
 (defun setup-pns ()
-  (setup-naming-poa)
+  (unless *naming-poa* (setup-naming-poa))
   (with-open-file (out *naming-ior-file*
                        :direction :output
                        :if-exists :supersede)
@@ -308,7 +291,7 @@
                           (op:create_reference_with_id
                            *naming-poa*
                            (portableserver:string-to-oid "root")
-                           +naming-context-id+))
+                           (clorb::symbol-ifr-id 'cosnaming:namingcontext)))
      out)))
 
 ;;(defmethod initialize-instance :after ((self naming-context) &key)

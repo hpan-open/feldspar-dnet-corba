@@ -12,9 +12,7 @@
                (sequence
                 (map 'list #'interner o))
                (CORBA:Struct
-                (apply 'make-struct (type-id o)
-                       (loop for pair in (fields o)
-                           nconc (list (car pair) (interner (cdr pair))))))
+                (map-struct #'interner o))
                (CORBA:Typecode o)
                (standard-object
                 (internalize r o nil))

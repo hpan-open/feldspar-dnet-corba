@@ -55,7 +55,6 @@
            (wrapper (make-instance 'servant-wrapper
                       :orb orb :poa poa)))
       (ensure-eql (op:_default_poa wrapper) poa)
-      (ensure (poa-current))
       (loop for integer in '(1 10 100 17 919)
             do (ensure-eql (oid-integer (integer-oid integer)) integer))))
 

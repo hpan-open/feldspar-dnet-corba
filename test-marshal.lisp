@@ -123,14 +123,14 @@
         (marshal tc omg.org/corba:tc_typecode buffer)
         (let ((tc2 (unmarshal omg.org/corba:tc_typecode buffer)))
           (ensure-eql (op:member_count tc2) (op:member_count tc))
-          (ensure (omg.org/features:equal tc2 tc)))))
+          (ensure (op:equal tc2 tc)))))
     
     
     (define-test "RecursiveTypecode"
       (let* ((struct-filter
-              (struct-typecode "IDL:LDAP/Filter:1.0"
-                               "Filter"
-                               :and corba:tc_null))
+              (create-struct-tc "IDL:LDAP/Filter:1.0"
+                                "Filter"
+                                `(("and" ,corba:tc_null))))
              (buffer
               (make-buffer :octets (make-array 400 :fill-pointer 0
                                                :element-type 'CORBA:octet))))

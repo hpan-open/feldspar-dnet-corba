@@ -113,7 +113,7 @@ This guides the use of local or absolute names.")
        ,(map 'list 
           (lambda (smember)
             (list (struct-get smember :name)
-                  (gen-iref (struct-get smember :type_def))))
+                  (gen-iref (op:type_def smember))))
           (op:members sdef))
      ,@(contained-id-info sdef)))
 
@@ -129,16 +129,16 @@ This guides the use of local or absolute names.")
         (lambda (m)
           (list (struct-get m :label)
                 (struct-get m :name)
-                (gen-iref (struct-get m :type_def))))
+                (gen-iref (op:type_def m))))
         (op:members union))
-     ,@ (contained-id-info union)))
+     ,@(contained-id-info union)))
 
 (defmethod gen-idef ((exception CORBA:ExceptionDef))
   `(define-exception ,(op:name exception) 
        ,(map 'list  
           (lambda (smember)
             (list (struct-get smember :name)
-                  (gen-iref (struct-get smember :type_def))))
+                  (gen-iref (op:type_def smember))))
           (op:members exception))
      ,@(contained-id-info exception)))
 

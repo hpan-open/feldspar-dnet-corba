@@ -2,28 +2,6 @@
 
 (in-package :clorb)
 
-;; Status values
-(put :normal  'reply-status 0)
-(put :forward 'reply-staus 4)
-(put :forward 'locate-status 2)
-(put :exception 'reply-status 2)
-
-
-;;;; GIOP / IIOP stuff
-
-'(defun decode-userexception (exc)
-  (values
-   (cons ':tk_string
-         (if (slot-boundp exc 'types)
-             (slot-value exc 'types)
-             (handler-case
-                 (map 'list #'second
-                      (third (typecode-params
-                              (get-typecode (exception-id exc)))))
-              (error () (error 'unknown)))))
-   (cons (exception-id exc)
-         (userexception-values exc))))
-
 
 ;;;; Server proper
 
@@ -37,7 +15,7 @@
     (setup-shortcut)))
 
 (defun setup-incoming-connection (conn)
-  (connection-init-read conn nil *iiop-header-size* #'poa-request-handler))
+  (connection-init-read conn nil *iiop-header-size* #'poa-message-handler))
 
 (defun setup-shortcut-in (&optional (conn-in *shortcut-in*))
   (setup-incoming-connection conn-in))
@@ -56,31 +34,110 @@
   (let ((conn (make-associated-connection desc)))
     (setup-incoming-connection conn)))
 
-(defun poa-request-handler (conn)
-  (let ((sreq (make-server-request
-               :connection conn
-               :buffer (connection-read-buffer conn))))
-    (read-request sreq
-                  (lambda (conn)
-                    (setup-incoming-connection conn)
-                    (decode-request sreq)
-                    (poa-demux sreq)))))
+(defun poa-message-handler (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (multiple-value-bind (msgtype) (unmarshal-giop-header buffer)
+      (let ((decode-fun
+             (ecase msgtype
+               ((:REQUEST)         #'poa-request-handler)
+               ((:CANCELREQUEST)   #'poa-cancelrequest-handler)
+               ((:LOCATEREQUEST)   #'poa-locaterequest-handler)
+               ((:CLOSECONNECTION) #'poa-closeconnection-handler)
+               ((:MESSAGEERROR)    #'poa-messageerror-handler))))
+        (let ((size (unmarshal-ulong buffer)))
+          (mess 1 "Message type ~A size ~A" msgtype size)
+          (if (zerop size)
+            (funcall decode-fun conn)
+            (connection-init-read conn t (+ size *iiop-header-size*) decode-fun)))))))
 
-(defun poa-demux (sreq)
-  (with-slots (object-key operation) sreq
-    (multiple-value-bind (reftype poa oid)
-        (decode-object-key-poa object-key)
-      (setf (server-request-oid sreq) oid)
-      (cond
-        ((and reftype poa)
-         (setf (server-request-poa sreq) poa)
-         (mess 3 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
-         ;; Check if POA is active, holding, discarding...
-         (poa-invoke poa sreq))
-        (t
-         (set-request-exception
-          sreq (make-condition 'CORBA:OBJECT_NOT_EXIST :completed :completed_no))
-         (send-response sreq))))))
+(defun poa-request-handler (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (setup-incoming-connection conn)
+    (let* ((*service-context* (unmarshal-service-context buffer))
+           (req-id (unmarshal-ulong buffer))
+           (response (unmarshal-octet buffer))
+           (object-key (unmarshal-osequence buffer))
+           (operation (unmarshal-string buffer))
+           (principal (unmarshal-osequence buffer))
+           (handler
+            (lambda (status)
+               (let ((buffer (get-work-buffer)))
+                (marshal-giop-header :reply buffer)
+                (marshal-ulong 0 buffer) ; service-context
+                (marshal-ulong req-id buffer)
+                (marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
+                buffer))))
+      (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
+            req-id operation object-key principal)
+      (handler-case
+        (multiple-value-bind (reftype poa oid)
+                             (decode-object-key-poa object-key)
+          (cond ((and reftype poa)
+                 (mess 2 "Using POA ~A oid '~/clorb:stroid/'" (op:the_name poa) oid)
+                 ;; Check if POA is active, holding, discarding...
+                 (setq buffer (poa-invoke poa oid operation buffer handler)))
+                (t
+                 (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no))))
+        (systemexception
+         (exception)
+         (setq buffer (funcall handler :system_exception))
+         (marshal-string (exception-id exception) buffer)
+         (marshal-ulong  (system-exception-minor exception) buffer)
+         (marshal (system-exception-completed exception) OMG.ORG/CORBA::TC_completion_status buffer)))
+      
+      ;; Send the response
+      (unless (zerop response)
+        (marshal-giop-set-message-length buffer)
+        (connection-send-buffer conn buffer)))))
+
+
+(defun poa-cancelrequest-handler (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (setup-incoming-connection conn)
+    (let* ((req-id (unmarshal-ulong buffer)))
+      (mess 3 "#~D cancel" req-id))))
+
+
+(defun poa-locaterequest-handler (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (setup-incoming-connection conn)
+    (let* ((req-id (unmarshal-ulong buffer))
+           (object-key (unmarshal-osequence buffer))
+           (handler (lambda (type)
+                      (let ((buffer (get-work-buffer)))
+                        (marshal-giop-header :locatereply buffer)
+                        (marshal-ulong req-id buffer)
+                        (marshal-ulong (ecase type
+                                         (:unknown_object 0)
+                                         (:object_here 1)
+                                         ((:object_forward :location_forward) 2))
+                                       buffer)
+                        buffer)))
+           (status :UNKNOWN_OBJECT))
+      (setq buffer nil)
+      (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
+        (when (and reftype poa)
+          (handler-case
+            (setq buffer (poa-invoke poa oid "_locate" buffer handler)
+                  status :object_here)
+            (systemexception () nil))))                             
+      (unless buffer
+        (setq buffer (funcall handler status))))
+    (marshal-giop-set-message-length buffer)
+    (connection-send-buffer conn buffer)))
+
+
+(defun poa-closeconnection-handler (conn)
+  (declare (ignore conn))
+  ;;FIXME:
+  ;; for giop 1.0 this is not expected on the server side
+  (error "NYI"))
+
+(defun poa-messageerror-handler (conn)
+  (declare (ignore conn))
+  ;;FIXME:
+  (error "NYI"))
+
 
 (defun root-POA (&optional (orb (orb_init)))
   (unless (adaptor orb)

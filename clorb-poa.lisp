@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.12 2002/10/19 02:55:55 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.13 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
@@ -51,7 +51,7 @@
                (the_parent :readonly) 
                (the_POAManager :readonly) 
                (the_activator))
-  :slots ((active-servant-map 
+  :slots ((active-servant-map
            :initform (make-hash-table)
            :reader poa-active-servant-map
            :documentation "servant->id")
@@ -85,7 +85,7 @@
 
 (define-user-exception ForwardRequest 
     :id "IDL:omg.org/PortableServer/ForwardRequest:1.0"
-    :members ((forward_reference CORBA:tc_objref)))
+    :members (("forward_reference" CORBA:tc_objref)))
 
 (define-user-exception POA/AdapterNonExistent 
     :id "IDL:omg.org/PortableServer/POA/AdapterNonExistent:1.0")
@@ -107,7 +107,7 @@
 
 (define-user-exception POA/InvalidPolicy
     :id "IDL:omg.org/PortableServer/POA/InvalidPolicy:1.0"
-    :members ((index CORBA:tc_ushort)))
+    :members (("index" CORBA:tc_ushort)))
 
 (define-user-exception POA/NoServant
     :id "IDL:omg.org/PortableServer/POA/NoServant:1.0")
@@ -371,12 +371,15 @@
 ;;;     raises (WrongAdapter, WrongPolicy);
 
 (define-method reference_to_id ((poa POA) reference)
-  (multiple-value-bind (ref-type refpoa oid)
-      (decode-object-key-poa (object-key reference))
-    (declare (ignore ref-type))
-    (unless (eql refpoa poa)
+  (let ((profiles (object-profiles reference)))
+    (unless profiles
       (error 'POA/WrongAdapter))
-    oid))
+    (multiple-value-bind (ref-type refpoa oid)
+                         (decode-object-key-poa (iiop-profile-key (first profiles)))
+      (declare (ignore ref-type))
+      (unless (eql refpoa poa)
+        (error 'POA/WrongAdapter))
+      oid)))
 
 ;;;   Servant id_to_servant(in ObjectId oid)
 ;;;     raises (ObjectNotActive, WrongPolicy);
@@ -406,16 +409,15 @@
   (if *poa-current*                     ; in context of a request
     (let ((oid (poa-current-object-id *poa-current*))
           (poa (poa-current-poa *poa-current*)))
-      (omg.org/features:create_reference_with_id
+      (op:create_reference_with_id
        poa oid (primary-interface servant oid poa)))
     (let* ((poa (or (op:_default_POA servant)
 		    (root-POA) )))
       ;; FIXME: translate ServantNotActive to WrongPolicy ??
       (op:servant_to_reference poa servant))))
 
-(define-method _is_a ((servant servant) logical-type-id)
-  (or (equal logical-type-id "IDL:omg.org/CORBA/Object:1.0")
-      (equal logical-type-id (current-primary-interface servant))
+(define-method _is_a ((servant dynamicimplementation) logical-type-id)
+  (or (equal logical-type-id (current-primary-interface servant))
       (op:is_a (op:_get_interface servant) logical-type-id)))
 
 (define-method _get_interface ((servant servant))
@@ -428,55 +430,45 @@
 ;;;; Request Handling
 ;; ----------------------------------------------------------------------
 
-(defun poa-invoke (poa sreq)
-  (handler-case    
-      (progn
-        (unless (eq :active (op:get_state (op:the_poamanager poa)))
-          (error 'CORBA:TRANSIENT :completed :completed_no))
-        (poa-invoke-1 poa sreq))
-
-    (ForwardRequest (fwd)
-      (mess 4 "forwarding")
-      (set-request-forward sreq (omg.org/features:forward_reference fwd)))
-    (exception (exc)
-      (set-request-exception sreq exc))
-    #+ignore
-    (error ()
-      (set-request-exception sreq (make-condition 'CORBA:UNKNOWN))))
-  (send-response sreq))
-
-(defun poa-invoke-1 (poa sreq)
-  (let* ((oid (server-request-oid sreq))
-         (operation (server-request-operation sreq))
-         (*poa-current* (make-poa-current poa oid))
+(defun poa-invoke (poa oid operation buffer handler)
+  (unless (eq :active (op:get_state (op:the_poamanager poa)))
+    (error 'CORBA:TRANSIENT :completed :completed_no))
+  (let* ((*poa-current* (make-poa-current poa oid))
          (servant (trie-get oid (POA-active-object-map poa)))
          (cookie nil)
          (topost nil))
-    (cond (servant)
-          ((poa-has-policy poa :use-servant-manager)
-           (cond ((poa-has-policy poa :retain)
-                  (setq servant
-                    (op:incarnate (POA-servant-manager poa) oid poa))
-                  (op:activate_object_with_id poa oid servant))
-                 (t
-                  (multiple-value-setq (servant cookie)
-                    (op:preinvoke (POA-servant-manager poa)
-                                   oid poa operation))
-                  (setq topost t))))
-          ((poa-has-policy poa :use-default-servant)
-           (setq servant (POA-default-servant poa)))
-          (t
-           (error 'CORBA:OBJECT_NOT_EXIST
-                  :completed :completed_no)))
-    (setf (server-request-servant sreq) servant)
-    (unwind-protect
-        (cond ((eq operation 'locate)
-               (set-request-result sreq nil nil :status 1))
+    (handler-case    
+      (progn
+        (cond (servant)
+              ((poa-has-policy poa :use-servant-manager)
+               (cond ((poa-has-policy poa :retain)
+                      (setq servant
+                            (op:incarnate (POA-servant-manager poa) oid poa))
+                      (op:activate_object_with_id poa oid servant))
+                     (t
+                      (multiple-value-setq (servant cookie)
+                        (op:preinvoke (POA-servant-manager poa)
+                                      oid poa operation))
+                      (setq topost t))))
+              ((poa-has-policy poa :use-default-servant)
+               (setq servant (POA-default-servant poa)))
               (t
-               (servant-invoke servant sreq)))
-      (when topost
-        (op:postinvoke (POA-servant-manager poa)
-                        oid poa operation cookie servant)))))
+               (error 'CORBA:OBJECT_NOT_EXIST
+                      :completed :completed_no)))
+        (cond (topost
+               (unwind-protect
+                 (servant-invoke servant operation buffer handler)
+                 (op:postinvoke (POA-servant-manager poa)
+                                oid poa operation cookie servant)))
+              (t
+               (servant-invoke servant operation buffer handler))))
+      (ForwardRequest 
+       (fwd)
+       (mess 3 "forwarding")
+       (let ((buffer (funcall handler :location_forward)))
+         (marshal-ior (op:forward_reference fwd) buffer)
+         buffer)))))
+
 
 
 ;;;; PortableServer::Current

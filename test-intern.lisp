@@ -12,7 +12,7 @@
       (define-test "Test hello"
           (let ((r (make-instance 'irepository)))
             (internalize r r0)
-            (setq *r r)
+            ;;(setq *r r)
             (let ((h (lookup-name-in r "Hello::World")))
               (ensure h)
               (ensure (not (eq h (lookup-name-in r0 "Hello::World"))))

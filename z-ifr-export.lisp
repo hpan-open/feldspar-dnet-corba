@@ -54,19 +54,6 @@
            (map-struct (lambda (v) (translate x v)) obj)))
 
 
-(defun map-struct (fn struct)
-  (let ((tc (any-typecode struct))
-        (store (list nil)))
-    (struct-out struct tc
-                (lambda (value tc dest) 
-                  (declare (ignore tc))
-                  (push value (car dest)))
-                store)
-    (struct-in tc (lambda (tc src)
-                    (declare (ignore tc))
-                    (funcall fn (pop (car src))))
-               (list (nreverse (car store))))))
-
   
 ;;;;
 
@@ -134,7 +121,7 @@
 
 (define-method primary_interface ((self servant-wrapper) oid poa)
   (declare (ignore poa))
-  (servant-interface-id (index-object (objmap self) (oid-integer oid))))
+  (object-id (index-object (objmap self) (oid-integer oid))))
 
 (defmethod local-translator ((self servant-wrapper))
   (if (slot-boundp self 'local-translator)

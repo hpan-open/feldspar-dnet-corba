@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.10 2002/10/19 02:55:55 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.11 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 

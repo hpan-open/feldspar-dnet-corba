@@ -1,5 +1,5 @@
 ;;;; clorb-union.lisp -- CORBA Union support
-;; $Id: clorb-union.lisp,v 1.4 2002/10/19 02:55:55 lenst Exp $
+;; $Id: clorb-union.lisp,v 1.5 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
@@ -60,7 +60,7 @@
            for char = (code-char code)
            when char do (funcall function char)))
     (:tk_boolean (funcall function nil) (funcall function t)) 
-    (:tk_enum (doseq (sym (tcp-member-symbols (typecode-params typecode)))
+    (:tk_enum (doseq (sym (tc-keywords typecode))
                 (funcall function sym)))
     (otherwise (loop for i from 0 do (funcall function i)))))
 

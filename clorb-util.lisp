@@ -57,12 +57,12 @@
          (assert (eq (op:def_kind def) :dk_Operation))
          (make-opdef :name operation
                      :params (op:params def)
-                     :result (omg.org/features:result def)
+                     :result (op:result def)
                      :raises (map 'list #'op:type (op:exceptions def))))))))
 
 
 (defun object-opdef (object op)
-  (let ((effective-id (object-id object)))
+  (let ((effective-id (proxy-id object)))
     (or (find-opdef *object-interface* op)
         (find-opdef (or (known-interface effective-id)
                         (loop for rep in *repositories*
@@ -135,8 +135,8 @@ The list free operation is used to free the returned information.
             (t
              (case c
                ((#\/)
-                (push (make-struct "IDL:omg.org/CosNaming/NameComponent:1.0"
-                                   :id (copy-seq id) :kind (copy-seq kind))
+                (push (CosNaming:NameComponent
+                       :id (copy-seq id) :kind (copy-seq kind))
                       name)
                 (setf (fill-pointer id) 0)
                 (setf (fill-pointer kind) 0)
@@ -150,12 +150,13 @@ The list free operation is used to free the returned information.
 
 
 (defun get-ns ()
-  (object-narrow
-   (op:resolve_initial_references (orb_init) "NameService")
-   "IDL:omg.org/CosNaming/NamingContext:1.0"))
+  (let ((ns (op:resolve_initial_references (orb_init) "NameService")))
+    (typecase ns
+      (cosnaming:namingcontext ns)
+      (t (object-narrow ns 'cosnaming:namingcontext)))))
 
 (defun resolve (&rest names)
-  (corba:funcall "resolve" (get-ns) (ns-name* names)))
+  (op:resolve (get-ns) (ns-name* names)))
 
 (defun rebind (objref &rest names)
-  (corba:funcall "rebind" (get-ns) (ns-name* names) objref))
+  (op:rebind (get-ns) (ns-name* names) objref))

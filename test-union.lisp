@@ -72,7 +72,7 @@
       (let ((tc (symbol-typecode type-sym)))
         (ensure-typep tc 'corba:typecode)
         (loop for i from 0 for l in '(0 3) 
-              do (ensure-equalp (omg.org/features:member_label tc i) l))
+              do (ensure-equalp (op:member_label tc i) l))
         (ensure-eql (op:default_index tc) 2))
       ))
 

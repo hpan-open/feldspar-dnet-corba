@@ -32,9 +32,11 @@
         (return
           `(progn
              (defclass ,name (CORBA:struct) ,slot-defs)
-             (defun ,name (&rest initargs)
+             (defun ,name (&key ,@slots)
                ,(format nil "Construct CORBA struct ~A.~%Slots: ~S" name names)
-               (apply #'make-instance ',name initargs))
+               (make-instance ',name 
+                 ,@(loop for key in names as val in slots
+                         collect key collect val )))
              (defmethod type-id ((s ,name)) ,id)
              ,@getters1 ,@getters2 ,@setters
              (defmethod fields ((s ,name))
@@ -44,9 +46,12 @@
                    collect (cons f (slot-value s n))))
              (add-struct-class ',name ,id)))))
 
-(defmacro define-struct (symbol &key id (name "") members)
-  "  members = (name type slot-name)
-"
+(defmacro define-struct (symbol &key id (name "") members
+                                 read write)
+  "Define a CORBA structure with class, constructor, typecode etc.
+  members = ((name type slot-name)*)
+  read = ((buffer) unmarshallingcode*)
+  write = ((obj buffer) marshallingcode*)"
   `(progn
      (define-corba-struct ,symbol :id ,id 
        :members ,(loop for (nil nil slot-name) in members
@@ -57,7 +62,15 @@
       (lambda ()
         (create-struct-tc ,id ,name
                           (list ,@(loop for (name type nil) in members 
-                                        collect `(list ,name ,type))))))))
+                                        collect `(list ,name ,type))))))
+     ,(if read
+        (destructuring-bind ((buffer) &rest forms) read
+          `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
+             ,@forms)))
+     ,(if write
+        (destructuring-bind ((obj buffer) &rest forms) write
+          `(defmethod struct-write (,obj (symbol (eql ',symbol)) ,buffer)
+             ,@forms)))))
 
 
 ;;;; Union macrology
@@ -152,4 +165,41 @@ Members: (name typecode)*"
         (defmethod userexception-values ((ex ,symbol))
           (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
                           slot-defs)))))))
+
+
+;;;; Stub generation
+
+(defmacro static-call ((op obj) &key output input exceptions)
+  (let ((req '#:REQ) 
+        (status '#:status)
+        (output-buf (caar output))
+        (input-buf (caar input)))
+    `(loop
+       (let (,req)
+         (let (,output-buf)
+           ,@(if (and output-buf (null (cdr output)))
+               `((declare (ignorable ,output-buf))))
+           (multiple-value-setq (,req ,output-buf) (start-request ,op ,obj ,(null input)))
+           ,@(cdr output))
+         (multiple-value-bind (,status ,input-buf) (invoke-request ,req)
+           (case ,status
+             (:no_exception
+              (return (values ,@(cdr input))))
+             (:user_exception
+              (process-exception ,input-buf ',exceptions))))))))
+
+;;;; Interface
+
+(defmacro define-interface (symbol super &key (id "") proxy (name ""))
+  `(progn
+     (set-symbol-id/typecode ',symbol ,id 
+                             (make-typecode :tk_objref ,id ,name))
+     (defclass ,symbol ,super ())
+     ,@(if proxy
+         `((defclass ,(car proxy) ,(cdr proxy) ())
+           (register-proxy-class ,id ',(car proxy))))
+     (defmethod object-id ((obj ,symbol))
+       ,id)
+     (defmethod object-is-a or ((obj ,symbol) interface-id)
+       (string= interface-id ,id))))
 
