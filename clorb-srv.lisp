@@ -54,15 +54,10 @@
 (defmethod listner-port ((adaptor clorb-adaptor))
   (passive-socket-port *server-socket*))
 
-(defun srv-handle-socket (adaptor socket &optional allow-blocking)
+(defmethod handle-socket ((adaptor clorb-adaptor) socket &optional allow-blocking)
   (let ((conn (accept-connection-on-socket socket allow-blocking)))
     (when conn
       (push conn (client-streams-raw adaptor)))))
-
-(defmethod handle-socket ((adaptor clorb-adaptor) socket)
-  (srv-handle-socket adaptor socket))
-
-
 
 (defmethod client-streams ((adaptor clorb-adaptor))
   (dolist (stream (client-streams-raw adaptor))
@@ -72,26 +67,13 @@
         (delete stream (client-streams-raw adaptor)))))
   (client-streams-raw adaptor))
 
-
 (defmethod handle-stream ((adaptor clorb-adaptor) stream)
   (when (and (typep stream 'stream)
-             (open-stream-p stream))
+             (socket-stream-functional-p stream))
     (when (socket-stream-listen stream)
       (mess 1 "Getting message from ~S" stream)
       (get-message stream))
     t))
-
-(defmethod server-fallback ((adaptor clorb-adaptor))
-  ;; remove dead streams. if no streams left, accept new else get input
-  ;; from first available stream
-  (let ((anything nil))
-    (dolist (stream (client-streams adaptor))
-      (mess 1 "Poll ~S" stream)
-      (when (handle-stream adaptor stream)
-        (setq anything t)))
-    (when (listner-socket adaptor)
-      (srv-handle-socket adaptor (listner-socket adaptor) (not anything)))))
-
 
 (defun get-message (stream)
   (let ((sreq (make-server-request
@@ -100,7 +82,6 @@
     (when (read-request sreq stream)
       (decode-request sreq)
       (poa-demux sreq))))
-
 
 (defun poa-demux (sreq)
   (with-slots (object-key operation) sreq
