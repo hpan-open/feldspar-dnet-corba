@@ -1,6 +1,9 @@
 (in-package :cl-user)
 
 (pushnew :clorb-dev *features*)
+(pushnew :use-my-idlparser *features*)
+(pushnew :no-idlcomp *features*)
+
 
 (let ((clorb-home #p"home:src;clorb;")
       (clorb-fasl #p"home:src;clorb;fasl;"))
@@ -15,6 +18,8 @@
       '(("**;*.*"  "home:**;*.*")))
 
 (require 'acl-socket)
+#+use-my-idlparser (packer:require-package :net.cddr.redpas)
+
 (load "CLORB:SRC;clorb-files")
 (net.cddr.clorb.system:reload)
 
@@ -31,7 +36,8 @@
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
 (format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port clorb::*the-orb*))
-;;(net.cddr.clorb.persistent-naming:setup-pns)
+(setq persistent-naming:*naming-ior-file* "/tmp/openmcl-naming.ior")
+(persistent-naming:setup-pns :export t)
 
 (setq
  *print-length* 7

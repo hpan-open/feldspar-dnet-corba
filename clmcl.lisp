@@ -1,8 +1,8 @@
 (in-package :cl-user)
 
-(pushnew :use-acl-socket *features*)
-(pushnew :use-my-idlparser *features*)
-(pushnew :no-idlcomp *features*)
+;;(pushnew :use-acl-socket *features*)
+;;(pushnew :use-my-idlparser *features*)
+;;(pushnew :no-idlcomp *features*)
 (pushnew :clorb-dev *features*)
 
 
@@ -54,9 +54,7 @@
 (progn 'ignore-errors
  (op:activate (op:the_poamanager (clorb::root-poa))))
 ;;(clorb:load-ir)
-(net.cddr.clorb.persistent-naming:setup-pns)
-
-
+(persistent-naming:setup-pns :export t)
 
 
 (defun use-pentax-ifr ()
@@ -70,10 +68,7 @@
 
 
 (defun run ()
-  (persistent-naming:setup-pns)
-  ;; Exporting the name service as a corbaloc boot object
-  (setf (gethash "NameService" clorb::*boot-objects*)
-        net.cddr.clorb.persistent-naming::*root-context*)
+  (persistent-naming:setup-pns :export t)
   (op:run *orb*))
 
 

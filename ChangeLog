@@ -1,3 +1,12 @@
+2003-10-15  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-ifr.lisp (describe-contained): produce a
+	CORBA:InterfaceDescription not a full description.
+	(check-unique-name): new func.
+	(setf op:base_interfaces): use check-unique-name
+	(create_attribute): use check-unique-name
+	(create_operation): use check-unique-name
+
 2003-10-08  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* support-test.lisp (ensure-exception): added

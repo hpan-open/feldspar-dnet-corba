@@ -170,22 +170,6 @@
       (ensure-eql (op:member_count (op:type obj)) (1- (length members)))))
   
 
-  (define-test "InterfaceDef"
-    (let* ((id "IDL:my/Interface:1.1")
-           (name "Interface")
-           (version "1.1")
-           (obj (op:create_interface repository id name version '())))
-      (ensure (op:is_a obj id) "isa Self")
-      (ensure (op:is_a obj "IDL:omg.org/CORBA/Object:1.0") "isa Object")
-      (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
-      (let ((desc (op:describe_interface obj)))
-        (ensure-typep desc 'CORBA:InterfaceDef/FullInterfaceDescription)
-        (ensure-typep (op:operations desc) 'sequence)
-        (let ((attrs (op:attributes desc)))
-          (ensure-equalp (length attrs) 1)
-          (ensure-typep (elt attrs 0) 'CORBA:AttributeDescription)))))
-
-
   (define-test "AttributeDef"
     (let* ((idef (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
            (obj (op:create_attribute idef "IDL:my/Att:1.1" "Att" "1.1"
@@ -233,6 +217,42 @@
       (ensure-exception
        (setf (op:mode obj) :op_oneway)
        CORBA:BAD_PARAM  'op:minor 31)))
+
+
+  (define-test "InterfaceDef"
+    (let* ((id "IDL:my/Interface:1.1") (id2 "IDL:my/Interface2:1.0")
+           (name "Interface")
+           (version "1.1")
+           (obj (op:create_interface repository id name version '()))
+           (obj2 (op:create_interface repository id2 "Interface2" "1.0" '())))
+      (ensure (op:is_a obj id) "isa Self")
+      (ensure (op:is_a obj "IDL:omg.org/CORBA/Object:1.0") "isa Object")
+      (ensure (not (op:is_a obj id2)) "not yet isa base")
+      (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
+      (setf (op:base_interfaces obj) (list obj2))
+      (ensure (op:is_a obj id2) "isa base")
+      (ensure-pattern* 
+       obj
+       'op:describe (pattern 'op:value (struct-pattern
+                                        'struct-class-name 'CORBA:InterfaceDescription
+                                        'op:name name 'op:id id 'op:version version
+                                        'op:base_interfaces (sequence-pattern id2)))
+       'op:base_interfaces (sequence-pattern (def-pattern :dk_interface 'op:id id2))
+       'op:describe_interface (struct-pattern
+                               'struct-class-name 'CORBA:InterfaceDef/FullInterfaceDescription
+                               'op:operations (sequence-pattern)
+                               'op:attributes (sequence-pattern
+                                               (struct-pattern 
+                                                'struct-class-name 'CORBA:AttributeDescription
+                                                'op:name "a"))
+                               'op:type (pattern 'op:kind :tk_objref)))
+      (setf (op:base_interfaces obj) nil)
+      (op:create_attribute obj2 "IDL:my2/a:1.0" "a" "1.0" a-string :attr_normal)
+      (ensure-exception 
+       (setf (op:base_interfaces obj) (list obj2))
+       omg.org/corba:bad_param)))
+  
+
 
 
   (define-test "PrimitiveDef"

@@ -19,7 +19,7 @@
 |#
 
 (defun make-param (name mode typecode)
-  (check-type mode CORBA::ParameterMode)
+  (check-type mode CORBA:ParameterMode)
   (CORBA:ParameterDescription :name name :type typecode :mode mode))
 
 (defun make-getter-opdef (name attdef)
