@@ -1,13 +1,14 @@
-[NOTE: This READ ME is out of date.]
 
 
                                 CLORB
 
                 a Common Lisp implementation of CORBA
 
-                    Version 0.3+ (an ALPHA release)
+                    Version 0.4 (an ALPHA release)
 
                           by Lennart Staflin
+
+                              2003-10-23
 
 
 
@@ -134,7 +135,9 @@ InterfaceRepository respectively. They will be removed in a future
 version in preference to the method above (-ORBInitRef).
 
 The clorb:*log-level* controls the amount of logging done by CLORB.
-It should be an integer, lower value gives more logging.
+It should be an integer, lower value gives more logging. Logging is
+written to the stream *log-output*.
+
 
 
                      Loading/Compiling IDL files
@@ -186,6 +189,37 @@ the last time I tried it.]
 
 
 
+                           Server Operation
+
+Initialize the ORB and load the IDL for the interface, as for Client
+Operation.
+
+Get a reference to the Root POA (Object Adapter).
+
+    (defvar *poa* (op:resolve_initial_references *orb* "RootPOA"))
+
+Possibly create another POA with policies tailored for the server
+needs.
+
+Activate the POA:
+
+    (op:activate (op:the_poamanager *poa*))
+
+Create and register a servant:
+
+    (defvar *servant* (make-instance 'my-class))
+    (defvar *object* (op:activate_object *poa* *servant*))
+
+Get stringified IOR for object
+
+    (op:object_to_string *orb* *object*)
+
+The string can be transfered to the client in whatever way.
+Or register with name service
+
+   (clorb:rebind *object* "my-name")
+
+
                                 MCL 5
 
 MCL 5.0 is the current main development environment. You also need the
@@ -209,6 +243,23 @@ To load CLORB you need to do something like this:
 
 
 
+                               OpenMCL
+
+This requires that you have acl-socket from the portable Allegro server.
+
+(require 'acl-socket)
+
+(load "clorb-files")
+(net.cddr.clorb.system:reload)
+
+;; Initializing the ORB
+(defvar *orb* 
+  (CORBA:ORB_init
+   (list ;;"-ORBPort" "4712"
+         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
+         )))
+
+
                                  SBCL
 
 Tried with version 0.8.4 on MacOS X, 0.8.4 on Debian GNU/Linux i386.
@@ -224,21 +275,6 @@ dependent on my devlopment environment).
 (require :asdf)  ; prehaps not if you are using CLC
 
 (require :sb-bsd-sockets)
-
-(load "clorb-files")
-(net.cddr.clorb.system:reload)
-
-;; Initializing the ORB
-(defvar *orb* 
-  (CORBA:ORB_init
-   (list ;;"-ORBPort" "4712"
-         ;;"-ORBInitRef" "NameService=corbaloc::127.0.0.1:4711/NameService"
-         )))
-
-
-                               OpenMCL
-
-(require 'acl-socket)
 
 (load "clorb-files")
 (net.cddr.clorb.system:reload)
@@ -283,10 +319,56 @@ have any socket code of its own at all.
 
 [...]
 
+                               Examples
+
+The subdirectory examples contain some examples.
+
+1. Hello World
+
+In examples/hello. This is a simple client/server example. The file
+hello.idl describes the interface:
+
+module Hello {
+  interface World {
+    string greet ();
+  };
+};
+
+The server implements a servant with a method "greet" that returns a
+string. The client obtains an object reference and calls the greet
+method.
+
+Load examples/hello/loadup, and the in the server run
+
+(run-hello :file "/tmp/hello.ior")
+
+
+In the client run
+
+(hello-client :file "/tmp/hello.ior")
+
+
+The :file argument specifies how the object reference is exchanged.
+If you have a name server configured you can use then :name argument
+instead.
+
+
+
+
                               Test Suite
 
-...
+CLORB comes with a test suite. The test coverage is currently spotty.
 
+The support system for the test cases has now been put in its own
+package. I have also used it for some other projects. The code is
+however included in the luna subdirectory. Some CLORB specific
+support is in the support-test.lisp. 
+
+The files test-*.lisp contains test suits for parts of CLORB and the
+file all-test.lisp runs all the test suites and aggreates the result.
+
+The support system for the test suite is not loaded unless the
+:clorb-dev is on *features*.
 
 
                        About the included files
@@ -344,23 +426,12 @@ cosnaming-skel.lisp
 Servant classes for CosNaming.
 
 
+orbit.lisp
 
-EXAMPLE CODE
+Set *principal* for communication with ORBit (GNOME) servers.
 
-hello.idl
-hello-idl.lisp
 
-Hello world interface definition.
-
-hello-client.lisp
-
-Hello World client
-
-hello-server.lisp
-hello-dynserver.lisp
-
-Hello World server, auto-servant version and DSI version.
-
+EXAMPLE CODE (in examples)
 
 dii-example.lisp dsi-example.lisp clive.lisp
 
@@ -375,115 +446,4 @@ Example of using the macros from idef-macros to define an
 interface and then to implement it. The interface is to a
 Factory object to create Event Channel objects using the
 ec-server implementation.
-
-orbit.lisp
-
-Set *principal* for communication with ORBit (GNOME) servers.
-
-
-EXPERIMENTAL CODE
-
-code-gen.lisp
-
-Generate code from interface repository.
-Ex: (load "cosnaming-idl.lisp")
-(eval (gen-code "CosNaming"))
-defines (client) classes and stub-operations for the CosNaming
-module.
-
-internalize.lisp
-
-create local copy of interface repository objects
-
-
-BOOTSTRAP
-
-loadup.lisp
-
-Load IIR cache from an external interface repository
-
-make-proxies.lisp
-
-Create stub code for all external symbols in the OP package.
-
-extract-ops.lisp
-
-
-
-TEST CASES
-
-test-marshal.lisp
-test-idef-read.lisp
-test-intern.lisp
-
-
-
-
-Examples of use
-
-Examples of creating server objects can be found in ns-server.lisp and
-ec-server.lisp.
-
-Using the client functionallity is easy if you have an Interface
-Repository and a Naming Service.
-
-The file clorb-util.lisp defines some convenience functions:
-
-(clorb:invoke OBJECT OPERATION &rest ARGS)  => RESULTS
-or: (corba:funcall OPERATION OBJECT &rest ARGS) => RESULTS
-
-Call OPERATION on OBJECT with argument ARGS.
-OBJECT -- a CORBA object
-OPERATION -- a string
-ARGS -- all IN and INOUT arguments to the operation
-RESULTS -- the result and all OUT and INOUT arguments
-
-(clorb:resolve &rest NAMES)
-Look up NAMES in the naming service.
-
-
-Example: Calling the list operation on the root NamingContext
-
-(let* ((orb (corba:orb_init))
-       (ns  (op:resolve_initial_references orb "NameService")))
-  (corba:funcall "list" ns 100))
-
-
-There is a hello world example included.The interface is defined in
-'hello.idl' (the file 'hello-idl.lisp' can be used to load the local
-                 Interface Repository, if you don't have a Interface Repository
-                 running). The server is defined in 'hello-server.lisp', this uses the
-CLORB specific auto-servant. There is a server using DSI in
-'hello-dynserver.lisp', this used only standard interfaces. The client
-is in 'hello-client.lisp'.
-
-The server can be started with (run-hello &key file name). The
-argument is where to store the object reference, to a file or in the
-name service (you need one running).
-
-Example (this should work with ACL, CLISP and CMUCL):
-
-> Common startup
-
-;; Load CLORB
-;; using ACL defsystem
-(load "clorb-sysdcl")
-(excl:load-system :clorb :compile t)
-;; or  Mkdefsys
-(make:oos :clorb :compile)
-
-;; If you don't have a ir (or even if you do), load the internal ir cache
-(clorb::load-ir)
-
-
-> Running the server:
-
-(load "hello-idl.lisp")   ;; or feed hello.idl to the interface repository
-(run-hello :file "/tmp/hej")
-
-
-> Running the client:
-
-(hello-client :file "/tmp/hej")
-"Hello World"
 
