@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.4 2001/06/03 23:40:31 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.5 2001/07/02 16:38:41 lenst Exp $
 
 (in-package :clorb)
 
@@ -44,24 +44,33 @@
 
 ;;;; Operations
 
-(defmacro define-method (name args &body body)
+(defun opname-helper (name)
+  ;; opname => symbol setf-from-p expr
   (let ((opkg  "OMG.ORG/FEATURES")
-        doc-string
         setf-form)
     (when (consp name)
       (assert (eq (first name) 'setf))
       (setq setf-form t)
       (setq name (second name)))
-    (when (and body (cdr body) (stringp (car body)))
-      (setq doc-string (list (pop body))))
     (let ((opsym (intern (string name) opkg)))
+      (values
+       opsym
+       setf-form
+       `(eval-when (:execute :compile-toplevel :load-toplevel)
+         (export ',opsym ,opkg))))))
+
+(defmacro define-method (name args &body body)
+  (multiple-value-bind (opsym setf-form sym-expr)
+      (opname-helper name)
+    (let ((doc-string
+           (if (and body (cdr body) (stringp (car body)))
+               (list (pop body)))))
       `(progn
-         (eval-when (:execute :compile-toplevel :load-toplevel)
-           (export ',opsym ,opkg))
-         ,(if setf-form
-              `(defmethod (setf ,opsym) ,args
-                          ,@doc-string ,@body)
-            `(defmethod ,opsym (,(first args) &rest -args-)
+        ,sym-expr
+        ,(if setf-form
+             `(defmethod (setf ,opsym) ,args
+               ,@doc-string ,@body)
+             `(defmethod ,opsym (,(first args) &rest -args-)
                ,@doc-string
                (destructuring-bind ,(rest args) -args- 
                  ,@body)))))))
@@ -73,6 +82,20 @@
 (define-method (setf zep) (val (obj cons))
   (setf (cdr obj) val))
 ||#
+
+(defmacro define-operation (name)
+  (multiple-value-bind (opsym setf-form sym-expr)
+      (opname-helper name)
+    `(progn
+      ,sym-expr
+      ,(if setf-form
+           `(defgeneric (setf ,opsym) (value obj))
+           `(defgeneric ,opsym (obj &rest args))))))
+
+(defmacro define-deferred (name args)
+  (declare (ignore args))
+  `(define-operation ,name))
+
 
 ;;;; Define Corba Class
 
