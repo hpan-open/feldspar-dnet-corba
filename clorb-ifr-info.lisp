@@ -26,23 +26,24 @@
 
 (defmethod generate-ifr-description ((tc objref-typecode) symbol)
   (let (opdesc atdesc)
-    (loop for sym in (get symbol 'ifr-contents)
-          for kind = (ifr-kind sym)
-          when (eq kind :dk_operation)
-          collect (ifr-description sym) into ops
-          when (eq kind :dk_attribute)
-          collect (ifr-description sym) into ats
-          finally (setq opdesc ops
-                        atdesc ats))
-    (corba:interfacedef/fullinterfacedescription
-     :name (or (get symbol 'ifr-name) (op:name tc))
-     :id   (symbol-ifr-id symbol)
-     :defined_in ""
-     :version (ifr-version symbol)
-     :operations opdesc
-     :attributes atdesc
-     :base_interfaces (mapcar #'symbol-ifr-id (get symbol 'ifr-bases)) 
-     :type (symbol-typecode symbol))))
+    (labels ((operations-and-attributes (symbol)
+               (loop for sym in (get symbol 'ifr-contents)
+                     for kind = (ifr-kind sym)
+                     when (eq kind :dk_operation)
+                     do (push (ifr-description sym) opdesc)
+                     when (eq kind :dk_attribute)
+                     do (push (ifr-description sym) atdesc))
+               (mapc #'operations-and-attributes (get symbol 'ifr-bases))))
+      (operations-and-attributes symbol)
+      (corba:interfacedef/fullinterfacedescription
+       :name (or (get symbol 'ifr-name) (op:name tc))
+       :id   (symbol-ifr-id symbol)
+       :defined_in ""
+       :version (ifr-version symbol)
+       :operations opdesc
+       :attributes atdesc
+       :base_interfaces (mapcar #'symbol-ifr-id (get symbol 'ifr-bases)) 
+       :type (symbol-typecode symbol)))))
 
 
 (defmethod generate-ifr-description ((tc null) symbol)
