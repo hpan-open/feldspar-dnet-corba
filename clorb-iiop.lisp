@@ -255,7 +255,7 @@
      conn)))
 
 (defun locate (obj)
-  (let ((req (make-instance 'request :target obj :operation 'locate)))
+  (let ((req (make-instance 'client-request :target obj :operation 'locate)))
     (loop
       (multiple-value-bind (object buffer) (request-prepare req obj)
         (marshal-giop-header :locaterequest buffer)    ; LocateRequest
