@@ -163,7 +163,8 @@
    (buffer-contents buffer)))
 
 (defun marshal-add-encapsulation (closure buffer)
-  ;;(declare (optimize speed))
+  (declare (optimize speed)
+           (type buffer buffer))
   (with-out-buffer (buffer)
     (align 4)
     (let ((len-pos pos)

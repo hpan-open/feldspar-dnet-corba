@@ -109,6 +109,9 @@
         do (funcall operation (pop (flow-stack self)) self)))
 
 
+;;; to handle locate request (for the time)
+(defmethod rerun-interceptors ((self function) operation)
+  (declare (ignore operation)))
 
 
 ;;;; ClientRequestInfo aspect of client-request
@@ -124,11 +127,25 @@
 (define-method "EFFECTIVE_PROFILE" ((self client-request))
  (request-effective-profile self))
 
+
+;;; readonly attribute any received_exception;
+
+;; This attribute is an any that contains the exception to be returned to the client.
+
+;; If the exception is a user exception that cannot be inserted into an any (for
+;; example, it is unknown or the bindings don’t provide the TypeCode), then this
+;; attribute will be an any containing the system exception UNKNOWN with a standard minor code of 1. However, the RepositoryId of the exception is available in the received_exception_id attribute.
+
 (define-method "RECEIVED_EXCEPTION" ((self client-request))
   (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
+
+;;; readonly attribute CORBA::RepositoryId received_exception_id;
+;; This attribute is the CORBA::RepositoryId of the exception to be returned to the client.
+
 (define-method "RECEIVED_EXCEPTION_ID" ((self client-request))
-  (raise-system-exception 'CORBA:NO_IMPLEMENT))
+  (exception-id (request-exception self)))
+
 
 (define-method "GET_EFFECTIVE_COMPONENT" ((self client-request) _ID)
   (DECLARE (IGNORE _ID))
@@ -312,22 +329,28 @@ PortableInterceptor::TRANSPORT_RETRY
 
 (defmethod will-send-request ((orb pi-orb) client-request)
   (run-interceptors client-request (client-request-interceptors orb)
-                    #'op:send_request))
+                    #'op:send_request)
+  (call-next-method))
 
 (defmethod has-received-exception ((orb pi-orb) client-request)
+  (call-next-method)
   (pop-interceptors client-request #'op:receive_exception))
 
 (defmethod has-received-reply ((orb pi-orb) client-request)
+  (call-next-method)
   (pop-interceptors client-request #'op:receive_reply))
 
 (defmethod has-received-other ((orb pi-orb) client-request)
+  (call-next-method)
   (pop-interceptors client-request #'op:receive_other))
 
 (defmethod has-received-request-header ((orb pi-orb) server-request)
+  (call-next-method)
   (run-interceptors server-request (server-request-interceptors orb)
                     #'op:receive_request_service_contexts))
 
 (defmethod has-received-request ((orb pi-orb) server-request)
+  (call-next-method)
   (rerun-interceptors server-request #'op:receive_request))
 
 (defmethod will-send-exception ((orb pi-orb) server-request)
@@ -336,13 +359,16 @@ PortableInterceptor::TRANSPORT_RETRY
             (progn (pop-interceptors server-request #'op:send_exception)
                    nil)
             (systemexception (exc)
-                             (set-request-exception server-request exc)))))
+                             (set-request-exception server-request exc))))
+  (call-next-method))
 
 (defmethod will-send-reply ((orb pi-orb) server-request)
-  (pop-interceptors server-request #'op:send_reply))
+  (pop-interceptors server-request #'op:send_reply)
+  (call-next-method))
 
 (defmethod will-send-other ((orb pi-orb) server-request)
-  (pop-interceptors server-request #'op:send_other))
+  (pop-interceptors server-request #'op:send_other)
+  (call-next-method))
 
 
 
@@ -388,7 +414,7 @@ PortableInterceptor::TRANSPORT_RETRY
   (slot-value self 'name))
 
 (define-method "SEND_REQUEST" ((self my-client-interceptor) info)
-  (mess 3 "SEND_REQUEST: ~S" info)
+  (mess 3 "SEND_REQUEST: ~S ~S" (op:operation info) (op:effective_target info))
   (op:add_request_service_context 
    info 
    (iop:ServiceContext :context_id 17 :context_data #(1))
@@ -407,8 +433,13 @@ PortableInterceptor::TRANSPORT_RETRY
 )
 
 (define-method "RECEIVE_OTHER" ((self my-client-interceptor) info)
-  (mess 3 "RECEIVE_OTHER: ~S" info)
-)
+  (mess 3 "RECEIVE_OTHER: ~S ~S" (op:reply_status info)
+        (case (op:reply_status info)
+          ((#.PortableInterceptor::SYSTEM_EXCEPTION #.PortableInterceptor::USER_EXCEPTION)
+           (op:received_exception_id info))
+          ((#.portableinterceptor:location_forward)
+           (op:forward_reference info)))))
+  
 
 
 (defclass my-server-interceptor (PortableInterceptor:ServerRequestInterceptor)
