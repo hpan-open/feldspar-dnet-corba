@@ -16,7 +16,7 @@
    (read-buffer     :initarg :read-buffer                  :accessor connection-read-buffer)
    (read-callback   :initarg :read-callback                :accessor connection-read-callback)
    (write-buffer    :initarg :write-buffer   :initform nil :accessor connection-write-buffer)
-   (write-callback  :initarg :write-callback               :accessor connection-write-callback)
+   ;;(write-callback  :initarg :write-callback               :accessor connection-write-callback)
    (error-callback  :initarg :error-callback               :accessor connection-error-callback)
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)))
@@ -29,17 +29,16 @@
   (incf *request-id-seq*))
 
 
-(defvar *desc-conn* (make-hash-table))
+;;(defvar *desc-conn* (make-hash-table))
 
 (defun make-associated-connection (orb desc)
   (let* ((conn (make-instance 'Connection :orb orb :io-descriptor desc)))
-    (setf (gethash desc *desc-conn*) conn)
+    (io-descriptor-associate-connection desc conn)
     conn))
 
 (defun connection-destroy (conn)
   (let ((desc (connection-io-descriptor conn)))
-    (io-descriptor-destroy desc)
-    (remhash desc *desc-conn*)))
+    (io-descriptor-destroy desc)))
 
 
 (defun create-connection (orb host port)
@@ -75,17 +74,12 @@
       (io-descriptor-set-read desc octets start n))))
 
 
-(defun write-done (conn)
-  (setf (connection-write-buffer conn) nil))
-
 (defun connection-send-buffer (conn buffer)
   (when (connection-write-buffer conn)
     (orb-wait (lambda (conn) (not (connection-write-buffer conn))) conn))
   (setf (connection-write-buffer conn) buffer)
-  (setf (connection-write-callback conn) #'write-done)
   (let ((desc (connection-io-descriptor conn))
         (octets (buffer-octets buffer)))
-
     (io-descriptor-set-write desc octets 0 (length octets))))
 
 
@@ -102,8 +96,9 @@
   (funcall (connection-read-callback conn) conn))
 
 
-(defun connection-write-ready (conn)
-  (funcall (connection-write-callback conn) conn))
+(defmethod connection-write-ready ((conn connection))
+  (setf (connection-write-buffer conn) nil))
+
 
 
 
@@ -121,39 +116,34 @@ If this is true, orb-wait will check server streams also.
 Can be set to true globally for singel-process / development.")
 
 
-(defun orb-wait (&optional wait-func &rest wait-args)
+(defun orb-wait (wait-func &rest wait-args)
   (if *running-orb*
-    (if wait-func
-      (loop until (apply wait-func wait-args) do (orb-work))
-      (orb-work))
-    (if wait-func
-      (apply #'process-wait "orb-wait" wait-func wait-args)
-      (sleep 0.1))))
+    (loop until (apply wait-func wait-args) do (orb-work 100))
+    (apply #'process-wait "orb-wait" wait-func wait-args)))
 
 
-(defun orb-work ()
-  (declare (optimize (debug 3)))
-  (multiple-value-bind (event desc) (io-driver)
-    (when event
-      (mess 1 "io-event: ~S ~A" event (io-descriptor-stream desc)))
-    (let ((conn (gethash desc *desc-conn*)))
-      (case event
-        (:read-ready
-         ;;(io-descriptor-set-read desc nil 0 0)
-         (when conn
-           (connection-read-ready conn)))
-        (:write-ready
-         (io-descriptor-set-write desc nil 0 0)
-         (connection-write-ready conn))
-        (:new
-         (funcall *new-connection-callback* desc))
-        (:connected
-         ;; Not implemented yet..; for outgoing connections setup
-         nil)
-        (:error
-         (mess 4 "Error: ~A" (io-descriptor-error desc))
-         (io-descriptor-destroy desc)
-         (when conn (connection-error conn)))
-        ((nil)
-         (mess 1 "time out"))))))
 
+(defun orb-work (&optional (n 1))
+  (loop
+    do (let ((event (io-driver n)))
+         (when event
+           (let* ((desc (second event))
+                  (conn (io-descriptor-connection desc)))
+             (setq n 1)
+             (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
+             (case (car event)
+               (:read-ready
+                (when conn (connection-read-ready conn)))
+               (:write-ready
+                (io-descriptor-set-write desc nil 0 0)
+                (when conn (connection-write-ready conn)))
+               (:new
+                (funcall *new-connection-callback* desc))
+               (:connected
+                ;; Not implemented yet..; for outgoing connections setup
+                nil)
+               (:error
+                (mess 4 "Error: ~A" (io-descriptor-error desc))
+                (io-descriptor-destroy desc)
+                (when conn (connection-error conn)))))))
+    while (io-work-pending-p)))
