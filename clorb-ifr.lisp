@@ -40,7 +40,7 @@
   :attributes ()
   :defaults ())
 
-(defclass IRTYPECODE-MIXIN ()
+(defclass IRTypeCode-Mixin ()
   ((type)))
 
 (defgeneric idltype-tc (irtypecode-mixin)
@@ -107,8 +107,10 @@
   (let ((repository (op:containing_repository obj))
         (old-id (op:id obj)))
     (unless (equal new-id old-id)
-      (register-irobj repository new-id obj)
-      (unregister-irobj repository old-id)
+      (when (gethash new-id (idmap repository))
+        (error 'CORBA:BAD_PARAM :minor 2))
+      (remhash old-id (idmap repository))
+      (setf (gethash new-id (idmap repository)) obj)
       (setf (slot-value obj 'id) new-id))))
 
 (define-method absolute_name ((obj contained))
@@ -140,22 +142,25 @@
   :defaults ())
 
 (defmethod addto ((c container) (object contained))
-  ;; FIXME: this implements a move semantics, but when not used in move
-  ;; it should signal error if duplicated ID or NAME.
-  ;; Possibly make the behaviour optional: &key move
-  (setf (slot-value object 'containing_repository)
-        (op:containing_repository c))
-  (let ((id (op:id object))
+  (let ((repository (op:containing_repository c))
+        (id (op:id object))
         (name (op:name object)))
-    (setf (contents c)
-          (cons object
-                (delete-if (lambda (old)
-                             (or (equalp (op:name old) name)
-                                 (equal (op:id old) id)))
-                           (contents c))))
-    (unregister-irobj c id)
-    (setf (slot-value object 'defined_in) c)
-    (register-irobj c id object))
+
+    ;; A BAD_PARAM exception is raised with minor code 2 if an object with
+    ;; the specified id already exists in the Repository.
+    (when (gethash id (idmap repository))
+      (error 'CORBA:BAD_PARAM :minor 2))
+    
+    ;; A BAD_PARAM exception with minor code 3 is raised if the specified
+    ;; name already exists within this Container and multiple versions are
+    ;; not supported.
+    (when (member name (contents c) :key #'op:name :test #'string-equal)
+      (error 'omg.org/corba:bad_param :minor 3))
+
+    (setf (contents c) (nconc (contents c) (list object)))
+    (setf (gethash id (idmap repository)) object)
+    (setf (slot-value object 'containing_repository) repository)
+    (setf (slot-value object 'defined_in) c))
   object)
 
 (define-method contents ((obj container) limit-type exclude-inherit)
@@ -331,6 +336,79 @@
                 :id id :name name :version version
                 :base_interfaces base_interfaces)))
 
+
+;;;    ValueBoxDef create_value_box(
+;;;                                 in RepositoryId id,
+;;;                                 in Identifier name,
+;;;                                 in VersionSpec version,
+;;;                                 in IDLType original_type_def
+
+(define-method create_value_box ((self container)
+                                 id name version original_type_def)
+  (addto self (make-instance 'valuebox-def
+                :id id :name name :version version
+                :original_type_def original_type_def)))
+
+;;;    NativeDef create_native(
+;;;                            in RepositoryId id,
+;;;                            in Identifier name,
+;;;                            in VersionSpec version
+
+(define-method create_native ((self container) id name version )
+  (addto self (make-instance 'native-def
+                :id id :name name :version version )))
+
+;;;    AbstractInterfaceDef create_abstract_interface(
+;;;                                          in RepositoryId id,
+;;;                                          in Identifier name,
+;;;                                          in VersionSpec version,
+;;;                                          in AbstractInterfaceDefSeq base_interfaces
+
+(define-method create_abstract_interface ((self container)
+                                 id name version base_interfaces)
+  (addto self (make-instance 'abstractinterface-def
+                :id id :name name :version version
+                :base_interfaces base_interfaces)))
+		
+;;;    LocalInterfaceDef create_local_interface(
+;;;                                             in RepositoryId id,
+;;;                                             in Identifier name,
+;;;                                             in VersionSpec version,
+;;;                                             in InterfaceDefSeq base_interfaces
+
+(define-method create_local_interface ((self container)
+                                 id name version base_interfaces)
+  (addto self (make-instance 'localinterface-def
+                :id id :name name :version version
+                :base_interfaces base_interfaces)))
+
+
+;;; ValueDef create_value
+
+(define-method create_value ((self container)
+                              id name version is_custom is_abstract
+                              base_value is_truncatable abstract_base_values
+                              supported_interfaces initializers)
+  (check-type id CORBA:RepositoryId)
+  (check-type name CORBA:Identifier)
+  (check-type version CORBA:VersionSpec)
+  (check-type is_custom CORBA:boolean)
+  (check-type is_abstract CORBA:boolean)
+  (check-type base_value (or null CORBA:ValueDef))
+  (check-type is_truncatable CORBA:boolean)
+  (check-type abstract_base_values CORBA:ValueDefSeq)
+  (check-type supported_interfaces CORBA:InterfaceDefSeq)
+  (check-type initializers CORBA:InitializerSeq)
+  (addto self (make-instance 'value-def
+                :id id :name name :version version
+                :is_custom is_custom  :is_abstract is_abstract
+                :base_value base_value :is_truncatable is_truncatable
+                :abstract_base_values abstract_base_values
+                :supported_interfaces supported_interfaces
+                :initializers initializers)))
+
+
+		
 
 ;;;; Repository
 
@@ -361,20 +439,6 @@
 (define-method lookup_id ((rep repository) id)
   (gethash id (idmap rep)))
 
-(defmethod register-irobj ((r repository) id obj)
-  (when (gethash id (idmap r))
-    (error 'CORBA:BAD_PARAM :minor 2))
-  (setf (gethash id (idmap r)) obj))
-
-(defmethod unregister-irobj ((r repository) id)
-  (remhash id (idmap r)))
-
-(defmethod register-irobj ((x irobject) id obj)
-  (register-irobj (op:containing_repository x) id obj))
-
-(defmethod unregister-irobj ((x irobject) id)
-  (unregister-irobj (op:containing_repository x) id))
-
 
 
 ;;;  PrimitiveDef get_primitive (in PrimitiveKind kind);
@@ -404,7 +468,8 @@
                        (:pk_ulonglong CORBA:tc_ulonglong)
                        (:pk_longdouble CORBA:tc_longdouble)
                        (:pk_wchar CORBA:tc_wchar)
-                       (:pk_wstring CORBA:tc_wstring))
+                       (:pk_wstring CORBA:tc_wstring)
+                       (:pk_value_base corba::tc_valuebase))
                   collect (make-instance 'primitive-def :kind kind 
                                          :type (symbol-value tc)))))
     (find kind cache :key #'op:kind)))
@@ -485,13 +550,11 @@
 ;;;; InterfaceDef
 
 (define-ir-class interface-def (CORBA:InterfaceDef container contained idltype)
-  :id "IDL:omg.org/CORBA/InterfaceDef:1.0"
-  :attributes ((base_interfaces))
-  :def_kind :dk_interface
-  :defaults ())
+  :def_kind :dk_interface 
+  :attributes ((base_interfaces)))
 
 (defmethod idltype-tc ((idef interface-def))
-  (make-typecode :tk_objref (subject-id idef) (op:name idef)))
+  (create-interface-tc (subject-id idef) (op:name idef)))
 
 (define-method is_a ((def interface-def) interface-id)
   (or
@@ -526,33 +589,33 @@
 
 
 
-;;;  AttributeDef create_attribute (
-;;;                                 in RepositoryId id,
-;;;                                 in Identifier name,
-;;;                                 in VersionSpec version,
-;;;                                 in IDLType type,
-;;;                                 in AttributeMode mode       );
+;;;  AttributeDef create_attribute
 
 (define-method create_attribute ((self interface-def)
                                  id name version type mode)
+  (check-type id string)                ; RepositoryId
+  (check-type name string)              ; Identifier
+  (check-type version string)           ; VersionSpec
+  (check-type type IDLType)
+  (check-type mode CORBA:AttributeMode)
   (addto self (make-instance 'attribute-def
                 :id id :name name :version version
                 :type_def type :mode mode)))
 
 
-;;;  OperationDef create_operation (
-;;;                                 in RepositoryId id,
-;;;                                 in Identifier name,
-;;;                                 in VersionSpec version,
-;;;                                 in IDLType result,
-;;;                                 in OperationMode mode,
-;;;                                 in ParDescriptionSeq params,
-;;;                                 in ExceptionDefSeq exceptions,
-;;;                                 in ContextIdSeq contexts            );
+;;;  OperationDef create_operation
 
 (define-method create_operation ((self interface-def)
                                  id name version
                                  result mode params exceptions contexts)
+  (check-type id string)                ; RepositoryId
+  (check-type name string)              ; Identifier
+  (check-type version string)           ; VersionSpec
+  (check-type result IDLType)
+  (check-type mode CORBA:OperationMode)
+  (check-type params CORBA:ParDescriptionSeq)
+  (check-type exceptions CORBA:ExceptionDefSeq)
+  (check-type contexts CORBA:ContextIdSeq)
   (addto self (make-instance 'operation-def
                 :id id :name name :version version
                 :result_def result :mode mode
@@ -717,9 +780,8 @@
   :defaults ())
 
 (defmethod idltype-tc ((def alias-def))
-  (make-typecode :tk_alias
-                 (op:id def) (op:name def)
-                 (op:type (op:original_type_def def))))
+  (create-alias-tc (op:id def) (op:name def)
+                   (op:type (op:original_type_def def))))
 
 ;;;; interface StructDef : TypedefDef
 ;; attribute StructMemberSeq members;
@@ -738,14 +800,8 @@
   (doseq (m (slot-value obj 'members))
     (setf (op:type m) (op:type (op:type_def m)))))
 
-
 (defmethod idltype-tc ((def struct-def))
-  (make-typecode :tk_struct
-                 (op:id def)
-                 (op:name def)
-                 (map 'vector
-                      (lambda (x) (list (op:name x) (op:type x)))
-                      (op:members def))))
+  (create-struct-tc (op:id def) (op:name def) (simple-struct-members (op:members def))))
 
 ;;;; interface UnionDef : TypedefDef
 ;;;   readonly attribute TypeCode discriminator_type;
@@ -799,10 +855,7 @@
   :defaults ())
 
 (defmethod idltype-tc ((obj enum-def))
-  (make-typecode :tk_enum
-                 (slot-value obj 'id)
-                 (slot-value obj 'name)
-                 (slot-value obj 'members)))
+  (create-enum-tc (op:id obj) (op:name obj) (op:members obj)))
 
 ;;;; interface ExceptionDef : Contained
 ;;;  readonly attribute TypeCode type;
@@ -819,12 +872,8 @@
     (setf (op:type m) (op:type (op:type_def m)))))
 
 (defmethod idltype-tc ((obj exception-def))
-  (make-typecode :tk_except
-                 (op:id obj)
-                 (op:name obj)
-                 (map 'vector
-                      (lambda (x) (list (op:name x) (op:type x)))
-                      (op:members obj))))
+  (create-exception-tc (op:id obj) (op:name obj)
+                       (simple-struct-members (op:members obj))))
 
 (defmethod describe-contained ((obj exception-def))
   (CORBA:ExceptionDescription
@@ -864,8 +913,9 @@
   :def_kind :dk_string)
 
 (defmethod idltype-tc ((obj string-def))
-  (make-typecode :tk_string (op:bound obj)))
+  (create-string-tc (op:bound obj)))
 
+
 ;;;; interface WstringDef : IDLType
 ;;;  attribute unsigned long bound;
 
@@ -875,7 +925,7 @@
   :def_kind :dk_wstring)
 
 (defmethod idltype-tc ((obj wstring-def))
-  (make-typecode :tk_wstring (op:bound obj)))
+  (create-wstring-tc (op:bound obj)))
 
 ;;;; SequenceDef
 ;;interface SequenceDef : IDLType
@@ -897,8 +947,8 @@
 (defmethod idltype-tc ((obj sequence-def))
   (create-sequence-tc (op:bound obj) (op:element_type obj)))
 
-
-;;; ArrayDef : IDLType
+
+;;;; ArrayDef : IDLType
 ;;        attribute unsigned long         length;
 ;;        readonly attribute TypeCode     element_type;
 ;;        attribute IDLType               element_type_def;
@@ -915,7 +965,7 @@
 (defmethod idltype-tc ((obj array-def))
   (create-array-tc (op:length obj) (op:element_type obj)))
 
-
+
 ;;;; interface FixedDef : IDLType
 ;;   attribute unsigned short digits;
 ;;   attribute short scale;
@@ -926,21 +976,272 @@
                (scale 0)))
 
 (defmethod idltype-tc ((obj fixed-def))
-  (make-typecode :tk_fixed (op:digits obj)
-                 (op:scale obj)))
+  (create-fixed-tc (op:digits obj) (op:scale obj)))
 
 
 
-;;;; Export IR
+;;;; interface ValueBoxDef : TypedefDef 
+;;    attribute IDLType original_type_def;
 
-(defvar *ifr-servant* nil)
+(define-ir-class valuebox-def (omg.org/corba:valueboxdef typedef-def)
+  :def_kind :dk_valuebox
+  :attributes ((original_type_def)))
 
-(defun setup-ifr (&key (ior-file "/tmp/InterfaceRepository"))
-  (unless *ifr-servant*
-    (setq *ifr-servant* (make-instance 'repository)))
-  (with-open-file (out ior-file :direction :output
-                       :if-exists :supersede)
-    (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
+(defmethod idltype-tc ((def valuebox-def))
+  (create-value-box-tc (op:id def) (op:name def)
+                       (op:type (op:original_type_def def))))
+
+
+
+;;;;  interface AbstractInterfaceDef : InterfaceDef { };
+;;
+;; An AbstractInterfaceDef object represents a CORBA 2.3 abstract
+;; interface definition. It can contain constants, typedefs,
+;; exceptions, operations, and attributes. Its base interfaces can
+;; only contain AbstractInterfaceDefs.
+
+(define-ir-class AbstractInterface-Def (CORBA:AbstractInterfaceDef interface-def)
+  :def_kind :dk_abstractinterface)
+
+(defmethod idltype-tc ((def AbstractInterface-Def))
+  (create-abstract-interface-tc (op:id def) (op:name def)))
+
+(define-method is_a ((def AbstractInterface-Def) interface-id)
+  (or
+   (equal (subject-id def) interface-id)
+   (equal interface-id "IDL:omg.org/CORBA/AbstractBase:1.0")
+   (some (lambda (b) (op:is_a b interface-id ))
+         (op:base_interfaces def))))
+
+
+;;;;  interface LocalInterfaceDef : InterfaceDef { };
+;; 
+;; An LocalInterfaceDef object represents a local interface definition. It can
+;; contain constants, typedefs, exceptions, operations, and attributes. Its
+;; base interfaces can only contain InterfaceDefs or LocalInterfaceDefs.
+
+(define-ir-class LocalInterface-Def (CORBA:LocalInterfaceDef interface-def)
+  :def_kind :dk_localinterface)
+
+(defmethod idltype-tc ((def LocalInterface-Def))
+  (create-local-interface-tc (op:id def) (op:name def)))
+
+(define-method is_a ((def LocalInterface-Def) interface-id)
+  (or
+   (equal (subject-id def) interface-id)
+   (equal interface-id "IDL:omg.org/CORBA/LocalBase:1.0")
+   (some (lambda (b) (op:is_a b interface-id ))
+         (op:base_interfaces def))))
+
+
+;;;;  interface NativeDef : TypedefDef { };
+
+(define-ir-class Native-Def (CORBA:NativeDef typedef-def)
+  :def_kind :dk_native)
+
+(defmethod idltype-tc ((def Native-Def))
+  (create-native-tc (op:id def) (op:name def)))
+
+
+;;;;  interface ValueMemberDef : Contained
+;;    readonly attribute TypeCode type;
+;;    attribute IDLType type_def;
+;;    attribute Visibility access;
+
+(define-ir-class ValueMember-Def (CORBA:ValueMemberDef Contained)
+  :def_kind :dk_valuemember
+  :attributes (;;(type :readonly)
+               (type_def)
+               (access)))
+
+(define-method "TYPE" ((def ValueMember-Def))
+  (op:type (op:type_def def)))
+
+(defmethod describe-contained ((def ValueMember-Def))
+  (corba:ValueMember
+   ;; Identifier name
+   :name (op:name def)
+   ;; RepositoryId id
+   :id (op:id def)
+   ;; RepositoryId defined_in
+   :defined_in (op:id (op:defined_in def))
+   ;; VersionSpec version
+   :version (op:version def)
+   ;; TypeCode type
+   :type (op:type def)
+   ;; IDLType type_def
+   :type_def (op:type_def def)
+   ;; Visibility access
+   :access (op:access def)))
+
+
+
+;;;;  interface ValueDef : Container, Contained, IDLType
+;;  attribute InterfaceDefSeq supported_interfaces;
+;;  attribute InitializerSeq initializers;
+;;  attribute ValueDef base_value;
+;;  attribute ValueDefSeq abstract_base_values;
+;;  attribute boolean is_abstract;
+;;  attribute boolean is_custom;
+;;  attribute boolean is_truncatable;
+
+(define-ir-class Value-Def (CORBA:ValueDef Container Contained IDLType)
+  :def_kind :dk_value
+  :attributes ((supported_interfaces)
+               (initializers)
+               (base_value)
+               (abstract_base_values)
+               (is_abstract)
+               (is_custom)
+               (is_truncatable)))
+
+(defmethod idltype-tc ((self Value-Def))
+  (create-value-tc (op:id self) (op:name self) 
+                   (cond ((omg.org/features:is_abstract self) omg.org/corba:vm_abstract)
+                         ((omg.org/features:is_custom self) omg.org/corba:vm_custom)
+                         ((omg.org/features:is_truncatable self) omg.org/corba:vm_truncatable)
+                         (t omg.org/corba:vm_none))
+                   (omg.org/features:base_value self)
+                   (simple-value-members
+                    (omg.org/features:contents self :dk_valuemember t))))
+
+(define-method contents ((obj Value-Def) limit-type exclude-inherit)
+  (if exclude-inherit
+      (call-next-method)
+    (append (call-next-method)
+            (and (op:base_value obj)
+                 (op:contents (op:base_value obj) limit-type nil))
+            (loop for x in (coerce (op:abstract_base_values obj) 'list)
+                append (op:contents x limit-type nil))
+            (loop for x in (coerce (op:supported_interfaces obj) 'list)
+                append (op:contents x limit-type nil)))))
+
+(define-method initializers :before ((self Value-Def))
+  (doseq (i (slot-value self 'initializers))
+    (doseq (m (op:members i))
+      (setf (op:type m) (op:type (op:type_def m))))))
+
+(defmethod describe-contained ((def Value-Def))
+  (corba:ValueDescription 
+   ;; Identifier name
+   :name (op:name def)
+   ;; RepositoryId id
+   :id (op:id def)
+   ;; boolean is_abstract
+   :is_abstract (op:is_abstract def)
+   ;; boolean is_custom
+   :is_custom (op:is_custom def)
+   ;; RepositoryId defined_in
+   :defined_in (op:id (op:defined_in def))
+   ;; VersionSpec version
+   :version (op:version def)
+   ;; RepositoryIdSeq supported_interfaces
+   :supported_interfaces (map 'vector #'op:id (op:supported_interfaces def))
+   ;; RepositoryIdSeq abstract_base_values
+   :abstract_base_values (map 'vector #'op:id (op:abstract_base_values def))
+   ;; boolean is_truncatable
+   :is_truncatable (op:is_truncatable def)
+   ;; RepositoryId base_value
+   :base_value (op:id (op:base_value def))))
+
+		
+;;; FullValueDescription describe_value();
+(define-method "DESCRIBE_VALUE" ((def value-def))
+  (corba:ValueDef/FullValueDescription
+   ;; Identifier name
+   :name (op:name def)
+   ;; RepositoryId id
+   :id (op:id def)
+   ;; boolean is_abstract
+   :is_abstract (op:is_abstract def)
+   ;; boolean is_custom
+   :is_custom (op:is_custom def)
+   ;; RepositoryId defined_in
+   :defined_in (op:defined_in def)
+   ;; VersionSpec version
+   :version (op:version def)
+   ;; OpDescriptionSeq operations
+   :operations (op:operations def)
+   ;; AttrDescriptionSeq attributes
+   :attributes (op:attributes def)
+   ;; ValueMemberSeq members
+   :members (op:members def)
+   ;; InitializerSeq initializers
+   :initializers (op:initializers def)
+   ;; RepositoryIdSeq supported_interfaces
+   :supported_interfaces (map 'vector #'op:id (op:supported_interfaces def))
+   ;; RepositoryIdSeq abstract_base_values
+   :abstract_base_values (map 'vector #'op:id (op:abstract_base_values def))
+   ;; boolean is_truncatable
+   :is_truncatable (op:is_truncatable def)
+   ;; RepositoryId base_value
+   :base_value (op:id (op:base_value def))
+   ;; TypeCode type
+   :type (op:type def)))
+
+
+;;;  boolean is_a(in RepositoryId id);
+
+(define-method is_a ((self Value-Def) id)
+  "The is_a operation returns TRUE if the value on which it is
+invoked either is identical to or inherits, directly or
+indirectly, from the interface or value identified by its id
+parameter or if the value of id is
+IDL:omg.org/CORBA/ValueBase:1.0. Otherwise it returns FALSE."
+  (check-type id string)
+  (or (equal id (op:id self))
+      (equal id "IDL:omg.org/CORBA/ValueBase:1.0")
+      (some (lambda (def) (op:is_a def id))
+            ;; FIXME: there is more to consider
+            (op:abstract_base_values self))))
+  
+
+;;;  ValueMemberDef create_value_member 
+
+(define-method create_value_member ((def Value-Def)
+                                    id name version type access)
+  (check-type id string)                ; RepositoryId
+  (check-type name string)              ; Identifier
+  (check-type version string)           ; VersionSpec
+  (check-type type IDLType)
+  (check-type access corba:visibility)
+  (addto def (make-instance 'valuemember-def
+                        :id id :name name :version version
+                        :type_def type :access access)))
+
+
+;;;  AttributeDef create_attribute
+
+(define-method create_attribute ((self value-def)
+                                 id name version type mode)
+  (check-type id string)                ; RepositoryId
+  (check-type name string)              ; Identifier
+  (check-type version string)           ; VersionSpec
+  (check-type type IDLType)
+  (check-type mode CORBA:AttributeMode)
+  (addto self (make-instance 'attribute-def
+                             :id id :name name :version version
+                             :type_def type :mode mode)))
+
+
+;;;  OperationDef create_operation
+
+(define-method create_operation ((self value-def)
+                                 id name version
+                                 result mode params exceptions contexts)
+  (check-type id string)                ; RepositoryId
+  (check-type name string)              ; Identifier
+  (check-type version string)           ; VersionSpec
+  (check-type result IDLType)
+  (check-type mode CORBA:OperationMode)
+  (check-type params CORBA:ParDescriptionSeq)
+  (check-type exceptions CORBA:ExceptionDefSeq)
+  (check-type contexts CORBA:ContextIdSeq)
+  (addto self (make-instance 'operation-def
+                :id id :name name :version version
+                :result_def result :mode mode
+                :params params :exceptions exceptions
+                :contexts contexts)))
 
 
 ;;; clorb-ifr.lisp ends here
