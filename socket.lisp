@@ -79,7 +79,8 @@
   (%SYSDEP
    "Get the hostname/IP of socket"
    #+clisp
-   (socket-server-host socket)
+   (if socket (socket-server-host socket)
+       (or *host* "localhost"))
    #+mcl
    (ccl::inet-host-name (ccl::stream-local-host (listner-stream listner-socket)))
    ;;#+Allegro (socket:ipaddr-to-hostname (socket:local-host socket))
@@ -92,7 +93,7 @@
   (%SYSDEP
    "Get the port of socket"
    #+clisp
-   (socket-server-port socket)
+   (if socket (socket-server-port socket) *port*)
    #+Allegro
    (socket:local-port socket)
    #+db-sockets
@@ -161,7 +162,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
             (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
    #+clisp 
-   (when (socket-wait socket 0 10)
+   (when (socket-wait socket (if blocking 10 0))
      (let* ((conn (socket-accept socket 
                                  :element-type '(unsigned-byte 8))))
        (mess 4 "Accepting connection from ~A"
@@ -192,16 +193,6 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
      new)))
 
 
-
-;;; coerce an unconnected-socket to something intelligible to
-;;; wait-for-input-on-streams
-(defun coerce-to-waitable-thing (i)
-  #+allegro (if (streamp i) i (socket:socket-os-fd i))
-  #-allegro i
-  ;; The following is not needed right now    [lenst/2000-05-18 21:08:38]
-  #|(etypecase i (stream i) (unconnected-socket))|#)
-
-
 ;; Check if input is directly available on (socket) stream
 ;; if this returns false positives and wait-for-input-on-streams
 ;; returns :cant the server functionallity is severly reduced :()
@@ -209,9 +200,12 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (declare (ignorable stream))
   (%SYSDEP 
    "check if input is available on socket stream"
+
    #+clisp-ext
-   (not (ext:read-byte-will-hang-p stream))
+   (eq t (ext:read-byte-lookahead stream))
+   ;;(not (ext:read-byte-will-hang-p stream))
    #+clisp t                            ;Ouch!
+
    ;; Default
    (listen stream)))
 
@@ -225,6 +219,10 @@ False if, e.g., the peer has closed."
    (and stream
         (eq (ccl::opentransport-stream-connection-state stream)
             :dataxfer))
+   #+clisp-ext
+   (and stream
+        (open-stream-p stream)
+        (not (eq :eof (ext:read-byte-lookahead stream))))
    ;; Default
    (and stream (open-stream-p stream))))
 
@@ -253,6 +251,23 @@ Return
   (%SYSDEP 
    "wait for for input on streams and sockets"
 
+   #+clisp-ext-status-actually-works
+   (block wait
+     (mess 2 "Waiting for input on ~S" streams)
+     (let ((all-status (socket:socket-status streams 0)))
+       (mess 2 "Input found: ~S" all-status)
+       (loop for status in all-status
+             for stream in streams
+             when (member status '(:io :input))
+             do (return-from wait (values :stream stream))))
+     (dolist (socket server-sockets)
+       (when (socket-wait socket 0)
+         (return-from wait (values :server socket))))
+     (sleep 0.5)
+     nil
+     ;; hmm. socket-status never seems to report :INPUT, only :OUTPUT
+     :cant)
+   
    #+(and sbcl unix) 
    (let ((all-waitable (mapcar #'sb-sys:fd-stream-fd streams)))
      (dolist (socket server-sockets)
@@ -286,12 +301,12 @@ Return
                  all-waitable
                  :timeout 20
                  :whostate "wating for CORBA input")
-              (type-error (err)
-                ;; Seems like this can happen if the other end is
-                ;; closing the socket. The caller should remove these
-                ;; streams before calling again!
-                (mess 3 "Error while waiting for input: ~A" err)
-                nil))))
+             (type-error (err)
+               ;; Seems like this can happen if the other end is
+               ;; closing the socket. The caller should remove these
+               ;; streams before calling again!
+               (mess 3 "Error while waiting for input: ~A" err)
+               nil))))
        (if (not ready)
            nil
            (if (member (car ready) streams)
@@ -300,7 +315,24 @@ Return
                        (loop for s in server-sockets
                              when (eql (car ready) (socket:socket-os-fd s)) 
                              return s))))))
-   
+
+
+   #+(or mcl clisp-ext)
+   (block wait
+     (dolist (stream streams)
+       (when (socket-stream-listen stream)
+         (return-from wait (values :stream stream))))
+     (dolist (socket server-sockets)
+       (when (or #+clisp (socket-wait socket 0)
+                 #+mcl (let* ((s (listner-stream socket)))
+                         (member (and s
+                                      (ccl::opentransport-stream-connection-state s))
+                                 '(:incon :dataxfer))))
+         (return-from wait (values :server socket))))
+     ;;(sleep 0.5)
+     nil)
+
    ;; Default
-   (progn (sleep 0.01)
-          :cant)))
+   (progn
+     (sleep 0.01)
+     :cant)))
