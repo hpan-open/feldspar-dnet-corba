@@ -236,8 +236,7 @@
 
 (defpackage "NET.CDDR.CLORB"
   (:nicknames "CLORB")
-  (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS"
-        #+:use-my-idlparser "NET.CDDR.REDPAS"
+  (:use "COMMON-LISP" "NET.CDDR.CLORB.INTERNALS" "NET.CDDR.REDPAS"
         #+clorb-dev "NET.CDDR.CLORB.SYSTEM"
         #+clorb-dev "NET.CDDR.LUNA"
         #+cmu "MOP" #-(or sbcl cmu mcl) "CLOS")
