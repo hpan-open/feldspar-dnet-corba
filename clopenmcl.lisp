@@ -1,6 +1,5 @@
 (in-package :cl-user)
 
-(pushnew :use-idlcomp *features*)
 
 (setf (logical-pathname-translations "CLORB")
       '(("SRC;**;*.*"  "home:src;clorb;**;*.*")

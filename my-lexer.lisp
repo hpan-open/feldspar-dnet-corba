@@ -7,7 +7,7 @@
     :accessor idllex-lexer)))
 
 (defun make-idllex (stream)
-  (let ((lexer (make-instance 'net.cddr.redpas:streamchar-lexer
+  (let ((lexer (make-instance 'streamchar-lexer
                  :stream stream)))
     (next-token lexer)
     (make-instance 'idllex :lexer lexer)))

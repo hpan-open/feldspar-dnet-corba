@@ -2,7 +2,7 @@
 
 (pushnew :use-acl-socket *features*)
 (pushnew :use-my-idlparser *features*)
-(pushnew :use-idlcomp *features*)
+
 
 #+:use-acl-socket (require 'acl-socket)
 (net.cddr.packer:require-package "BSD")
