@@ -61,5 +61,5 @@
 
 
 ;;; Run test cases
-
+#-clorb-no-test
 (load (merge-pathnames "all-test.lisp" clorb::*clorb-pathname-defaults*))
