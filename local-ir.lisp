@@ -255,9 +255,9 @@
 
 (define-method create_alias ((self container)
                              id name version original_type)
-  (addto (make-instance 'alias-def
-                :id id :name name :version version
-                :original_type_def original_type)))
+  (addto  self (make-instance 'alias-def
+                 :id id :name name :version version
+                 :original_type_def original_type)))
 
 
 ;;;  InterfaceDef create_interface (
