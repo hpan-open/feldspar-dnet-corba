@@ -67,15 +67,13 @@
 
 (defun report-systemexception (exc stream)
   (format stream
-          #+:ANSI-CL "Exception ~A~_ minor ~A~_ completed ~A"
-          #-:ANSI-CL "Exception ~A minor ~A completed ~A"
+          "Exception ~A~_ minor ~A~_ completed ~A"
 	  (exception-id exc)
           (system-exception-minor exc)
           (system-exception-completed exc)))
 
 (defun report-userexception (exc stream)
   (format stream
-          #+:ANSI-CL "User Exception (~A) ~_~S"
-          #-:ANSI-CL "User Exception (~A) ~S"
+          "User Exception (~A) ~_~S"
           (exception-id exc) (userexception-values exc)))
 
