@@ -9,7 +9,7 @@
                   :accessor target-dynamic-stubs)))
 
 (defgeneric target-typecode (obj target)
-  (:documentation 
+  (:documentation
    "The target code to compute the typecode for idltype object."))
 
 (defgeneric target-code (obj target)
@@ -37,7 +37,7 @@
          (container (op:defined_in obj))
          (container-type (and container (op:def_kind container)))
          (name
-          (if (or (null container) 
+          (if (or (null container)
                   (eq container-type :dk_Repository)
                   (and (not (eq this-type :dk_Module))
                        (eq container-type :dk_Module)))
@@ -53,7 +53,7 @@
                   (container-type container-type
                                   (and container (op:def_kind container))))
                 ((or (null container) (eq container-type :dk_Module))
-                 (if container (scoped-target-symbol target container) 
+                 (if container (scoped-target-symbol target container)
                    "OMG.ORG/ROOT"))))))
     (make-target-symbol target name package)))
 
@@ -70,7 +70,7 @@
          (exports (loop for sym in (slot-value target 'symbols)
                         when (string= package-name (package-name (symbol-package sym)))
                         collect (symbol-name sym))))
-    `(ensure-corba-package ,package-name 
+    `(ensure-corba-package ,package-name
                            :export ',exports)))
 
 (defun make-allways-eval (code)
@@ -176,10 +176,9 @@
 
 
 (defmethod target-typecode ((x CORBA:SequenceDef) target)
-  `(make-sequence-typecode 
+  `(make-sequence-typecode
     ,(target-typecode (op:element_type_def x) target)
     ,(op:bound x)))
-
 
 (defmethod target-typecode ((x CORBA:IDLType) target)
   `(symbol-typecode ',(scoped-target-symbol target x)))
@@ -231,7 +230,7 @@
            (apply 'clorb::invoke obj ,op-name args)))
       (let* ((lisp-name (make-target-symbol target op-name :clorb))
              (params (coerce (op:params op) 'list))
-             (args (loop for p in params 
+             (args (loop for p in params
                          unless (eq (op:mode p) :param_out)
                          collect (make-target-symbol target (op:name p) :clorb))))
         `(define-method ,lisp-name ((obj ,class) ,@args)
@@ -248,10 +247,10 @@
                                           (:param_inout 'ARG_INOUT))
                                        ,(target-typecode (op:type_def pd) target)
                                        ,@(if (eq mode :param_out) nil (list (pop args)))))
-             ,@(map 'list 
+             ,@(map 'list
                     (lambda (ed)
                       `(add-exception _request ,(target-typecode ed target)))
-                    (op:exceptions op))             
+                    (op:exceptions op))
              (request-funcall _request)))))))
 
 
@@ -274,7 +273,7 @@
                    (op:contents mdef :dk_All t))))
 
 (defmethod target-code ((sdef CORBA:StructDef) target)
-  (make-idltype 
+  (make-idltype
    (scoped-target-symbol target sdef)
    (op:id sdef)
    `(lambda ()
@@ -284,7 +283,7 @@
                                            (target-typecode (op:type_def smember) target)))))
    `(define-corba-struct ,(scoped-target-symbol target sdef)
       :id ,(op:id sdef)
-      :members ,(map 'list 
+      :members ,(map 'list
                      (lambda (smember)
                        (list (make-target-symbol target (op:name smember)
                                                  'clorb)
@@ -339,11 +338,11 @@
         (loop for package in (slot-value target 'packages)
                 unless (member package *stub-code-ignored-packages*)
                 do (terpri)
-                   (pprint (make-allways-eval 
+                   (pprint (make-allways-eval
                             (make-target-ensure-package package target)))))
       (dolist (x (remove nil (cdr code)))
         (terpri)
-        (pprint x))      
+        (pprint x))
       (terpri))))
 
 
@@ -351,7 +350,7 @@
 ;;;; Configure the pretty printer
 ;; ----------------------------------------------------------------------
 
-(set-pprint-dispatch '(cons (member define-method)) 
+(set-pprint-dispatch '(cons (member define-method))
                      (pprint-dispatch '(defmethod foo ()) ))
 
 (defun pprint-def-and-keys (*standard-output* list)

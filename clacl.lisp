@@ -10,15 +10,17 @@
 (clorb:reload)
 (clorb::load-ir)
 
+(import '(clorb:reload)
+        :cl-user)
+
 (setq clorb:*host* "10.0.1.251")
 (setq clorb:*port* 5111)
 
 (defvar *orb* (CORBA:ORB_init))
-(setf clorb::*running-orb* t)
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(format t "~&;;; ORB listning on port ~A~%" (clorb::orb-port clorb::*the-orb*))
+(format t "~&;;; ORB listning on port ~A~%" (clorb::orb-port *orb*))
 
 (defun run ()
   (op:run *orb*))

@@ -1,17 +1,7 @@
 ;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: local-ir.lisp,v 1.16 2002/09/23 13:37:00 lenst Exp $
+;; $Id: local-ir.lisp,v 1.17 2002/09/25 07:31:44 lenst Exp $
 
 (in-package :clorb)
-
-
-(deftype DefinitionKind  ()
-  '(member :dk_none :dk_all
-    :dk_Attribute :dk_Constant :dk_Exception :dk_Interface
-    :dk_Module :dk_Operation :dk_Typedef
-    :dk_Alias :dk_Struct :dk_Union :dk_Enum
-    :dk_Primitive :dk_String :dk_Sequence :dk_Array
-    :dk_Repository
-    :dk_Wstring :dk_Fixed))
 
 
 ;;;; Registry of Ir class for DefinitionKind
@@ -27,8 +17,7 @@
 ;;;; Generics
 
 (defgeneric addto (container contained)
-  (:documentation "Add a contained to a container")
-)
+  (:documentation "Add a contained to a container"))
 
 
 ;;;; Base Clases
@@ -181,7 +170,7 @@
 
 (define-method lookup ((obj container) search_name)
   (cond ((string-starts-with search_name "::")
-         (op:lookup (op:containing_repository obj) 
+         (op:lookup (op:containing_repository obj)
                     (subseq search_name 2)))
         (t
          (multiple-value-bind (first-name rest-name)
@@ -192,7 +181,7 @@
                         :test #'string-equal)))
              (cond ((null contained)
                     (op:lookup (op:defined_in obj) search_name))
-                   (rest-name 
+                   (rest-name
                     (op:lookup contained rest-name))
                    (t
                     contained)))))))
@@ -389,7 +378,7 @@
 ;;;  StringDef create_string (in unsigned long bound);
 
 (define-method create_string ((container Repository) bound)
-  (make-instance 'string-def 
+  (make-instance 'string-def
     :bound bound))
 
 ;;;  WstringDef create_wstring (in unsigned long bound);
@@ -772,6 +761,13 @@
 ;;;   attribute IDLType discriminator_type_def;
 ;;;   attribute UnionMemberSeq members;
 
+;;; struct UnionMember {
+;;;   Identifier name;
+;;;   any label;
+;;;   TypeCode type;
+;;;   IDLType type_def;
+;;; typedef sequence <UnionMember> UnionMemberSeq;
+
 (define-ir-class union-def (CORBA:UnionDef typedef-def)
   :id "IDL:omg.org/CORBA/UnionDef:1.0"
   :attributes ((discriminator_type_def)
@@ -788,30 +784,21 @@
 
 (defmethod idltype-tc ((obj union-def))
   (flet ((default-label-p (label)
-           (and (eql :tk_octet (op:kind (any-typecode label)))
-                (= 0 (any-value label)))))
+             (and (eql :tk_octet (op:kind (any-typecode label)))
+                  (= 0 (any-value label)))))
     (let* ((default-index -1)
-          (mfields 
-           (loop for i from 0
-                 for m in (op:members obj)
-                 do (when (default-label-p (op:label m))
-                      (setq default-index i))
-                 collect (list (if (default-label-p (op:label m))
-                                 (arbritary-value (op:discriminator_type obj))
-                                 (op:label m))
-                               (op:name m)
-                               (op:type m))) ))
+           (mfields
+            (loop for i from 0
+                for m in (op:members obj)
+                do (when (default-label-p (op:label m))
+                     (setq default-index i))
+                collect (list (if (default-label-p (op:label m))
+                                  (arbritary-value (op:discriminator_type obj))
+                                (op:label m))
+                              (op:name m)
+                              (op:type m))) ))
       (make-typecode :tk_union (op:id obj) (op:name obj)
                      (op:discriminator_type obj) default-index mfields))))
-                       
-
-
-;;; struct UnionMember {
-;;;   Identifier name;
-;;;   any label;
-;;;   TypeCode type;
-;;;   IDLType type_def;
-;;; typedef sequence <UnionMember> UnionMemberSeq;
 
 
 ;;;; EnumDef
@@ -960,7 +947,7 @@
 (defun setup-ifr (&key (ior-file "/tmp/InterfaceRepository"))
   (unless *ifr-servant*
     (setq *ifr-servant* (make-instance 'repository)))
-  (with-open-file (out ior-file :direction :output 
+  (with-open-file (out ior-file :direction :output
                        :if-exists :supersede)
     (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 

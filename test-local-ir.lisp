@@ -21,7 +21,7 @@
       (ensure-equalp (op:version obj) "1.0")
       (ensure-eql (op:defined_in obj) repository)
       (ensure-eql (op:containing_repository obj) repository)
-      (ensure-equalp (omg.org/features:absolute_name obj) 
+      (ensure-equalp (op:absolute_name obj)
                      (concatenate 'string "::" name))
       (let ((desc (op:describe obj)))
         (ensure desc)
@@ -33,8 +33,8 @@
         (ensure-eql (op:defined_in obj) module)
         (ensure-eql (op:containing_repository obj) repository)
         (ensure-eql (op:lookup_id repository sub-id) obj)
-        (ensure-equalp (omg.org/features:absolute_name obj)
-                       (concatenate 'string (omg.org/features:absolute_name module) "::" name)))
+        (ensure-equalp (op:absolute_name obj)
+                       (concatenate 'string (op:absolute_name module) "::" name)))
       (let ((new-id "IDL:foob:1.1"))
         (setf (op:id obj) new-id)
         (ensure-equalp (op:id obj) new-id)
@@ -47,7 +47,7 @@
                      (ensure nil "Wrong condition type"))
           (:no-error ()
                      (ensure nil "No exception for duplicated RID"))))))
-  
+
 
   (define-test "Container"
       (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
@@ -59,7 +59,7 @@
         (ensure-equalp (op:lookup repository "mod::my-enum") obj)
         (ensure-equalp (op:lookup repository "::mod::my-enum") obj)
         (ensure-equalp (op:lookup module "::mod::my-enum") obj)
-        (ensure-equalp (op:lookup module "::foo") obj2) 
+        (ensure-equalp (op:lookup module "::foo") obj2)
         (ensure-equalp (op:lookup module "fie") nil)))
 
 
@@ -77,16 +77,16 @@
       (ensure-equalp (op:id obj) id)
       (ensure-equalp (op:version obj) version)
       (ensure-equalp (length (op:members obj)) (length members))
-      (ensure-equalp (omg.org/features:member_count (op:type obj))
+      (ensure-equalp (op:member_count (op:type obj))
                      (length members))
-      (ensure-equalp (op:kind (omg.org/features:discriminator_type obj))
+      (ensure-equalp (op:kind (op:discriminator_type obj))
                      :tk_ulong)
       ;; update
-      (setf (omg.org/features:discriminator_type_def obj)
+      (setf (op:discriminator_type_def obj)
             (op:get_primitive repository :pk_ushort))
-      (ensure-equalp (op:kind (omg.org/features:discriminator_type obj))
+      (ensure-equalp (op:kind (op:discriminator_type obj))
                      :tk_ushort)))
-      
+
   (define-test "EnumDef"
     (let ((obj (op:create_enum repository "IDL:foo:1.0" "foo" "1.0" '("fie" "fum"))))
       (ensure-eql (op:lookup repository "foo") obj)
@@ -97,7 +97,7 @@
       (setf (op:members obj) '("a" "b" "c"))
       (let ((tc (op:type obj)))
         (ensure-equalp (op:member_count tc) 3))))
-  
+
   (define-test "SequenceDef"
     (let ((obj (op:create_sequence repository 0 a-ulong)))
       (ensure-equalp (op:def_kind obj) :dk_sequence)
@@ -146,7 +146,7 @@
 
   (define-test "InterfaceDef"
     (let* ((id "IDL:my/Interface:1.1")
-           (name "Interface") 
+           (name "Interface")
            (version "1.1")
            (obj (op:create_interface repository id name version '())))
       (ensure (op:is_a obj id) "isa Self")
@@ -154,8 +154,8 @@
       (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
       (let ((desc (op:describe_interface obj)))
         (ensure-typep desc 'CORBA:InterfaceDef/FullInterfaceDescription)
-        (ensure-typep (omg.org/features:operations desc) 'sequence)
-        (let ((attrs (omg.org/features:attributes desc)))
+        (ensure-typep (op:operations desc) 'sequence)
+        (let ((attrs (op:attributes desc)))
           (ensure-equalp (length attrs) 1)
           (ensure-typep (elt attrs 0) 'omg.org/corba:attributedescription)
         ))))
@@ -181,14 +181,14 @@
            (version "1.1")
            (result a-ulong)
            (mode :OP_NORMAL)
-           (params (list (CORBA:ParameterDescription 
+           (params (list (CORBA:ParameterDescription
                           :name "a"
                           :type CORBA:tc_void
                           :type_def a-string
                           :mode :PARAM_IN)))
            (exceptions '())
            (contexts '())
-           (obj (op:create_operation idef id name version result mode params exceptions contexts))) 
+           (obj (op:create_operation idef id name version result mode params exceptions contexts)))
       (ensure-equalp (op:kind (op:result obj)) :tk_ulong)
       (let ((pds (op:params obj)))
         (ensure-equalp (length pds) 1)

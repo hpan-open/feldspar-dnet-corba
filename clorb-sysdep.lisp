@@ -1,8 +1,13 @@
 ;;;; clorb-sysdep.lisp
+;; most system dependent code is collected here
+;; - TCP/IP sockets implementation glue
+;; - interface to select (or poll) functionality
+;; - read/write of octet sequences, blocking and non-blocking
+;; - multi processing
+;;
 
 (in-package :clorb)
 
-;;; TCP/IP sockets implementation glue
 
 ;;; Frob with the *features* to make this all a bit easier.
 
@@ -27,15 +32,16 @@
     #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own")))
 
 
-#+mcl 
-(require "OPENTRANSPORT")
-
-
 (defmacro %SYSDEP (desc &rest forms)
   (when (null forms)
       (error "No system dependent code to ~A" desc))
   (car forms))
 
+
+;;;; TCP/IP sockets implementation glue
+
+#+mcl 
+(require "OPENTRANSPORT")
 
 #+mcl
 (defclass mcl-listner-socket ()
@@ -72,6 +78,7 @@
      listener)))
 
 (defun passive-socket-host (socket)
+  (declare (ignorable socket))
   (%SYSDEP
    "Get the hostname/IP of socket"
    #+dummy-tcp
@@ -230,7 +237,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
 
 
-;;;; New select interface
+;;;; Select interface
 ;;(make-select) => y
 ;;(select-add-listener y s) => cookie?
 ;;(select-add-stream y s input output)   => cookie
@@ -392,7 +399,7 @@ Returns select result to be used in getting status for streams."
     :io))
 
 
-
+
 ;;;; Read / Write 
 
 (deftype octets () `(unsigned-byte 8))
@@ -476,6 +483,7 @@ Returns select result to be used in getting status for streams."
      (- end start))))
 
 
+
 ;;;; Multi process support
 
 (defun start-process (options proc &rest args)
