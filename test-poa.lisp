@@ -58,6 +58,10 @@
 
 ;; ==========================================================================
 
+(corba:orb_init)
+(unless (orb-host *the-orb*)
+  (setf (orb-host *the-orb*) "localhost"))
+
 
 (define-test-suite "POA Test"
   (variables 
@@ -65,7 +69,7 @@
    (*last-poaid* 0)
    (*poa-map* (make-hash-table :test #'eql))
    (root-poa (create-POA nil "root" nil nil orb)))
-  
+
   (define-test "poa-invoke"
     (let ((servant (make-instance 'null-servant))
           oid)

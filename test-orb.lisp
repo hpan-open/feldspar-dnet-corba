@@ -51,7 +51,10 @@
                   "")
                  (ensure-pattern* orb
                                   'orb-host "lagostz"
-                                  'orb-port 98))
+                                  'orb-port 98)
+                 ;; Alt syntax
+                 (CORBA:ORB_init '("-ORBPort" "99") "")
+                 (ensure-pattern* orb 'orb-port 99))
           (setf (orb-host orb) host
                 (orb-port orb) port)))))
 
@@ -143,7 +146,7 @@
       (test-write-response req nil)
       (orb-work orb nil t)
       (ensure (op:poll_next_response orb) "response should be ready")
-      (let ((req1 (omg.org/features:get_next_response orb)))
+      (let ((req1 (op:get_next_response orb)))
         (ensure-eql req1 req)
         (ensure-eql (request-status req1) :returned))
       (ensure-exception 
