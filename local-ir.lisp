@@ -606,6 +606,13 @@
         real-params
       (cons result real-params))))
 
+(defmethod op:params :before ((opdef operation-def) &rest x)
+  (declare (ignore x))
+  (doseq (pd (slot-value opdef 'params))
+         (setf (op:type pd)
+               (or (op:type pd)
+                   (op:type (op:type_def pd))))))
+
 
 (defun operation-description (opdef)
   ;;  struct OperationDescription
@@ -627,7 +634,8 @@
    ;;  ParDescriptionSeq parameters;
    :parameters (op:params opdef)
    ;;  ExcDescriptionSeq exceptions;
-   :exceptions (op:exceptions opdef)))
+   :exceptions (map 'list
+                    'describe-contained (op:exceptions opdef))))
 
 (defmethod describe-contained ((obj operation-def))
   (operation-description obj))

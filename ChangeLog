@@ -1,3 +1,12 @@
+Mon Jul  9 17:19:39 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* local-ir.lisp (operation-description): include exception
+	descriptions not exceptiondef objects.
+
+Thu Jul  5 20:57:00 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* dumpir.lisp (dump-ir): use with-standard-io-syntax
+
 Mon Jul  2 18:23:53 2001  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-srvreq.lisp: modified for new IO-system

@@ -3,7 +3,7 @@
 (in-package :clorb)
 
 
-(declaim (ftype (function (buffer) octet) unmarshal-octet))
+(declaim (ftype (function (buffer) CORBA:octet) unmarshal-octet))
 (defun unmarshal-octet (buffer)
   (declare (type buffer buffer)
            (optimize speed (debug 0)))
