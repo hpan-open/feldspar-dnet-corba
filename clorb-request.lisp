@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.12 2004/02/08 19:18:57 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.13 2004/06/09 21:13:53 lenst Exp $
 
 (in-package :clorb)
 
@@ -158,22 +158,27 @@
 ;;;; Sending requests
 
 
-(defun request-start-request (req)
+(defun request-start-request (req handler)
+  "Connect REQ target and call HANDLER with connection, request-id"
+  (setf (request-status req) nil)
   (let ((object (request-target req)))
     (let ((conn (get-object-connection object)))
       (unless conn
         (raise-system-exception 'corba:transient 2 :completed_no))
-      (setf (request-connection req) conn)    
-      (setf (request-status req) nil)
-      ;;(setf (request-id req) (next-request-id conn))
-      (setf (request-effective-profile req)
-            (selected-profile (or (object-forward object) object)))
-      (values conn))))
+      (setf (request-connection req) conn)
+      (let ((req-id (next-request-id conn)))
+        (setf (request-id req) req-id)
+        (setf (request-effective-profile req)
+              (selected-profile (or (object-forward object) object)))
+        (funcall handler conn req-id)
+        (values conn)))))
 
 
 (defun static-error-handler (condition)
   (error condition))
 
+
+(defvar *call-hook* nil)
 
 (defun do-static-call (obj operation response-expected
                        output-func input-func exceptions)
@@ -187,8 +192,10 @@
               :input-func input-func 
               :error-handler #'static-error-handler)))
     (request-send req)
-    (when response-expected
-      (request-get-response req))))
+    (if *call-hook* 
+      (funcall *call-hook* req)
+      (when response-expected
+        (request-get-response req)))))
 
 
 (defun request-invoke (req)
@@ -197,23 +204,20 @@
 
 
 (defun request-send (req)
-  (setf (request-status req) nil)
-  (setf (service-context-list req) nil)
-  (let ((connection (request-start-request req)))
-    (setf (request-id req) (next-request-id connection))
-    (will-send-request (the-orb req) req)
-    (let ((buffer (connection-start-request
-                   connection
-                   (request-id req)
-                   (service-context-list req)
-                   (response-expected req)
-                   (request-effective-profile req)
-                   (request-operation req))))
-      (setf (request-buffer req) buffer)
-      (funcall (output-func req) req buffer) 
-      (setf (request-buffer req) nil)
-      (connection-send-request connection buffer
-                               (if (response-expected req) req)))))
+  (request-start-request 
+   req
+   (lambda (connection request-id)
+     (setf (service-context-list req) nil)
+     (will-send-request (the-orb req) req)
+     (let ((buffer
+            (connection-start-request connection request-id (service-context-list req)
+                                      (response-expected req) (request-effective-profile req)
+                                      (request-operation req))))
+       (setf (request-buffer req) buffer)
+       (funcall (output-func req) req buffer) 
+       (setf (request-buffer req) nil)
+       (connection-send-request connection buffer
+                                (if (response-expected req) req))))))
 
 
 ;;; void send_oneway ()
@@ -376,14 +380,17 @@
 (defun dii-output-func (req buffer)
   (loop for nv in (request-paramlist req)
         when (/= 0 (logand ARG_IN (op:arg_modes nv)))
-        do (marshal-any-value (op:argument nv) buffer)))
+        do (let ((any (op:argument nv)))
+             (jit-marshal (any-value any)
+                          (any-typecode any)
+                          buffer))))
 
 
 (defun dii-input-func (req buffer)
   (loop for nv in (request-paramlist req)
         when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
-        do (setf (any-value (op:argument nv))
-                 (unmarshal (any-typecode (op:argument nv)) buffer))))
+        do (let ((any (op:argument nv)))
+             (setf (any-value any) (jit-unmarshal (any-typecode any) buffer)))))
 
 
 (defun dii-error-handler (condition)
