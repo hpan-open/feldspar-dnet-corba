@@ -195,7 +195,7 @@
       (let ((obj (unmarshal tc1 buffer)))
         (ensure-pattern* obj 
                          'identity (isa 'test-value-1)
-                         'op:name "hx")))) 
+                         'op:name "hx"))))
 
   (define-test "Abstract Interface"
     (let ((ab-tc (symbol-typecode 'test-abint-1))

@@ -90,7 +90,7 @@ types will be converterd by this GF."))
     (marshal-ulong objid buf)
     (buffer-contents buf)))
 
-(defun object-id-to-ingeger (objid)
+(defun object-id-to-integer (objid)
   (let ((buf (make-buffer :octets objid)))
     (unmarshal-ulong buf)))
 

@@ -1,3 +1,13 @@
+2005-01-03  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-poa.lisp (define-test "Identity mapping"): new test
+
+	* clorb-poa.lisp (reference_to_id): fix use of obsolete function
+
+2004-12-27  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-files.lisp (*server-files*): new file clorb-queue
+
 2004-12-20  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-srv.lisp (poa-request-handler): use
