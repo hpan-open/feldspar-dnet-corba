@@ -50,6 +50,7 @@
    (:file "clorb-objkey")
    (:file "clorb-servant")
    (:file "clorb-trie")
+   (:file "clorb-aom")
    (:file "clorb-poa-base")
    (:file "clorb-poa")
    (:file "clorb-srv")
