@@ -14,14 +14,14 @@
 (eval-when (:compile-toplevel :execute)
   #+clisp
   (if (find-package "EXT")
-      (pushnew :clisp-ext *features*))
+      (pushnew 'clorb::clisp-ext *features*))
   #+clisp
-  (pushnew :clisp-new-socket-status *features*)
+  (pushnew 'clorb::clisp-new-socket-status *features*)
   #+openmcl
   (pushnew :use-acl-socket *features*)
-  #+(and MCL (not openmcl))
+  #+digitool
   (when (find-package "BSD")
-    (pushnew :clorb-mcl-bsd *features*)))
+    (pushnew 'clorb::mcl-bsd *features*)))
   
 
 
@@ -36,11 +36,11 @@
 #+(or cmu sbcl)
 (eval-when (:compile-toplevel :load-toplevel)
   (cond ((find-package "SOCKETS")
-         (pushnew :db-sockets *features*))
+         (pushnew 'clorb::db-sockets *features*))
         ((find-package "SB-BSD-SOCKETS")
-         (pushnew :sb-bsd-sockets *features*))
+         (pushnew 'clorb::sb-bsd-sockets *features*))
         (t
-         #+cmu (pushnew :cmucl-sockets *features*)
+         #+cmu (pushnew 'clorb::cmucl-sockets *features*)
          #+sbcl (error "We need the SOCKETS library; SBCL doesn't have its own"))))
 
 
@@ -52,10 +52,10 @@
 
 ;;;; TCP/IP sockets implementation glue
 
-#+(and mcl (not openmcl))
+#+digitool
 (require "OPENTRANSPORT")
 
-#+(and mcl (not openmcl))
+#+digitool
 (defclass MCL-LISTENER-SOCKET ()
   ((port :initarg :port :accessor mcl-listener-port)
    (stream :initform nil :accessor listener-stream)))
@@ -69,29 +69,29 @@
   (%SYSDEP
    "open listener socket"
    #+dummy-tcp
-   (list 'dummy-listner (or port 115577))
+   (list 'dummy-listener (or port 115577))
    #+(or allegro use-acl-socket)
    (socket:make-socket :connect :passive :local-port port
                        :format :binary
                        :reuse-address t)
    #+clisp 
    (if port (socket-server port) (socket-server))
-   #+cmucl-sockets 
+   #+clorb::cmucl-sockets 
    (ext:create-inet-listener port)
-   #+db-sockets
+   #+clorb::db-sockets
    (let ((s (sockets:make-inet-socket :stream :tcp)))
      (setf (sockets:sockopt-reuse-address s) t)
      (sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sockets:socket-listen s 5)
      s)
-   #+sb-bsd-sockets
+   #+clorb::sb-bsd-sockets
    (let ((s (make-instance 'sb-bsd-sockets:inet-socket
                            :type :stream :protocol :tcp)))
      (setf (sb-bsd-sockets:sockopt-reuse-address s) t)
      (sb-bsd-sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sb-bsd-sockets:socket-listen s 5)
      s)
-   #+mcl
+   #+digitool
    (let ((listener (make-instance 'mcl-listener-socket :port port)))
      (accept-connection-on-socket listener)
      listener)))
@@ -104,7 +104,7 @@
    "localhost"
    #+clisp
    (socket-server-host socket)
-   #+(and mcl (not use-acl-socket))
+   #+(and digitool (not use-acl-socket))
    (let ((host (ccl::stream-local-host (listener-stream socket))))
      (handler-case
        (ccl::inet-host-name host)
@@ -127,19 +127,19 @@
    (if socket (socket-server-port socket) *port*)
    #+(or Allegro use-acl-socket)
    (socket:local-port socket)
-   #+db-sockets
+   #+clorb::db-sockets
    (multiple-value-bind (adr port)
        (sockets:socket-name socket)
      (declare (ignore adr))
      port)
-   #+sb-bsd-sockets
+   #+clorb::sb-bsd-sockets
    (multiple-value-bind (adr port)
        (sb-bsd-sockets:socket-name socket)
      (declare (ignore adr))
      port)
    #+cmu
    (nth-value 1 (ext:get-socket-host-and-port socket))
-   #+mcl
+   #+digitool
    (mcl-listener-port socket)))
 
 
@@ -155,17 +155,17 @@
      (error "Dummy TCP cannot connect")
      #+clisp 
      (socket-connect port host :element-type type) 
-     #+cmucl-sockets
+     #+clorb::cmucl-sockets
      (system:make-fd-stream (ext:connect-to-inet-socket host port)
                             :input t :output t :element-type type)
-     #+db-sockets
+     #+clorb::db-sockets
      (let ((s (sockets:make-inet-socket :stream :tcp))
            (num (car (sockets:host-ent-addresses
                       (sockets:get-host-by-name host)))))
        (sockets:socket-connect s num port)
        (sockets:socket-make-stream s :element-type type
                                    :input t :output t :buffering :none))
-     #+sb-bsd-sockets
+     #+clorb::sb-bsd-sockets
      (let ((s (make-instance 'sb-bsd-sockets:inet-socket
                              :type :stream :protocol :tcp))
            (num (sb-bsd-sockets:host-ent-address
@@ -178,7 +178,7 @@
       :remote-host host :remote-port port
       :format (if binary :binary :text))
      
-     #+mcl
+     #+digitool
      (ccl::open-tcp-stream host port :element-type type :connect-timeout 30))))
 
 
@@ -190,7 +190,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    "accept a connection"
    #+dummy-tcp
    nil
-   #+cmucl-sockets
+   #+clorb::cmucl-sockets
    (when blocking
      (let ((new (ext:accept-tcp-connection socket)))
        (mess 3 "Acception tcp connection: ~S" new)
@@ -200,7 +200,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (mess 2 " - to stream: ~S" new)
        new))
    ;;  (error "non-blocking accept() not yet implemented for cmucl sockets")
-   #+db-sockets
+   #+clorb::db-sockets
    (let ((before (sockets:non-blocking-mode socket)))
      (unwind-protect
          (handler-case
@@ -213,7 +213,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                                              :input t :output t )))
            (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
-   #+sb-bsd-sockets
+   #+clorb::sb-bsd-sockets
    (let ((before (sb-bsd-sockets:non-blocking-mode socket)))
      (unwind-protect
          (handler-case
@@ -242,7 +242,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                  (acl-socket:ipaddr-to-dotted (socket:remote-host conn)))
              (socket:remote-port conn)))
      conn)
-   #+mcl
+   #+digitool
    (let* ((s (listener-stream socket))
           (state (and s (ccl::opentransport-stream-connection-state s)))
           (new nil))
@@ -269,7 +269,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (%SYSDEP 
    "check if input is available on socket stream"
 
-   #+clisp-ext
+   #+clorb::clisp-ext
    (eq t (ext:read-byte-lookahead stream))
    ;;(not (ext:read-byte-will-hang-p stream))
    #+clisp t                            ;Ouch!
@@ -314,10 +314,6 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 ;;(select-wait y) => y'
 ;;(select-stream-status y cookie) => :input/:output/:io/:error
 
-#+clisp
-(eval-when (:compile-toplevel)
-  (pushnew :clisp-new-socket-status *features*))
-
 
 (%SYSDEP
  "make select obj"
@@ -349,15 +345,15 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 (defmacro %socket-file-descriptor (socket)
   (%SYSDEP
    "file descriptor for listener socket"
-   #+db-sockets `(sockets:socket-file-descriptor ,socket)
-   #+sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)) )
+   #+clorb::db-sockets `(sockets:socket-file-descriptor ,socket)
+   #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)) )
 
 (defmacro select-add-listener (select-obj socket)
   (declare (ignorable select-obj socket))
   (%SYSDEP
    "add listener to select"
 
-   #+clisp-new-socket-status
+   #+clorb::clisp-new-socket-status
    `(length (push ,socket (select-value ,select-obj)))
 
    #+sbcl
@@ -379,7 +375,7 @@ status for stream."
   (%SYSDEP
    "add stream to select"
 
-   #+clisp-new-socket-status
+   #+clorb::clisp-new-socket-status
    (length (push
              (cons stream
               (cond ((not input)  :output)
@@ -538,13 +534,6 @@ Returns select result to be used in getting status for streams."
      (force-output stream)
      count)
 
-   #+(and mcl (not openmcl))
-   (progn
-     (loop for i from start below end
-         do (write-byte (aref seq i) stream))
-     (force-output stream)
-     (- end start))
-
    ;; Default is possibly blocking
    (progn
      (write-sequence seq stream :start start :end end)
@@ -593,7 +582,7 @@ Returns select result to be used in getting status for streams."
    #+sbcl
    (sb-ext:run-program "/bin/sh" (list "-c" command) :output stream)
    ;; Default
-   (error "No implementation for SHELL-TO-STREAM")))
+   (error "No implementation for SHELL-TO-STREAM: ~S ~A" command stream)))
 
 
 (defun shell-to-string (command)
@@ -604,7 +593,7 @@ Returns select result to be used in getting status for streams."
    (with-output-to-string (out)
      (shell-to-stream command out))
 
-   #+clorb-mcl-bsd
+   #+clorb::mcl-bsd
    (bsd:system-command command)
 
    #+clorb-mcl-task-evaluator
@@ -632,13 +621,13 @@ Returns select result to be used in getting status for streams."
        (close shell-stream)
        (when error-stream (close error-stream))))
    
-   (error "No implementation for SHELL-TO-STRING")))
+   (error "No implementation for SHELL-TO-STRING: ~S" command)))
 
 
 (defun external-namestring (pathname)
   (setq pathname (truename pathname))
   (%SYSDEP "convert pathname to a namestring suitable for external programs"
-           #+(and MCL (not openmcl))
+           #+digitool
            (if (ccl::using-posix-paths-p)
              (ccl::posix-namestring pathname)
              (namestring pathname))
