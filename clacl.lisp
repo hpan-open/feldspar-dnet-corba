@@ -1,23 +1,22 @@
 
 (in-package :cl-user)
 
+(pushnew :use-my-idlparser *features*)
+(net.cddr.packer:require-package :net.cddr.redpas)
+
 (setf (logical-pathname-translations "clorb")
-  '(("SRC;*.*"  "/home/lenst/src/clorb/*.*")
-    ("*.*"      "CLORB:SRC;*.*" )))
+  '(("src;**;*.*"  "~/src/clorb/**/*.*")
+    ("**;*.*"      "~/src/clorb/**/*.*" )))
 
-(load "clorb-pkgdcl")
+(setf (logical-pathname-translations "phome")
+      '(("**;*.*"  "~/**/*.*")))
 
-(import '(setup-pns hello-client setup-hello run-hello run)
-        :clorb)
-
-(load "clorb-files")
+(load "clorb:src;clorb-pkgdcl")
+(load "clorb:src;clorb-files")
 (clorb:reload)
-(clorb::load-ir)
+;;(clorb::load-ir)
 
-(import '(clorb:reload)
-        :cl-user)
-
-(setq clorb:*host* "10.0.1.251")
+(setq clorb:*host* "localhost")
 (setq clorb:*port* 5111)
 
 (defvar *orb* (CORBA:ORB_init))
@@ -31,16 +30,6 @@
 
 ;;(op:object_to_string *orb* cl-user::root)
 
-(defun hh ()
-  (setup-hello :file "hello.ior")
-  (hello-client :file "hello.ior"))
-
-(defun hhn ()
-  (cl-user::setup-hello :name "hello")
-  (cl-user::hello-client :name "hello"))
-
-(export '(hh hhn))
-(import '(hh hhn) :clorb)
 
 (defun describe-repo (r)
   (let ((l (coerce (op:contents r :dk_all t) 'list))

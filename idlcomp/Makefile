@@ -4,7 +4,7 @@ clean:
 	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.bak
 
 setmcl:
-	~/src/shtoys/SetMcl *.lisp
+	/Developer/Tools/SetFile -t TEXT -c CCL2 *.lisp
 
 prep-cvs:
 	perl -pe 's/\r/\n/g' < idl-scanner-parser.lisp > temp-file

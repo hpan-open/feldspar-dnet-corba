@@ -1,7 +1,9 @@
 (in-package :cl-user)
 
 (defparameter *account-folder* 
-  (pathname "phome:Library;Tcl;combat-tcl-0.7.2;demo;account;"))
+    (or 
+     #+mcl (pathname "phome:Library;Tcl;combat-tcl-0.7.2;demo;account;")
+     #+unix "~/Library/Tcl/combat-tcl-0.7.2/demo/account/"))
 
 (defparameter *account-ior* 
   (clorb:pathname-url (truename (merge-pathnames "server.ior" *account-folder*))))
@@ -15,7 +17,6 @@
 (defparameter *acc*  (op:create *bank* "foo" "bar"))
 
 (op:balance *acc*)
-
 (handler-case 
   (op:withdraw *acc* 1000)
   (omg.org/root:account/bankrupt

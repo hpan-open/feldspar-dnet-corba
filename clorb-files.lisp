@@ -52,9 +52,7 @@
     ;; Services
     "cosnaming-idl"
     "cosnaming-skel"
-    "pns-server"
-    ;"ec-server"
-    ))
+    "pns-server"))
 
 (defparameter *idlcomp*
   '( ;; IDL Compiler
@@ -65,8 +63,7 @@
 
 (defparameter *my-idlparser*
   '("my-lexer"
-    "my-idlparser" 
-    "z-sexp-idl" ))
+    "my-idlparser"))
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))

@@ -129,26 +129,73 @@
 (defun struct-class-name (struct)
   (class-name (class-of struct)))
 
+
+
+;;;; Sexp pattern
+
+(defclass sexp-pattern (pattern)
+  ())
+
+(defun sexp-pattern (sexp)
+  (make-instance 'sexp-pattern :args sexp))
+
+(defmethod match ((pattern sexp-pattern) object)
+  (match-sexp (pattern-args pattern) object))
+
+(defun match-sexp (pattern object)
+  (if (consp pattern)
+    (progn
+      (unless (consp object)
+        (fail-match object "not a cons"))
+      (case (car pattern)
+        (&key (match-keys (cdr pattern) object))
+        (&any (match-sexp (cdr pattern) (cdr object)))
+        (&rest (map nil (lambda (obj) (match-sexp (second pattern) obj)) object))
+        (&any-rest)
+        (otherwise
+         (progn (match-sexp (car pattern) (car object))
+                (match-sexp (cdr pattern) (cdr object))))))
+    (match pattern object)))
+  
+(defun match-keys (keys list)
+  (let ((seen '()))
+    (when (oddp (length list))
+      (fail-match list "odd key-value list"))
+    (loop for (key value) on list by #'cddr
+          do (let ((spec (assoc key keys)))
+               (unless spec (fail-match key "illegal key"))
+               (when (member key seen) (fail-match key "duplicated key"))
+               (push key seen)
+               (when (cddr spec)
+                 (match-sexp (caddr spec) value))))
+    (loop for (key option) in keys
+          when (eq option :required)
+          do (unless (member key seen)
+               (fail-match list "missing required key ~S" key)))))
+
+
+;;;; Eval-To pattern
+
+(defclass eval-to-pattern (pattern)
+  ())
+
+(defun eval-to (form)
+  (make-instance 'eval-to-pattern :args form))
+
+(defmethod match ((pattern eval-to-pattern) object)
+  (match (pattern-args pattern)
+         (eval object)))
+
+
+
+
+
 #|
 (defvar *def* (repository-from-string "typedef string foo;"))
-
 (match (make-instance 'repository-pattern
          :args (list "foo" (def-pattern :dk_alias
                              'op:name "foxo"
                              'op:absolute_name "::foo"
                              'op:original_type_def (def-pattern :dk_primitive 'op:kind :pk_string))))
- 
        *def*)
-
-|#
-
-
-#|
-(repository-from-string
- "union u switch(boolean) {
-   case true: long x;
-   case false: unsigned long y;
-};"
-
-)
 |#

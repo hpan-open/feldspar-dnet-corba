@@ -1,5 +1,7 @@
 ;;;; test-idlcpp.lisp -- preprocessor interfrace test suite
 
+(in-package :clorb)
+
 (defparameter *cpp-test-source-1*
   (format nil "~@{~A~%~}"
           "# 1 \"file.idl\""
@@ -61,7 +63,7 @@ bas bara" )
                        "expected parse end ~S got ~S" end res2))))
       (test "\\t" 1 2 #\tab)
       (test "\\'" 1 2 #\')
-      (test "014" 0 3 #\FormFeed)
+      (test "014" 0 3 #\Page)
       (test "x0A" 0 3 #\Linefeed)
       (test "x41" 0 3 #\A)))
   
@@ -150,17 +152,19 @@ bas bara" )
       
 
   (define-test "using-cpp-stream"
-    (using-cpp-stream
-     (merge-pathnames "hello.idl" *clorb-pathname-defaults*)
-     (lambda (cpp)
-       (ensure-typep (read-cpp-line cpp) 'string)
-       (let ((file (current-file cpp)))
-         (ensure (search "hello.idl" file)
-                 "correct file name"))
-       (loop for line = (read-cpp-line cpp)
+      (using-cpp-stream
+       (make-pathname :name "hello" :type "idl" 
+                      :directory '(:relative "examples" "hello")
+                      :defaults (truename *clorb-pathname-defaults*))
+       (lambda (cpp)
+         (ensure-typep (read-cpp-line cpp) 'string)
+         (let ((file (current-file cpp)))
+           (ensure (search "hello.idl" file)
+                   "correct file name"))
+         (loop for line = (read-cpp-line cpp)
              until (search "Hello" line))
-       ;; read to end (end with nil)
-       (loop for line = (read-cpp-line cpp)
+         ;; read to end (end with nil)
+         (loop for line = (read-cpp-line cpp)
              for i from 0
              while line
              when (> i 100) do (ensure nil)))))

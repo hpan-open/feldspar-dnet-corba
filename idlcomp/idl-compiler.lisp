@@ -35,8 +35,9 @@
 
 
 
-(defun parse-file (name)
-  (using-cpp-stream name #'parse-cpp-stream))
+(defun parse-file (name &key include-directories)
+  (using-cpp-stream name #'parse-cpp-stream
+                    :include-directories include-directories))
 
 (defun save-idef (name1 name2)
   (let ((b (parse-file name1)))
@@ -61,7 +62,9 @@
         (read-from-string string)))))
 
 (defmethod load-repository ((self idl-compiler-impl) repository file)
-  (idef-read (convert-package (parse-file file))
+  (idef-read (convert-package 
+              (parse-file file
+                          :include-directories (clorb::include-directories self)))
              repository))
 
 (unless *default-idl-compiler*

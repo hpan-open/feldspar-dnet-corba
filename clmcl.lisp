@@ -118,14 +118,15 @@
 (corba:idl #P"QuadX:Users:lenst:src:corba:interfaces:CosNaming.idl" :eval nil)
 |#
 
+(load "clorb:examples;hello;auto")
 
-(defun hh (&key (name nil) (file "hello.ior"))
-  (unless (and (find-package "HELLO")
-               (find-symbol "WORLD" "HELLO"))
-    (load "CLORB:examples;hello;loadup"))
-  (setup-hello :file file :name name)
-  (hello-client :file file :name name))
+#|
 
+(corba:idl "clorb:idl;TypeCodeFactory.idl"
+           :eval nil :print t 
+           :only '("CORBA::TypeCodeFactory") :skeleton nil
+           :exclude nil )
 
-(defun hhn ()
-  (hh :file nil :name "hello"))
+(gen-stub-file (lookup-name-in r "CORBA::TypeCodeFactory") "clorb:y-typecodefactory.lisp"  :package-def t)
+
+|#
