@@ -156,8 +156,9 @@ Members: (name typecode)*"
     for slot-name = (string (car member))
     for initarg = (key slot-name)
     for slot = (feature slot-name)
-    collect (list slot :initarg initarg) into slot-defs
-    collect `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
+    for getter-name = (make-symbol slot-name)
+    collect (list slot :initarg initarg :reader getter-name) into slot-defs
+    collect `(define-method ,slot ((s ,symbol)) (,getter-name s))
     into getters
     collect `(list ,slot-name ,(second member)) into tc-members
     collect slot into args
