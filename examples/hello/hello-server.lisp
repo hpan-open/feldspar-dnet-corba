@@ -1,7 +1,8 @@
 (in-package :cl-user)
 
 (defclass HELLO-WORLD (hello:world-servant)
-  ((motd :initform "Hello World")))
+  ((motd :initform 
+         (format nil "Hello World from ~A" (lisp-implementation-type)))))
 
 (corba:define-method greet ((self hello-world))
   (slot-value self 'motd))
