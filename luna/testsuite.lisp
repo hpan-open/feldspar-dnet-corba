@@ -108,10 +108,11 @@
                       `(let* ,',vars
                          (declare (ignorable . ,',(mapcar #'car vars)))
                          (block nil
-                           (handler-bind ((error (lambda (exc) 
-                                                   (tc-report "Exception ~A" exc)
-                                                   (unless *test-suite-debug*
-                                                     (return)))))
+                           (handler-bind ((serious-condition
+                                           (lambda (exc) 
+                                             (tc-report "Exception ~A" exc)
+                                             (unless *test-suite-debug*
+                                               (return)))))
                              (let ((*tc-current* ,(string name))
                                    (*tc-current-sub* nil))
                                (start-test-case *test-suite-result* ,(string name))
