@@ -1,19 +1,19 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.22 2004/01/21 17:45:29 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.23 2004/01/29 19:50:15 lenst Exp $
 
 
 ;; io-reset ()
 ;; io-create-listener (&optional port)
-;; io-create-descriptor ()
+;; io-create-descriptor () => desc
 ;; io-descriptor-destroy (desc)
 ;; io-descriptor-connect (desc host port)
-;; io-descriptor-working-p (desc)
+;; io-descriptor-working-p (desc) => boolean
 ;; io-descriptor-set-read (desc buf start end)
 ;; io-descriptor-set-write (desc buf start end)
-;; io-descriptor-status (desc)
-;; io-descriptor-error (desc)
-;; io-descriptor-read-buffer (desc)
-;; io-driver ()
+;; io-descriptor-status (desc) => status
+;; io-descriptor-error (desc) => condition or nil
+;; io-descriptor-read-buffer (desc) => buffer
+;; io-driver () => event, desc
 
 ;; io-descriptor-shortcut-connect (desc)
 ;; io-fix-broken ()
@@ -103,11 +103,11 @@
     (let ((other (make-io-descriptor
                   :stream (make-instance 'shortcut-stream :input o-stream :output i-stream)
                   :status :connected
-                  :shortcut-p t)))
+                  :shortcut-p desc)))
       (push other *io-descriptions*)
-      (io-queue-event :new other))
-    (setf (io-descriptor-stream desc) (make-instance 'shortcut-stream :input i-stream :output o-stream))
-    (setf (io-descriptor-shortcut-p desc) t)))
+      (io-queue-event :new other)
+      (setf (io-descriptor-stream desc) (make-instance 'shortcut-stream :input i-stream :output o-stream))
+      (setf (io-descriptor-shortcut-p desc) other))))
 
 
 
@@ -185,9 +185,9 @@
 
 
 (defun io-descriptor-destroy (desc)
+  (setf (io-descriptor-status desc) :broken)
   (ignore-errors
     (close (io-descriptor-stream desc)))
-  (setf (io-descriptor-status desc) :broken)
   (setq *io-descriptions* (delete desc *io-descriptions*)))
 
 
@@ -286,7 +286,7 @@
 ;;;; Shortcut driver
 
 
-(defun io-poll-shortcut (desc)
+(defun io-poll-shortcut (desc &optional io)
   (let ((result nil))
     (flet ((out (from)
              (when (io-descriptor-write-ready from)
@@ -306,9 +306,11 @@
                (setf (io-descriptor-read-pos to) (io-descriptor-read-limit to))
                (io-queue-event :read-ready to)
                (setq result t))))
-      
-      (out desc)
-      (in desc)
+      (case io
+        (:read (in desc))
+        (:write (out desc) 
+                (in (io-descriptor-shortcut-p desc)))
+        (t (out desc) (in desc)))
       result)))
 
 
@@ -377,8 +379,18 @@
 
 
 (defmethod io-system-driver ((system io-system-select))
-  (loop repeat 500 until *io-event-queue*
-        do (io-poll-select)))
+  (io-poll-select))
+
+
+(defmethod io-ready-for-write ((system io-system-select) desc)
+  (if (io-descriptor-shortcut-p desc)
+    (io-poll-shortcut desc :write)))
+
+
+(defmethod io-ready-for-read ((system io-system-select) desc)
+  (if (io-descriptor-shortcut-p desc)
+    (io-poll-shortcut desc :read)))
+
 
 
 
@@ -428,7 +440,8 @@
 
 #+digitool
 (defmethod io-ready-for-read ((system io-system-multiprocess) desc)
-  (unless (io-descriptor-shortcut-p desc)
+  (if (io-descriptor-shortcut-p desc)
+    (io-poll-shortcut desc :read)
     (let ((old-process (io-descriptor-read-process desc)))
       (cond (old-process
              (mess 1 "Old process= ~A" old-process)
@@ -443,7 +456,7 @@
 
 (defmethod io-ready-for-write ((system io-system-multiprocess) desc)
   (if (io-descriptor-shortcut-p desc)
-    (io-poll-shortcut desc)
+    (io-poll-shortcut desc :write)
     (if (> (- (io-descriptor-write-limit desc) (io-descriptor-write-pos desc)) 
            *io-background-write-treshold*)
       (setf (io-descriptor-write-process desc)
@@ -463,7 +476,6 @@
 
 
 (defun io-driver ()
-  (loop until *io-event-queue*
-        do (or (io-driver-shortcut) (io-system-driver *io-system*)))
+  (loop until *io-event-queue* do (io-system-driver *io-system*))
   (values-list (pop *io-event-queue*)))
 
