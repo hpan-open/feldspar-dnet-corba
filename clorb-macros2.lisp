@@ -223,11 +223,12 @@
       
 ;;;; Interface
 
-(defmacro define-interface (symbol super &key (id "") proxy (name ""))
+(defmacro define-interface (symbol super &key (id "") proxy (name "")
+                            defined_in version)
   `(progn
-     (set-symbol-id/typecode ',symbol ,id (create-interface-tc ,id ,name))
-     (setf (get ',symbol 'ifr-bases) ',super)
-     (defclass ,SYMBOL ,super ())
+     (set-ifr-info ',symbol :id ,id :typecode (create-interface-tc ,id ,name)
+                   :bases ',super :defined_in ',defined_in :version ,version)
+     (defclass ,symbol ,super ())
      ,@(if proxy
          `((defclass ,(CAR PROXY) ,(cdr proxy) ())
            (register-proxy-class ,id ',(car proxy))))
