@@ -704,11 +704,14 @@
     (let* ((*the-repository* repository)
            (*container* *the-repository*))
       (using-idllex file #'<specification>
-                    (include-directories self))))
+                    (include-directories self)
+                    (defines self))))
 
 
 (unless *default-idl-compiler*
-  (setq *default-idl-compiler* (make-instance 'my-idlparser)))
+  (setq *default-idl-compiler* 
+        (make-instance 'my-idlparser
+          :defines '("_CLORB"))))
 
 
 #|
