@@ -13,10 +13,12 @@
     ("clorb-struct" t)
     "clorb-union"
     "clorb-any"
+    "clorb-iop"
     "clorb-object"
     ("clorb-buffer" t)
     "clorb-marshal"
     ("clorb-unmarshal" )
+    "clorb-ifr-base"
     ("clorb-opdef" t)
     "clorb-io"
     "clorb-iiop"
@@ -38,15 +40,11 @@
 (defparameter *x-files*
   '("test-suite"
     ;; Experimental
-    "orb-export"
-    "orb-structs"
-    ("local-ir" t)
+    "local-ir"
+    "internalize"
     "idef-read"
     "idef-write"
     ("idef-macros" t)
-    "test-suite"
-    "internalize"
-    ;"code-gen"
     ;; Services
     "cosnaming-idl"
     "cosnaming-stub"
@@ -58,7 +56,7 @@
     "hello-server"
     "hello-client"
     ;; Code Gen
-    ;;"target"
+    "target"
     ))
 
 
@@ -123,3 +121,36 @@
                         (symbol-value var)))))
   (format t ")~%"))
 
+(defun gen-package-decl (&optional (package :op))
+  (let ((exports nil))
+    (do-external-symbols (op package)
+      (push op exports))
+    (format t "(defpackage ~S~%  (:use)~%" (package-name package))
+    (let ((nicks (package-nicknames package)))
+      (when nicks 
+        (format t "  (:nicknames~{ ~S~})~%" nicks)))
+    (setq exports (sort exports #'string<))
+    (setq exports (mapcar #'symbol-name exports))
+    (let ((*package* (find-package package)))
+      #-clisp
+      (pprint-logical-block (*standard-output* exports
+                                               :prefix "  ("
+                                               :suffix ")")
+        (princ ":export")
+        (pprint-newline :mandatory *standard-output*)
+        (pprint-fill *standard-output* exports nil))
+      #+clisp
+      (loop for op in exports and n from 0
+            initially (terpri) (princ "  (:export")
+            finally   (princ ")")
+            when (zerop (rem n 3))
+            do (terpri) (princ "   ")
+            do (princ op) (princ " ")))
+    (format t ")~%")
+    (values)))
+
+#|
+(gen-package-decl "CORBA")
+(gen-package-decl "OP")
+(gen-package-decl "IOP")
+|#
