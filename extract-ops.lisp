@@ -1,12 +1,12 @@
 (in-package :cl-user)
 
 
-(defun all-ops ()
+(defun all-ops (&optional (package :op))
   (let ((ops nil))
-    (do-external-symbols (op :op)
+    (do-external-symbols (op package)
       (push op ops))
     (setq ops (sort ops #'string<))
-    (let ((*package* (find-package :op)))
+    (let ((*package* (find-package package)))
       #-clisp
       (pprint-logical-block (*standard-output* ops
                                                :prefix "  ("
