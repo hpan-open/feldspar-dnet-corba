@@ -185,9 +185,16 @@ Can be set to true globally for singel-process / development.")
 
 ;;;    void run();
 (define-method run ((orb orb))
-  (let ((*running-orb* t))
-    (loop while (orb-active orb)
-        do (orb-wait))))
+  (unless *running-orb*
+    (cerror "Run anyway"
+            "Seems the orb is already running"))
+  (let ((old *running-orb*))
+    (setq *running-orb* nil)
+    (unwind-protect 
+      (let ((*running-orb* t))
+        (loop while (orb-active orb)
+              do (orb-wait)))
+      (setq *running-orb* old))))
 
 
 
