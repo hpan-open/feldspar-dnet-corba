@@ -249,11 +249,11 @@
   (declare (ignorable req_flags ctx))
   (check-type operation string)
   (check-type arg_list sequence)
-  (check-type result CORBA:NamedValue)
+  (check-type result (or null CORBA:NamedValue))
   (if result
       (setf (op:arg_modes result) ARG_OUT)
     (setq result (CORBA:NamedValue :arg_modes ARG_OUT
-                                   :argument (CORBA:Any))))
+                                   :argument (CORBA:Any :any-typecode CORBA:tc_void))))
   (values result
           (create-client-request (the-orb obj)
                                  :target obj
