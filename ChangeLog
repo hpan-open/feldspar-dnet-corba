@@ -1,3 +1,20 @@
+Wed Jun 13 01:02:59 2001  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-iir.lisp: removed some debugging code
+
+	* clorb-struct.lisp (*specialized-structs*): now a defvar
+
+	* clorb-orb.lisp (orb-wait): put the fallback handling in here
+
+	* clorb-srv.lisp (handle-socket): take flag if blocking allowed
+	(removed the srv-.. version of this)
+	removed the adaptor-fallback, moved handling to orb-wait
+	
+	* socket.lisp (wait-for-input-on-streams): added support for clisp
+	(and untested for mcl)
+	(socket-stream-functional-p): clisp: detect eof also
+	(socket-stream-listen): clisp: use read-byte-lookahed
+
 2001-06-04  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (ns-name1): new syntax for name service names as

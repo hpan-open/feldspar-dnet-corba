@@ -52,6 +52,7 @@
     "pns-server"
     "ec-server"
     ;; Example
+    "hello-idl"
     "hello-server"
     "hello-client"))
 
