@@ -406,10 +406,17 @@
 (defun jit-marshal (v tc buffer)
   (funcall (marshal-function tc) v buffer))
 
+(defun marshal-function-cache (tc)
+  (let ((cache (list nil)))
+    (setf (car cache)
+          (lambda (v buffer)
+            (let ((fun (marshal-function tc)))
+              (setf (car cache) fun)
+              (funcall fun v buffer))))
+    cache))
+
 (defmacro %jit-marshal (v tc buffer)
-  `(funcall (let ((.cache. (load-time-value (list nil))))
-              (or (car .cache.)
-                  (setf (car .cache.) (marshal-function ,tc))))
+  `(funcall (car (load-time-value (marshal-function-cache ,tc)))
             ,v ,buffer))
 
 (defun jit-unmarshal (tc buffer)
