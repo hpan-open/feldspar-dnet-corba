@@ -415,16 +415,18 @@ Returns select result to be used in getting status for streams."
   (declare (optimize speed)
            (type octets seq)
            (type index start end))
-  #+(and mcl (not xxuse-acl-socket))
-  (let ((read-pos start))
-    (declare (type index read-pos))
-    (loop while (< read-pos end)
-          do (setf (aref seq read-pos) (read-byte stream t))
-          (incf read-pos)))
-  #-(and mcl (not xxuse-acl-socket))
-  (let ((n (read-sequence seq stream :start start :end end)))
-    (when (< n (- end start))
-      (error 'end-of-file :stream stream))))
+  (%SYSDEP
+   "read bytes from stream to sequence"
+   #+(and mcl (not openmcl) )
+   (let ((read-pos start))
+     (declare (type index read-pos))
+     (loop while (< read-pos end)
+         do (setf (aref seq read-pos) (read-byte stream t))
+            (incf read-pos)))
+   ;; Default
+   (let ((n (read-sequence seq stream :start start :end end)))
+     (when (< n (- end start))
+       (error 'end-of-file :stream stream)))))
 
 
 (defun read-octets-no-hang (seq start end stream)
@@ -453,8 +455,16 @@ Returns select result to be used in getting status for streams."
 
 
 (defun write-octets (seq start end stream)
-  (loop for i from start below end
-        do (write-byte (aref seq i) stream))
+  (declare (optimize speed)
+           (type octets seq)
+           (type index start end))
+  (%SYSDEP
+   "write bytes from sequence to stream"
+   #+(and mcl (not openmcl)) 
+   (loop for i from start below end
+       do (write-byte (aref seq i) stream))
+   ;; default
+   (write-sequence seq stream :start start :end end))
   (force-output stream))
 
 (defun write-octets-no-hang (seq start end stream)
@@ -496,6 +506,9 @@ Returns select result to be used in getting status for streams."
    "start a process"
    #+mcl (apply #'ccl:process-run-function options proc args)
 
+   #+allegro
+   (apply #'multiprocessing:process-run-function options proc args)
+
    ;; Default: just do it
    (progn (apply proc args)
           nil)))
@@ -504,6 +517,7 @@ Returns select result to be used in getting status for streams."
   (and process
        (%SYSDEP "end process"
                 #+mcl (ccl:process-reset process nil :kill)
+                #+allegro (mp:process-reset process nil :kill)
                 nil)))
 
 (defun process-wait-with-timeout (whostate timeout wait-func &rest args)
@@ -512,5 +526,8 @@ Returns select result to be used in getting status for streams."
    "suspend process until function returns true"
    #+mcl
    (apply #'ccl:process-wait-with-timeout whostate timeout wait-func args)
+   #+allegro
+   (apply #'mp:process-wait-with-timeout whostate timeout wait-func args)
+
    ;; Default: ignore
    nil ))
