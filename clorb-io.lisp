@@ -341,7 +341,7 @@ Returns select result to be used in getting status for streams."
                  (setf (io-descriptor-error desc)  e)
                  (return-from io-driver (values :error desc))))
              (when (>= write-pos write-limit)
-               (mess 2 "Io-driver ready writing ~S" (type-of desc))
+               (mess 1 "Io-driver ready writing ~S" (type-of desc))
                (return-from io-driver (values :write-ready desc))))
            (when (eq status :error)
              (return-from io-driver (values :error desc))))))

@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.2 2001/12/16 22:47:23 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.3 2002/02/14 21:12:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -292,7 +292,6 @@
          (io-descriptor-set-read desc nil 0 0)
          (connection-read-ready conn))
         (:write-ready
-         (mess 2 "Write ready on desc: ~S" desc)
          (io-descriptor-set-write desc nil 0 0)
          (connection-write-ready conn))
         (:new
