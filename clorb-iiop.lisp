@@ -256,8 +256,8 @@
 (defun unmarshal-giop-header (buffer)
   (unless (loop for c in '(#\G #\I #\O #\P)
 		always (eql c (unmarshal-char buffer)))
-    (error "Not a GIOP message: ~S"
-           (map 'string 'code-char (buffer-octets buffer))))
+    (error "Not a GIOP message: ~/net.cddr.clorb::stroid/"
+           (buffer-octets buffer)))
   (let* ((major (unmarshal-octet buffer))
 	 (minor (unmarshal-octet buffer))
          (iiop-version (cons major minor))
