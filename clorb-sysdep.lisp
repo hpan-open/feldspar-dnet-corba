@@ -554,6 +554,11 @@ Returns select result to be used in getting status for streams."
      (ccl:run-program "/bin/bash" (list "-c" command)
                       :output out))
 
+   #+cmu
+   (with-output-to-string (out)
+     (ext:run-program "/bin/sh" (list "-c" command)
+                      :output out))
+
    #+clorb-mcl-bsd
    (bsd:system-command command)
 
