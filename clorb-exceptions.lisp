@@ -75,7 +75,6 @@
 ;;;; User Exceptions
 ;;;
 ;;; exception-id exc        --> ifr-id
-;;; exception-typecode exc  --> typecode
 ;;; id-exception-class id   --> exception-class
 ;;;
 
@@ -85,9 +84,17 @@
                    (values :initarg :values :reader unknown-exception-values)))
 
 
-(defun exception-typecode (exception)
+(defmethod any-typecode ((exception exception))
   "The typecode for the exception"
   (symbol-typecode (exception-name exception)))
+
+(defun feature (name)
+  (intern (string-upcase name) :op))
+
+(defmethod all-fields ((exc userexception))
+  (map 'list
+       (lambda (member) (funcall (feature (first member)) exc))
+       (tc-members (any-typecode exc))))
 
 
 (defvar *user-exception-classes*
@@ -96,8 +103,12 @@
 (defun id-exception-class (id)
   (gethash id *user-exception-classes*))
 
- 
 
+;;; Marshalling support for exceptions
 
-
-
+(defun exception-read (symbol buffer)
+  "Read an exception of type indicated by SYMBOL from BUFFER."
+  (let ((reader (get symbol 'exception-read)))
+    (if reader
+      (funcall reader buffer)
+      (unmarshal-exception (symbol-typecode symbol) buffer))))
