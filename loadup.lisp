@@ -15,7 +15,7 @@
            (:dk_Interface
             (or (known-interface id)
                 (add-interface (interface-from-def x)))
-            (ir-add-all (invoke x "contents" :dk_All t)
+            (ir-add-all (corba:funcall "contents" x :dk_All t)
                         (1+ level)))
            ((:dk_Struct :dk_Alias :dk_Exception :dk_Enum)
             ;; IDL - types

@@ -1,3 +1,9 @@
+2001-06-04  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (ns-name1): new syntax for name service names as
+	string: <id1>&<kind1>;<id2>&<kind2>;..;<idn>&<kindn>. Where
+	'&<kind>' is optional and '&&' stands for a singel '&' in the name.
+
 2001-05-17  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* idef-read.lisp (idef-read-part): added support for
