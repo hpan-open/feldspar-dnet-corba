@@ -1,5 +1,5 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.4 2001/06/03 23:59:17 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.5 2001/06/11 01:16:40 lenst Exp $
 
 (in-package :clorb)
 
@@ -42,8 +42,9 @@
     (setf (buffer-position buffer) 0)
     (let ((read-length
            (read-sequence octets stream)))
+      (mess 1 "read ~A bytes" read-length)
       (when (< read-length (length octets))
-        (break "not read enough")
+        (mess 1 "not read enough")
         (close stream)
         (mess 2 "Closing stream ~A" stream)
         (return-from read-request nil)))
