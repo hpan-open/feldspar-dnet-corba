@@ -2,21 +2,16 @@
 
 
 (pushnew :clorb-dev *features*)
-(pushnew :no-idlcomp *features*)
-(pushnew :use-my-idlparser *features*)
-(net.cddr.packer:require-package :net.cddr.redpas)
 
 
-(let* ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname)))
-       (clorb-fasl (merge-pathnames "fasl/" clorb-home)))
-  (ensure-directories-exist clorb-fasl)
+(let* ((clorb-home (merge-pathnames "src/clorb/" (user-homedir-pathname))))
   (setf (logical-pathname-translations "CLORB")
-        `(("SRC;**;*.fasl" ,(merge-pathnames "**/*.fasl" clorb-fasl))
-          ("SRC;**;*.*"    ,(merge-pathnames "**/*.*" clorb-home))
+        `(("SRC;**;*.*"    ,(merge-pathnames "**/*.*" clorb-home))
           ("**;*.*"        "CLORB:SRC;**;*.*" ))))
 
 
 (load "clorb-files")
+(setq net.cddr.clorb.system::*binary-folder* "fasl")
 (net.cddr.clorb.system:reload)
 
 (setq clorb:*host* "localhost")
@@ -24,7 +19,7 @@
 (defvar *the-orb*
   (CORBA:ORB_init
    (list "-ORBPort 5711"
-         "-ORBInitRef NameService=http://localhost/NameService"
+         "-ORBInitRef NameService=corbaloc::/NameService"
          "-ORBInitRef InterfaceRepository=http://localhost/InterfaceRepository")
    ""))
 
