@@ -1,7 +1,8 @@
 (in-package :clorb)
 
 (defparameter *idl-directory*
-  #3P"Macintosh HD:Users:lenst:src:hacks:idldump:work:")
+    (or #+mcl   #3P"Macintosh HD:Users:lenst:src:hacks:idldump:work:"
+        #+allegro  #P"/home/lenst/src/hacks/idldump/work/"))
 
 (defun get-idl-sexp (file)
   (let ((path (merge-pathnames file *idl-directory*))
@@ -170,11 +171,12 @@
 (dx (CASE_STMT labels members)
   (loop for member in members nconc
         (if (null labels)
-          (CORBA:UnionMember
-           :name (op:name member)
-           :label (CORBA:Any :any-typecode CORBA:TC_OCTET
-                             :Any-value 0) 
-           :type_def (op:type_def member) )
+            (list
+             (CORBA:UnionMember
+              :name (op:name member)
+              :label (CORBA:Any :any-typecode CORBA:TC_OCTET
+                                :Any-value 0) 
+              :type_def (op:type_def member) ))
           (loop for label in labels collect
                 (CORBA:UnionMember
                  :name (op:name member)
@@ -192,9 +194,11 @@
 
 (setq *container* (make-instance 'repository))
 ;(process-list (get-idl-sexp "trader"))
+#||
 (process-list (get-idl-sexp "x-04"))
 ;;(process-list (get-idl-sexp "my-query"))
 (unless (fboundp 'describe-repo)
-  (load "clorb:src;describe-repo"))
+  (load "CLORB:SRC;describe-repo"))
 (describe-repo *container*)
 (doseq (x (op:contents *container* :dk_all nil)) (pprint (op:describe x)))
+||#
