@@ -36,6 +36,7 @@
     ;;("clorb-srvreq" t)
     "clorb-servant"
     "clorb-trie"
+    "clorb-poa-base"
     "clorb-poamgr"
     "clorb-poa"
     "clorb-srv"))
@@ -48,6 +49,7 @@
     "idef-read"
     "idef-write"
     ("idef-macros" t)
+    "z-sexp-idl"
     ;; Services
     "cosnaming-idl"
     "cosnaming-skel"
@@ -58,6 +60,10 @@
     "hello-new-servant"
     "hello-server"
     "hello-client"
+    ;; IDL Compiler
+    "scanner-support"
+    "idl-compiler"
+    "idl-scanner-parser"
     ))
 
 
