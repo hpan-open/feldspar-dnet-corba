@@ -1,4 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
+;; $Id: clorb-srv.lisp,v 1.13 2003/01/16 23:05:07 lenst Exp $	
 
 (in-package :clorb)
 
@@ -115,6 +116,7 @@
                         buffer)))
            (status :UNKNOWN_OBJECT))
       (setq buffer nil)
+      ;; FIXME: what if decode-object-key-poa raises an exception?
       (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
         (when (and reftype poa)
           (handler-case
@@ -144,8 +146,7 @@
   (unless (adaptor orb)
     (setup-server orb))
   (unless *root-POA*
-    (setq *root-poa* (create-POA nil "root" nil nil))
-    (setf (the-orb *root-poa*) orb))
+    (setq *root-poa* (create-POA nil "root" nil nil orb)))
   *root-POA*)
 
 (defun initialize-poa (orb)

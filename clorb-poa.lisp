@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.14 2002/11/20 16:42:07 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.15 2003/01/16 23:05:07 lenst Exp $
 
 (in-package :clorb)
 
@@ -43,9 +43,9 @@
 
 
 
-;;;; interface AdapterActivator
+;;;; Interface AdapterActivator
 
-(DEFINE-INTERFACE PortableServer:ADAPTERACTIVATOR (OBJECT)
+(DEFINE-INTERFACE PortableServer:AdapterActivator (OBJECT)
  :ID "IDL:omg.org/PortableServer/AdapterActivator:1.0"
  :NAME "AdapterActivator")
 
@@ -54,14 +54,14 @@
   (declare (ignore _PARENT _NAME)))
 
 
-;;;; Portable Object Adaptor
-;;; Class: POA
+;;;; PortableServer::POA
 
 (define-corba-class PortableServer:POA ()
   :attributes ((the_name :readonly)
                (the_parent :readonly) 
                (the_POAManager :readonly) 
-               (the_activator))
+               (the_activator nil)
+               (the_children nil :readonly))
   :slots ((active-servant-map
            :initform (make-hash-table)
            :reader poa-active-servant-map
@@ -70,13 +70,13 @@
            :initform (make-trie)
            :reader poa-active-object-map
            :documentation "id->servant")
-          (servant-manager :accessor poa-servant-manager)
+          (servant-manager :initform nil :accessor poa-servant-manager)
           (default-servant :accessor poa-default-servant)
           (policies :initarg :policies :accessor poa-policies)
           (poaid :initarg :poaid :accessor poa-poaid)
           (auto-id :accessor poa-auto-id :initform 0)
-          (children :initform nil :accessor poa-children)
-          (the-orb :accessor the-orb)))
+          (the-orb :initarg :orb :accessor the-orb)
+          (state :initform nil :accessor poa-state)))
 
 (defmethod print-object ((p PortableServer:POA) stream)
   (print-unreadable-object (p stream :type t)
@@ -92,16 +92,20 @@
                      (name-list parent (op:the_parent parent))))))
     (nreverse (name-list poa (op:the_parent poa)))))
 
+(defun poa-effective-state (poa)
+  ;; Combine state from POAManager and other operations on the POA.
+  (or (poa-state poa)
+      (op:get_state (op:the_poamanager poa))))
 
 ;;;; PortableServer::Current
 
 (defvar *poa-current* nil
   "The current invocation data for the PortableServer::Current object.")
 
-(defun make-poa-current (poa oid) (cons poa oid))
+(defun make-poa-current (poa oid servant) (list* poa oid servant))
 (defun poa-current-poa (poa-current) (car poa-current))
-(defun poa-current-object-id (poa-current) (cdr poa-current))
-
+(defun poa-current-object-id (poa-current) (cadr poa-current))
+(defun poa-current-servant (poa-current) (cddr poa-current))
 
 (DEFINE-INTERFACE PortableServer:Current (CORBA:Current)
  :ID "IDL:omg.org/PortableServer/Current:1.0"
@@ -115,8 +119,17 @@
   (unless *poa-current* (error 'PortableServer:Current/NoContext))
   (poa-current-object-id *poa-current*))
 
+;;++ CORBA 2.6:
+;; Object get_reference
+;; Servant get_servant
+;;--
 
-;;; Convenience methods (from java)
+(define-method get_servant ((current PortableServer::Current))
+  (unless *poa-current* (error 'PortableServer:Current/NoContext))
+  (poa-current-servant *poa-current*))
+
+
+;;;; Convenience methods on servants (from java)
 ;; assuming in context of POA call
 
 (define-method _poa ((servant PortableServer:Servant)) 
@@ -132,6 +145,73 @@
   (poa-current-object-id *poa-current*))
 
 
+;;;; interface POAManager
+
+(defclass PortableServer:POAManager (CORBA:Object)
+  ((state :initform :holding)))
+
+
+;;; enum State {HOLDING, ACTIVE, DISCARDING, INACTIVE}
+(DEFINE-ENUM OMG.ORG/PORTABLESERVER:POAMANAGER/STATE
+ :ID "IDL:omg.org/PortableServer/POAManager/State:1.0"
+ :NAME "State"
+ :MEMBERS ("HOLDING" "ACTIVE" "DISCARDING" "INACTIVE"))
+
+
+;;; exception AdapterInactive{};
+(DEFINE-USER-EXCEPTION OMG.ORG/PORTABLESERVER:POAMANAGER/ADAPTERINACTIVE
+ :ID "IDL:omg.org/PortableServer/POAManager/AdapterInactive:1.0"
+ :NAME "AdapterInactive"
+ :MEMBERS NIL)
+
+
+(defun POAManager-new-state (pm new-state)
+  (with-slots (state) pm
+    (when (eq state :inactive)
+      (error 'POAManager/AdapterInactive))
+    (setf state new-state)))
+
+
+;;; void activate()
+;;;	raises(AdapterInactive);
+(define-method activate ((pm PortableServer:POAManager))
+  (POAManager-new-state pm :active))
+
+
+;;; void hold_requests(in boolean wait_for_completion)
+;;;     raises(AdapterInactive);
+(define-method hold_requests ((pm PortableServer:POAManager) wait_for_completion)
+  (when wait_for_completion
+    ;;(check-not-processing-request )
+    (when *poa-current*
+      ;; FIXME: check same ORB 
+      (error 'omg.org/corba:bad_inv_order :minor 3)))
+  (POAManager-new-state pm :holding))
+
+
+;;; void discard_requests(in boolean wait_for_completion)
+;;;        raises(AdapterInactive);
+(define-method discard_requests ((pm PortableServer:POAManager) wait_for_completion)
+  (when wait_for_completion
+    (when *poa-current*
+      (error 'omg.org/corba:bad_inv_order :minor 3)))
+  (POAManager-new-state pm :discarding))
+
+
+;;; void deactivate(	in boolean etherealize_objects,
+;;;                     in boolean wait_for_completion)
+;;;        raises(AdapterInactive);
+(define-method deactivate ((pm PortableServer:POAManager) etherealize_objects 
+                           wait_for_completion)
+  (POAManager-new-state pm :inactive))
+
+
+;;; State get_state ()
+(define-method get_state ((pm PortableServer:POAManager))
+  (slot-value pm 'state))
+
+
+
 
 ;;;; POA Registry
 
@@ -140,9 +220,7 @@
 (defvar *last-poaid* 0)
 
 (defvar *poa-map*
-  #+cmu (make-hash-table :test #'eql  :weak-p t)
-  #+allegro (make-hash-table :test #'eql  :values :weak)
-  #-(or cmu allegro) (make-hash-table :test #'eql ))
+  (make-hash-table :test #'eql))
 
 (defun register-poa (poa)
   (setf (gethash (poa-poaid poa) *poa-map*) poa))
@@ -158,45 +236,55 @@
           (setq poa (gethash poaid *poa-map*))
           (progn
             (setq poa *root-POA*)
-            (handler-case
-                (loop for n in poaid
-                      do (setq poa (op:find_poa poa n t)))
-              (omg.org/PortableServer:poa/adapternonexistent ()
-               (setq poa nil)))))
+            (loop for n in poaid 
+                  while poa
+                  do (setq poa (find-requested-poa poa n t t)))))
       (values type poa oid))))
 
 
 ;;;; Create, find and destroy 
 
-(defun create-POA (poa name manager policies)
+(defun canonical-policy-list (policies)
+  (setq policies
+        (loop for p in policies 
+              for i from 0
+              collect (typecase p
+                        (symbol p)
+                        (CORBA:Policy (op:value p))
+                        (t (error 'portableserver:poa/invalidpolicy :index i)))))
   (let ((policy-groups
          '((:retain :non-retain)
            (:transient :persistent)
-           (:system-id :user-id)
-           (:unique-id :multiple-id)
-           (:use-active-object-map-only :use-default-servant
-            :use-servant-manager)
-           (:implicit-activation :no-implicit-activation))))
+           (:system_id :user_id)
+           (:unique_id :multiple_id)
+           (:use_active_object_map_only :use_default_servant :use_servant_manager)
+           (:implicit_activation :no_implicit_activation)
+           (:orb_ctrl_model :single_thread_model))))
     (loop for p in policies
-        for i from 0
-        for g = (find p policy-groups :test #'member)
-        do (cond (g (setq policy-groups (remove g policy-groups)))
-                 (t (error 'PortableServer:POA/InvalidPolicy :index i))))
+          for i from 0
+          for g = (find p policy-groups :test #'member)
+          do (cond (g (setq policy-groups (remove g policy-groups)))
+                   (t (error 'PortableServer:POA/InvalidPolicy :index i))))
     (loop for g in policy-groups
-        do (push (car g) policies)))
-  (when (and poa (find name (POA-children poa)
+          do (push (car g) policies))
+    policies))
+
+
+(defun create-POA (poa name manager policies orb)
+  (setq policies (canonical-policy-list policies))
+  (when (and poa (find name (op:the_children poa)
                        :key #'op:the_name :test #'equal))
     (error 'PortableServer:poa/adapteralreadyexists))
   (let ((newpoa
          (make-instance 'PortableServer:poa
-          :the_name name
-          :the_parent poa
-          :the_POAmanager (or manager (make-instance 'PortableServer:poamanager))
-          :policies policies
-          :poaid (incf *last-poaid*))))
+           :the_name name
+           :the_parent poa
+           :the_POAmanager (or manager (make-instance 'PortableServer:poamanager))
+           :policies policies
+           :poaid (incf *last-poaid*)
+           :orb orb)))
     (when poa
-      (push newpoa (POA-children poa))
-      (setf (the-orb newpoa) (the-orb poa)))
+      (push newpoa (slot-value poa 'the_children)))
     (register-poa newpoa)
     newpoa))
 
@@ -207,44 +295,113 @@
 ;; raises (AdapterAlreadyExists, InvalidPolicy);
 
 (define-method create_POA ((poa PortableServer:POA) adapter-name poamanager policies)
-  (create-POA poa adapter-name poamanager policies))
+  (when (poa-state poa)
+    ;; Currently only have state when destroying
+    (error 'omg.org/corba:bad_inv_order :minor 17))
+  (create-POA poa adapter-name poamanager policies (the-orb poa)))
 
+(defun find-requested-poa (poa name activate-it check-poa-status)
+  (flet ((find-child ()
+           (find name (op:the_children poa) :key #'op:the_name :test #'equal)))
+    (when check-poa-status
+      (when (or (not (eql :active (poa-effective-state poa))))
+        (error 'CORBA:TRANSIENT)))
+    (or (find-child)
+        (and activate-it
+             (op:the_activator poa)
+             (handler-case
+               (op:unknown_adapter (op:the_activator poa) poa name)
+               (CORBA:SystemException () (error 'CORBA:OBJ_ADAPTER :minor 1 )))
+             (find-child)))))
 
 (define-method find_POA ((poa PortableServer:POA) name &optional activate-it)
-  (or (find name (POA-children poa)
-            :key #'op:the_name :test #'equal)
-      (cond ((and activate-it (op:the_activator poa))
-             (funcall (op:the_activator poa) poa name)
-             (find name (POA-children poa)
-                   :key #'op:the_name :test #'equal)))
-      (error 'PortableServer:poa/adapternonexistent)))
-
+  (or (find-requested-poa poa name activate-it nil) 
+      (error 'PortableServer:POA/AdapterNonexistent)))
 
 (defun poa-has-policy (poa policy)
   (member policy (POA-policies poa)))
 
 
-;;     void destroy(	in boolean etherealize_objects,
+;;;    void destroy(	in boolean etherealize_objects,
 ;;  		        in boolean wait_for_completion);
+#| 
+This operation destroys the POA and all descendant POAs. All descendant
+POAs are destroyed (recursively) before the destruction of the containing
+POA. The POA so destroyed (that is, the POA with its name) may be
+re-created later in the same process. (This differs from the
+POAManager::deactivate operation that does not allow a recreation of its
+associated POA in the same process. After a deactivate, re-creation is
+allowed only if the POA is later destroyed.) 
+
+When destroy is called the POA behaves as follows: 
+
+...
+
+¥ The POA calls destroy on all of its immediate descendants.
+
+¥ After all descendant POAs have been destroyed and their servants
+etherealized, the POA continues to process requests until there are no
+requests executing in the POA. At this point, apparent destruction of the
+POA has occurred.
+
+¥ After destruction has become apparent, the POA may be re-created via
+either an AdapterActivator or a call to create_POA.
+
+¥ If the etherealize_objects parameter is TRUE, the POA has the RETAIN
+policy, and a servant manager is registered with the POA, the etherealize
+operation on the servant manager is called for each active object in the
+Active Object Map. The apparent destruction of the POA occurs before any
+calls to etherealize are made. Thus, for example, an etherealize method
+that attempts to invoke operations on the POA receives the
+OBJECT_NOT_EXIST exception.
+
+¥ If the POA has an AdapterActivator installed, any requests that would
+have caused unknown_adapter to be called cause a TRANSIENT exception with
+standard minor code 4 to be raised instead.
+
+The wait_for_completion parameter is handled as follows:
+...
+¥ If wait_for_completion is FALSE, the destroy operation destroys the POA and
+its children but waits neither for active requests to complete nor for etherealization
+to occur. If destroy is called multiple times before destruction is complete
+(because there are active requests), the etherealize_objects parameter applies
+only to the first call of destroy. Subsequent calls with conflicting
+etherealize_objects settings use the value of etherealize_objects from the first
+call. The wait_for_completion parameter is handled as defined above for each
+individual call (some callers may choose to block, while others may not).
+
+|#
 
 (define-method destroy ((poa PortableServer:POA) etherealize-objects wait-for-completion)
-  (declare (ignore wait-for-completion))
-  ;; FIXME: what about the children?
+#|
+¥ If wait_for_completion is TRUE and the current thread is in an invocation
+context dispatched from some POA belonging to the same ORB as this POA, the
+BAD_INV_ORDER system exception with standard minor code 3 is raised and
+POA destruction does not occur.
+|#
+  (when (and wait-for-completion *poa-current*)
+    (error 'CORBA:BAD_INV_ORDER :minor 3 :completed :completed_yes))
+  (unless (eq :inactive (poa-effective-state poa))
+    (setf (poa-state poa) :discarding))
+  (dolist (child (op:the_children poa))
+    (op:destroy child etherealize-objects wait-for-completion))
+  ;; wait for ongoing requests to finnish,
+  ;; shouldn't be any as long as we are singel threaded or in recursive call
   (let ((parent (op:the_parent poa)))
-    (setf (POA-children parent)
-          (delete poa (POA-children parent))))
+    (setf (slot-value parent 'the_children)
+          (delete poa (op:the_children parent))))
   (unregister-poa poa)
   (when (and etherealize-objects
              (poa-has-policy poa :retain)
-             (poa-has-policy poa :use-servant-manager))
+             (poa-has-policy poa :use_servant_manager)
+             (POA-servant-manager poa))
     (maptrie (lambda (oid servant)
-               (op:etherealize
-                (POA-servant-manager poa) 
-                oid poa servant t nil))
+               (op:etherealize (POA-servant-manager poa) 
+                               oid poa servant t nil))
              (POA-active-object-map poa))))
 
 
-;;;; some setters and getters
+;;;; Some setters and getters
 
 (defun check-policy (poa policy)
   (unless (poa-has-policy poa policy)
@@ -254,28 +411,36 @@
 ;;;    raises (WrongPolicy);
 
 (define-method get_servant_manager ((poa PortableServer:POA))
-  (check-policy poa :use-servant-manager)
+  (check-policy poa :use_servant_manager)
   (poa-servant-manager poa))
 
 ;;;  void set_servant_manager( in ServantManager imgr)
 ;;;    raises (WrongPolicy);
 
 (define-method set_servant_manager ((poa PortableServer:POA) imgr)
-  (check-policy poa :use-servant-manager)
+  (check-policy poa :use_servant_manager)
+  (unless (typep imgr (if (poa-has-policy poa :retain)
+                        'PortableServer:ServantActivator
+                        'PortableServer:ServantLocator))
+    (error 'CORBA:OBJ_ADAPTER :minor 4))
+  (when (poa-servant-manager poa)
+    (error 'CORBA:BAD_INV_ORDER :minor 6))
   (setf (poa-servant-manager poa) imgr))
 
 ;;;  Servant get_servant()
 ;;;    raises (NoServant, WrongPolicy);
 
 (define-method get_servant ((poa PortableServer:POA))
-  (check-policy poa :use-default-servant)
+  (check-policy poa :use_default_servant)
+  (unless (slot-boundp poa 'default-servant)
+    (error 'omg.org/portableserver:poa/noservant))
   (poa-default-servant poa))
 
 ;;;  void set_servant(	in Servant p_servant)
 ;;;    raises (WrongPolicy);
 
 (define-method set_servant ((poa PortableServer:POA) servant)
-  (check-policy poa :use-default-servant)
+  (check-policy poa :use_default_servant)
   (setf (poa-default-servant poa) servant))
 
 
@@ -284,7 +449,7 @@
 ;; ------------------------------------------------------------------
 
 (defun generate-id (poa)
-  (check-policy poa :system-id)
+  (check-policy poa :system_id)
   (if (poa-has-policy poa :persistent)
       (to-object-id (princ-to-string (get-internal-real-time))) 
     (to-object-id (incf (POA-auto-id poa)))))
@@ -305,7 +470,7 @@
     (trie-remove oid (POA-active-object-map poa))
     ;; FIXME: what about multiple-id policy
     (remhash servant (POA-active-servant-map poa))
-    (when (poa-has-policy poa :use-servant-manager)
+    (when (poa-has-policy poa :use_servant_manager)
       (op:etherealize (POA-servant-manager poa) 
                        oid poa servant nil nil))))
 
@@ -433,7 +598,8 @@
                      (poa-current-poa *poa-current*)))
 
 (define-method _this ((servant PortableServer:servant))
-  (if *poa-current*                     ; in context of a request
+  (if (and *poa-current*                     ; in context of a request
+           (eq servant (poa-current-servant *poa-current*)))
     (let ((oid (poa-current-object-id *poa-current*))
           (poa (poa-current-poa *poa-current*)))
       (op:create_reference_with_id
@@ -458,16 +624,15 @@
 ;; ----------------------------------------------------------------------
 
 (defun poa-invoke (poa oid operation buffer handler)
-  (unless (eq :active (op:get_state (op:the_poamanager poa)))
+  (unless (eq :active (poa-effective-state poa))
     (error 'CORBA:TRANSIENT :completed :completed_no))
-  (let* ((*poa-current* (make-poa-current poa oid))
-         (servant (trie-get oid (POA-active-object-map poa)))
+  (let* ((servant (trie-get oid (POA-active-object-map poa)))
          (cookie nil)
          (topost nil))
     (handler-case    
       (progn
         (cond (servant)
-              ((poa-has-policy poa :use-servant-manager)
+              ((poa-has-policy poa :use_servant_manager)
                (cond ((poa-has-policy poa :retain)
                       (setq servant
                             (op:incarnate (POA-servant-manager poa) oid poa))
@@ -477,19 +642,20 @@
                         (op:preinvoke (POA-servant-manager poa)
                                       oid poa operation))
                       (setq topost t))))
-              ((poa-has-policy poa :use-default-servant)
+              ((poa-has-policy poa :use_default_servant)
                (setq servant (POA-default-servant poa)))
               (t
                (error 'CORBA:OBJECT_NOT_EXIST
                       :completed :completed_no)))
-        (cond (topost
-               (unwind-protect
-                 (servant-invoke servant operation buffer handler)
-                 (op:postinvoke (POA-servant-manager poa)
-                                oid poa operation cookie servant)))
-              (t
-               (servant-invoke servant operation buffer handler))))
-      (ForwardRequest 
+        (let ((*poa-current* (make-poa-current poa oid servant)))
+          (cond (topost
+                 (unwind-protect
+                   (servant-invoke servant operation buffer handler)
+                   (op:postinvoke (POA-servant-manager poa)
+                                  oid poa operation cookie servant)))
+                (t
+                 (servant-invoke servant operation buffer handler)))))
+      (PortableServer:ForwardRequest
        (fwd)
        (mess 3 "forwarding")
        (let ((buffer (funcall handler :location_forward)))
@@ -498,7 +664,7 @@
 
 
 
-;;;; Policy Implementation objects
+;;;; Policy implementation objects
 
 (defclass policy-value-mixin (policy-impl)
   ((value :initarg :value)))
