@@ -203,7 +203,8 @@
    (:pk_ulonglong `CORBA:tc_ulonglong)
    (:pk_ushort `CORBA:tc_ushort)
    (:pk_wchar `CORBA:tc_wchar)
-   (:pk_void `CORBA:tc_void)))
+   (:pk_void `CORBA:tc_void)
+   (:pk_value_base `CORBA:tc_valuebase)))
 
 (defmethod target-typecode ((x CORBA:StringDef) target)
   (declare (ignore target))
@@ -313,7 +314,7 @@
          (params (coerce (op:params op) 'list))
          (args (loop for p in params
                      unless (eq (op:mode p) :param_out)
-                     collect (make-target-symbol target (op:name p) :clorb))))
+                     collect (param-symbol p))))
     `(define-method ,lisp-name ((obj ,class) ,@args)
        (let ((_request
               (request-create obj ,op-name ,(target-typecode (op:result_def op) target))))
