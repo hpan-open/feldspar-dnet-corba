@@ -587,6 +587,10 @@
 (defmethod result ((opdef operation-def))
   (op:type (slot-value opdef 'result_def)))
 
+(defmethod op:params :before ((opdef operation-def) &rest x)
+  (doseq (p (slot-value opdef 'params))
+         (op:type p)))
+
 (defmethod opdef-inparam-typecodes ((opdef operation-def))
   (loop for param in (op:params opdef)
       unless (eq (op:mode param) :param_out)
