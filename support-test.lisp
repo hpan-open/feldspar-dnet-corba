@@ -113,7 +113,7 @@
 (defvar *test-sink-stream*)
 (defvar *test-response-desc*)
 (defvar *test-out-desc*)
-(defvar *test-out-conn*)
+(defvar *test-out-conn* nil)
 
 (defclass test-connection (connection)
   ((response-func :initarg response-func 
