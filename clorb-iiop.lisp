@@ -1,5 +1,4 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.9 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
@@ -11,15 +10,11 @@
 
 ;;;; GIOP Module
 
-(DEFTYPE GIOP:MSGTYPE_1_0 () 
-  '(MEMBER :REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
-    :CLOSECONNECTION :MESSAGEERROR))
-
-(SET-SYMBOL-ID/TYPECODE
-  'GIOP:MSGTYPE_1_0 "IDL:GIOP/MsgType_1_0:1.0"
-  (MAKE-TYPECODE
-    :TK_ENUM "IDL:GIOP/MsgType_1_0:1.0" "MsgType_1_0"
-    '("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" "CloseConnection" "MessageError")))
+(define-enum GIOP:MsgType_1_0
+  :ID "IDL:GIOP/MsgType_1_0:1.0"
+  :NAME "MsgType_1_0"
+  :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" 
+            "CloseConnection" "MessageError"))
 
 (DEFINE-STRUCT GIOP:VERSION
   :ID "IDL:GIOP/Version:1.0"
@@ -42,13 +37,10 @@
  :MEMBERS (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
            ("object_key" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET NIL) OBJECT_KEY)))
 
-(DEFTYPE GIOP:LOCATESTATUSTYPE () '(MEMBER :UNKNOWN_OBJECT :OBJECT_HERE :OBJECT_FORWARD))
-
-(SET-SYMBOL-ID/TYPECODE
-  'GIOP:LOCATESTATUSTYPE
-  "IDL:GIOP/LocateStatusType:1.0"
-  (MAKE-TYPECODE :TK_ENUM "IDL:GIOP/LocateStatusType:1.0" "LocateStatusType" 
-                 '("UNKNOWN_OBJECT" "OBJECT_HERE" "OBJECT_FORWARD")))
+(define-enum GIOP:LocateStatusType
+  :ID "IDL:GIOP/LocateStatusType:1.0"
+  :name "LocateStatusType" 
+  :members ("UNKNOWN_OBJECT" "OBJECT_HERE" "OBJECT_FORWARD"))
 
 (DEFINE-STRUCT GIOP:LOCATEREPLYHEADER
  :ID "IDL:GIOP/LocateReplyHeader:1.0"
@@ -71,14 +63,10 @@
             ("operation" OMG.ORG/CORBA:TC_STRING OPERATION)
             ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL) REQUESTING_PRINCIPAL)))
 
-(DEFTYPE GIOP:REPLYSTATUSTYPE () 
-  '(MEMBER :NO_EXCEPTION :USER_EXCEPTION :SYSTEM_EXCEPTION :LOCATION_FORWARD))
-
-(SET-SYMBOL-ID/TYPECODE
-  'GIOP:REPLYSTATUSTYPE
-  "IDL:GIOP/ReplyStatusType:1.0"
-  (MAKE-TYPECODE :TK_ENUM "IDL:GIOP/ReplyStatusType:1.0" "ReplyStatusType"
-                 '("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION" "LOCATION_FORWARD")))
+(define-enum GIOP:REPLYSTATUSTYPE 
+  :id "IDL:GIOP/ReplyStatusType:1.0"
+  :name "ReplyStatusType"
+  :members ("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION" "LOCATION_FORWARD"))
 
 (DEFINE-STRUCT GIOP:REPLYHEADER
   :ID "IDL:GIOP/ReplyHeader:1.0"
@@ -87,13 +75,11 @@
             ("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
             ("reply_status" (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE) REPLY_STATUS)))
 
-
-(SET-SYMBOL-ID/TYPECODE
-  'GIOP:PRINCIPAL
-  "IDL:GIOP/Principal:1.0"
-  (LAMBDA NIL (MAKE-TC-ALIAS "IDL:GIOP/Principal:1.0" "Principal" (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET NIL))))
-
-(DEFTYPE GIOP:PRINCIPAL () 'SEQUENCE)
+(define-alias GIOP:Principal
+  :id "IDL:GIOP/Principal:1.0"
+  :name"Principal" 
+  :type sequence
+  :typecode (MAKE-SEQUENCE-TYPECODE OMG.ORG/CORBA:TC_OCTET))
 
 
 
@@ -486,12 +472,7 @@ Where host is a string and port an integer.")
              (unmarshal-ior buffer))
        (values status))
       (:system_exception
-       (let* ((id (unmarshal-string buffer))
-              (condition
-               (make-condition (gethash id *system-execption-classes*
-                                        'corba:systemexception)
-                               :minor (unmarshal-ulong buffer)
-                               :completed (unmarshal CORBA::tc_completion_status buffer))))
+       (let ((condition (unmarshal-systemexception buffer)))
          (if (typep condition 'omg.org/corba:transient)
            (values status)
            (error condition))))
@@ -542,14 +523,8 @@ Where host is a string and port an integer.")
             (any-typecode retval) nil))))
 
 (defun request-unmarshal-systemexception (req buffer)
-  (let* ((id (unmarshal-string buffer))
-         (minor (unmarshal-ulong buffer))
-         (status (unmarshal CORBA::tc_completion_status buffer))
-         (retval (op:return_value req)))
-    (setf (any-value retval)
-          (make-condition (gethash id *system-execption-classes*
-                                   'corba:systemexception)
-                          :minor minor :completed status)
+  (let ((retval (op:return_value req)))
+    (setf (any-value retval) (unmarshal-systemexception buffer)
           (any-typecode retval) nil)))
 
 (define-method get_response ((req request))

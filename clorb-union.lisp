@@ -1,5 +1,4 @@
 ;;;; clorb-union.lisp -- CORBA Union support
-;; $Id: clorb-union.lisp,v 1.5 2002/10/28 18:38:59 lenst Exp $
 
 (in-package :clorb)
 
@@ -28,16 +27,17 @@
                    discriminator-type default-index 
                    (coerce massaged-members 'vector))))
 
-(defvar *union-registry*
-  (make-hash-table :test #'equal))
 
+(defmethod any-typecode ((obj CORBA:union))
+  (symbol-typecode (class-name (class-of obj))))
 
-
+(defmethod any-value ((obj CORBA:union))
+  obj)
 
 (defun corba:union (&key union-discriminator union-value
                            id typecode)
   (let ((id (or id (and typecode (op:id typecode)))))
-    (let ((name (gethash id *union-registry*)))
+    (let ((name (ifr-id-symbol id)))
       (if name
         (funcall name 
                  :discriminator union-discriminator
@@ -49,8 +49,6 @@
 (define-method default ((obj corba:union)) (union-value obj))
 (define-method (setf default) (value (obj corba:union)) 
   (setf (union-value obj) value))
-
-
 
 
 (defun typecode-values-do (function typecode) 

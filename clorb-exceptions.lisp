@@ -6,23 +6,24 @@
 (defgeneric exception-name (exception)
   (:documentation "The scoped symbol for the exception type"))
 
+(defmethod any-typecode ((exception exception))
+  "The typecode for the exception"
+  (symbol-typecode (exception-name exception)))
+
+(defmethod any-value ((exception exception))
+  exception)
+
 (defun exception-id (exception)
   (symbol-ifr-id (exception-name exception)))
 
 
-(deftype CORBA::completion_status ()
-  '(member :COMPLETED_YES :COMPLETED_NO :COMPLETED_MAYBE))
+(define-enum CORBA:completion_status
+  :id "IDL:omg.org/CORBA/completion_status:1.0"
+  :name "completion_status"
+  :members ("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE"))
 
-(set-symbol-typecode 'CORBA:completion_status
-                     (make-typecode :tk_enum
-                                    "IDL:omg.org/CORBA/completion_status:1.0"
-                                    "completion_status"
-                                    '#("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE")))
-
-
-;; Map from id to class
-(defvar *system-execption-classes* 
-  (make-hash-table :test #'equal))
+(defparameter CORBA::tc_completion_status
+  (symbol-typecode 'CORBA:completion_status))
 
 
 (define-condition corba:systemexception (error corba:exception)
@@ -31,7 +32,7 @@
 	  :reader system-exception-minor)
    (completed :initform :completed_maybe
 	      :initarg :completed
-              :type CORBA::completion_status
+              :type CORBA:completion_status
 	      :reader system-exception-completed))
   (:report report-systemexception))
 
@@ -59,8 +60,7 @@
                       `(progn
                          (define-condition ,sym (corba:systemexception) ())
                          (defmethod exception-name ((exc ,sym)) ',sym)
-                         (set-symbol-ifr-id ',sym ,id)
-                         (setf (gethash ,id *system-execption-classes*) ',sym) ))))))
+                         (set-symbol-ifr-id ',sym ,id)))))))
   (define-system-exceptions
       UNKNOWN BAD_PARAM NO_MEMORY IMP_LIMIT
       COMM_FAILURE INV_OBJREF NO_PERMISSION INTERNAL MARSHAL
@@ -84,10 +84,6 @@
                    (values :initarg :values :reader unknown-exception-values)))
 
 
-(defmethod any-typecode ((exception exception))
-  "The typecode for the exception"
-  (symbol-typecode (exception-name exception)))
-
 (defun feature (name)
   (intern (string-upcase name) :op))
 
@@ -96,12 +92,8 @@
        (lambda (member) (funcall (feature (first member)) exc))
        (tc-members (any-typecode exc))))
 
-
-(defvar *user-exception-classes*
-  (make-hash-table :test #'equal))
-
 (defun id-exception-class (id)
-  (gethash id *user-exception-classes*))
+  (ifr-id-symbol id))
 
 
 ;;; Marshalling support for exceptions
@@ -112,3 +104,9 @@
     (if reader
       (funcall reader buffer)
       (unmarshal-exception (symbol-typecode symbol) buffer))))
+
+(defun unmarshal-systemexception (buffer)
+  (make-condition (or (ifr-id-symbol (unmarshal-string buffer))
+                      'corba:systemexception)                      
+                  :minor (unmarshal-ulong buffer)
+                  :completed (unmarshal CORBA::tc_completion_status buffer)))

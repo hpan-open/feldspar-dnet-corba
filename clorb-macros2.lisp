@@ -7,6 +7,31 @@
 
 (in-package :clorb)
 
+
+
+;;;; Alias 
+
+#|
+(DEFINE-ALIAS OMG.ORG/CORBA:REPOSITORYID
+ :ID "IDL:omg.org/CORBA/RepositoryId:1.0"
+ :NAME "RepositoryId"
+ :TYPE OMG.ORG/CORBA:STRING
+ :TYPECODE OMG.ORG/CORBA:TC_STRING)
+|#
+
+(defmacro DEFINE-ALIAS (symbol &key id name type typecode)
+  `(progn (deftype ,symbol () ',type)
+          (set-symbol-id/typecode ',symbol ,id 
+                                  (make-tc-alias ,id ,name ,typecode))))
+
+;;;; Enum
+
+(defmacro define-enum (symbol &key id name members)
+  (let ((keys (mapcar #'lispy-name members)))
+    `(progn (deftype ,symbol () '(member ,@keys))
+            (set-symbol-id/typecode ',symbol ,id
+                                    (make-typecode :tk_enum ,id ,name
+                                                   ',(coerce members 'vector))))))
 
 ;;;; Struct Macrology
 
@@ -43,8 +68,7 @@
                (loop for f in ',names
                    for n in ',slots
                    when (slot-boundp s n)
-                   collect (cons f (slot-value s n))))
-             (add-struct-class ',name ,id)))))
+                   collect (cons f (slot-value s n))))))))
 
 (defmacro define-struct (symbol &key id (name "") members
                                  read write)
@@ -59,10 +83,9 @@
      (set-symbol-ifr-id ',symbol ,id)
      (set-symbol-typecode 
       ',symbol
-      (lambda ()
-        (create-struct-tc ,id ,name
+      (create-struct-tc ,id ,name
                           (list ,@(loop for (name type nil) in members 
-                                        collect `(list ,name ,type))))))
+                                        collect `(list ,name ,type)))))
      ,(if read
         (destructuring-bind ((buffer) &rest forms) read
           `(defmethod struct-read ((type (eql ',symbol)) ,buffer)
@@ -107,17 +130,14 @@
     
     `(progn
        (defclass ,symbol (corba:union) ())
-       (setf (gethash ,id *union-registry*) ',symbol)
        (defun ,symbol (&key union-value union-discriminator)
          (make-instance ',symbol 
            :value union-value
            :discriminator union-discriminator))
-       (set-symbol-ifr-id ',symbol ,id)
-       (set-symbol-typecode ',symbol
-                            (lambda ()
-                              (create-union-tc ,id ,name
-                                               ,discriminator-type
-                                               (list ,@(nreverse tc-members)))))
+       (set-symbol-id/typecode ',symbol ,id
+                               (create-union-tc ,id ,name
+                                                ,discriminator-type
+                                                (list ,@(nreverse tc-members))))
        ,@code)))
 
 
@@ -155,12 +175,10 @@ Members: (name typecode)*"
         (define-condition ,symbol (CORBA:UserException)
                           (,@slots ,@slot-defs))
         ,@getters
-        (setf (gethash ,id *user-exception-classes*) ',symbol)
         (defun ,symbol (&rest initargs)
           (apply #'make-condition ',symbol initargs))
-        (set-symbol-ifr-id ',symbol ,id)
-        (set-symbol-typecode ',symbol 
-                             (lambda () (make-typecode :tk_except ,id ,name (list ,@tc-members))))
+        (set-symbol-id/typecode ',symbol ,id
+                                (make-typecode :tk_except ,id ,name (list ,@tc-members)))
         (defmethod exception-name ((exc ,symbol)) ',symbol)
         (defmethod userexception-values ((ex ,symbol))
           (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))

@@ -3,8 +3,7 @@
 (in-package :clorb)
 
 (defclass CORBA:struct ()
-  ()) 
-
+  ())
 
 (defun create-struct-tc (id name members)
   (check-type id string)
@@ -12,13 +11,11 @@
   (make-typecode :tk_struct id name
                  (coerce members 'vector)))
 
+(defmethod any-typecode ((struct CORBA:struct))
+  (symbol-typecode (class-name (class-of struct))))
 
-(defvar *specialized-structs*
-  (make-hash-table :test #'equal))
-
-(defun add-struct-class (class id)
-  (assert id)
-  (setf (gethash id *specialized-structs*) class))
+(defmethod any-value ((struct CORBA:struct))
+  struct)
 
 
 (defgeneric type-id (struct))
@@ -43,6 +40,10 @@
 
 (defmethod type-id ((struct generic-struct))
   (op:id (generic-struct-typecode struct)))
+
+(defmethod any-typecode ((struct generic-struct))
+  (generic-struct-typecode struct))
+
 
 (defmethod print-object ((obj CORBA:struct) stream)
   (cond (*print-readably*
@@ -79,33 +80,10 @@ NV-PAIRS is a list field names and field values.
 If ID is nil, then all fields must be supplied. Otherwise some types
 of fields can be defaulted (numbers and strings)."
   (let* ((id (op:id typecode))
-         (class (gethash id *specialized-structs*)))
+         (class (ifr-id-symbol id)))
     (if class
         (apply #'make-instance class nv-pairs)
         (make-generic-struct typecode nv-pairs))))
-
-
-(defun struct-in (typecode function arg)
-  (let* ((params (typecode-params typecode))
-         (id (tcp-id params))
-         (members (tcp-members params))
-         (class (gethash id *specialized-structs*))
-         (initargs (loop for (name tc) across members
-                         nconc (list (lispy-name name)
-                                     (funcall function tc arg)))))
-    (if class
-      (apply #'make-instance class initargs )
-      (make-generic-struct typecode initargs))))
-
-
-(defmethod struct-out ((struct CORBA:struct) typecode fn dest)
-  (declare (optimize speed))
-  (let* ((params (typecode-params typecode))
-         (members (tcp-members params))
-         (keys (tc-keywords typecode)))
-    (loop for (nil tc) across members
-          for name across keys
-          do (funcall fn (struct-get struct name) tc dest))))
 
 
 (defun map-struct (fn struct)
@@ -147,7 +125,7 @@ of fields can be defaulted (numbers and strings)."
 
 (defun unmarshal-struct (tc buffer)
   (let* ((id (op:id tc))
-         (symbol (gethash id *specialized-structs*)))
+         (symbol (ifr-id-symbol id)))
     (if symbol 
       (struct-read symbol buffer)
       (unmarshal-struct-2 symbol tc buffer))))
@@ -168,11 +146,9 @@ of fields can be defaulted (numbers and strings)."
   (marshal-struct obj (symbol-typecode symbol) buffer))
 
 (defun marshal-struct (struct tc buffer)
-  (let* ((members (tc-members tc))
-         (keys (tc-keywords tc)))
-    (loop for (nil tc) across members
-          for name across keys
-          do (marshal (struct-get struct name) tc buffer))))
+  (loop for (nil tc) across (tc-members tc)
+        for name across (tc-keywords tc)
+        do (marshal (struct-get struct name) tc buffer)))
 
 
 

@@ -110,10 +110,6 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,code))
 
-(defun make-idltype (symbol id typecode &rest forms)
-  (make-progn
-   `((set-symbol-id/typecode ',symbol ,id ,typecode)
-     ,@forms)))
 
 (defun target-base-list (target bases make-symbol-fun root-class)
   (if (zerop (length bases))
@@ -236,14 +232,11 @@
 
 (defmethod target-code ((x CORBA:AliasDef) target)
   (let ((symbol (scoped-target-symbol target x)))
-    (make-idltype
-     symbol
-     (op:id x)
-     `(lambda ()
-        (make-tc-alias ,(op:id x) ,(op:name x)
-                       ,(target-typecode (op:original_type_def x) target)))
-     `(deftype ,symbol ()
-        ',(target-type (op:original_type_def x) target)))))
+    `(define-alias ,symbol
+       :id ,(op:id x)
+       :name ,(op:name x)
+       :type ,(target-type (op:original_type_def x) target)
+       :typecode ,(target-typecode (op:original_type_def x) target) )))
 
 (defmethod target-code ((const CORBA:ConstantDef) target)
   `(defconstant ,(scoped-target-symbol target const)
@@ -395,23 +388,21 @@
 
 
 (defmethod target-code ((enum CORBA:EnumDef) target)
-  (make-idltype
-   (scoped-target-symbol target enum)
-   (op:id enum)
-   `(make-typecode :tk_enum ,(op:id enum) ,(op:name enum) ',(op:members enum))
-   `(deftype ,(scoped-target-symbol target enum) ()
-      '(member ,@(map 'list (lambda (name) (make-target-symbol target name :keyword))
-                      (op:members enum))))))
+  `(define-enum ,(scoped-target-symbol target enum)
+     :id ,(op:id enum)
+     :name ,(op:name enum)
+     :members ,(coerce (op:members enum) 'list)))
+
 
 (defmethod target-code ((exc CORBA:ExceptionDef) target)
   `(define-user-exception ,(scoped-target-symbol target exc)
-       :id ,(op:id exc)
-       :name ,(op:name exc)
-       :members ,(map 'list
-                      (lambda (smember)
-                        (let ((m-name (op:name smember)))
-                          (list m-name (target-typecode (op:type_def smember) target))))
-                      (op:members exc))))
+     :id ,(op:id exc)
+     :name ,(op:name exc)
+     :members ,(map 'list
+                    (lambda (smember)
+                      (let ((m-name (op:name smember)))
+                        (list m-name (target-typecode (op:type_def smember) target))))
+                    (op:members exc))))
 
 
 (defmethod target-code ((def CORBA:UnionDef) target)
@@ -769,7 +760,9 @@
 
 
 (set-pprint-dispatch '(cons (member define-user-exception define-corba-struct
-                                    define-struct define-union static-call))
+                                    define-struct define-union define-enum
+                                    define-alias
+                                    static-call))
                      'pprint-def-and-keys)
 
 (set-pprint-dispatch '(cons (member define-interface))

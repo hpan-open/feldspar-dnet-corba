@@ -1,5 +1,4 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.10 2002/10/28 18:25:13 lenst Exp $
 
 (in-package :clorb)
 

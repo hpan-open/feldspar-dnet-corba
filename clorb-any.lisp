@@ -88,15 +88,6 @@
 (defmethod any-typecode ((obj string))
   CORBA:tc_string)
 
-(defmethod any-typecode ((struct generic-struct))
-  (generic-struct-typecode struct))
-
-(defmethod any-typecode ((struct CORBA:struct))
-  (symbol-typecode (class-name (class-of struct))))
-
-(defmethod any-typecode ((obj CORBA:union))
-  (symbol-typecode (class-name (class-of obj))))
-
 
 ;;; Value accessor
 
@@ -112,9 +103,6 @@
 
 (defmethod any-value ((obj sequence))
   obj)
-
-(defmethod any-value ((struct CORBA:struct))
-  struct)
 
 (defmethod any-value ((obj t))
   (error 'CORBA:BAD_PARAM))

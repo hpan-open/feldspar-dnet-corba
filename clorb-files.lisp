@@ -8,11 +8,11 @@
     "clorb-sysdep"
     "clorb-basetypes"
     "clorb-typecode"
-    "clorb-exceptions"
+    "clorb-any"
     "clorb-struct"
     "clorb-union"
-    "clorb-any"
     ("clorb-macros2" t)
+    "clorb-exceptions"
     "clorb-iop"
     "clorb-object"
     ("clorb-buffer" t)

@@ -194,12 +194,6 @@
    ;;(CORBA:tc_fixed :tk_fixed)
    ))
 
-(defparameter CORBA::tc_completion_status
-    (make-typecode :tk_enum
-                   "IDL:omg.org/CORBA/completion_status:1.0"
-                   "completion_status"
-                   '#("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE")))
-
 
 ;;;; PIDL interface to TypeCode
 
@@ -329,31 +323,35 @@
   ;; handling of recursive typecode computation similar to 
   ;; op:type in IFR.
   (let ((typecode (get symbol 'typecode)))
-    (cond ((functionp typecode) 
-           (setf (get symbol 'typecode) t)
-           (let* ((new-tc (funcall typecode))
-                  (old-tc (get symbol 'typecode)))
-             (cond ((eq old-tc t)
-                    (setf (get symbol 'typecode) new-tc))
-                   (t
-                    (typecode-smash old-tc new-tc)
-                    old-tc))))
-          ((eq typecode t)
+    (cond ((null typecode)
            (setf (get symbol 'typecode) (make-typecode t)))
+          ((functionp typecode) 
+           (setf (get symbol 'typecode) nil)
+           (set-symbol-typecode symbol typecode))
           (t
            typecode))))
 
-
-
 (defun set-symbol-typecode (symbol typecode)
   ;; Set the typecode for a scoped symbol. Typecode can also be a function to compute the typecode.
-  (setf (get symbol 'typecode) typecode))
+  (typecode-smash (symbol-typecode symbol)
+                  (if (functionp typecode)
+                    (funcall typecode)
+                    typecode)))
+
+
+(defvar *ifr-id-symbol*
+  (make-hash-table :size 251 :test #'equal)
+  "Map interface repository ID to the scoped symbol for the type.")
 
 (defun symbol-ifr-id (symbol)
   ;; Return the interface repository id for the scoped symbol.
   (get symbol 'ifr-id))
 
+(defun ifr-id-symbol (id)
+  (gethash id *ifr-id-symbol*))
+
 (defun set-symbol-ifr-id (symbol id)
+  (setf (gethash id *ifr-id-symbol*) symbol)
   (setf (get symbol 'ifr-id) id))
 
 (defun set-symbol-id/typecode (symbol id typecode)
