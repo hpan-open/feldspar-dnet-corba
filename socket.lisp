@@ -4,6 +4,12 @@
 
 ;;; Frob with the *features* to make this all a bit easier.
 
+(eval-when (:compile-toplevel :execute)
+  #+clisp
+  (if (find-package "EXT")
+      (pushnew :clisp-ext *features*)))
+
+
 ;;; The :sockets (db-sockets) library can be used in CMUCL or SBCL:
 ;;; it's optional (though desirable) in the former, which otherwise
 ;;; uses its usual socket support (cmucl-sockets).  In SBCL we have
@@ -136,21 +142,21 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+db-sockets
    (let ((before (sockets:non-blocking-mode socket)))
      (unwind-protect
-       (handler-case
-         (progn
-           (setf (sockets:non-blocking-mode socket) (not blocking))
-           (let ((k (sockets:socket-accept socket)))
-             (setf (sockets:non-blocking-mode k) nil)
-             (sockets:socket-make-stream k :element-type '(unsigned-byte 8)
-                                         :input t :output t )))
-         (sockets::interrupted-error nil))
+          (handler-case
+              (progn
+                (setf (sockets:non-blocking-mode socket) (not blocking))
+                (let ((k (sockets:socket-accept socket)))
+                  (setf (sockets:non-blocking-mode k) nil)
+                  (sockets:socket-make-stream k :element-type '(unsigned-byte 8)
+                                              :input t :output t )))
+            (sockets::interrupted-error nil))
        (setf (sockets:non-blocking-mode socket) before)))
    #+clisp 
-   (when (lisp:socket-wait socket 0 10)
-     (let* ((conn (lisp:socket-accept socket 
-                                      :element-type '(unsigned-byte 8))))
+   (when (socket-wait socket 0 10)
+     (let* ((conn (socket-accept socket 
+                                 :element-type '(unsigned-byte 8))))
        (mess 4 "Accepting connection from ~A"
-             (lisp:socket-stream-peer conn))
+             (socket-stream-peer conn))
        conn))
    #+allegro 
    (let ((conn (socket:accept-connection socket :wait blocking)))
@@ -192,8 +198,12 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (declare (ignorable stream))
   (%SYSDEP 
    "check if input is available on socket stream"
-   #+clisp t                            ; Ouch!
+   #+clisp-ext
+   (not (ext:read-byte-will-hang-p stream))
+   #+clisp t                            ;Ouch!
+   ;; Default
    (listen stream)))
+
 
 (defun socket-stream-functional-p (stream)
   "True if stream is a functional connection.
@@ -212,7 +222,7 @@ False if, e.g., the peer has closed."
   (%SYSDEP
    "close a listener socket"
    #+clisp 
-   (lisp:socket-server-close socket)
+   (socket-server-close socket)
    ;; default
    (close socket)))
 
