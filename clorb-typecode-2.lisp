@@ -73,6 +73,22 @@
   :kind :tk_typecode
   :constant corba:tc_typecode)
 
+(define-typecode native-typecode
+  :kind :tk_native
+  :cdr-syntax (complex :tk_string :tk_string)
+  :params (id name))
+
+(define-typecode abstract_interface-typecode
+  :kind :tk_abstract_interface
+  :cdr-syntax (complex :tk_string :tk_string)
+  :params (id name))
+
+(define-typecode local_interface-typecode
+  :kind :tk_local_interface
+  :cdr-syntax (complex :tk_string :tk_string)
+  :params (id name))
+
+
 
 ;;;; Fixed 
 
@@ -221,8 +237,9 @@
   (let ((eltype (op:content_type tc))
         (len (op:length tc)))
     (let ((arr (make-array len)))
-      (loop for i below len 
-            do (setf (aref arr i) (unmarshal eltype buffer)))
+      ;; (map-into arr #'unmarshal (repeated eltype) (repeated buffer))
+      (dotimes (i len)
+        (setf (aref arr i) (unmarshal eltype buffer)))
       arr)))
 
 
@@ -239,40 +256,6 @@
 
 (defmethod unmarshal ((tc alias-typecode) buffer)
   (unmarshal (op:content_type tc) buffer))
-
-
-
-;;;; Value
-
-(define-typecode value-typecode
-  :kind :tk_value
-  :cdr-syntax (complex :tk_string :tk_string :tk_short :tk_typecode 
-                       (sequence (:tk_string :tk_typecode :tk_short)))
-  :params (id name type_modifier concrete_base_type :members)
-  :member-params (member_name member_type member_visibility)
-  :constant (corba::TC_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
-                                 CORBA::VM_NONE nil ()))
-
-(define-typecode value_box-typecode
-  :kind :tk_value_box
-  :cdr-syntax (complex :tk_string :tk_string :tk_typecode)
-  :params (id name content_type))
-
-(define-typecode native-typecode
-  :kind :tk_native
-  :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
-
-(define-typecode abstract_interface-typecode
-  :kind :tk_abstract_interface
-  :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
-
-(define-typecode local_interface-typecode
-  :kind :tk_local_interface
-  :cdr-syntax (complex :tk_string :tk_string)
-  :params (id name))
-
 
 
 
