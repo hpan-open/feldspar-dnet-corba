@@ -45,7 +45,7 @@
       (setq oid (op:activate_object root-poa servant))
       ;; for locate request
       (ensure-pattern*
-       (test-poa-invoke root-poa :oid oid :operation "_locate" :request nil))
+       (test-poa-invoke root-poa :oid oid :operation "_locate"))
       ;; standard request ops
       (ensure-pattern* 
        (test-poa-invoke root-poa :oid oid :operation "_non_existent")
