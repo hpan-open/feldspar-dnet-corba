@@ -17,7 +17,8 @@
   (setf (get def-kind 'ir-class) class))
 
 (defun get-ir-class (def-kind)
-  (get def-kind 'ir-class))
+  (or (get def-kind 'ir-class)
+      (error "No class defined for definition kind ~A" def-kind)))
 
 
 ;;;; Generics
@@ -402,10 +403,12 @@ attributes other than type."))
 ;;;   attribute IDLType type_def;
 ;;;   attribute any value; };
 
-(define-corba-class constant-def (contained)
+(define-ir-class constant-def (contained)
+  :id "IDL:omg.org/CORBA/ConstantDef:1.0"
   :attributes ((type_def)
                (value))
-  :slots ((type)))
+  :slots ((type))
+  :def_kind :dk_Constant)
 
 
 ;;;; InterfaceDef
@@ -824,6 +827,17 @@ attributes other than type."))
 
 (defmethod idltype-tc ((obj string-def))
   (make-typecode :tk_string (op:bound obj)))
+
+;;;; interface WstringDef : IDLType {
+;;;  attribute unsigned long bound;
+
+(define-ir-class wstring-def (idltype)
+  :id "IDL:omg.org/CORBA/WstringDef:1.0"
+  :attributes ((bound 0))
+  :def_kind :dk_Wstring)
+
+(defmethod idltype-tc ((obj wstring-def))
+  (make-typecode :tk_wstring (op:bound obj)))
 
 ;;;; SequenceDef
 ;;interface SequenceDef : IDLType
