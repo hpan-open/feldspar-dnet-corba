@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.8 2002/05/24 10:06:48 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.9 2002/05/29 05:10:34 lenst Exp $
 
 (in-package :clorb)
 
@@ -201,12 +201,15 @@
     (register-poa newpoa)
     newpoa))
 
+
 ;; POA create_POA(in string adapter_name,
 ;;   in POAManager a_POAManager,
 ;;   in CORBA::PolicyList policies)
 ;; raises (AdapterAlreadyExists, InvalidPolicy);
+
 (define-method create_POA ((poa POA) adapter-name poamanager policies)
   (create-POA poa adapter-name poamanager policies))
+
 
 (define-method find_POA ((poa POA) name &optional activate-it)
   (or (find name (POA-children poa)
@@ -216,6 +219,11 @@
              (find name (POA-children poa)
                    :key #'op:the_name :test #'equal)))
       (error 'POA/AdapterNonExistent)))
+
+
+(defun poa-has-policy (poa policy)
+  (member policy (POA-policies poa)))
+
 
 ;;     void destroy(	in boolean etherealize_objects,
 ;;  		        in boolean wait_for_completion);
@@ -228,8 +236,8 @@
           (delete poa (POA-children parent))))
   (unregister-poa poa)
   (when (and etherealize-objects
-             (member :retain (POA-policies poa))
-             (member :use-servant-manager (POA-policies poa)))
+             (poa-has-policy poa :retain)
+             (poa-has-policy poa :use-servant-manager))
     (maptrie (lambda (oid servant)
                (op:etherealize
                 (POA-servant-manager poa) 
@@ -240,7 +248,7 @@
 ;;;; some setters and getters
 
 (defun check-policy (poa policy)
-  (unless (member policy (POA-policies poa))
+  (unless (poa-has-policy poa policy)
     (error 'POA/WrongPolicy)))
 
 ;;;  ServantManager get_servant_manager()
@@ -278,7 +286,7 @@
 
 (defun generate-id (poa)
   (check-policy poa :system-id)
-  (if (member :persistent (POA-policies poa))
+  (if (poa-has-policy poa :persistent)
       (to-object-id (princ-to-string (get-internal-real-time))) 
     (to-object-id (incf (POA-auto-id poa)))))
 
@@ -298,7 +306,7 @@
     (trie-remove oid (POA-active-object-map poa))
     ;; FIXME: what about multiple-id policy
     (remhash servant (POA-active-servant-map poa))
-    (when (member :use-servant-manager (POA-policies poa))
+    (when (poa-has-policy poa :use-servant-manager)
       (op:etherealize (POA-servant-manager poa) 
                        oid poa servant nil nil))))
 
@@ -325,7 +333,7 @@
                :version '(1 . 0)
                :host (orb-host (the-orb poa))
                :port (orb-port (the-orb poa))
-               :key (make-object-key (if (member :persistent (POA-policies poa))
+               :key (make-object-key (if (poa-has-policy poa :persistent)
                                        :persistent
                                        :transient)
                                      (poa-poaid poa) oid
@@ -386,6 +394,23 @@
   (op:servant_to_reference poa
                             (op:id_to_servant poa oid)))
 
+
+;; ----------------------------------------------------------------------
+;;;; Implicit activation
+;; ----------------------------------------------------------------------
+
+(define-method _this ((servant servant))
+  (let* ((poa (or (op:_default_POA servant)
+		  (root-POA) ))
+	 (oid (if (and (poa-has-policy poa :multiple-id)
+                       *poa-current*)
+                  (poa-current-object-id *poa-current*)
+                (op::servant_to_id poa servant))))
+    (op:create_reference_with_id
+     poa oid
+     (primary-interface servant oid poa))))
+
+
 ;; ----------------------------------------------------------------------
 ;;;; Request Handling
 ;; ----------------------------------------------------------------------
@@ -416,8 +441,8 @@
          (cookie nil)
          (topost nil))
     (cond (servant)
-          ((member :use-servant-manager (POA-policies poa))
-           (cond ((member :retain (POA-policies poa))
+          ((poa-has-policy poa :use-servant-manager)
+           (cond ((poa-has-policy poa :retain)
                   (setq servant
                     (op:incarnate (POA-servant-manager poa) oid poa))
                   (op:activate_object_with_id poa oid servant))
@@ -426,7 +451,7 @@
                     (op:preinvoke (POA-servant-manager poa)
                                    oid poa operation))
                   (setq topost t))))
-          ((member :use-default-servant (POA-policies poa))
+          ((poa-has-policy poa :use-default-servant)
            (setq servant (POA-default-servant poa)))
           (t
            (error 'CORBA:OBJECT_NOT_EXIST

@@ -1,3 +1,8 @@
+2002-05-28  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-poa.lisp (_this): moved here from clorb-servant.lisp
+	(poa-has-policy): new fun. change to use this
+
 2002-05-24  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-opdef.lisp:

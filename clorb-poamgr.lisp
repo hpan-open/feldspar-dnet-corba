@@ -1,5 +1,5 @@
-;;; clorb-poamgr.lisp --- POA Manager
-;; $Id: clorb-poamgr.lisp,v 1.2 2001/06/11 15:49:46 lenst Exp $
+;;;; clorb-poamgr.lisp --- POA Manager
+;; $Id: clorb-poamgr.lisp,v 1.3 2002/05/29 05:10:34 lenst Exp $
 
 (in-package :clorb)
 
@@ -55,3 +55,7 @@
 ;;; State get_state ()
 (define-method get_state ((pm POAManager))
   (slot-value pm 'state))
+
+
+
+;;; clorb-poamgr.lisp ends here

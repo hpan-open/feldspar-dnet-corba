@@ -6,6 +6,11 @@
   ((typecode :initarg :typecode )
    (value    :initarg :value    )))
 
+(defgeneric any-typecode (obj))
+
+(defgeneric any-value (obj))
+
+
 (defun CORBA:Any (&key any-typecode any-value)
   (make-instance 'CORBA:Any
    :typecode (or any-typecode (any-typecode any-value))
@@ -17,10 +22,6 @@
     (setf (slot-value any 'typecode)
       (any-typecode (slot-value any 'value)))))
 
-
-(defgeneric any-typecode (obj))
-
-(defgeneric any-value (obj))
 
 
 (defmethod any-typecode ((obj CORBA:Any))

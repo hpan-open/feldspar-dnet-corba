@@ -1,4 +1,4 @@
-;;;; CORBA server module
+;;;; clorb-srv.lisp --- CORBA server module
 
 (in-package :clorb)
 
@@ -107,3 +107,6 @@
 (defun recover (&optional (orb (ORB_init)))
   (io-reset :listner nil)
   (main-loop orb))
+
+
+;;; clorb-srv.lisp ends here

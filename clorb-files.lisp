@@ -145,7 +145,7 @@
             finally   (princ ")")
             when (zerop (rem n 3))
             do (terpri) (princ "   ")
-            do (princ op) (princ " ")))
+            do (prin1 op) (princ " ")))
     (format t ")~%")
     (values)))
 
