@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.24 2004/01/29 20:47:31 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.25 2004/02/03 17:17:08 lenst Exp $	
 
 (in-package :clorb)
 
@@ -90,65 +90,6 @@
 
 
 
-;;;; server-request class
-
-(defclass server-request ()
-  ((the-orb  :initarg :the-orb  :reader the-orb)
-   (poa      :accessor the-poa)
-   (state    :initarg :state :initform :wait :accessor request-state)
-   (request-id :initarg :request-id :accessor request-id)
-   (operation  :initarg :operation  :accessor request-operation)
-   (connection :initarg :connection :accessor request-connection)
-   (response-flags  :initarg :response-flags :accessor response-flags)
-   (service-context :initarg :service-context :accessor service-context-list)
-   (reply-service-context :initform nil :accessor reply-service-context)
-   (exception  :accessor request-exception  :initform nil)
-   (reply-status :initform nil :accessor reply-status)
-   (reply-buffer :initform nil :accessor reply-buffer)))
-
-
-(defmethod create-server-request ((orb clorb-orb) &rest initargs)
-  (apply #'make-instance 'server-request 
-         :the-orb orb initargs))
-
-
-(defmethod set-request-exception ((req server-request) exc)
-  (setf (request-exception req) exc))
-
-(defmethod response-expected ((req server-request))
-  (logbitp 0 (response-flags req)))
-
-
-(defun get-request-response (request status)
-  (let* ((orb (the-orb request))
-         (buffer (get-work-buffer orb)))
-    (setf (reply-buffer request) buffer)
-    (setf (reply-status request) status)
-    (case status
-      (:no_exception
-       (will-send-reply orb request))
-      (:user_exception
-       (will-send-exception orb request))
-      (:location_forward
-       (will-send-other orb request))
-      (:system_exception
-       (will-send-exception orb request)))
-    (marshal-giop-header :reply buffer)
-    (marshal-service-context (reply-service-context request) buffer) 
-    (marshal-ulong (request-id request) buffer)
-    (marshal status (%symbol-typecode GIOP:REPLYSTATUSTYPE) buffer)
-    buffer))
-
-(defmethod get-normal-response ((req server-request))
-  (get-request-response req :no_exception))
-
-(defmethod get-exception-response ((req server-request))
-  (get-request-response req :user_exception))
-
-(defmethod get-location-forward-response ((request server-request))
-  (get-request-response request :location_forward))
-
-
 
 ;;;; Request Handling
 
@@ -166,7 +107,7 @@
            (request (create-server-request
                      orb :connection conn
                      :request-id req-id :operation operation
-                     :service-context service-context
+                     :service-context service-context :input buffer
                      :state :wait :response-flags response)))
       (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
             req-id operation object-key principal)
@@ -183,24 +124,38 @@
                    (poa-invoke poa oid operation buffer request))
                   (t
                    (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
+              (PortableServer:ForwardRequest 
+               (set-request-forward request (op:forward_reference exception)))
+              (CORBA:UserException
+               (raise-system-exception 'CORBA:UNKNOWN))
               (CORBA:SystemException
                (mess 2 "#~D Exception: ~A" req-id exception)
                (let ((buffer (get-request-response request :system_exception)))
                  (marshal-string (exception-id exception) buffer)
                  (marshal-ulong  (system-exception-minor exception) buffer)
-                 (marshal (system-exception-completed exception) CORBA::TC_completion_status buffer))))
+                 (%jit-marshal (system-exception-completed exception) CORBA::TC_completion_status buffer))))
             (return))
-          (CORBA:SystemException (exception)
-           (set-request-exception request exception))))
+
+          (CORBA:Exception (exception)
+                           (set-request-exception request exception))
+          (serious-condition (exc) 
+                             (set-request-exception request 
+                                                    (system-exception 'CORBA:UNKNOWN))
+                             (warn "Error in request processing: ~A" exc))))
       (send-response request))))
 
+(defun set-request-forward (req obj)
+  (mess 3 "forwarding to ~A" obj)
+  (let ((buffer (get-location-forward-response req)))
+    (marshal-object obj buffer)
+    buffer))
 
 (defun send-response (request)
   (when (response-expected request)
     (let ((conn (request-connection request))
           (buffer (reply-buffer request))
           (req-id (request-id request)))
-      (mess 3 "#~D Sending response" req-id )
+      (mess 3 "#~D Sending response (~S)" req-id (reply-status request) )
       (marshal-giop-set-message-length buffer)
       (connection-send-buffer conn buffer))))
 
@@ -215,30 +170,29 @@
 (defun poa-locaterequest-handler (conn)
   (let ((buffer (connection-read-buffer conn)))
     (setup-incoming-connection conn)
-    (let* ((req-id (unmarshal-ulong buffer))
+    (let* (;(orb (the-orb conn))
+           (req-id (unmarshal-ulong buffer))
            (object-key (unmarshal-osequence buffer))
-           (handler (lambda (type)
-                      (let ((buffer (get-work-buffer)))
-                        (marshal-giop-header :locatereply buffer)
-                        (marshal-ulong req-id buffer)
-                        (marshal-ulong (ecase type
-                                         (:unknown_object 0)
-                                         (:object_here 1)
-                                         ((:object_forward :location_forward) 2))
-                                       buffer)
-                        buffer)))
+           (operation "_locate")
+           (request nil)
            (status :UNKNOWN_OBJECT))
       (setq buffer nil)
       ;; FIXME: what if decode-object-key-poa raises an exception?
       (multiple-value-bind (reftype poa oid) (decode-object-key-poa object-key)
         (when (and reftype poa)
           (handler-case
-            (setq buffer (poa-invoke poa oid "_locate" buffer handler)
+            (setq buffer (poa-invoke poa oid operation buffer request)
                   status :object_here)
             (CORBA:TRANSIENT () (setq status :object_here))
             (SystemException () nil))))
-      (unless buffer
-        (setq buffer (funcall handler status))))
+      (setq buffer (get-work-buffer))
+      (marshal-giop-header :locatereply buffer)
+      (marshal-ulong req-id buffer)
+      (marshal-ulong (ecase status
+                       (:unknown_object 0)
+                       (:object_here 1)
+                       ((:object_forward :location_forward) 2))
+                     buffer))
     (marshal-giop-set-message-length buffer)
     (connection-send-buffer conn buffer)))
 

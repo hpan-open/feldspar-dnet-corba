@@ -12,12 +12,49 @@
     ;; some cases).
     form))
 
+
+(defun test-poa-invoke (poa &key operation oid args (request nil request-p))
+  (let ((buffer (get-work-buffer (the-orb poa))))
+    (unless request-p
+      (setq request
+            (create-server-request 
+             (the-orb poa)
+             :state :wait  :request-id 1
+             :operation operation
+             :input buffer)))
+    (dolist (a args)
+      (marshal-any-value a buffer))
+    (poa-invoke poa oid operation buffer request)
+    request))
+
+
+(defclass null-servant (portableserver:servant) ())
+(defmethod interface-name ((self null-servant)) 'CORBA:Object)
+
 (define-test-suite "POA Test"
   (variables 
    (orb *the-orb*)
    (*last-poaid* 0)
    (*poa-map* (make-hash-table :test #'eql))
    (root-poa (create-POA nil "root" nil nil orb)))
+  
+  (define-test "poa-invoke"
+    (let ((servant (make-instance 'null-servant))
+          oid)
+      (op:activate (op:the_poamanager root-poa))
+      (setq oid (op:activate_object root-poa servant))
+      ;; for locate request
+      (ensure-pattern*
+       (test-poa-invoke root-poa :oid oid :operation "_locate" :request nil))
+      ;; standard request ops
+      (ensure-pattern* 
+       (test-poa-invoke root-poa :oid oid :operation "_non_existent")
+       'reply-status :no_exception
+       'request-result '(nil))
+      (ensure-pattern* 
+       (test-poa-invoke root-poa :oid oid :operation "_is_a" :args '("fooo"))
+       'reply-status :no_exception
+       'request-result '(nil))))
   
   
   (define-test "Policy creation"

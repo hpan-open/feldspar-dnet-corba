@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.27 2004/01/29 20:47:31 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.28 2004/02/03 17:17:07 lenst Exp $
 
 (in-package :clorb)
 
@@ -632,50 +632,43 @@ POA destruction does not occur.
 
 (defun poa-invoke (poa oid operation buffer request)
   (unless (eq :active (poa-effective-state poa))
-    (raise-system-exception 'CORBA:TRANSIENT :completed_no))
-  (let* ((orb (the-orb poa))
-         (servant (trie-get oid (POA-active-object-map poa)))
-         (cookie nil)
-         (topost nil))
-    (handler-case    
-      (progn
-        (cond (servant)
-              ((poa-has-policy poa :use_servant_manager)
-               (cond ((poa-has-policy poa :retain)
-                      (setq servant
-                            (op:incarnate (POA-servant-manager poa) oid poa))
-                      (mess 2 "~A incarnated ~A for '~/clorb:stroid/'"
-                            poa servant oid))
-                     (t
-                      (multiple-value-setq (servant cookie)
-                        (op:preinvoke (POA-servant-manager poa)
-                                      oid poa operation))
-                      (setq topost t)))
-               (unless (typep servant 'PortableServer:Servant)
-                 (raise-system-exception 'corba:obj_adapter 2 :completed_no))
-               (unless topost
-                 (op:activate_object_with_id poa oid servant)))
-              ((poa-has-policy poa :use_default_servant)
-               (setq servant (POA-default-servant poa)))
-              (t
-               (raise-system-exception 'CORBA:OBJECT_NOT_EXIST
-                      :completed :completed_no)))
-        (let ((*poa-current* (make-poa-current poa oid servant)))
-          ;;(break "before has-received-request: orb=~S req=~S" orb request)
-          (has-received-request orb request)
-          (cond (topost
-                 (unwind-protect
-                   (servant-invoke servant operation buffer request)
-                   (op:postinvoke (POA-servant-manager poa)
-                                  oid poa operation cookie servant)))
-                (t
-                 (servant-invoke servant operation buffer request)))))
-      (PortableServer:ForwardRequest
-       (fwd)
-       (mess 3 "forwarding to ~A" (op:forward_reference fwd))
-       (let ((buffer (get-location-forward-response request)))
-         (marshal-object (op:forward_reference fwd) buffer)
-         buffer)))))
+    (raise-system-exception 'CORBA:TRANSIENT 0 :completed_no))
+  (let (;(orb (the-orb poa))
+        (servant (trie-get oid (POA-active-object-map poa)))
+        (cookie nil)
+        (topost nil))
+    (cond (servant)
+          ((poa-has-policy poa :use_servant_manager)
+           (cond ((poa-has-policy poa :retain)
+                  (setq servant
+                        (op:incarnate (POA-servant-manager poa) oid poa))
+                  (mess 2 "~A incarnated ~A for '~/clorb:stroid/'"
+                        poa servant oid))
+                 (t
+                  (multiple-value-setq (servant cookie)
+                    (op:preinvoke (POA-servant-manager poa)
+                                  oid poa operation))
+                  (setq topost t)))
+           (unless (typep servant 'PortableServer:Servant)
+             (raise-system-exception 'corba:obj_adapter 2 :completed_no))
+           (unless topost
+             (op:activate_object_with_id poa oid servant)))
+          ((poa-has-policy poa :use_default_servant)
+           (setq servant (POA-default-servant poa)))
+          (t
+           (raise-system-exception 'CORBA:OBJECT_NOT_EXIST
+                                   :completed :completed_no)))
+    (let ((*poa-current* (make-poa-current poa oid servant)))
+      (cond (topost
+             (unwind-protect
+               (servant-invoke servant operation buffer request)
+               (op:postinvoke (POA-servant-manager poa)
+                              oid poa operation cookie servant)))
+            (t
+             (servant-invoke servant operation buffer request))))
+    (when request
+      (server-request-respond request))))
+
 
 
 
