@@ -83,9 +83,9 @@
                  buffer))
 
 (defun marshal-double (arg buffer)
-  (%marshal-number (float-as-ieee-integer (coerce arg 'corba:double)
+  (marshal-ulonglong (float-as-ieee-integer (coerce arg 'corba:double)
                                          63 52 1023)
-                  8 buffer))
+                     buffer))
 
 (defun marshal-longdouble (arg buffer)
   (%marshal-number (float-as-ieee-integer (coerce arg 'corba:longdouble)
