@@ -8,7 +8,7 @@
 #+digitool
 (unless (find-package "BSD")
   (cond ((find-package "NET.CDDR.PACKER")
-         (net.cddr.packer:require-package "BSD"))
+         (funcall (intern "REQUIRE-PACKAGE" "NET.CDDR.PACKER") "BSD"))
         (t
          (require "BSD"))))
 

@@ -5,11 +5,12 @@
 
 (load "clorb:src;devel")
 
+#|
 (net.cddr.clorb.system:set-load-opts
  :server t  :idlcomp nil  :my-idlparser t
  :portable-interceptor t  :support-test t)
 (clorb:reload)
-
+|#
 
 #+(or)
 (ignore-errors

@@ -71,6 +71,12 @@
            :exclude nil
            :skeleton nil )
 
+(CORBA:IDL "clorb:idl;CosNaming.idl" 
+           :output "clorb:src;y-cosnaming-skel.lisp" 
+           :package-decl t
+           :eval nil
+           :target 'servant-target )
+
 
 |#
 ;;; clorb-idl.lisp ends here
