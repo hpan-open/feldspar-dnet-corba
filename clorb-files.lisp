@@ -55,7 +55,10 @@
     ;; Example
     "hello-idl"
     "hello-server"
-    "hello-client"))
+    "hello-client"
+    ;; Code Gen
+    "target"
+    ))
 
 
 (defvar *load-dates* (make-hash-table :test #'equal))
