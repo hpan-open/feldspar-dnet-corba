@@ -87,6 +87,9 @@
 (defmethod any-typecode ((obj string))
   CORBA:tc_string)
 
+(defmethod any-typecode ((struct CORBA:struct))
+  (get-typecode (type-id struct)))
+
 
 ;;; Value accessor
 
@@ -96,9 +99,6 @@
 (defmethod any-value ((obj string))
   obj)
 
-(defmethod any-value ((obj CORBA:Object))
-  obj)
-
 (defmethod any-value ((obj symbol))
   ;; ENUM
   obj)
@@ -106,5 +106,9 @@
 (defmethod any-value ((obj sequence))
   obj)
 
+(defmethod any-value ((struct CORBA:struct))
+  struct)
+
 (defmethod any-value ((obj t))
   (error 'CORBA:BAD_PARAM))
+
