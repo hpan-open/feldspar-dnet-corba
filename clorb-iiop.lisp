@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.38 2005/02/07 22:49:06 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.39 2005/02/11 22:47:38 lenst Exp $
 
 
 (in-package :clorb)
@@ -14,6 +14,12 @@
   :name "MsgType_1_0"
   :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" 
             "CloseConnection" "MessageError"))
+
+(DEFINE-ENUM OMG.ORG/GIOP:MSGTYPE_1_1
+  :ID "IDL:omg.org/GIOP/MsgType_1_1:1.0"
+  :NAME "MsgType_1_1"
+  :MEMBERS ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply"
+            "CloseConnection" "MessageError" "Fragment"))
 
 (DEFINE-STRUCT GIOP:VERSION
   :id "IDL:GIOP/Version:1.0"
@@ -71,17 +77,30 @@
             ("operation" OMG.ORG/CORBA:TC_STRING)
             ("requesting_principal" (SYMBOL-TYPECODE 'GIOP:PRINCIPAL))))
 
+(DEFINE-STRUCT GIOP:REQUESTHEADER_1_1
+  :ID "IDL:omg.org/GIOP/RequestHeader_1_1:1.0"
+  :NAME "RequestHeader_1_1"
+  :MEMBERS (("service_context"
+             (SYMBOL-TYPECODE 'OMG.ORG/IOP:SERVICECONTEXTLIST))
+            ("request_id" OMG.ORG/CORBA:TC_ULONG)
+            ("response_expected" OMG.ORG/CORBA:TC_BOOLEAN)
+            ("reserved" (CREATE-ARRAY-TC 3 OMG.ORG/CORBA:TC_OCTET))
+            ("object_key" (CREATE-SEQUENCE-TC 0 OMG.ORG/CORBA:TC_OCTET))
+            ("operation" OMG.ORG/CORBA:TC_STRING)
+            ("requesting_principal" (SYMBOL-TYPECODE 'OMG.ORG/GIOP:PRINCIPAL))))
+
 (define-enum GIOP:REPLYSTATUSTYPE 
   :id "IDL:GIOP/ReplyStatusType:1.0"
   :name "ReplyStatusType"
-  :members ("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION" "LOCATION_FORWARD"))
+  :members ("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION"
+                           "LOCATION_FORWARD"))
 
 (DEFINE-STRUCT GIOP:REPLYHEADER
   :id "IDL:GIOP/ReplyHeader:1.0"
   :name "ReplyHeader"
-  :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST) SERVICE_CONTEXT)
-            ("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
-            ("reply_status" (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE) REPLY_STATUS)))
+  :members (("service_context" (SYMBOL-TYPECODE 'IOP:SERVICECONTEXTLIST))
+            ("request_id" OMG.ORG/CORBA:TC_ULONG)
+            ("reply_status" (SYMBOL-TYPECODE 'GIOP:REPLYSTATUSTYPE))))
 
 (define-alias GIOP:Principal
   :id "IDL:GIOP/Principal:1.0"
@@ -132,6 +151,15 @@
           (0 :giop_1_0) (1 :giop_1_1) (2 :giop_1_2)))
       :giop_unknown_version))
   
+(defun giop-version-major (version)
+  (if (eql version :giop_unknown_version)
+      (error "Unknown version")
+      1))
+(defun giop-version-minor (version)
+  (case version (:giop_1_0 0) (:giop_1_1 1) (:giop_1_2 2)))
+
+(defconstant giop-1-0 :giop_1_0)
+(defconstant giop-1-1 :giop_1_1)
 
 
 ;;;; IIOP - Profiles
@@ -146,7 +174,8 @@
 
 
 (defmethod profile-short-desc ((profile IIOP-PROFILE) stream)
-  (format stream "~A:~A" 
+  (format stream "~A@~A:~A" 
+          (iiop-profile-version profile)
           (iiop-profile-host profile)
           (iiop-profile-port profile)))
 
@@ -249,7 +278,7 @@
 
 (define-symbol-macro message-types
   '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
-              :CLOSECONNECTION :MESSAGEERROR))
+              :CLOSECONNECTION :MESSAGEERROR :FRAGMENT))
 
 
 (defun unmarshal-giop-header (buffer)
@@ -259,17 +288,22 @@
       (error "Not a GIOP message: ~/net.cddr.clorb::stroid/" octets))
     (let ((major (get-octet))
           (minor (get-octet))
-          (byte-order (get-octet))
+          (flags (get-octet))
           (msgtype (aref message-types (get-octet))))
-      (setf (buffer-byte-order buffer) byte-order)
-      (values msgtype (make-giop-version major minor)))))
+      (setf (buffer-byte-order buffer) (logand flags 1))
+      (values msgtype
+              (if (> minor 0)
+                  (logbitp 1 flags))
+              (make-giop-version major minor)))))
 
-(defun marshal-giop-header (type buffer)
+
+(defun marshal-giop-header (type buffer &optional (version giop-1-0) fragmented)
   (with-out-buffer (buffer)
     #.(cons 'progn (loop for c across "GIOP" collect `(put-octet ,(char-code c))))
-    (put-octet 1)				;Version 
-    (put-octet 0)
-    (put-octet 1)				;byte-order
+    (put-octet (giop-version-major version))
+    (put-octet (giop-version-minor version))
+    (put-octet (logior 1 		;byte-order
+                       (if fragmented 2 0)))
     (put-octet (cond ((numberp type) type)
                      ((eq type 'request) 0)
                      ((eq type 'reply) 1)
@@ -280,27 +314,52 @@
     (incf pos 4)))
 
 
+(defun get-fragment (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (connection-add-fragment conn buffer +iiop-header-size+)
+    (setup-outgoing-connection conn)))
+
+(defun get-fragment-last (conn)
+  (let ((buffer (connection-read-buffer conn)))
+    (connection-add-fragment conn buffer +iiop-header-size+)
+    (let ((handler (assembled-handler conn)))
+      (setf (assembled-handler conn) nil)
+      (setf (fragment-buffer conn) nil)
+      (funcall handler conn))))
+
+
 (defun get-response-0 (conn)
-  (let* ((buffer (connection-read-buffer conn))
-         (msgtype (unmarshal-giop-header buffer))
-         (handler
-          (ecase msgtype
-            ((:reply) #'get-response-reply)
-            ((:locatereply) #'get-response-locate-reply)
-            ((:closeconnection)
-             (mess 3 "Connection closed")
-             ;; FIXME: should initiated cleaning up conn...
-             ;; all wating requests get some system exception
-             (connection-error conn)
-             nil)
-            ((:messageerror)
-             (mess 6 "CORBA: Message error")
-             nil)))
-         (size (+ (unmarshal-ulong buffer) +iiop-header-size+)))
-    (if handler
-        (connection-init-read conn t size handler)
-        ;; prehaps it is better to close it....
-        (setup-outgoing-connection conn))))
+  (let ((buffer (connection-read-buffer conn)))
+    (multiple-value-bind (msgtype fragmented)
+        (unmarshal-giop-header buffer)
+      (let ((size (+ (unmarshal-ulong buffer) +iiop-header-size+))
+            (handler
+             (ecase msgtype
+               ((:reply) #'get-response-reply)
+               ((:locatereply) #'get-response-locate-reply)
+               ((:closeconnection)
+                (mess 3 "Connection closed")
+                ;; FIXME: should initiated cleaning up conn...
+                ;; all wating requests get some system exception
+                (connection-error conn)
+                nil)
+               ((:messageerror)
+                (mess 6 "CORBA: Message error")
+                (connection-error conn)
+                (connection-destroy conn)
+                nil)
+               ((:fragment)
+                (prog1 
+                    (if fragmented #'get-fragment #'get-fragment-last)
+                  (setf fragmented nil))))))
+        (when fragmented
+          (connection-init-defragmentation conn handler)
+          (setq handler #'get-fragment))
+        (if handler
+            (connection-init-read conn t size handler)
+            ;; prehaps it is better to close it....
+            (setup-outgoing-connection conn))))))
+
 
 (defun get-response-reply (conn)
   (let* ((buffer (connection-read-buffer conn))

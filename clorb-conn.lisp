@@ -16,11 +16,12 @@
    (read-buffer     :initarg :read-buffer                  :accessor connection-read-buffer)
    (read-callback   :initarg :read-callback                :accessor connection-read-callback)
    (write-buffer    :initarg :write-buffer   :initform nil :accessor connection-write-buffer)
-   ;;(write-callback  :initarg :write-callback               :accessor connection-write-callback)
-   ;;(error-callback  :initarg :error-callback               :accessor connection-error-callback)
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
-   (server-requests                          :initform nil :accessor connection-server-requests)))
+   (server-requests                          :initform nil :accessor connection-server-requests)
+   ;; Defrag support
+   (assembled-handler  :initform nil  :accessor assembled-handler)
+   (fragment-buffer    :initform nil  :accessor fragment-buffer)))
 
 
 (defmethod print-object ((conn connection) stream)
@@ -114,6 +115,16 @@
         (delete request (connection-server-requests conn))))
 
 
+(defun connection-add-fragment (conn buffer header-size)
+  (with-accessors ((fragment-buffer fragment-buffer)) conn
+    (when fragment-buffer
+      (setf (buffer-octets buffer)
+            (concatenate 'octets
+                         (buffer-octets fragment-buffer)
+                         (subseq (buffer-octets buffer) header-size))))
+    (setf fragment-buffer buffer)))
+
+
 
 ;;;; Connection events
 
@@ -135,9 +146,15 @@
 (defmethod connection-write-ready ((conn connection))
   (setf (connection-write-buffer conn) nil))
 
-
-
-
+(defun connection-init-defragmentation (conn handler)
+  (cond ((assembled-handler conn)
+         (mess 5 "Fragment overrun")
+         (connection-error conn)
+         nil)
+        (t
+         (setf (assembled-handler conn) handler)
+         (setf (fragment-buffer conn) nil)
+         t)))
 
 ;;;; Event loop (orb-wait)
 

@@ -103,4 +103,36 @@
       (%jit-set test-at-1 obj "fnord")))
 
 
+  (define-test "framgmented reply"
+    (setup-test-out)
+    (setup-outgoing-connection *test-out-conn*)
+    (let ((req (create-client-request
+                orb :request-id 1)))
+      (connection-add-client-request *test-out-conn* req)
+      (let ((buffer (get-work-buffer orb)))
+        (marshal-giop-header :REPLY buffer giop-1-1 t)
+        (marshal-service-context nil buffer) 
+        (marshal-ulong 1  buffer)       ;req id
+        (marshal :no_exception (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
+        (marshal-giop-set-message-length buffer)
+        (let ((octets (buffer-octets buffer)))
+          (io-descriptor-set-write *test-response-desc* octets 0
+                                   (length octets))))
+      (let ((buffer (get-work-buffer orb)))
+        (marshal-giop-header :FRAGMENT buffer giop-1-1 nil)
+        (dolist (any '(1 "hello"))
+          (marshal-any-value any buffer))
+        (marshal-giop-set-message-length buffer)
+        (let ((octets (buffer-octets buffer)))
+          (io-descriptor-set-write *test-response-desc* octets 0
+                                   (length octets))))
+      (orb-work orb nil t)
+      (ensure-pattern* req
+                       'request-status :no_exception
+                       'request-buffer (pattern 'unmarshal-short 1
+                                                'unmarshal-string "hello")) ))
+
+
+
+
 #| end suite |# )
