@@ -150,7 +150,7 @@
       (resolve1 self n)
     (unless (eq type :ncontext)
       (not-found :not_context n))
-    (values 
+    (values
      (opt-local (op:_default_POA self) obj)
      (subseq n 1))))
 
@@ -274,9 +274,10 @@
 (define-method incarnate ((m naming-manager) oid adapter)
   (declare (ignore adapter))
   (make-instance 'naming-context
-    :base (make-pathname
-           :directory `(:relative ,(portableserver:oid-to-string oid))
-           :defaults *naming-base-path*)))
+    :base (merge-pathnames
+           (make-pathname
+            :directory `(:relative ,(portableserver:oid-to-string oid)))
+           *naming-base-path*)))
 
 (defun setup-naming-poa ()
   (let* ((orb (CORBA:ORB_init))
@@ -310,3 +311,5 @@
                            +naming-context-id+))
      out)))
 
+;;(defmethod initialize-instance :after ((self naming-context) &key)
+;;  (clorb::mess 3 "Naming Context base=~A" (nc-base self)))
