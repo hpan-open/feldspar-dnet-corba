@@ -67,8 +67,7 @@
              :arg_modes (ecase (param-mode param)
                           (:param_in ARG_IN)
                           (:param_out ARG_OUT)
-                          (:param_inout ARG_INOUT)))))
-     :opdef opdef)))
+                          (:param_inout ARG_INOUT))))))))
 
 
 ;;;; Easy name service access

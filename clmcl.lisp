@@ -53,25 +53,23 @@
  (op:activate (op:the_poamanager (clorb::root-poa))))
 (clorb:load-ir)
 
-#|
-(setq clorb::*host*
-      (clorb::listner-host 
-       (clorb::listner-socket (clorb::adaptor clorb::*the-orb*))))
-|#
-
 (ignore-errors
  (setq clorb:*host*
        (ccl::tcp-addr-to-str (ccl::local-interface-ip-address))))
 
 #+t2-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
+  (ccl::telnet-write-line s "InterfaceRepository")
   (let ((ior (read-line s)))
+    (format t "IOR: ~A~%" ior)
     (when (and (stringp ior)
                (> (length ior) 4)
                (string= "IOR:" ior :end2 4))
       (when (eql #\Linefeed (char ior (1- (length ior))))
         (setq ior (subseq ior 0 (1- (length ior)))))
-      (setq clorb::*interface-repository* ior))))
+      (setq clorb::*interface-repository* ior)
+      (clorb::set-initial-reference *orb* "InterfaceRepository" ior)
+      ior)))
 
 #+pentax-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.1" 80))
@@ -83,28 +81,46 @@
                  (> (length ior) 4)
                  (string= "IOR:" ior :end2 4))
         (setq ior (string-right-trim crlf ior))
-        (setq clorb::*interface-repository* ior))
+        (setq clorb::*interface-repository* ior)
+        (clorb::set-initial-reference *orb* "InterfaceRepository" ior))
        (t
         (clorb::mess 4 "non ior=~A" ior))))))
 
 
 (defun hh ()
-  (cl-user::setup-hello :file "hello.ior")
-  (cl-user::hello-client :file "hello.ior"))
+  (setup-hello :file "hello.ior")
+  (hello-client :file "hello.ior"))
 
 (defun hhn ()
-  (cl-user::setup-hello :name "hello")
-  (cl-user::hello-client :name "hello"))
+  (setup-hello :name "hello")
+  (hello-client :name "hello"))
 
 
 (defun run ()
   (setup-pns)
-  (op:run clorb::*the-orb*))
+  (op:run *orb*))
 
 (defvar *calc-ior* "file:Mac_OS_X:tmp:ObjectID")
 (defvar *calc*)
-
 (defun do-calc ()
   (setq *calc* (op:string_to_object *orb* *calc-ior*))
   (corba:funcall "add" *calc* 12.5 5.8)
   (corba:funcall "div" *calc* 9.9 3))
+
+
+(defun vsns-get (name)
+  (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
+    (ccl::telnet-write-line s name)
+    (let ((ior (read-line s)))
+      (clorb::mess 2 "vsns IOR: ~A" ior)
+      (when (and (stringp ior)
+                 (clorb::string-starts-with ior "IOR:"))
+        (setq ior (string-trim #.(vector #\Linefeed #\Return #\Space) ior))
+        (omg.org/features:string_to_object *orb* ior)))))
+
+(export 'vsns-get)
+(import 'vsns-get "CLORB")
+
+#|
+(setq *log-level* 3)
+|#

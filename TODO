@@ -1,17 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.7 2002/05/02 20:40:11 lenst Exp $
-
-- string_to_object
-Should handle more URL variants:
-       corbname:, http:
-
-Then change the *name-service*, *interface-repository*
-to be something that can be passed to string_to_object.
-Like: "file:///tmp/NameService"
-       
-- Support INS
-  -ORBInitRef <ObjectID>=<ObjectURL>
-
+ $Id: TODO,v 1.8 2002/05/24 10:04:50 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -44,11 +32,12 @@ exceptions should be returned not raised.
 
 * Misc
 
+- string_to_object
+  Should handle more URL variants: corbname:, http:
+
 - Mapping for UserExceptions
 
 - Marshalling of fixed
-
-- unmarshalling of floats
 
 - Bounds cheking on marshaling bounded sequences.
 

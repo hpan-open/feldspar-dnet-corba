@@ -1,7 +1,6 @@
 (in-package :cl-user)
 
-
-(defun all-ops (&optional (package :op))
+(defun all-exports (&optional (package :op))
   (let ((ops nil))
     (do-external-symbols (op package)
       (push op ops))
@@ -23,4 +22,4 @@
             do (princ op) (princ " ")))
     (values)))
 
-(all-ops)
+(all-exports)

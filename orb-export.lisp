@@ -1,6 +1,7 @@
 (cl:in-package "OMG.ORG/CORBA")
 (cl:export
  '(CONTAINED/DESCRIPTION
+   repositoryid definitionkind
    STRUCTMEMBER
    scopedname
    UNIONMEMBER
