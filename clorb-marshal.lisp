@@ -179,11 +179,12 @@
       (setf (buffer-start-pos buffer) pos)
       (put-octet 1)            ;byte order
       (funcall closure buffer)
-      (let ((save-pos pos))
+      (let ((save-pos pos)
+            (size (- pos (buffer-start-pos buffer))))
+        (setf (buffer-start-pos buffer) old-start-pos)
         (setf pos len-pos)
-        (marshal-ulong (- save-pos (buffer-start-pos buffer)) buffer)
-        (setf pos save-pos))
-      (setf (buffer-start-pos buffer) old-start-pos))))
+        (marshal-ulong size buffer)
+        (setf pos save-pos)))))
 
 
 (defvar *marshal-typecode-record* nil)
