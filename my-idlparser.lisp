@@ -32,17 +32,16 @@
        (seq (,(if allow-empty 'opt 'seq)
              (seq (-> ,form ,elem)
                   (action (push ,elem ,list))
-                  (repeat (0)
-                    (seq ,@(if sep (list sep))
-                         (-> ,form ,elem)
-                         (action (push ,elem ,list))))))
+                  (seq* ,@(if sep (list sep))
+                        (-> ,form ,elem)
+                        (action (push ,elem ,list)))))
             (action (nreverse ,list))))))
 
 
 ;;;; Top Level
 
 (defun <specification> ()
-  (seq (repeat (1) (<definition>))
+  (seq (seq+ (<definition>))
        :eof ))
 
 (defun <definition> nil
@@ -77,7 +76,7 @@
        (let ((*container*
               (or (op:lookup *container* name)
                   (named-create *container* #'op:create_module name))))
-         (repeat (1) (<definition>)))
+         (seq+ (<definition>)))
        "}")) 
 
 
@@ -85,7 +84,7 @@
 
 (defun <interface> nil
   (let (name bases obj)
-    (seq (alt (alt "abstract" "local") (seq))
+    (seq (opt (alt "abstract" "local"))
          "interface"
          (-> (<identifier>) name)
          (action (setq obj (op:lookup *container* name))
@@ -99,18 +98,18 @@
                    "}")))))
 
 (defun <interface_body> nil
- (repeat (0) (<export>)))
+  (seq* (<export>)))
 
 (defun <interface_inheritance_spec> nil
   (seq ":" 
        (parse-list (<scoped_name>-lookup) ",")))
 
 (defun <export> nil
- (alt (seq (<type_dcl>) ";")
-      (seq (<const_dcl>) ";")
-      (seq (<except_dcl>) ";")
-      (seq (<attr_dcl>) ";")
-      (seq (<op_dcl>) ";")))
+  (alt (seq (<type_dcl>) ";")
+       (seq (<const_dcl>) ";")
+       (seq (<except_dcl>) ";")
+       (seq (<attr_dcl>) ";")
+       (seq (<op_dcl>) ";")))
 
 
 ;;;; Operation Declaration
@@ -236,8 +235,8 @@
 (defun <declarator> nil
   (let (name array n)
     (seq (-> (<identifier>) name)
-         (opt (repeat (1) (seq "[" (-> (<positive_int_const>) n) "]"
-                               (action (push n array)))))
+         (seq* "[" (-> (<positive_int_const>) n) "]"
+               (action (push n array)))
          (action (cons name (nreverse array))))))
 
 
@@ -393,44 +392,42 @@
 (defun <or_expr> nil
   (let (n1 n2)
     (seq (-> (<xor_expr>) n1)
-         (repeat (0) (seq "|" (-> (<xor_expr>) n2)
-                          (action (setq n1 (logior n1 n2)))))
+         (seq* "|" (-> (<xor_expr>) n2)
+               (action (setq n1 (logior n1 n2))))
          (action n1))))
 
 (defun <xor_expr> nil
   (let (x y)
     (seq (-> (<and_expr>) x)
-         (repeat (0) (seq "^" (-> (<and_expr>) y) (action (setq x (logxor x y)))))
+         (seq* "^" (-> (<and_expr>) y) (action (setq x (logxor x y))))
          (action x))))
 
 (defun <and_expr> nil
   (let (x y)
     (seq (-> (<shift_expr>) x)
-         (repeat (0) (seq "&" (-> (<shift_expr>) y) (action (setq x (logand x y)))))
+         (seq* (seq "&" (-> (<shift_expr>) y) (action (setq x (logand x y)))))
          (action x))))
 
 (defun <shift_expr> nil
   (let (x y)
     (seq (-> (<add_expr>) x)
-         (repeat (0) 
-           (alt (seq ">>" (-> (<add_expr>) y) (action (setq x (>> x y))))
-                (seq "<<" (-> (<add_expr>) y) (action (setq x (<< x y))))))
+         (seq* (alt (seq ">>" (-> (<add_expr>) y) (action (setq x (>> x y))))
+                    (seq "<<" (-> (<add_expr>) y) (action (setq x (<< x y))))))
          (action x))))
 
 (defun <add_expr> nil
   (let (x y)
     (seq (-> (<mult_expr>) x)
-         (repeat (0) (alt (seq "+" (-> (<mult_expr>) y) (action (setq x (+ x y))))
-                          (seq "-" (-> (<mult_expr>) y) (action (setq x (- x y))))))
+         (seq* (alt (seq "+" (-> (<mult_expr>) y) (action (setq x (+ x y))))
+                    (seq "-" (-> (<mult_expr>) y) (action (setq x (- x y))))))
          (action x))))
 
 (defun <mult_expr> nil
   (let (x y)
     (seq (-> (<unary_expr>) x)
-         (repeat (0)
-           (alt (seq "*" (-> (<unary_expr>) y) (action (setq x (* x y))))
-                (seq "/" (-> (<unary_expr>) y) (action (setq x (/ x y))))
-                (seq "%" (-> (<unary_expr>) y) (action (setq x (rem x y))))))
+         (seq* (alt (seq "*" (-> (<unary_expr>) y) (action (setq x (* x y))))
+                    (seq "/" (-> (<unary_expr>) y) (action (setq x (/ x y))))
+                    (seq "%" (-> (<unary_expr>) y) (action (setq x (rem x y))))))
          (action x))))
 
 (defun <unary_expr> nil

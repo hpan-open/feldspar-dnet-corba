@@ -28,10 +28,7 @@
       #P"ccl:NameService")
 
 (setq clorb::*name-service*
-      (let ((file net.cddr.clorb.persistent-naming:*naming-ior-file*))
-        (format nil "file:~{/~A~}/~A"
-                (cdr (pathname-directory (full-pathname file)))
-                (pathname-name file))))
+      (clorb:pathname-url net.cddr.clorb.persistent-naming:*naming-ior-file*))
 
 (ensure-directories-exist persistent-naming:*naming-base-path* :verbose t)
 
