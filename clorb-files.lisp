@@ -56,7 +56,6 @@
 
 (defparameter *x-files*
   '(;; Experimental
-    "internalize"
     "idef-read"
     "idef-write"
     ("idef-macros" t)
