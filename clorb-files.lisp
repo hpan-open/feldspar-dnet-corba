@@ -1,6 +1,5 @@
 (in-package :clorb)
 
-
 (defparameter *base-files*
   '(("clorb-pkgdcl")
     "clorb-options"
@@ -65,12 +64,13 @@
 
 (defun compile-changed (files)
   (loop
-    with *default-pathname-defaults* = *clorb-pathname-defaults*
     with defs-date = 0
     for x in files
     for (base defs) = (if (consp x) x (list x nil))
-    do (let* ((cf (compile-file-pathname base))
-              (sf (make-pathname :type "lisp" :defaults base)))
+    do (let* ((sf (make-pathname :name base :type "lisp" 
+                                 :defaults *clorb-pathname-defaults*))
+              (cf (compile-file-pathname sf))
+              )
          (when (or (not (probe-file cf))
                    (let ((dcf (file-write-date cf))
                          (dsf (file-write-date sf)))
@@ -83,7 +83,7 @@
                          (> dsf dcf)
                          (> defs-date dcf))))
            (format t "~&;;;; Compiling ~A ~%" sf )
-           (compile-file base))
+           (compile-file sf))
          (let ((dcf (file-write-date cf))
                (last (gethash base *load-dates*)))
            (when defs
@@ -91,7 +91,7 @@
            (when (or (null last) (null dcf)
                      (> dcf last))
              (format t "~&;;;; Loading ~A ~%" base)
-             (load base)
+             (load cf)
              (setf (gethash base *load-dates*) dcf))))))
 
 
