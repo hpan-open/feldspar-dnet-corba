@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.7 2002/06/01 05:49:05 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.8 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -379,7 +379,6 @@ Where host is a string and port an integer.")
         (setf (object-connection proxy) conn)
         (setf (object-host proxy) host)
         (setf (object-port proxy) port)
-        (setf (object-key proxy) (iiop-profile-key profile))
         (return conn)))))
 
 

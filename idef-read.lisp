@@ -200,6 +200,12 @@
       (make-instance 'sequence-def
         :bound (or bound 0)
         :element_type_def (parse-type-in container member-type))))
+   ((and (consp type-sexp) (eq (car type-sexp) 'array))
+    (destructuring-bind (member-type &optional (length 0))
+                        (cdr type-sexp)
+      (make-instance 'array-def
+        :length (or length 0)
+        :element_type_def (parse-type-in container member-type))))
    ((and (consp type-sexp) (member (car type-sexp) '(string wstring)))
     (destructuring-bind (string-type &optional (bound 0))
                         (cdr type-sexp)

@@ -1,5 +1,5 @@
 ;;; idef-macros --- interface definition macros
-;; $Id: idef-macros.lisp,v 1.4 2002/10/08 18:03:54 lenst Exp $
+;; $Id: idef-macros.lisp,v 1.5 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -16,11 +16,6 @@
 
 (defmethod gen-idef ((name string))
   (gen-idef (lookup-name name)))
-
-(defmethod servant-interface :around ((servant auto-servant))
-  (let ((id (servant-interface-id servant)))
-    (or (and id (op:lookup_id *idef-repository* id))
-        (call-next-method))))
 
 
 ;;;; Macro for IDEF definitions

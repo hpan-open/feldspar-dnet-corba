@@ -40,6 +40,10 @@ This guides the use of local or absolute names.")
   `(sequence ,(gen-iref (op:element_type_def seq))
              ,(op:bound seq)))
 
+(defmethod gen-iref ((seq CORBA:ArrayDef))
+  `(array ,(gen-iref (op:element_type_def seq))
+          ,(op:length seq)))
+
 (defmethod default-repoid ((obj CORBA:Contained) &optional prefix)
   (let ((names (list ":" (op:version obj))))
     (loop for c = obj then (op:defined_in c)
@@ -171,4 +175,5 @@ This guides the use of local or absolute names.")
 #|
 (idef-file (op:lookup (vsns-get "ir") "CORBA") "clorb:src;ifr-idl.lisp" :default-prefix "omg.org")
 (idef-file (get-ir) "clorb:src;x-all-idl.lisp")
+(idef-file (op:lookup (get-ir) "CosNaming") "clorb:src;x-cosnaming-idl.lisp" :default-prefix "omg.org")
 |#

@@ -6,12 +6,46 @@
         #+allegro  #P"/home/lenst/src/hacks/idldump/work/"
         ))
 
+(defparameter *tmp-directory* (pathname-directory #P"Macintosh HD:tmp:"))
+
+(defun pathname-unixname (pathname)
+  (with-output-to-string (s)
+    (loop for dir in (pathname-directory pathname)
+          do (cond ((eq :absolute dir) (princ "/" s))
+                   ((equal dir "Macintosh HD") )
+                   (t (princ dir s) (princ "/" s))))
+    (princ (pathname-name pathname) s)
+    (princ "." s)
+    (princ (pathname-type pathname) s)))
+
 (defun get-idl-sexp (file)
+  #+(or)
   (let ((path (merge-pathnames file *idl-directory*))
         (*package* (find-package :clorb)))
     (setq path (make-pathname :type "sexp" :defaults path))
     (with-open-file (in path)
-      (read in))))
+      (read in)))  
+  ;; ++++++++++++++
+  (let* ((idl-file (merge-pathnames file *idl-directory*))
+         (sexp-file (make-pathname :name (pathname-name idl-file)
+                                   :type "sexp"
+                                   :directory *tmp-directory*)))
+    (assert (probe-file idl-file))
+    (when (probe-file sexp-file)
+      (delete-file sexp-file))
+    (ccl:send-eval (format nil "/Users/lenst/src/hacks/idldump/main ~A > ~A"
+                           (pathname-unixname idl-file)
+                           (pathname-unixname sexp-file))
+                   "JGTaskEvaluator")
+    (assert (probe-file sexp-file))
+    (with-open-file (in sexp-file)
+      (let ((sexp (read in)))
+         (when (symbolp sexp)
+           (error "CORBA:IDL:~A ~A" sexp (read-line in)))
+         sexp))))   
+
+
+
 
 (defgeneric process-form (trigger args))
 
@@ -199,10 +233,11 @@
 (setq *container* (make-instance 'repository))
 ;(process-list (get-idl-sexp "trader"))
 #||
-(process-list (get-idl-sexp "x-04"))
-;;(process-list (get-idl-sexp "my-query"))
+(process-list (get-idl-sexp "x-04.idl"))
+;;(process-list (get-idl-sexp "my-query.idl"))
 (unless (fboundp 'describe-repo)
   (load "CLORB:SRC;describe-repo"))
 (describe-repo *container*)
 (doseq (x (op:contents *container* :dk_all nil)) (pprint (omg.org/features:describe x)))
 ||#
+

@@ -127,13 +127,19 @@
          ())
        (register-proxy-class ,(op:id idef) ',class-symbol))))
 
-(defun target-proxy-class-symbol (target idef)
+
+
+(defun target-class-symbol (target idef suffix)
   (let ((scoped-symbol (scoped-target-symbol target idef)))
     (make-target-symbol target
                         (concatenate 'string
                                      (symbol-name scoped-symbol)
-                                     "-PROXY")
+                                     suffix )
                         (symbol-package scoped-symbol))))
+
+(defun target-proxy-class-symbol (target idef)
+  (target-class-symbol target idef "-PROXY"))
+
 
 
 (defun setter-name (name)
@@ -305,11 +311,18 @@
                          `(set-attribute obj ,(setter-name att-name)
                                          ,(target-typecode (op:type_def op) target) newval))))))))
 
+(defmethod target-sort-key ((def CORBA:InterfaceDef))
+  (1+ (reduce #'max (map 'list #'target-sort-key (omg.org/features:base_interfaces def))
+              :initial-value 0)))
+
+(defmethod target-sort-key ((x t)) 0)
 
 (defmethod target-code ((mdef CORBA:Container) target)
   (make-progn (map 'list (lambda (contained)
                            (target-code contained target))
-                   (op:contents mdef :dk_All t))))
+                   (sort (op:contents mdef :dk_All t)
+                         #'<  :key #'target-sort-key ))))
+
 
 (defmethod target-code ((sdef CORBA:StructDef) target)
   `(define-struct ,(scoped-target-symbol target sdef)
@@ -372,9 +385,59 @@
        :name ,(op:name def)
        :discriminator-type ,(target-typecode (op:discriminator_type_def def) target)
        :members ,(nreverse collected-members))))
-
-
 
+;;;; Servants
+
+(defmethod target-servant ((def CORBA:InterfaceDef) target)
+  `(define-corba-class ,(target-class-symbol target def "-SERVANT")
+     (,(target-class-symbol target def "")
+      ,@(let ((supers (omg.org/features:base_interfaces def)))
+          (if supers
+            (map 'list (lambda (super)
+                         (target-class-symbol target super "-SERVANT"))
+                 supers)
+            '(PortableServer:Servant))))
+     :attributes
+     (,@(map 'list
+             (lambda (attdef)
+               (list (intern (string-upcase (op:name attdef)) :clorb)
+                     (if (eq (op:mode attdef) :attr_readonly)
+                       :readonly )))
+             (op:contents def :dk_attribute t)) ))) 
+
+
+(defun param-symbol (parameterdesc)
+  (intern (format nil "_~:@(~A~)" (op:name parameterdesc)) :clorb))
+
+(defmethod target-invoke-fragment ((def CORBA:OperationDef) target)
+  (let ((params (op:params def)))
+    `((string= op ,(op:name def))
+      (let (,@(map 'list 
+                   (lambda (pd)
+                     (list (param-symbol pd)
+                           `(CORBA:Any :any-typecode ,(target-typecode (op:type_def pd) target))))
+                   params))
+        (op:arguments r (list ,@(map 'list
+                                     (lambda (pd)
+                                       `(CORBA:NamedValue :argument ,(param-symbol pd)
+                                                          :arg_mode ,(case (op:mode pd)
+                                                                       (:param_in 'ARG_IN)
+                                                                       (:param_out 'ARG_OUT)
+                                                                       (:param_inout 'ARG_INOUT))))
+                                     params) ))
+        (multiple-value-bind (_res xx)
+                             (,(make-target-symbol target (op:name def) :op)
+                              ,@(remove nil
+                                        (map 'list 
+                                             (lambda (pd)
+                                               (unless (eq (op:mode pd) :param_out)
+                                                 `(any-value ,(param-symbol pd))))
+                                             params)))
+          (omg.org/features:set_result r _res))))))
+
+
+
+
 ;;;; Stub code generator
 
 (defparameter *stub-code-ignored-packages*

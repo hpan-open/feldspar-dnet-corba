@@ -7,11 +7,12 @@
     ("clorb-macros" t)
     "clorb-sysdep"
     "clorb-basetypes"
-    ("clorb-typecode")
-    ("clorb-exceptions" t)
-    ("clorb-struct" t)
+    "clorb-typecode"
+    "clorb-exceptions"
+    "clorb-struct"
     "clorb-union"
     "clorb-any"
+    ("clorb-macros2" t)
     "clorb-iop"
     "clorb-object"
     ("clorb-buffer" t)
@@ -49,12 +50,12 @@
     ;; Services
     "cosnaming-idl"
     "cosnaming-stub"
-    "cosnaming-skel"
-    "pns-server"
+    ;;"cosnaming-skel"
+    ;;"pns-server"
     ;"ec-server"
     ;; Example
     "hello-idl"
-    "hello-server"
+    ;;"hello-server"
     "hello-client"
     ))
 

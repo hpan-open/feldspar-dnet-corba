@@ -177,7 +177,7 @@
 
 
 (defparameter *nil-objref*
-  (make-instance 'CORBA:Proxy :id "" :raw-profiles '() :key nil))
+  (make-instance 'CORBA:Proxy :id "" :raw-profiles '()))
 
 (defun marshal-ior (objref buffer)
   (cond ((null objref) (setq objref *nil-objref*))
@@ -320,9 +320,9 @@
   (marshal-octet 0 buffer)
   (marshal-octet 1 buffer)				;byte-order
   (marshal-octet (cond ((numberp type) type)
-		   ((eq type 'request) 0)
-		   ((eq type 'reply) 1)
-		   (t (error "Message type ~S" type))) buffer)
+		       ((eq type 'request) 0)
+		       ((eq type 'reply) 1)
+		       (t (error "Message type ~S" type))) buffer)
   ;; Place for message length to be patched in later
   (marshal-ulong 0 buffer))
 

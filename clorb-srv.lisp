@@ -79,7 +79,7 @@
          (poa-invoke poa sreq))
         (t
          (set-request-exception
-          sreq (make-condition 'CORBA:OBJECT_NOT_EXIST))
+          sreq (make-condition 'CORBA:OBJECT_NOT_EXIST :completed :completed_no))
          (send-response sreq))))))
 
 (defun root-POA (&optional (orb (orb_init)))

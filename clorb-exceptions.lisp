@@ -96,40 +96,7 @@
 (defun id-exception-class (id)
   (gethash id *user-exception-classes*))
 
-(defmacro define-user-exception (symbol &key (name "") (id "") slots members)
-  "Syntax: scoped-symbol
-id: repo-id
-name: repo-name
-Slots: deprecated
-Members: (name typecode)*"
-  (assert (null slots))
-  (loop
-    for member in members
-    for slot-name = (string (car member))
-    for initarg = (lispy-name slot-name)
-    for slot = (intern (symbol-name initarg))  ; FIXME: or make-symbol ??
-    collect (list slot :initarg initarg)
-    into slot-defs
-    collect `(define-method ,initarg ((s ,symbol)) (slot-value s ',slot)) ; FIXME: not quite ANSI
-    into getters
-    collect `(list ,slot-name ,(second member)) 
-    into tc-members
-    finally
-    (return
-     `(progn
-        (define-condition ,symbol (CORBA:UserException)
-                          (,@slots ,@slot-defs))
-        ,@getters
-        (setf (gethash ,id *user-exception-classes*) ',symbol)
-        (defun ,symbol (&rest initargs)
-          (apply #'make-condition ',symbol initargs))
-        (set-symbol-ifr-id ',symbol ,id)
-        (set-symbol-typecode ',symbol 
-                             (lambda () (make-typecode :tk_except ,id ,name (list ,@tc-members))))
-        (defmethod exception-name ((exc ,symbol)) ',symbol)
-        (defmethod userexception-values ((ex ,symbol))
-          (list ,@(mapcar (lambda (slot-spec) `(slot-value ex ',(car slot-spec)))
-                          slot-defs))))))) 
+ 
 
 
 

@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.9 2002/10/08 18:03:54 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.10 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -132,10 +132,6 @@
           (attspec-name attspec))
          (opname
           (intern (symbol-name name) :op))
-         (giop-get-name
-          (intern (format nil "_GET_~a" (symbol-name name)) :op))
-         (giop-set-name
-          (intern (format nil "_SET_~a" (symbol-name name)) :op))
          (read-form
           (if (attspec-virtual attspec)
               `(,(attspec-virtual attspec) obj)
@@ -146,12 +142,7 @@
              `((defmethod (setf ,opname) (value (obj ,class))
                  (setf ,read-form value)
                  (slot-updated obj)
-                 value)))
-       (define-method ,giop-get-name ((obj ,class))
-         (,opname obj))
-       ,@(if (not (attspec-readonly attspec))
-             `((define-method ,giop-set-name ((obj ,class) value)
-                 (setf (,opname obj) value)))))))
+                 value))))))
 
 
 (defmacro define-corba-class (name superclasses 

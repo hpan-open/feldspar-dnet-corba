@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.11 2002/09/24 18:26:47 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.12 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -183,8 +183,8 @@
                  (t (error 'POA/InvalidPolicy :index i))))
     (loop for g in policy-groups
         do (push (car g) policies)))
-  (when (and poa (find name (POA-children poa))
-            :key #'op:the_name :test #'equal)
+  (when (and poa (find name (POA-children poa)
+                       :key #'op:the_name :test #'equal))
     (error 'POA/AdapterAlreadyExists))
   (let ((newpoa
          (make-instance 'POA
@@ -403,15 +403,15 @@
                      (poa-current-poa *poa-current*)))
 
 (define-method _this ((servant servant))
-  (let* ((poa (or (op:_default_POA servant)
-		  (root-POA) ))
-	 (oid (if (and (poa-has-policy poa :multiple-id)
-                       *poa-current*)
-                  (poa-current-object-id *poa-current*)
-                (op::servant_to_id poa servant))))
-    (op:create_reference_with_id
-     poa oid
-     (primary-interface servant oid poa))))
+  (if *poa-current*                     ; in context of a request
+    (let ((oid (poa-current-object-id *poa-current*))
+          (poa (poa-current-poa *poa-current*)))
+      (omg.org/features:create_reference_with_id
+       poa oid (primary-interface servant oid poa)))
+    (let* ((poa (or (op:_default_POA servant)
+		    (root-POA) )))
+      ;; FIXME: translate ServantNotActive to WrongPolicy ??
+      (op:servant_to_reference poa servant))))
 
 (define-method _is_a ((servant servant) logical-type-id)
   (or (equal logical-type-id "IDL:omg.org/CORBA/Object:1.0")
@@ -494,6 +494,23 @@
 (define-method get_object_id ((current PortableServer::Current))
   (unless *poa-current* (error 'Current/NoContext))
   (poa-current-object-id *poa-current*))
+
+
+;;; Convenience methods (from java)
+;; assuming in context of POA call
+
+(define-method _poa ((servant servant)) 
+  (unless *poa-current* (error 'Current/NoContext))
+  (poa-current-POA *poa-current*))
+
+(define-method _orb ((servant servant))
+  (unless *poa-current* (error 'Current/NoContext))
+  (the-orb (poa-current-POA *poa-current*)))
+
+(define-method _object_id ((servant servant))
+  (unless *poa-current* (error 'Current/NoContext))
+  (poa-current-object-id *poa-current*))
+
 
 
 ;;; clorb-poa.lisp ends here

@@ -76,6 +76,9 @@
 #+pentax-has-ifr
 (use-pentax-ifr)
 
+#+pentax-has-ifr
+(use-pentax-ns)
+
 (defun hh ()
   (setup-hello :file "hello.ior")
   (hello-client :file "hello.ior"))

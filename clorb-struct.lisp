@@ -1,5 +1,4 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.12 2002/10/08 18:05:20 lenst Exp $
 
 (in-package :clorb)
 
@@ -67,9 +66,9 @@
              (format stream "~{ ~_~{~W ~W~}~}" fields) )))
         (t
          (print-unreadable-object (obj stream :type t)
-           (format stream "~:{~S ~S~^ ~}"
-                   (map 'list (lambda (pair) (list (car pair) (cdr pair)))
-                        (fields obj)))))))
+           (format stream "~{~S ~S~^ ~}"
+                   (loop for (k . v) in (fields obj)
+                         collect k collect v))))))
 
 
 ;; Interface:
@@ -172,57 +171,6 @@ of fields can be defaulted (numbers and strings)."
 
 ;; Define methods for:
 ;; type-id, fields, struct-get
-
-;;; Macrology
-
-(defmacro define-corba-struct (name &key id members)
-  (loop
-      for member in members
-      for slot = (car member)
-      for field = (lispy-name (symbol-name slot))
-      collect field into names
-      collect slot into slots
-      collect (list* slot :initarg field :initform (second member)
-                     (cddr member))
-      into slot-defs
-      collect `(defmethod struct-get ((s ,name) (field (eql ,field)))
-                 (slot-value s ',slot))
-      into getters1
-      collect `(define-method ,slot ((s ,name)) (slot-value s ',slot))
-      into getters2
-      collect `(define-method (setf ,slot) (val (s ,name))
-                 (setf (slot-value s ',slot) val))
-      into setters
-      finally
-        (return
-          `(progn
-             (defclass ,name (CORBA:struct) ,slot-defs)
-             (defun ,name (&rest initargs)
-               ,(format nil "Construct CORBA struct ~A.~%Slots: ~S" name names)
-               (apply #'make-instance ',name initargs))
-             (defmethod type-id ((s ,name)) ,id)
-             ,@getters1 ,@getters2 ,@setters
-             (defmethod fields ((s ,name))
-               (loop for f in ',names
-                   for n in ',slots
-                   when (slot-boundp s n)
-                   collect (cons f (slot-value s n))))
-             (add-struct-class ',name ,id)))))
-
-(defmacro define-struct (symbol &key id (name "") members)
-  "  members = (name type slot-name)
-"
-  `(progn
-     (define-corba-struct ,symbol :id ,id 
-       :members ,(loop for (nil nil slot-name) in members
-                       collect (list slot-name nil)))
-     (set-symbol-ifr-id ',symbol ,id)
-     (set-symbol-typecode 
-      ',symbol
-      (lambda ()
-        (create-struct-tc ,id ,name
-                          (list ,@(loop for (name type nil) in members 
-                                        collect `(list ,name ,type))))))))
 
 
 ;;; clorb-struct.lisp ends here

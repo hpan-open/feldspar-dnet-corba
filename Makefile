@@ -6,7 +6,7 @@ sources  = $(msources) $(usources)
 all:
 
 clean:
-	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.bak
+	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl *.ufsl *.dfsl *.bak
 
 tomcl:
 	mv CVS MCVS

@@ -1,5 +1,5 @@
 ;;;; clorb-object.lisp --- CORBA:Object and other pseudo objects
-;; $Id: clorb-object.lisp,v 1.8 2002/10/05 11:13:55 lenst Exp $
+;; $Id: clorb-object.lisp,v 1.9 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -63,17 +63,25 @@
 (defclass CORBA:Object ()
   ())
 
+(defmethod object-id ((obj CORBA:Object))
+  (or (some #'(lambda (x)
+                (let ((n (class-name x)))
+                  (and (symbolp n) (symbol-ifr-id n))))
+            (%SYSDEP "class precedence list"
+                     #+ccl (ccl:class-precedence-list (class-of obj))
+                     (list (class-of obj))))
+      "IDL:omg.org/Object:1.0"))
+
+
 (defclass CORBA:Proxy (CORBA:Object)
   ((id :initform nil :initarg :id :accessor object-id)
    (connection :initform nil :accessor object-connection)
    (host :initform nil :initarg :host :accessor object-host)
    (port :initform nil :initarg :port :accessor object-port)
-   (key :initform nil :initarg :key :accessor object-key)
    (raw-profiles :initform nil :initarg :raw-profiles
                  :accessor object-raw-profiles)
    (profiles :initform nil :initarg :profiles :accessor object-profiles)
    (forward :initform nil :initarg :forward :accessor object-forward)))
-
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
@@ -86,6 +94,14 @@
       (format stream "~A:~A"
               (object-host o)
               (object-port o)))))
+
+(defun object-key (proxy)
+  "Return a key for the proxy."
+  ;; FIXME: this is insufficient in the long run,
+  ;; there need to be two accessors one that always gives the same key
+  ;; and one that gives the key for the selected profile.
+  (iiop-profile-key (first (object-profiles proxy))))
+
 
 (define-method _is_nil ((x null))
   t)
@@ -337,7 +353,6 @@
     :id id
     :host (object-host obj)
     :port (object-port obj)
-    :key  (object-key obj)
     :profiles (object-profiles obj)
     :forward (object-forward obj)
     :profiles (object-profiles obj)

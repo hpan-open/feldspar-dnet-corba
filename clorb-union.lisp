@@ -1,5 +1,5 @@
 ;;;; clorb-union.lisp -- CORBA Union support
-;; $Id: clorb-union.lisp,v 1.3 2002/10/05 13:51:00 lenst Exp $
+;; $Id: clorb-union.lisp,v 1.4 2002/10/19 02:55:55 lenst Exp $
 
 (in-package :clorb)
 
@@ -65,56 +65,4 @@
     (otherwise (loop for i from 0 do (funcall function i)))))
 
 
-(defmacro define-union (symbol &key id (name "") discriminator-type members)
-  "members = (label type &key creator name default)*
-     where labels = () is default member"
-  (let ((used-names '())
-        (code '())
-        (tc-members '()) )
-    (dolist (m members)
-      (destructuring-bind (label type &key creator (name "") default
-                                 (accessor (string-upcase name))) m
-        (push `(list ,(if default ''default label) ,name ,type) 
-              tc-members)
-        (unless (member name used-names :test #'equal)
-          (push name used-names)
-          (push `(progn 
-                   (define-method ,accessor ((obj ,symbol))
-                     (union-value obj))
-                   (define-method (setf ,accessor) (value (obj ,symbol))
-                     (setf (union-discriminator obj) ,label)
-                     (setf (union-value obj) value))
-                   ,(if creator
-                      `(defun ,creator (value)
-                         (,symbol :union-value value :union-discriminator ,label))))
-                code)
-          (when default
-            (push `(progn 
-                     (define-method default ((obj ,symbol)) (union-value obj))
-                     (define-method (setf default) (value (obj ,symbol))
-                       (setf (union-discriminator obj) ,label)
-                       (setf (union-value obj) value))) code)))))
-    
-    `(progn
-       (defclass ,symbol (corba:union) ())
-       (setf (gethash ,id *union-registry*) ',symbol)
-       (defun ,symbol (&key union-value union-discriminator)
-         (make-instance ',symbol 
-           :value union-value
-           :discriminator union-discriminator))
-       (set-symbol-ifr-id ',symbol ,id)
-       (set-symbol-typecode ',symbol
-                            (lambda ()
-                              (create-union-tc ,id ,name
-                                               ,discriminator-type
-                                               (list ,@(nreverse tc-members)))))
-       ,@code)))
-
-
-#|
-(define-union omg.org/root::filter :name "filter" :id "idl:filter.1.0"
-  :discriminator-type corba:tc_long
-  :members ((0 corba:tc_string :name "foo" :creator filter/foo))
-)
-|#
 ;;; clorb-union.lisp ends here
