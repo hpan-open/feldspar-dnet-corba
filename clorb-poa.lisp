@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.9 2002/05/29 05:10:34 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.10 2002/06/01 05:46:38 lenst Exp $
 
 (in-package :clorb)
 
@@ -85,8 +85,7 @@
 
 (define-user-exception ForwardRequest 
     :id "IDL:omg.org/PortableServer/ForwardRequest:1.0"
-    :slots ((forward_reference
-             :initarg :forward_reference)))
+    :members ((forward_reference CORBA:tc_objref)))
 
 (define-user-exception POA/AdapterNonExistent 
     :id "IDL:omg.org/PortableServer/POA/AdapterNonExistent:1.0")
@@ -98,8 +97,7 @@
     :id "IDL:omg.org/PortableServer/POA/ObjectNotActive:1.0")
 
 (define-user-exception POA/WrongAdapter
-    :id "IDL:omg.org/PortableServer/POA/WrongAdapter:1.0"
-    :slots ((types :initform nil)))
+    :id "IDL:omg.org/PortableServer/POA/WrongAdapter:1.0")
 
 (define-user-exception POA/AdapterAlreadyExists
     :id "IDL:omg.org/PortableServer/POA/AdapterAlreadyExists:1.0")
@@ -109,7 +107,7 @@
 
 (define-user-exception POA/InvalidPolicy
     :id "IDL:omg.org/PortableServer/POA/InvalidPolicy:1.0"
-    :slots ((index)))
+    :members ((index CORBA:tc_ushort)))
 
 (define-user-exception POA/NoServant
     :id "IDL:omg.org/PortableServer/POA/NoServant:1.0")
@@ -124,14 +122,14 @@
     :id "IDL:omg.org/PortableServer/POA/ServantNotActive:1.0")
 
 
-;;;; Struct poa-current
+;;;; POA-Current
 
 (defvar *poa-current* nil
-  "The PortableServer::Current object for the current invocation.")
+  "The current invocation data for the PortableServer::Current object.")
 
-(defstruct poa-current
-  POA
-  object-id)
+(defun make-poa-current (poa oid) (cons poa oid))
+(defun poa-current-poa (poa-current) (car poa-current))
+(defun poa-current-object-id (poa-current) (cdr poa-current))
 
 
 ;;;; POA Registry
@@ -396,8 +394,13 @@
 
 
 ;; ----------------------------------------------------------------------
-;;;; Implicit activation
+;;;; Servant methods depending on POA
 ;; ----------------------------------------------------------------------
+
+(defun current-primary-interface (servant)
+  (primary-interface servant 
+                     (poa-current-object-id *poa-current*)
+                     (poa-current-poa *poa-current*)))
 
 (define-method _this ((servant servant))
   (let* ((poa (or (op:_default_POA servant)
@@ -410,6 +413,16 @@
      poa oid
      (primary-interface servant oid poa))))
 
+(define-method _is_a ((servant servant) logical-type-id)
+  (or (equal logical-type-id "IDL:omg.org/CORBA/Object:1.0")
+      (equal logical-type-id (current-primary-interface servant))
+      (op:is_a (op:_get_interface servant) logical-type-id)))
+
+(define-method _get_interface ((servant servant))
+  (handler-case
+      (op:lookup_id (get-ir) (current-primary-interface servant))
+    (error ()
+      (error 'corba:intf_repos))))
 
 ;; ----------------------------------------------------------------------
 ;;;; Request Handling
@@ -435,8 +448,7 @@
 (defun poa-invoke-1 (poa sreq)
   (let* ((oid (server-request-oid sreq))
          (operation (server-request-operation sreq))
-         (*poa-current*
-          (make-poa-current :POA poa :object-id oid))
+         (*poa-current* (make-poa-current poa oid))
          (servant (trie-get oid (POA-active-object-map poa)))
          (cookie nil)
          (topost nil))
