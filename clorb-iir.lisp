@@ -114,7 +114,7 @@
    :operations (list
                 (make-opdef :name "_is_a"
                             :params (list
-                                     (make-param "id" :in corba:tc_string))
+                                     (make-param "id" :param_in corba:tc_string))
                             :result corba:tc_boolean
                             :raises '())
                 (make-opdef :name "_interface"
@@ -189,7 +189,12 @@
                            (struct-get pardesc :mode)
                            (simplify-type (struct-get pardesc :type))))
                   (get-attribute irdef "_get_params" parseq))
-     :result (simplify-type result))))
+     :result (simplify-type result)
+     :raises (map 'list
+                  (lambda (exdef)
+                    (get-attribute exdef "_get_type" CORBA:tc_typecode))
+                  (get-attribute irdef "_get_exceptions" 
+                                 (get-typecode "IDL:omg.org/CORBA/ExceptionDefSeq:1.0"))))))
 
 (defun ir-contents (container limit-type exclude-inherit)
   (let* ((cseq (get-typecode "IDL:omg.org/CORBA/ContainedSeq:1.0")))
@@ -219,8 +224,8 @@
      :id id
      :inherit
      (or (map 'list
-           #'interface-from-def-cached
-           (get-attribute def "_get_base_interfaces" idseq))
+              #'interface-from-def-cached
+              (get-attribute def "_get_base_interfaces" idseq))
          (list *object-interface*))
      :operations
      (nconc (mapcan #'opdef-from-attrdef (coerce (ir-contents def 2 t) 'list))
