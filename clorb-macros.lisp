@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.18 2003/11/24 09:04:54 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.19 2004/06/09 21:10:23 lenst Exp $
 
 (in-package :clorb)
 
@@ -177,6 +177,16 @@
            ,@defaults))
        ,@(mapcar #'(lambda (attspec) (attribute-ops attspec name))
                  asl))))
+
+
+;;;; With Cache Slot
+
+(defmacro with-cache-slot ((object slot) &body body)
+  (let ((objvar (gensym)))
+    `(let ((,objvar ,object))
+       (if (slot-boundp ,objvar ',slot)
+         (slot-value ,objvar ',slot)
+         (setf (slot-value ,objvar ',slot) (progn ,@body))))))
 
 
 ;;; clorb-macros.lisp ends here
