@@ -13,42 +13,40 @@
     (let* ((name "foo")
            (id "IDL:foo:1.0")
            (sub-id "IDL:mod/foo:1.0")
-           (obj (op:create_enum repository id name "1.0" '("fie" "fum"))))
+           (obj (op:create_enum repository id name "1.0" '("fie" "fum")))
+           (module (op:create_module repository "my-module" "mod" "1.1"))
+           (sub-obj (op:create_enum module sub-id name "1.0" '("fie" "fum"))))
       (ensure-eql (op:lookup repository name) obj)
       (ensure-eql (op:lookup_id repository id) obj)
-      (ensure-equalp (op:id obj) id)
-      (ensure-equalp (op:name obj) name)
-      (ensure-equalp (op:version obj) "1.0")
-      (ensure-eql (op:defined_in obj) repository)
-      (ensure-eql (op:containing_repository obj) repository)
-      (ensure-equalp (op:absolute_name obj)
-                     (concatenate 'string "::" name))
-      (let ((desc (op:describe obj)))
-        (ensure desc)
-        (ensure-equalp (op:kind desc) :dk_enum)
-        (setq desc (op:value desc))
-        (ensure desc))
-      (let* ((module (op:create_module repository "my-module" "mod" "1.1"))
-             (obj (op:create_enum module sub-id name "1.0" '("fie" "fum"))))
-        (ensure-eql (op:defined_in obj) module)
-        (ensure-eql (op:containing_repository obj) repository)
-        (ensure-eql (op:lookup_id repository sub-id) obj)
-        (ensure-equalp (op:absolute_name obj)
-                       (concatenate 'string (op:absolute_name module) "::" name))
-        ;; FIXME: test void move (in Container new_container, in Identifier new_name, in VersionSpec new_version);
-        )
+      (ensure-pattern* obj 'op:id id 'op:name name 'op:version "1.0"
+                       'op:defined_in repository
+                       'op:containing_repository repository
+                       'op:absolute_name (concatenate 'string "::" name)
+                       'op:describe (struct-pattern
+                                     'struct-class-name 'CORBA:Contained/Description
+                                     'op:kind :dk_enum 'op:value (struct-pattern)))
+      (ensure-pattern* sub-obj 'op:defined_in module 'op:containing_repository repository
+                       'op:absolute_name (concatenate 'string (op:absolute_name module) "::" name))
+      (ensure-eql (op:lookup_id repository sub-id) sub-obj)
+      ;; FIXME: test void move (in Container new_container, in Identifier new_name, in VersionSpec new_version);
+      ;; Change ID
       (let ((new-id "IDL:foob:1.1"))
         (setf (op:id obj) new-id)
         (ensure-equalp (op:id obj) new-id)
         (ensure-eql (op:lookup_id repository new-id) obj)
         (ensure-eql (op:lookup_id repository id) nil)
-        (handler-case (setf (op:id obj) sub-id)
-          (corba:bad_param (exc)
-                           (ensure-eql (op:minor exc) 2))
-          (condition ()
-                     (ensure nil "Wrong condition type"))
-          (:no-error ()
-                     (ensure nil "No exception for duplicated RID"))))))
+        (ensure-exception (setf (op:id obj) sub-id)
+                          corba:bad_param 'op:minor 2))
+      ;; Change Name
+      (let ((new-name "barbar"))
+        (ensure-exception (setf (op:name obj) "mod")
+                          corba:bad_param 'op:minor 1)
+        (setf (op:name obj) new-name)
+        (ensure-pattern* obj 
+                         'op:absolute_name (format nil "::~A" new-name)
+                         'op:type (pattern 'op:name new-name))
+        (setf (op:name module) "xmod")
+        (ensure-pattern* sub-obj 'op:absolute_name "::xmod::foo"))))
 
 
   (define-test "Container"
@@ -305,6 +303,7 @@
                         'op:type (pattern 'op:kind :tk_value_box
                                           'op:id id)))))
 
+
   (define-test "Native"
     (let* ((id "IDL:my/servant:1.1")
            (name "servant")
@@ -316,6 +315,7 @@
                         'op:type (pattern 'op:kind :tk_native
                                           'op:id id)))))
 
+
   (define-test "AbstractInterfaceDef"
     (let* ((id "IDL:my/Interface:1.1")
            (name "Interface")
@@ -325,6 +325,7 @@
       (ensure (op:is_a obj "IDL:omg.org/CORBA/AbstractBase:1.0") "isa AbstractBase")
       (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)))
 
+
   (define-test "LocalInterfaceDef"
     (let* ((id "IDL:my/Interface:1.1")
            (name "Interface")
@@ -332,14 +333,12 @@
            (obj (op:create_local_interface repository id name version '())))
       (ensure (op:is_a obj id) "isa Self")
       (ensure (op:is_a obj "IDL:omg.org/CORBA/LocalBase:1.0") "isa LocalBase"))
-
     ;; Setting the inherited base_interfaces attribute causes a
     ;; BAD_PARAM exception with standard minor code 5 to be raised if
     ;; the name attribute of any object contained by this
     ;; LocalInterfaceDef conflicts with the name attribute of any
     ;; object contained by any of the specified base InterfaceDefs
     ;; (local or otherwise).
-
     )
     
 
@@ -353,8 +352,8 @@
                                        (CORBA:StructMember :name "size" :type_def a-ulong)))))
            (val (op:create_value repository id name ver nil nil nil nil nil nil init))
            (val2 (op:create_value repository id2 name2 ver nil nil val nil nil nil nil))
-           (vm1 (op:create_value_member val "IDL:my/val/a:1.0" "a" "1.0" a-ulong omg.org/corba:private_member))
-           (vm2 (op:create_value_member val2 "IDL:my/val/b:1.0" "b" "1.0" a-string omg.org/corba:public_member))
+           (vm1 (op:create_value_member val "IDL:my/val/a:1.0" "a" "1.0" a-ulong corba:private_member))
+           (vm2 (op:create_value_member val2 "IDL:my/val/b:1.0" "b" "1.0" a-string corba:public_member))
            (a1  (op:create_attribute val "IDL:my/val/at:1.0" "at" ver a-string :attr_readonly))
            (op1 (op:create_operation val "IDL:my/val/op1:1.0" "op1" ver a-ulong :op_normal nil nil nil)))
       (ensure-repository 
@@ -398,7 +397,75 @@
        (sequence-pattern vm1 vm2))
       (ensure-pattern
        (op:contents val2 :dk_operation nil)
-       (sequence-pattern op1))))
+       (sequence-pattern op1))
+      
+      ;; Setting supported interfaces
+      (let ((i1 (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
+            (i2 (omg.org/features:create_abstract_interface repository "IDL:my/Interface2:1.1" "IDL:my/Interface2:1.1" "Interface2" '()))
+            (i3 (op:create_interface repository "IDL:my/Interface3:1.0" "Interface2" "1.0" '())))
+        (setf (op:supported_interfaces val) (list i1 i2))
+        ;; Only one non-abstract interface
+        (ensure-exception
+         (setf (op:supported_interfaces val) (list i1 i2 i3))
+         corba:bad_param 'op:minor 12)
+        (ensure-exception 
+         (op:create_value repository "IDL:my/ValX1:1.0" "ValX1"
+                          ver nil nil nil nil nil (list i1 i2 i3) init)
+         corba:bad_param 'op:minor 12)
+        ;; Can't have same name in ValueDef as in some supported interface
+        (setf (op:supported_interfaces val) (list))
+        (op:create_attribute i1 "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
+        (ensure-exception 
+         (setf (op:supported_interfaces val) (list i1))
+         corba:bad_param 'op:minor 5))
 
+      ;; Creating ValueMember
+      (ensure-pattern* vm1 'op:id "IDL:my/val/a:1.0" 'op:name "a"
+                       'op:type_def a-ulong 'op:type CORBA:Tc_Ulong
+                       'op:defined_in val)
+      (ensure-exception                 ; same id
+       (op:create_value_member val "IDL:my/val/a:1.0" "a2" "1.0" a-ulong corba:private_member)
+       CORBA:BAD_PARAM 'op:minor 2)
+      (ensure-exception                 ; same name
+       (op:create_value_member val "IDL:my/val/a2:1.0" "a" "1.0" a-ulong corba:private_member)
+       CORBA:BAD_PARAM 'op:minor 3)
+      ;; same name as inherited, OK ?
+      (op:create_value_member val2 "IDL:my/val/a2:1.0" "a" "1.0" a-ulong corba:private_member)
+
+      ;; Create attribute
+      (ensure-pattern* a1 'op:id "IDL:my/val/at:1.0" 'op:name "at" 'op:version ver
+                       'op:type_def a-string 'op:mode :attr_readonly
+                       'op:type CORBA:tc_string 'op:defined_in val)
+      (ensure-exception                 ; same name
+       (op:create_attribute val "IDL:my/val/at2:1.0" "at" ver a-string :attr_readonly)
+       CORBA:BAD_PARAM 'op:minor 3)
+      ;; same name as inherited, OK ?
+      (op:create_attribute val2 "IDL:my/val/at2:1.0" "at" ver a-string :attr_readonly)
+
+      ;; Create Operation
+      (ensure-pattern* op1 'op:id "IDL:my/val/op1:1.0" 'op:name "op1" 'op:version ver
+                       'op:result_def a-ulong 'op:mode :op_normal
+                       'op:params (sequence-pattern) 'op:exceptions (sequence-pattern)
+                       'op:contexts (sequence-pattern)
+                       'op:result CORBA:Tc_ulong 'op:defined_in val )
+      (ensure-exception                 ; same name
+       (op:create_operation val "IDL:my/val/op1x:1.0" "op1" ver a-ulong :op_normal nil nil nil)
+       CORBA:BAD_PARAM 'op:minor 3)
+      ;; same name as inherited, OK ?
+      (op:create_operation val2 "IDL:my/val/op1x:1.0" "op1" ver a-ulong :op_normal nil nil nil)
+
+      ;; ValueDef cannot contain ModuleDef, InterfaceDef, AbstractInterfaceDef..
+      ;; A ValueDef used as a Container may only contain TypedefDef, (including
+      ;; definitions derived from TypedefDef), ConstantDef, and ExceptionDef definitions.
+      (ensure-exception
+       (op:create_module val "my-module" "mod" "1.1")
+       CORBA:BAD_PARAM 'op:minor 4)
+      (ensure-exception
+       (op:create_interface val "IDL:my/InterfaceXX:1.1" "InterfaceXX" "1.1" '())
+       CORBA:BAD_PARAM 'op:minor 4)
+      
+
+      #| end valuedef test |#))
+  
 
 )

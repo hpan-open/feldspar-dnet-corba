@@ -113,6 +113,13 @@
       (setf (gethash new-id (idmap repository)) obj)
       (setf (slot-value obj 'id) new-id))))
 
+(defmethod (setf op:name) :before (value (obj contained))
+  (loop for peer in (contents (op:defined_in obj))
+        unless (eq obj peer)
+        do (when (string-equal value (op:name peer))
+             (error 'corba:bad_param :minor 1))))
+
+
 (define-method absolute_name ((obj contained))
   (unless (and (slot-boundp obj 'absolute_name)
                (not (equal (slot-value obj 'absolute_name)
@@ -140,6 +147,11 @@
                     :initform '()
                     :accessor contents))
   :defaults ())
+
+
+(defmethod slot-updated :after ((obj Container))
+  (dolist (c (contents obj)) (slot-updated c)))
+
 
 (defmethod addto ((c container) (object contained))
   (let ((repository (op:containing_repository c))
@@ -559,7 +571,7 @@
 (define-method is_a ((def interface-def) interface-id)
   (or
    (equal (subject-id def) interface-id)
-   (equal interface-id (interface-id *object-interface*))
+   (equal interface-id (symbol-ifr-id 'corba:object))
    (some (lambda (b) (equal interface-id (op:id b)))
          (op:base_interfaces def))))
 
@@ -1135,6 +1147,32 @@
   (doseq (i (slot-value self 'initializers))
     (doseq (m (op:members i))
       (setf (op:type m) (op:type (op:type_def m))))))
+
+(defun check-only-one-non-abstract (interface-seq)
+  (let ((non-abstract 0))
+    (doseq (i interface-seq)
+      (unless (typep i 'omg.org/corba:abstractinterfacedef)
+        (when (> (incf non-abstract) 1)
+          (error 'CORBA:BAD_PARAM :minor 12))))))
+
+(define-method (setf op:supported_interfaces) :before (value (self value-def))
+  (check-only-one-non-abstract value)
+  (loop for obj in (contents self) 
+        for name = (op:name obj) 
+        do (loop for base in value do
+                 (check-unique-name base name :minor 5))))
+
+
+(defmethod initialize-instance :before ((def Value-Def) &key supported_interfaces)
+  (check-only-one-non-abstract supported_interfaces))
+
+(defmethod addto :before ((c Value-Def) (object contained))
+  (typecase object 
+    ((or Operation-Def ValueMember-Def Attribute-Def
+         Typedef-Def Constant-Def Exception-Def))
+    (otherwise
+     (error 'CORBA:BAD_PARAM :minor 4))))
+
 
 (defmethod describe-contained ((def Value-Def))
   (corba:ValueDescription 
