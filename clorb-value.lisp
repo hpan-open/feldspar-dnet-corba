@@ -13,7 +13,9 @@
   :constant (corba::TC_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
                                  CORBA::VM_NONE nil ())
   :share named-typecode :shared-params 2
-  :extra-slots (truncatable-interfaces member-types feature-symbols))
+  :extra-slots (truncatable-interfaces 
+                member-types all-member-types 
+                feature-symbols all-feature-symbols ))
 
 
 (defmacro define-value (symbol &key id name base_value 
@@ -105,13 +107,35 @@
   (funcall *unmarshal-record-register* obj))
 
 
-(defun unmarshal-record (func buffer &optional tag-type)
+(defun unmarshal-chunk-tag (buffer)
+  (when chunking-p
+    (unless *chunk-end*
+      (let ((tag (without-chunking (buffer) (unmarshal-long buffer))))
+        (cond ((< 0 tag min-value-tag)
+               (setf *chunk-end* (+ tag (buffer-position buffer)))
+               nil)
+              (t
+               tag))))))
+
+(defconstant signed-indirection-tag -1)
+(defconstant unsigned-indirection-tag #xFFFFFFFF)
+
+(defun unmarshal-record (func buffer &optional tag-type &rest args)
+  ;; Unmarshal with support for indirection and NULL values
   (let ((tag (ecase tag-type
                (:unsigned (unmarshal-ulong buffer))
+               (:chunk-tag (unmarshal-chunk-tag buffer))
                ((:signed nil) (unmarshal-long buffer)))))
+    (when (eql tag-type :chunk-tag)
+      (cond ((null tag)
+             (setq tag (unmarshal-long buffer)))
+            ((< tag min-value-tag)
+             (mess 5 "Non value-tag")
+             (error 'CORBA:MARSHAL))))
     (cond ((zerop tag) nil)
-          ((if (or (null tag-type) (eql tag-type :signed))
-             (= tag -1) (= tag #xFFFFFFFF))
+          ((if (eql tag-type :unsigned)
+             (= tag unsigned-indirection-tag) 
+             (= tag signed-indirection-tag))
            (let ((pos (+ (buffer-position buffer)
                          (unmarshal-long buffer))))
              (or (gethash pos (buffer-record buffer))
@@ -129,7 +153,7 @@
                       obj))
                (let ((*unmarshal-record-register* #'register))
                  (register (if tag-type 
-                             (funcall func tag)
+                             (apply func tag args)
                              (funcall func buffer))))))))))
 
 
@@ -147,80 +171,12 @@
 
 
 
-;;;; marshall value
-
+;;;; Marshall Value
 
 
 (defvar *chunk-tail* nil)
 
-
-(defun marshal-value-header (repoid chunking buffer)
-  ;; Write the value header with chunking flag if indicated and
-  ;; with repoid, can be NIL - no id, a string, or a list of strings.
-  (let ((tag min-value-tag))
-    (if chunking (incf tag #x08))
-    (when repoid (incf tag (if (consp repoid) #x06 #x02)))
-    (marshal-long tag buffer))
-  (cond ((consp repoid)
-         (marshal-record repoid #'marshal-string-sequence buffer))
-        (repoid (marshal-string-record repoid buffer))))
-
-
-(defmethod marshal (value (tc-formal value-typecode) buffer)
-  (flet ((marshal-value (value buffer)
-           (let* ((id (object-id value))
-                  (exact-type (equal id (op:id tc-formal)))
-                  (value-class (ifr-id-symbol id))
-                  tc)
-             (assert value-class)
-             (setq tc (if exact-type tc-formal (symbol-typecode value-class)))
-             (let ((truncatable (and (not exact-type)
-                                     (eql corba:vm_truncatable (op:type_modifier tc)))))
-               (let ((chunking (or truncatable (> *chunking-level* 0)))
-                     (repoid (cond (truncatable (truncatable-interfaces tc))
-                                   ((not exact-type) id))))
-                 (marshal-value-header repoid chunking buffer)
-                 (do ((this   (op:concrete_base_type tc)
-                              (op:concrete_base_type this))
-                      (types  (tc-member-types tc)
-                              (append (tc-member-types this) types))
-                      (values (tc-feature-values tc value)
-                              (nconc (tc-feature-values this value) values)))
-                     ((null this)
-                      (marshal-value-state chunking values types buffer))))))))
-    (marshal-record value #'marshal-value buffer)))
-
-
-(defvar *chunk-start*)
-
-
-(defun tc-feature-values (tc value)
-  (loop for feature in (tc-feature-symbols tc)
-        collect (slot-value value feature)))
-
-
-(defun marshal-value-state (chunking values types buffer)
-  (flet ((chunk-marshal (v tc buffer)
-           (let ((new-value (and (typep v 'CORBA::ValueBase)
-                                 (not (gethash v (buffer-record buffer))))))
-             (cond ((and new-value *chunk-start*)
-                    (end-chunk buffer))
-                   ((and (not *chunk-start*) (not new-value))
-                    (start-chunk buffer)))
-             (marshal v tc buffer))))
-    (cond (chunking
-           (let ((*chunking-level* (1+ *chunking-level*))
-                 (*chunk-start* nil))
-             (let ((*chunk-tail* nil))
-               (loop for (val . more) on values and tc in types
-                     do (setq *chunk-tail* (not more))
-                     (chunk-marshal val tc buffer)))
-             (when *chunk-start* (end-chunk buffer))
-             (unless *chunk-tail*
-               (marshal-long (- *chunking-level*) buffer))))
-          (t
-           (marshal-multiple values types buffer)))))
-
+(defvar *chunk-start* nil)
 
 (defun start-chunk (buffer)
   (with-out-buffer (buffer)
@@ -231,12 +187,84 @@
 (defun end-chunk (buffer)
   (when *chunk-start*
     (with-out-buffer (buffer)
-      (let ((old-pos pos))
-        (setf pos *chunk-start*)
-        (marshal-long (- old-pos pos 4) buffer)
-        (setf pos old-pos)))
+      (if (= *chunk-start* (- pos 4))
+        (incf pos -4)                   ; empty chunk, remove
+        (let ((old-pos pos))
+          (setf pos *chunk-start*)
+          (marshal-long (- old-pos pos 4) buffer)
+          (setf pos old-pos))))
     (setf *chunk-start* nil)))
 
+
+
+(defun marshal-value-header (repoid chunking buffer)
+  ;; Write the value header with chunking flag if indicated and
+  ;; with repoid, can be NIL - no id, a string, or a list of strings.
+  (end-chunk buffer)
+  (let ((tag min-value-tag))
+    (if chunking (incf tag #x08))
+    (when repoid (incf tag (if (consp repoid) #x06 #x02)))
+    (marshal-long tag buffer))
+  (cond ((consp repoid)
+         (marshal-record repoid #'marshal-string-sequence buffer))
+        (repoid (marshal-string-record repoid buffer))))
+
+
+(defun all-member-types (tc)
+  (and tc
+       (with-cache-slot (tc all-member-types)
+         (append (all-member-types (op:concrete_base_type tc))
+                 (tc-member-types tc)))))
+
+(defun all-feature-symbols (tc)
+  (and tc
+       (with-cache-slot (tc all-feature-symbols)
+         (append (all-feature-symbols (op:concrete_base_type tc))
+                 (tc-feature-symbols tc)))))
+
+(defun all-feature-values (tc value)
+  (loop for feature in (all-feature-symbols tc) 
+        collect (slot-value value feature)))
+
+
+(defun marshal-value-state (chunking values types buffer)
+  (cond (chunking
+         (let ((*chunking-level* (1+ *chunking-level*))
+               (*chunk-start* nil))
+           (let ((*chunk-tail* nil))
+             (loop for (val . more) on values and tc in types
+                   do (setq *chunk-tail* (not more))
+                   (unless *chunk-start* (start-chunk buffer))
+                   (marshal val tc buffer)))
+           (end-chunk buffer)
+           (unless *chunk-tail*       ; end-tag, unless in tail of enclosing value
+             (marshal-long (- *chunking-level*) buffer))))
+        (t
+         (marshal-multiple values types buffer))))
+
+
+(defun marshal-value (value buffer &optional expected-id)
+  (flet ((marshal-value-1 (value buffer)
+           (let ((id (object-id value)))
+             (let ((exact-type (equal id expected-id))
+                   (value-class (ifr-id-symbol id)))
+               (assert value-class)
+               (let ((tc (symbol-typecode value-class)))
+                 (let ((truncatable (and (not exact-type)
+                                         (eql corba:vm_truncatable (op:type_modifier tc)))))
+                   (let ((chunking (or truncatable (> *chunking-level* 0)))
+                         (repoid (cond (truncatable (truncatable-interfaces tc))
+                                       ((not exact-type) id))))
+                     (marshal-value-header repoid chunking buffer)
+                     (marshal-value-state chunking 
+                                          (all-feature-values tc value)
+                                          (all-member-types tc)
+                                          buffer))))))))
+    (marshal-record value #'marshal-value-1 buffer)))
+
+
+(defmethod marshal (value (tc-formal value-typecode) buffer)
+  (marshal-value value buffer (op:id tc-formal)))
 
 
 
@@ -249,7 +277,7 @@
 
 
 
-;;;; unmarshal value
+;;;; Unmarshal Value
 
 
 (defun unmarshal-value-header (valuetag buffer)
@@ -278,7 +306,7 @@
      (rewind-tag () (incf (buffer-position buffer) -4))
      (truncating ()
        (unless truncate
-         (mess 4 "Truncating a non truncatable value")
+         (mess 5 "Truncating a non truncatable value")
          (error 'CORBA:MARSHAL)))
      (truncate-chunk ()
        (when *chunk-end*
@@ -316,18 +344,17 @@
         (if chunking-p (find-end-of-value))))))
 
 
+
 (defun unmarshal-value (buffer &optional expected-id)
-  (unmarshal-record
-   (lambda (buffer) 
-     (without-chunking (buffer)
-       (let ((valuetag (unmarshal-long buffer)))
-         (unless (zerop valuetag)
-           (unmarshal-value-1 valuetag buffer expected-id)))))
-   buffer))
+  (unmarshal-record #'unmarshal-value-1 buffer :chunk-tag
+                    buffer expected-id))
+
 
 (defun unmarshal-value-1 (valuetag buffer expected-id)
+  (assert (or (not chunking-p) (not *chunk-end*)))
   (multiple-value-bind (chunked repoid)
-                       (unmarshal-value-header valuetag buffer)
+                       (without-chunking (buffer)
+                         (unmarshal-value-header valuetag buffer))
     (let (tc symbol truncate)
       (unless repoid
         (setq repoid expected-id))
@@ -406,7 +433,8 @@
   (marshal-record box
                   (lambda (box buffer)
                     (let ((chunking (not (zerop *chunking-level*))))
-                      (marshal-value-header nil chunking buffer)
+                      (end-chunk buffer)
+                      (marshal-value-header (op:id tc) chunking buffer)
                       (marshal-value-state chunking
                                            (list (box-data box))
                                            (list (op:content_type tc))
@@ -416,7 +444,9 @@
 (defmethod unmarshal ((tc value_box-typecode) buffer)
   (unmarshal-record
    (lambda (tag)
-     (multiple-value-bind (chunked repoid) (unmarshal-value-header tag buffer)
+     (multiple-value-bind (chunked repoid)
+                          (without-chunking (buffer)
+                            (unmarshal-value-header tag buffer))
        (assert (or (null repoid)
                    (equal (car (mklist repoid)) (op:id tc))))
        (let ((initargs (unmarshal-value-state
@@ -426,5 +456,53 @@
             (apply #'make-instance (or (ifr-id-symbol (op:id tc)) 'value-box)
                    initargs))
            (t (second initargs))))))
-   buffer :signed))
-           
+   buffer :chunk-tag))
+
+
+
+;;;; AbstractInterface
+
+
+(define-typecode abstract_interface-typecode
+  :kind :tk_abstract_interface
+  :cdr-syntax (complex :tk_string :tk_string)
+  :params (id name)
+  :share named-typecode :shared-params 2)
+
+
+(defmacro define-abstract-interface (symbol super &key (id "") proxy (name "") mixin)
+  `(progn
+     (set-symbol-id/typecode ',symbol ,id (create-abstract-interface-tc ,id ,name))
+     (setf (get ',symbol 'ifr-bases) ',super)
+     (defclass ,mixin () ())
+     (defclass ,symbol (,mixin ,@super) ())
+     ,@(if proxy
+         `((defclass ,(car proxy) (,mixin ,@(cdr proxy)) ())
+           (register-proxy-class ,id ',(car proxy))))
+     (defmethod object-id ((obj ,mixin))
+       ,id)
+     (defmethod object-is-a or ((obj ,mixin) interface-id)
+       (string= interface-id ,id))))
+  
+
+(defmethod marshal (obj (tc abstract_interface-typecode) buffer)
+  (assert (or (null obj) (op:_is_a obj (op:id tc))))
+  (etypecase obj
+    (CORBA:Proxy
+     (marshal-bool t buffer)
+     (marshal-object obj buffer))
+    ((or NULL CORBA:ValueBase)
+     (marshal-bool nil buffer)
+     (marshal-value obj buffer))
+    ;; this is doubtful as the spec says requires that
+    ;; "the object is already registered with the ORB/OA"
+    (CORBA:Object
+     (marshal-bool t buffer)
+     (marshal-object obj buffer))))
+
+
+(defmethod unmarshal ((tc abstract_interface-typecode) buffer)
+  (let ((case-label (unmarshal-bool buffer)))
+    (if case-label
+      (unmarshal-object buffer (op:id tc))
+      (unmarshal-value buffer))))
