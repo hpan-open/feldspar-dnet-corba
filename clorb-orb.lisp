@@ -2,7 +2,6 @@
 
 (in-package :clorb)
 
-
 (defvar *the-orb* nil)
 
 (defvar *default-initial-references*
@@ -11,12 +10,19 @@
       ("InterfaceRepository" 
        . ,(lambda (orb) (object-from-var orb *interface-repository*)))))
 
+
+;;;  interface ORB {				// PIDL
+
 (define-corba-class ORB ()
   :slots 
   ((adaptor :initform nil :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
    (initial-references :initarg :initial-references
                        :accessor orb-initial-references)))
+
+;;;    exception InvalidName {}; 
+(define-user-exception CORBA:ORB/InvalidName
+    :id "IDL:omg.org/CORBA/ORB/InvalidName:1.0")
 
 ;;; (Object) Adaptor interface
 (defgeneric listner-sockets (adaptor))
@@ -36,7 +42,8 @@
   (setf (orb-active *the-orb*) t)
   *the-orb*)
 
-(define-method op::shutdown ((orb orb))
+;;;    void shutdown( in boolean wait_for_completion );
+(define-method shutdown ((orb orb) wait_for_completion)
   (setf (orb-active orb) nil))
 
 (defvar *running-orb* nil
@@ -90,16 +97,17 @@ Returns
          :cant)
         ((nil) nil)))))
 
-
-
-(define-method op::string_to_object ((orb orb) str) 
-  (orb-string-to-object orb str))
-
-(define-method op::object_to_string ((orb orb) obj)
-  (orb-object-to-string orb obj))
-
-(defun orb-string-to-object (orb str)
+;;;    Object string_to_object (in string str);
+(define-method string_to_object ((orb orb) str) 
   (declare (ignore orb))
+  (string-to-object str))
+
+;;;    string object_to_string (in Object obj);
+(define-method object_to_string ((orb orb) obj)
+  (declare (ignore orb))
+  (object-to-string obj))
+
+(defun string-to-object (str)
   (unless (string-equal "IOR:" str :end2 4)
     ;;(wildcard:match "IOR:*" str)
     (error "Illegal object reference: ~A" str))
@@ -112,8 +120,7 @@ Returns
                  :element-type '(unsigned-byte 8))
      #'unmarshal-ior)))
 
-(defun orb-object-to-string (orb objref)
-  (declare (ignore orb))
+(defun object-to-string (objref)
   (format nil
 	  "IOR:~{~2,'0X~}"
 	  (map 'list #'identity (marshal-make-encapsulation
@@ -121,7 +128,7 @@ Returns
                                    (marshal-ior objref buffer))))))
 
 (defun file-to-object (orb file)
-  (op::string_to_object orb
+  (op:string_to_object orb
                         (with-open-file (fs file :direction :input)
                           (read-line fs))))
 
@@ -130,31 +137,37 @@ Returns
    ((and (stringp refstring)
          (> (length refstring) 4)
          (string-equal "IOR:" refstring :end2 4))
-    (op::string_to_object orb refstring))
+    (op:string_to_object orb refstring))
    (t
     (file-to-object orb refstring))))
 
 
-(define-method op::list_initial_references ((orb orb))
+;;;    ObjectIdList list_initial_services (); 
+(define-method list_initial_references ((orb orb))
   (mapcar #'car (orb-initial-references orb)))
 
-(define-method op::resolve_initial_references ((orb orb) name)
+;;;    Object resolve_initial_references (in ObjectId identifier)
+;;;      raises (InvalidName); 
+(define-method resolve_initial_references ((orb orb) name)
   (let ((ref-entry
          (assoc name (orb-initial-references orb)
          :test #'equal)))
     (unless ref-entry
-      (error 'object-not-exist))
+      (error 'ORB/InvalidName))
     (funcall (cdr ref-entry) orb)))
 
-(define-method op::work_pending ((orb orb))
+;;;    boolean work_pending(  );
+(define-method work_pending ((orb orb))
   ;; FIXME
   t)
 
-(define-method op::perform_work ((orb orb))
+;;;    void perform_work( );
+(define-method perform_work ((orb orb))
   (let ((*running-orb* t))
     (orb-wait orb nil)))
 
-(define-method op::run ((orb orb))
+;;;    void run();
+(define-method run ((orb orb))
   (let ((*running-orb* t))
     (loop while (orb-active orb)
         do (orb-wait orb nil))))
@@ -164,3 +177,25 @@ Returns
 
 (defun orb-port (orb)
   (listner-port (adaptor orb)))
+
+;;;    Status create_list ( in long    count,	 
+;;;                         out NVList new_list );
+;;;    Status create_operation_list ( in OperationDef oper, 
+;;;                                   out NVList      new_list );
+;;;
+;;;    Status get_default_context (out Context ctx);
+;;;    boolean get_service_information (in ServiceType         service_type,
+;;;                                     out ServiceInformation service_information );
+;;;    // get_current deprecated operation - should not be used by new code
+;;;    // new code should use resolve_initial_reference operation instead
+;;;    Current get_current();
+;;;    // deprecate get_current in the next major printing of CORBA
+;;;
+;;;
+;;;    typedef string ObjectId;
+;;;    typedef sequence <ObjectId> ObjectIdList; 
+;;;    
+
+
+
+
