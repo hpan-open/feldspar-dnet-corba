@@ -9,7 +9,7 @@
 (net.cddr.clorb.system:set-load-opts
  :server t  :idlcomp nil  :my-idlparser t
  :portable-interceptor t  :support-test t)
-(clorb:reload)
+(net.cddr.clorb.system:reload)
 |#
 
 #+(or)
@@ -35,6 +35,11 @@
 
 (defun use-mcl-ns ()
   (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::127.0.0.1:4711/NameService")))
+
+(defun use-quad-mcl-ns ()
+  (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::quad.local.:4711/NameService")))
+
+
 
 
 (defun run ()
@@ -100,3 +105,15 @@
       (make-pathname :host (pathname-host home)
                      :directory (subseq (pathname-directory home) 0 2)
                      :device (pathname-device home))))
+
+
+(defun obj (str &optional type)
+  (let ((proxy (op:string_to_object *the-orb* str)))
+    (if type
+      (net.cddr.clorb::nobject-narrow proxy type)
+      proxy)))
+
+;; Federate
+;;(op:bind_context (net.cddr.clorb::get-ns) (net.cddr.clorb::ns-name "main") (obj "corbaloc::/NameService" 'cosnaming:namingcontextext))
+;;(op:bind_context (net.cddr.clorb::get-ns) (net.cddr.clorb::ns-name "saturn") (obj "corbaloc::saturn.local./NameService" 'cosnaming:namingcontextext))
+

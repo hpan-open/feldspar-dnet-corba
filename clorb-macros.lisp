@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.19 2004/06/09 21:10:23 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.20 2004/12/28 00:03:36 lenst Exp $
 
 (in-package :clorb)
 
@@ -40,6 +40,15 @@
   #-clisp
   `(defmethod make-load-form ((obj ,class) &optional env)
      (make-load-form-saving-slots obj :environment env)))
+
+
+
+;;;; Debugging
+
+(defmacro dbgt (form)
+  `(let ((.val. ,form))
+     (format t "~&~S~% = ~S~%" ',form .val.)
+     .val.))
 
 
 ;;;; Operations
