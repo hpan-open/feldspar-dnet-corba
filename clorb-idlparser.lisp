@@ -468,21 +468,40 @@
 
 ;;;; Constant Declaration
 
+
 (defun <const_dcl> (&aux type name value)
   (seq "const" 
        (-> (<const_type>) type)
        (-> (<identifier>) name)
        "=" 
        (-> (<const_exp>) value)
-       (action (named-create *container* #'op:create_constant name
-                             type 
-                             (corba:any :any-typecode (op:type type)
-                                        :any-value value)))))
+       (action
+         (cond ((equal type "fixed")
+                (unless (idl-fixed-p value)
+                  (error "A a fixed literal needed: ~A" value))
+                (multiple-value-bind (digits scale number) (idl-fixed-values value)
+                  (setq type (op:create_fixed *the-repository* digits scale))
+                  (setq value (rationalize number)))))
+         (named-create *container* #'op:create_constant name
+                       type 
+                       (corba:any :any-typecode (op:type type)
+                                  :any-value value)))))
 
 (defun <const_type> ()
+  ;; The <scoped_name> in the <const_type> production must be a previously defined
+  ;; name of an <integer_type>, <char_type>, <wide_char_type>, <boolean_type>,
+  ;; <floating_pt_type>, <string_type>, <wide_string_type>, <octet_type>, or
+  ;; <enum_type> constant.
   (alt
-   (seq "fixed")                    ; FIXME: ???
-   (<simple_type_spec> :disallow-kind '(:tk_struct :tk_union))))
+   (seq "fixed")
+   (<simple_type_spec>
+    :allow-kind '(:tk_short :tk_ushort 
+                  :tk_long :tk_ulong 
+                  :tk_longlong :tk_ulonglong
+                  :tk_char :tk_wchar :tk_boolean
+                  :tk_float :tk_double :tk_longdouble
+                  :tk_string :tk_wstring :tk_octet 
+                  :tk_enum))))
 
 
 
@@ -528,11 +547,34 @@
                     (seq "<<" (-> (<add_expr>) y) (action (setq x (<< x y))))))
          (action x))))
 
+
+(defmethod add ((n1 cons) (n2 cons))
+  ;; Assume fixed
+  (multiple-value-bind (d1 s1 m1) (idl-fixed-values n1)
+    (multiple-value-bind (d2 s2 m2) (idl-fixed-values n2)
+      (make-idl-fixed (+ (max (- d1 s1) (- d2 s2)) (max s1 s2) 1)
+                      (max s1 s2)
+                      (+ m1 m2)))))
+  
+(defmethod add (n1 n2)
+  (+ n1 n2))
+
+(defmethod sub ((n1 cons) (n2 cons))
+  (multiple-value-bind (d1 s1 m1) (idl-fixed-values n1)
+    (multiple-value-bind (d2 s2 m2) (idl-fixed-values n2)
+      (make-idl-fixed (+ (max (- d1 s1) (- d2 s2)) (max s1 s2) 1)
+                      (max s1 s2)
+                      (- m1 m2)))))
+
+(defmethod sub (n1 n2)
+  (- n1 n2))
+
+
 (defun <add_expr> nil
   (let (x y)
     (seq (-> (<mult_expr>) x)
-         (seq* (alt (seq "+" (-> (<mult_expr>) y) (action (setq x (+ x y))))
-                    (seq "-" (-> (<mult_expr>) y) (action (setq x (- x y))))))
+         (seq* (alt (seq "+" (-> (<mult_expr>) y) (action (setq x (add x y))))
+                    (seq "-" (-> (<mult_expr>) y) (action (setq x (sub x y))))))
          (action x))))
 
 (defun <mult_expr> nil
@@ -677,9 +719,8 @@
            (match-token *lexer* '<identifier>)))))
 
 
-
 (defun <number_literal> ()
-  (seq #'numberp))
+  (alt #'numberp #'idl-fixed-p))
 
 (defun <character_literal> ()
   (seq #'characterp))
