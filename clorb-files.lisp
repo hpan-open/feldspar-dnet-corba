@@ -79,6 +79,7 @@
     "clorb-trie"
     "clorb-aom"
     "clorb-poa-base"
+    ("clorb-queue" t)
     "clorb-poa"
     "clorb-srv"
     "clorb-ifr-info"))
