@@ -125,7 +125,8 @@
              (ensure nil))
       (CORBA:POLICYERROR (v)
                          (ensure-equalp (op:reason v) corba:bad_policy_type))))
-  
+
+
   (define-test "Create POA"
     (let* ((p1 (op:create_id_assignment_policy root-poa :user_id))
            (p2 (op:create_request_processing_policy root-poa :use_default_servant))
@@ -153,7 +154,8 @@
 
       (let ((obj (op:create_reference_with_id poa (string-to-oid "Foo") "IDL:if:1.0")))
         (ensure-typep obj 'CORBA:Proxy))))
-  
+
+
   (define-test "Destroy POA"
     (let* ((poa1 (op:create_poa root-poa "p1" nil nil))
            (id1 (poa-poaid poa1))
@@ -173,6 +175,7 @@
       (ensure-exception
        (op:create_POA poa1 "p9" nil nil)
        CORBA:BAD_INV_ORDER 'op:minor (std-minor 17))))
+
 
   (define-test "POA Activator"
     (defclass test-activator (PortableServer:ADAPTERACTIVATOR)
@@ -201,7 +204,8 @@
          (ensure-exception   ; only set once
           (op:set_servant_manager poa manager)
            CORBA:BAD_INV_ORDER 'op:minor (std-minor 6)))))
-   
+
+
   (define-test "get_servant"
     (handler-case (progn (op:get_servant root-poa)
                       (ensure nil "get_servant on Wrong Policy POA."))
@@ -211,6 +215,7 @@
                                        root-poa :use_default_servant)))))
       (ensure-exception (op:get_servant poa)
                         Portableserver:POA/Noservant)))
+
 
   (define-test "reference creation"
     (let ((id "IDL:myObj:1.0")
@@ -230,6 +235,14 @@
         (ensure-equalp (op:reference_to_id user-poa obj) oid ))))
 
 
+  (define-test "Identity mapping"
+    (let ((ref (op:create_reference root-poa "IDL:foo:1.0")))
+      (let ((id (op:reference_to_id root-poa ref)))
+        (ensure-typep id 'sequence)
+        (ensure (every (lambda (item) (typep item 'CORBA:Octet)) id)))))
+
+
+;;;; Adapter Activator
   (define-test "Adapter Activator"
     (let* ((poa (op:create_POA root-poa "p" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
@@ -239,15 +252,31 @@
                         :adapter poa
                         :expected-oid my-oid )))
       (op:set_servant_manager poa activator)
-      (op:activate (omg.org/features:the_poamanager poa))
+      (op:activate (op:the_poamanager poa))
       (test-poa-invoke poa :operation "_non_existent" :oid my-oid :args '())
       ;; pattern for etheralize arguments
       (setf (slot-value activator 'etheralize-verifier)
             (sexp-pattern
              `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
-      (op:deactivate (omg.org/features:the_poamanager poa) t t)
-      (ensure-eql (slot-value activator 'etheralize-called) 1)))
+      (op:deactivate (op:the_poamanager poa) t t)
+      (ensure-eql (slot-value activator 'etheralize-called) 1)
+      ;; Again, but with destroy
+      (setq poa (op:create_POA root-poa "p2" nil
+                               (list (op:create_request_processing_policy root-poa :use_servant_manager)
+                                     (op:create_servant_retention_policy root-poa :retain))))
+      (setf (slot-value activator 'adapter) poa)
+      (op:set_servant_manager poa activator)
+      (op:activate (op:the_poamanager poa))
+      (test-poa-invoke poa :operation "_non_existent" :oid my-oid :args '())
+      ;; pattern for etheralize arguments
+      (setf (slot-value activator 'etheralize-verifier)
+            (sexp-pattern
+             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
+      (op:destroy poa t t)
+      (ensure-eql (slot-value activator 'etheralize-called) 2)))
 
+
+;;;; State changes
 
   (define-test "Hold and activate"
     (let* ((poa-1 (op:create_POA root-poa "a1" nil nil))
@@ -265,7 +294,8 @@
         (ensure-eql (request-state r1) :finished)
         (ensure-eql (request-state r2) :finished))))
 
-  (define-test "Hola and discard"
+
+  (define-test "Hold and discard"
     (let* ((oid #(1))
            (proxy (op:activate_object_with_id root-poa oid (make-instance 'null-servant)))
            (r1 (test-poa-dispatch root-poa :operation "_is_a" :args '("foo") :oid oid)))
