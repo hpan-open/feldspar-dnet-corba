@@ -18,11 +18,13 @@
 
 
 (defstruct BUFFER
-  (octets *empty-octets* :type octets)
-  (in-pos      0         :type buffer-index)
-  (byte-order  1         :type bit)
-  (start-pos   0         :type buffer-index)
-  (ind-hash    nil))
+  (giop-version :giop-1-0 :type symbol)
+  (orb          nil)
+  (octets       *empty-octets* :type octets)
+  (in-pos       0         :type buffer-index)
+  (byte-order   1         :type bit)
+  (start-pos    0         :type buffer-index)
+  (ind-hash     nil))
 
 (defun buffer-contents (buffer)
   (copy-seq (buffer-octets buffer)))
@@ -78,13 +80,13 @@
          (setf (buffer-in-pos ,buffervar) (+ ,old-pos ,lengthvar))
          (setf (buffer-byte-order ,buffervar) ,old-byteorder)))))
 
-(defun get-work-buffer ()
+(defun get-work-buffer (&optional orb)
   (make-buffer
+   :orb orb
    :octets (make-array 2000
                        :adjustable t
                        :fill-pointer 0
                        :element-type 'CORBA:octet)))
-
 
 
 (defun buffer-record (buffer)
