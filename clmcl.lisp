@@ -105,14 +105,17 @@
 #|
 
 (corba:idl "clorb:idl;TypeCodeFactory.idl"
-           :eval nil :print t 
-           :only '("CORBA::TypeCodeFactory") :skeleton nil
-           :exclude nil )
+           :eval nil :output "clorb:y-typecodefactory.lisp"
+           :only '("CORBA::TypeCodeFactory") :exclude nil :skeleton nil)
 
-(gen-stub-file (lookup-name-in r "CORBA::TypeCodeFactory") "clorb:y-typecodefactory.lisp"  :package-def t)
-
+(defclass local-target (clorb::stub-target) ()
+  (:default-initargs :struct-marshal nil))
 (corba:idl "clorb:idl;pi.idl" 
-           :eval nil :print t )
+           :eval nil :output "clorb:y-pi-base.lisp"
+           :exclude '("::CORBA" "::IOP" "::GIOP" "::IIOP")
+           :package-decl t
+           :target 'local-target)
+
 
 
 (corba:idl "clorb:idl;orb.idl" :eval nil :print t :skeleton nil

@@ -10,6 +10,7 @@
 (utils:gen-package-decl "OMG.ORG/PORTABLESERVER")
 (utils:gen-package-decl "PORTABLEINTERCEPTOR")
 (utils:gen-package-decl "IOP_N")
+(utils:gen-package-decl "DYNAMIC")
 |#
 
 

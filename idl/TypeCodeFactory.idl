@@ -97,12 +97,12 @@ module CORBA {
             in Identifier               name
         );
 
-        TypeCode create_abstract_interface_tc(
+        TypeCode create_abstract_interface_tc (
             in RepositoryId             id,
             in Identifier               name
         );
 
-        TypeCode create_recursive_tc(
+        TypeCode create_recursive_tc (
             in RepositoryId             id
         );
 
