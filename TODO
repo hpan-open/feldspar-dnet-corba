@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.17 2003/12/06 11:54:15 lenst Exp $
+ $Id: TODO,v 1.18 2004/02/09 18:14:03 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -16,9 +16,6 @@ exceptions should be returned not raised.
 
 
 * Misc
-
-- string_to_object
-  Should handle more URL variants: corbname:
 
 - DynAny interface (3.13)
 
