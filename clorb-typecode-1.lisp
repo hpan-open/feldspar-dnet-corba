@@ -331,12 +331,12 @@
 ;; Not exactly TypeCode related, but similar to the stuff above
 
 (defun set-ifr-description (symbol desc)
-  (setf (get symbol 'ifr-desc) desc))
+  (setf (get symbol 'ifr-description) desc))
 
 (defgeneric generate-ifr-description (tc symbol))
 
 (defun ifr-description (symbol)
-  (let ((desc (get symbol 'ifr-desc)))
+  (let ((desc (get symbol 'ifr-description)))
     (cond ((functionp desc)
            (set-ifr-description symbol (funcall desc)))
           ((null desc)
@@ -345,15 +345,16 @@
           (t 
            desc))))
 
-(defun set-ifr-info (symbol &key id name typecode version defined_in parameters exceptions result mode type bases)
-  (setf (get symbol 'ifr-desc) nil)
+(defun set-ifr-info (symbol &key id name typecode version defined_in
+                     parameters exceptions result mode type bases)
+  (setf (get symbol 'ifr-description) nil)
   (when id 
     (set-symbol-ifr-id symbol id))
   (when name
     (setf (get symbol 'ifr-name) name))
   (when typecode
     (set-symbol-typecode symbol typecode))
-  (when version
+  (when (and version (not (equal version "1.0")))
     (setf (get symbol 'ifr-version) version))
   (when defined_in
     (setf (get symbol 'ifr-parent) defined_in)
