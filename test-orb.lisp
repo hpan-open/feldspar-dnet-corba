@@ -40,13 +40,13 @@
   
   (define-test "Resolve corbaname URL"
     (let ((orb (make-instance 'test-orb)))
-      (let ((obj (op:string_to_object orb "corbaname::example.com#a/str%20ing/path")))
-        (ensure-equalp (slot-value orb 'resolve-name) "a/str ing/path")
-        (ensure-pattern* (slot-value orb 'resolve-namecontext)
-                         'object-profiles (sequence-pattern
-                                           (pattern 'iiop-profile-host "example.com"
-                                                    'iiop-profile-port 2809
-                                                    'iiop-profile-key (decode-objkey-vector "NameService")))))))
+      (op:string_to_object orb "corbaname::example.com#a/str%20ing/path")
+      (ensure-equalp (slot-value orb 'resolve-name) "a/str ing/path")
+      (ensure-pattern* (slot-value orb 'resolve-namecontext)
+                       'object-profiles (sequence-pattern
+                                         (pattern 'iiop-profile-host "example.com"
+                                                  'iiop-profile-port 2809
+                                                  'iiop-profile-key (decode-objkey-vector "NameService"))))))
   
   
   #|end|#)

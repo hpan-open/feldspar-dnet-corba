@@ -48,7 +48,6 @@
       (ensure-pattern* sub-obj 'op:defined_in module 'op:containing_repository repository
                        'op:absolute_name (concatenate 'string (op:absolute_name module) "::" name))
       (ensure-eql (op:lookup_id repository sub-id) sub-obj)
-      ;; FIXME: test void move (in Container new_container, in Identifier new_name, in VersionSpec new_version);
       ;; Change ID
       (let ((new-id "IDL:foob:1.1"))
         (setf (op:id obj) new-id)

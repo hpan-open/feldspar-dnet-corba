@@ -3,19 +3,14 @@
 (pushnew :clorb-dev *features*)
 
 
-(let ((clorb-home #p"home:src;clorb;")
-      (clorb-fasl #p"home:src;clorb;fasl;"))
-  (ensure-directories-exist clorb-fasl)
+(let ((clorb-home #p"home:src;clorb;"))
   (setf (logical-pathname-translations "CLORB")
-        `(("SRC;**;*.dfsl" ,(merge-pathnames ";**;*.*" clorb-fasl))
-          ("SRC;**;*.*"  ,(merge-pathnames ";**;*.*" clorb-home))
-          ("**;*.*"      "CLORB:SRC;**;*.*" ))))
+        `(("SRC;**;*.*"  ,(merge-pathnames ";**;*.*" clorb-home))
+          ("**;*.*"      ,(merge-pathnames ";**;*.*" clorb-home)) )))
 
-
-;;(require 'acl-socket)
-;;#+use-my-idlparser (packer:require-package :net.cddr.redpas)
 
 (load "CLORB:SRC;clorb-files")
+(setq net.cddr.clorb.system::*binary-folder* "fasl")
 (net.cddr.clorb.system:reload)
 
 (setq clorb:*host* "localhost")
