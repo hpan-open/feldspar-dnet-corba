@@ -501,7 +501,35 @@ Can be set to true globally for singel-process / development.")
 
 
 
+;;;; Value factory operations
+
+;;; ValueFactory register_value_factory(
+;; in RepositoryId id,
+;; in ValueFactory factory
+
+(define-method register_value_factory ((orb CORBA:ORB) id factory)
+  (check-type id string)
+  (check-type factory (or class symbol))
+  (setf (gethash id *value-factory-registry*) factory))
+
+
+;;; void unregister_value_factory(in RepositoryId id);
+
+(define-method unregister_value_factory ((orb CORBA:ORB) id)
+  (check-type id string)
+  (remhash id *value-factory-registry*))
+
+
+;;; ValueFactory lookup_value_factory(in RepositoryId id);
+
+(define-method lookup_value_factory ((orb CORBA:ORB) id)
+  (check-type id string)
+  (gethash id *value-factory-registry*))
+
+
+
 ;;;; CORBA::Current
+
 
 (define-corba-class CORBA:Current ())
 #+(or)
