@@ -1,7 +1,6 @@
 (in-package :clorb)
 
-(define-test-suite "IIR test" ()
-
+(define-test-suite "IIR test"
   (macrolet
       ((with-repository (&body body)
          `(let ((*repository* (make-hash-table :test #'equal))

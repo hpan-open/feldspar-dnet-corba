@@ -327,6 +327,10 @@
 (defun set-symbol-ifr-id (symbol id)
   (setf (get symbol 'ifr-id) id))
 
+(defun set-symbol-id/typecode (symbol id typecode)
+  (set-symbol-ifr-id symbol id)
+  (set-symbol-typecode symbol typecode))
+
 
 ;;;; Convenience ?
 
