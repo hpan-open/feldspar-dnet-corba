@@ -152,12 +152,27 @@
       collect contained))
 
 (define-method lookup_name
-    ((obj container) search-name levels-to-search limit-type  exclude-inherit)
+    ((obj container) search-name levels-to-search limit-type exclude-inherit)
   (loop for contained in (op:contents obj limit-type exclude-inherit)
       when (equal search-name (op:name contained))
-      collect contained))
+      collect contained into top-level
+      when (and (containerp contained)
+                (or (> levels-to-search 1) (= levels-to-search -1)))
+      collect (op:lookup_name contained search-name
+                              (if (= levels-to-search -1)
+                                -1
+                                (1- levels-to-search))
+                              limit-type exclude-inherit)
+      into sub-levels
+      finally (return (mapcan #'identity (cons top-level sub-levels)))))
+
+(defun containerp (x)
+  ;; Alternative: use op:def_kind and a list ot container kinds.
+  (typep x 'container))
 
 (define-method lookup ((obj container) search_name)
+  ;; FIXME: search_name is a scoped name.
+  ;; I.e. should work more like clorb::lookup-name-in
   (loop for contained in (op:contents obj :dk_all nil)
       when (equal search_name (op:name contained))
       do (return contained)))
@@ -587,10 +602,6 @@
 (defmethod result ((opdef operation-def))
   (op:type (slot-value opdef 'result_def)))
 
-(defmethod op:params :before ((opdef operation-def) &rest x)
-  (doseq (p (slot-value opdef 'params))
-         (op:type p)))
-
 (defmethod opdef-inparam-typecodes ((opdef operation-def))
   (loop for param in (op:params opdef)
       unless (eq (op:mode param) :param_out)
@@ -605,6 +616,7 @@
     (if (eq :tk_void (typecode-kind result))
         real-params
       (cons result real-params))))
+
 
 (defmethod op:params :before ((opdef operation-def) &rest x)
   (declare (ignore x))
@@ -763,6 +775,7 @@
   :slots ((type)))
 
 (defmethod op:members :before ((obj exception-def) &rest x)
+  (declare (ignore x))
   (with-slots (members) obj
     (unless (or (zerop (length members))
                 (struct-get (elt members 0) :type))
