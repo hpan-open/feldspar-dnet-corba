@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.24 2003/12/16 00:44:00 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.25 2003/12/19 13:03:27 lenst Exp $
 
 (in-package :clorb)
 
@@ -185,7 +185,7 @@
     ;;(check-not-processing-request )
     (when *poa-current*
       ;; FIXME: check same ORB 
-      (error 'corba:bad_inv_order :minor 3)))
+      (raise-system-exception 'CORBA:BAD_INV_ORDER 3)))
   (POAManager-new-state pm :holding))
 
 
@@ -194,7 +194,7 @@
 (define-method discard_requests ((pm PortableServer:POAManager) wait_for_completion)
   (when wait_for_completion
     (when *poa-current*
-      (error 'corba:bad_inv_order :minor 3)))
+      (raise-system-exception 'CORBA:bad_inv_order 3)))
   (POAManager-new-state pm :discarding))
 
 
@@ -300,7 +300,7 @@
 (define-method create_POA ((poa PortableServer:POA) adapter-name poamanager policies)
   (when (poa-state poa)
     ;; Currently only have state when destroying
-    (error 'CORBA:BAD_INV_ORDER :minor 17))
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 17))
   (create-POA poa adapter-name poamanager policies (the-orb poa)))
 
 (defun find-requested-poa (poa name activate-it check-poa-status)
@@ -308,13 +308,13 @@
            (find name (op:the_children poa) :key #'op:the_name :test #'equal)))
     (when check-poa-status
       (when (or (not (eql :active (poa-effective-state poa))))
-        (error 'CORBA:TRANSIENT)))
+        (raise-system-exception 'CORBA:TRANSIENT)))
     (or (find-child)
         (and activate-it
              (op:the_activator poa)
              (handler-case
                (op:unknown_adapter (op:the_activator poa) poa name)
-               (CORBA:SystemException () (error 'CORBA:OBJ_ADAPTER :minor 1 )))
+               (CORBA:SystemException () (raise-system-exception 'CORBA:OBJ_ADAPTER 1 )))
              (find-child)))))
 
 (define-method find_POA ((poa PortableServer:POA) name &optional activate-it)
@@ -383,7 +383,7 @@ BAD_INV_ORDER system exception with standard minor code 3 is raised and
 POA destruction does not occur.
 |#
   (when (and wait-for-completion *poa-current*)
-    (error 'CORBA:BAD_INV_ORDER :minor 3 :completed :completed_yes))
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 3 :completed_yes))
   (unless (eq :inactive (poa-effective-state poa))
     (setf (poa-state poa) :discarding))
   (dolist (child (op:the_children poa))
@@ -425,9 +425,9 @@ POA destruction does not occur.
   (unless (typep imgr (if (poa-has-policy poa :retain)
                         'PortableServer:ServantActivator
                         'PortableServer:ServantLocator))
-    (error 'CORBA:OBJ_ADAPTER :minor 4))
+    (raise-system-exception 'CORBA:OBJ_ADAPTER 4))
   (when (poa-servant-manager poa)
-    (error 'CORBA:BAD_INV_ORDER :minor 6))
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 6))
   (setf (poa-servant-manager poa) imgr))
 
 ;;;  Servant get_servant()
@@ -622,7 +622,7 @@ POA destruction does not occur.
                     (current-primary-interface servant))
     (error (condition)
       (break "_get_interface: ~A" condition)
-      (error 'CORBA:intf_repos))))
+      (raise-system-exception 'CORBA:intf_repos))))
 
 ;; ----------------------------------------------------------------------
 ;;;; Request Handling
@@ -630,7 +630,7 @@ POA destruction does not occur.
 
 (defun poa-invoke (poa oid operation buffer request)
   (unless (eq :active (poa-effective-state poa))
-    (error 'CORBA:TRANSIENT :completed :completed_no))
+    (raise-system-exception 'CORBA:TRANSIENT :completed_no))
   (let* ((orb (the-orb poa))
          (servant (trie-get oid (POA-active-object-map poa)))
          (cookie nil)
@@ -653,7 +653,7 @@ POA destruction does not occur.
               ((poa-has-policy poa :use_default_servant)
                (setq servant (POA-default-servant poa)))
               (t
-               (error 'CORBA:OBJECT_NOT_EXIST
+               (raise-system-exception 'CORBA:OBJECT_NOT_EXIST
                       :completed :completed_no)))
         (let ((*poa-current* (make-poa-current poa oid servant)))
           ;;(break "before has-received-request: orb=~S req=~S" orb request)

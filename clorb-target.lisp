@@ -722,21 +722,21 @@
   `(define-method ,(string-upcase (op:name obj))
                   ((self ,(scoped-target-symbol target container)) ,@param-list)
      (declare (ignore ,@param-list))
-     (error 'omg.org/corba:no_implement))))
+     (raise-system-exception 'CORBA:no_implement))))
 
 (defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
                                   (obj omg.org/corba:attributedef)
                                   (target stub-target))
   (let* ((class (scoped-target-symbol target container))
          (name (string-upcase (op:name obj)))
-         (reader `(define-method ,name ((self ,class)) (error 'omg.org/corba:no_implement))))
+         (reader `(define-method ,name ((self ,class)) (raise-system-exception 'CORBA:no_implement))))
     (cond ((eql (op:mode obj) :attr_readonly)
            reader)
           (t
            `(progn ,reader
                    (define-method (setf ,name) (newval (self ,class))
                      (declare (ignore newval))
-                     (error 'omg.org/corba:no_implement)))))))
+                     (raise-system-exception 'CORBA:no_implement)))))))
 
 (defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
                                   (obj omg.org/corba:idltype)

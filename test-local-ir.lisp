@@ -56,11 +56,11 @@
         (ensure-eql (op:lookup_id repository new-id) obj)
         (ensure-eql (op:lookup_id repository id) nil)
         (ensure-exception (setf (op:id obj) sub-id)
-                          corba:bad_param 'op:minor 2))
+                          corba:bad_param 'op:minor (std-minor 2)))
       ;; Change Name
       (let ((new-name "barbar"))
         (ensure-exception (setf (op:name obj) "mod")
-                          corba:bad_param 'op:minor 1)
+                          corba:bad_param 'op:minor (std-minor 1))
         (setf (op:name obj) new-name)
         (ensure-pattern* obj 
                          'op:absolute_name (format nil "::~A" new-name)
@@ -85,7 +85,7 @@
         ;; BAD_PARAM exception is raised with minor code 4.
         (ensure-exception
          (op:move obj (make-instance 'repository) "foo" "1.0")
-         CORBA:BAD_PARAM 'op:minor 4)
+         CORBA:BAD_PARAM 'op:minor (std-minor 4))
         ;; - It must be capable of containing this object's type (see
         ;; Section 10.4.4, "Structure and Navigation of the Interface
         ;; Repository," on page 10-7). If it is not, then BAD_PARAM
@@ -93,7 +93,7 @@
         (let ((struct (op:create_struct repository "IDL:s:1.0" "s" "1.0" nil)))
           (ensure-exception
            (op:move obj struct "nn" "1.0")
-           CORBA:BAD_PARAM 'op:minor 4))
+           CORBA:BAD_PARAM 'op:minor (std-minor 4)))
         ;; - It must not already contain an object with this object's
         ;; name (unless multiple versions are supported by the IR). If
         ;; this condition is not satisfied, then BAD_PARAM exception
@@ -101,7 +101,7 @@
         (op:create_native container1 "IDL:n3:1.0" "n" "1.0")
         (ensure-exception
          (op:move obj  container1 "n" "1.0")
-         CORBA:BAD_PARAM 'op:minor 3))))
+         CORBA:BAD_PARAM 'op:minor (std-minor 3)))))
   
 
 
@@ -142,7 +142,7 @@
       (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
       (ensure-exception
        (op:create_alias obj "IDL:foo/Struct/all:1.0" "all" "1.0" a-ulong)
-       CORBA:BAD_PARAM 'op:minor 4)))
+       CORBA:BAD_PARAM 'op:minor (std-minor 4))))
   
   
   (define-test "UnionDef"
@@ -178,7 +178,7 @@
       (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
       (ensure-exception
        (op:create_alias obj "IDL:foo/Union/all:1.0" "all" "1.0" a-ulong)
-       CORBA:BAD_PARAM 'op:minor 4)))
+       CORBA:BAD_PARAM 'op:minor (std-minor 4))))
   
   
   (define-test "EnumDef"
@@ -268,7 +268,7 @@
       (ensure-pattern obj (repository-pattern "aenum" (def-pattern :dk_enum)))
       (ensure-exception
        (op:create_alias obj "IDL:my/Exception/all:1.0" "all" "1.0" a-ulong)
-       CORBA:BAD_PARAM 'op:minor 4)))
+       CORBA:BAD_PARAM 'op:minor (std-minor 4))))
   
 
   (define-test "AttributeDef"
@@ -317,7 +317,7 @@
       (setf (op:mode obj) :op_normal)
       (ensure-exception
        (setf (op:mode obj) :op_oneway)
-       CORBA:BAD_PARAM  'op:minor 31)))
+       CORBA:BAD_PARAM  'op:minor (std-minor 31))))
 
 
   (define-test "InterfaceDef"
@@ -332,7 +332,7 @@
       (op:create_attribute obj "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
       (ensure-exception 
        (op:create_operation obj "IDL:my/a:1.0" "a" "1.0" a-string :op_normal nil nil nil)
-       corba:bad_param 'op:minor 3)
+       corba:bad_param 'op:minor (std-minor 3))
       (setf (op:base_interfaces obj) (list obj2))
       (ensure (op:is_a obj id2) "isa base")
       (ensure-pattern* 
@@ -354,7 +354,7 @@
       (op:create_attribute obj2 "IDL:my2/a:1.0" "a" "1.0" a-string :attr_normal)
       (ensure-exception 
        (setf (op:base_interfaces obj) (list obj2))
-       corba:bad_param 'op:minor 5)))
+       corba:bad_param 'op:minor (std-minor 5))))
   
 
 
@@ -510,17 +510,17 @@
         ;; Only one non-abstract interface
         (ensure-exception
          (setf (op:supported_interfaces val) (list i1 i2 i3))
-         corba:bad_param 'op:minor 12)
+         corba:bad_param 'op:minor (std-minor 12))
         (ensure-exception 
          (op:create_value repository "IDL:my/ValX1:1.0" "ValX1"
                           ver nil nil nil nil nil (list i1 i2 i3) init)
-         corba:bad_param 'op:minor 12)
+         corba:bad_param 'op:minor (std-minor 12))
         ;; Can't have same name in ValueDef as in some supported interface
         (setf (op:supported_interfaces val) (list))
         (op:create_attribute i1 "IDL:my/a:1.0" "a" "1.0" a-string :attr_normal)
         (ensure-exception 
          (setf (op:supported_interfaces val) (list i1))
-         corba:bad_param 'op:minor 5))
+         corba:bad_param 'op:minor (std-minor 5)))
 
       ;; Creating ValueMember
       (ensure-pattern* vm1 'op:id "IDL:my/val/a:1.0" 'op:name "a"
@@ -528,10 +528,10 @@
                        'op:defined_in val)
       (ensure-exception                 ; same id
        (op:create_value_member val "IDL:my/val/a:1.0" "a2" "1.0" a-ulong corba:private_member)
-       CORBA:BAD_PARAM 'op:minor 2)
+       CORBA:BAD_PARAM 'op:minor (std-minor 2))
       (ensure-exception                 ; same name
        (op:create_value_member val "IDL:my/val/a2:1.0" "a" "1.0" a-ulong corba:private_member)
-       CORBA:BAD_PARAM 'op:minor 3)
+       CORBA:BAD_PARAM 'op:minor (std-minor 3))
       ;; same name as inherited, OK ?
       (op:create_value_member val2 "IDL:my/val/a2:1.0" "a" "1.0" a-ulong corba:private_member)
 
@@ -541,7 +541,7 @@
                        'op:type CORBA:tc_string 'op:defined_in val)
       (ensure-exception                 ; same name
        (op:create_attribute val "IDL:my/val/at2:1.0" "at" ver a-string :attr_readonly)
-       CORBA:BAD_PARAM 'op:minor 3)
+       CORBA:BAD_PARAM 'op:minor (std-minor 3))
       ;; same name as inherited, OK ?
       (op:create_attribute val2 "IDL:my/val/at2:1.0" "at" ver a-string :attr_readonly)
 
@@ -553,7 +553,7 @@
                        'op:result CORBA:Tc_ulong 'op:defined_in val )
       (ensure-exception                 ; same name
        (op:create_operation val "IDL:my/val/op1x:1.0" "op1" ver a-ulong :op_normal nil nil nil)
-       CORBA:BAD_PARAM 'op:minor 3)
+       CORBA:BAD_PARAM 'op:minor (std-minor 3))
       ;; same name as inherited, OK ?
       (op:create_operation val2 "IDL:my/val/op1x:1.0" "op1" ver a-ulong :op_normal nil nil nil)
 
@@ -562,10 +562,10 @@
       ;; definitions derived from TypedefDef), ConstantDef, and ExceptionDef definitions.
       (ensure-exception
        (op:create_module val "my-module" "mod" "1.1")
-       CORBA:BAD_PARAM 'op:minor 4)
+       CORBA:BAD_PARAM 'op:minor (std-minor 4))
       (ensure-exception
        (op:create_interface val "IDL:my/InterfaceXX:1.1" "InterfaceXX" "1.1" '())
-       CORBA:BAD_PARAM 'op:minor 4)
+       CORBA:BAD_PARAM 'op:minor (std-minor 4))
       
 
       #| end valuedef test |#))

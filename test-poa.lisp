@@ -78,10 +78,9 @@
         (OMG.ORG/PORTABLESERVER:POA/ADAPTERNONEXISTENT ()))
       (ensure-eql (gethash id1 *poa-map*) nil)
       (ensure-eql (gethash id2 *poa-map*) nil)
-      (handler-case
-        (progn (op:create_POA poa1 "p9" nil nil)
-               (ensure nil "create_POA on destroyed poa should be disabled"))
-        (corba:bad_inv_order (exc) (ensure-eql (op:minor exc) 17)))))
+      (ensure-exception
+       (op:create_POA poa1 "p9" nil nil)
+       CORBA:BAD_INV_ORDER 'op:minor (std-minor 17))))
 
   (define-test "POA Activator"
     (defclass test-activator (PortableServer:ADAPTERACTIVATOR)
@@ -104,16 +103,14 @@
      (let ((poa (op:create_POA root-poa "p" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
                                      (op:create_servant_retention_policy root-poa :retain)))))
-       (handler-case
-         (progn (op:set_servant_manager poa nil)
-                (ensure nil))
-         (CORBA:OBJ_ADAPTER (exc) (ensure-eql (op:minor exc) 4)))
+       (ensure-exception
+        (op:set_servant_manager poa nil)
+        CORBA:OBJ_ADAPTER 'op:minor (std-minor 4))
        (let ((manager (make-instance 'PortableServer:ServantActivator)))
          (op:set_servant_manager poa manager)
-         (handler-case   ; only set once
-           (progn (op:set_servant_manager poa manager)
-                  (ensure nil))
-           (CORBA:BAD_INV_ORDER (exc) (ensure-eql (op:minor exc) 6))))))
+         (ensure-exception   ; only set once
+          (op:set_servant_manager poa manager)
+           CORBA:BAD_INV_ORDER 'op:minor (std-minor 6)))))
    
   (define-test "get_servant"
     (handler-case (progn (op:get_servant root-poa)
@@ -122,8 +119,7 @@
     (let ((poa (op:create_POA root-poa "p" nil
                            (list (op:create_request_processing_policy 
                                        root-poa :use_default_servant)))))
-      (handler-case (progn (op:get_servant poa)
-                            (ensure nil "get_servant on unset POA."))
-         (omg.org/portableserver:poa/noservant ()))))
+      (ensure-exception (op:get_servant poa)
+                        Portableserver:POA/Noservant)))
 
-  )
+#| end suite |# )

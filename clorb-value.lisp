@@ -31,7 +31,7 @@
                 collect `(,(feature name) :initarg ,(key name)))))
      (defmethod shared-initialize ((value ,symbol) slot-names &key factory &allow-other-keys)
        (declare (ignore slot-names))
-       (if factory (error 'CORBA:BAD_PARAM))
+       (if factory (raise-system-exception 'CORBA:BAD_PARAM))
        (call-next-method))
      (defmethod object-id ((value ,symbol))
        ,id)
@@ -131,7 +131,7 @@
              (setq tag (unmarshal-long buffer)))
             ((< tag min-value-tag)
              (mess 5 "Non value-tag")
-             (error 'CORBA:MARSHAL))))
+             (raise-system-exception 'CORBA:MARSHAL))))
     (cond ((zerop tag) nil)
           ((if (eql tag-type :unsigned)
              (= tag unsigned-indirection-tag) 
@@ -282,7 +282,7 @@
 
 (defun unmarshal-value-header (valuetag buffer)
   (cond ((< valuetag min-value-tag)
-         (error 'corba:no_implement))
+         (raise-system-exception 'CORBA:no_implement))
         (t
          (let ((url-flag (logand valuetag #x01))
                (repoid-flags (logand valuetag #x06))
@@ -296,7 +296,7 @@
                     (0 nil)
                     (2 (unmarshal-string-record buffer))
                     (6 (unmarshal-string-record-list-record buffer))
-                    (otherwise (error 'corba:no_implement)))))
+                    (otherwise (raise-system-exception 'CORBA:no_implement)))))
              (values (not (zerop chunked-flag)) repoid url))))))
          
 
@@ -307,7 +307,7 @@
      (truncating ()
        (unless truncate
          (mess 5 "Truncating a non truncatable value")
-         (error 'CORBA:MARSHAL)))
+         (raise-system-exception 'CORBA:MARSHAL)))
      (truncate-chunk ()
        (when *chunk-end*
          (truncating)
@@ -362,9 +362,9 @@
       (dolist (id (mklist repoid))
         (when (setq symbol (ifr-id-symbol id)) (return))
         (setq truncate t))
-      (or symbol (error 'CORBA:NO_IMPLEMENT))
+      (or symbol (raise-system-exception 'CORBA:NO_IMPLEMENT))
       (if (and truncate (not chunked))
-        (error 'CORBA:MARSHAL))
+        (raise-system-exception 'CORBA:MARSHAL))
       (or tc (setq tc (symbol-typecode symbol)))
       (let ((value (make-instance (or (lookup-value-factory (op:id tc)) symbol) 
                      :create-for-unmarshal t)))

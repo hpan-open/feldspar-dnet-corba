@@ -113,7 +113,7 @@ of contained."))
         (old-id (op:id obj)))
     (unless (equal new-id old-id)
       (when (gethash new-id (idmap repository))
-        (error 'CORBA:BAD_PARAM :minor 2))
+        (error (system-exception 'CORBA:BAD_PARAM 2)))
       (remhash old-id (idmap repository))
       (setf (gethash new-id (idmap repository)) obj)
       (setf (slot-value obj 'id) new-id))))
@@ -122,7 +122,7 @@ of contained."))
   (loop for peer in (contents (op:defined_in obj))
         unless (eq obj peer)
         do (when (string-equal value (op:name peer))
-             (error 'corba:bad_param :minor 1))))
+             (raise-system-exception 'CORBA:bad_param 1))))
 
 
 (define-method absolute_name ((obj contained))
@@ -148,7 +148,7 @@ of contained."))
   (check-type new-version string)
   (unless (eql (op:containing_repository obj)
                (op:containing_repository to-container))
-    (error 'CORBA:BAD_PARAM :minor 4))
+    (raise-system-exception 'CORBA:BAD_PARAM 4))
   (moveto to-container obj new-name new-version))
 
 
@@ -173,7 +173,7 @@ of contained."))
     ;; A BAD_PARAM exception is raised with minor code 2 if an object with
     ;; the specified id already exists in the Repository.
     (when (gethash id (idmap repository))
-      (error 'CORBA:BAD_PARAM :minor 2))
+      (raise-system-exception 'CORBA:BAD_PARAM 2))
     (moveto container object (op:name object) (op:version object))
     (setf (gethash id (idmap repository)) object)))
 
@@ -183,7 +183,7 @@ of contained."))
   ;; name already exists within this Container and multiple versions are
   ;; not supported.
   (when (member new-name (contents c) :key #'op:name :test #'string-equal)
-    (error 'corba:bad_param :minor 3))
+    (raise-system-exception 'CORBA:bad_param 3))
   (with-slots (defined_in containing_repository name version) 
               object
     (let ((old-container defined_in))
@@ -644,7 +644,7 @@ of contained."))
 
 (defun check-unique-name (container name &key (minor 3))
   (when (op:lookup_name container name 1 :dk_all nil)
-    (error 'corba:bad_param :minor minor)))
+    (raise-system-exception 'CORBA:bad_param minor)))
 
 (define-method (setf op:base_interfaces) :before (value (self interface-def))
   (loop for obj in (contents self) do
@@ -735,9 +735,7 @@ of contained."))
                  (every (lambda (p)
                           (eq :param_in (op:mode p)))
                         params))
-      (error 'corba:bad_param
-             :minor 31
-             :completed :completed_yes))))
+      (raise-system-exception 'CORBA:bad_param 31 :completed_yes))))
 
 (defun validate-operation-def-change (def &key 
                                             (mode (op:mode def))
@@ -866,7 +864,7 @@ of contained."))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
-     (error 'CORBA:BAD_PARAM :minor 4))))
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 
 (defmethod op:members :before ((obj struct-def) &rest x)
@@ -902,7 +900,7 @@ of contained."))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
-     (error 'CORBA:BAD_PARAM :minor 4))))
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 (define-method discriminator_type ((obj union-def))
   (op:type (op:discriminator_type_def obj)))
@@ -955,7 +953,7 @@ of contained."))
   (typecase object 
     ((or Struct-Def Union-Def Enum-Def))
     (otherwise
-     (error 'CORBA:BAD_PARAM :minor 4))))
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 
 (defmethod op:members :before ((obj exception-def) &rest x)
@@ -1220,7 +1218,7 @@ of contained."))
     (doseq (i interface-seq)
       (unless (typep i 'corba:abstractinterfacedef)
         (when (> (incf non-abstract) 1)
-          (error 'CORBA:BAD_PARAM :minor 12))))))
+          (raise-system-exception 'CORBA:BAD_PARAM 12))))))
 
 (define-method (setf op:supported_interfaces) :before (value (self value-def))
   (check-only-one-non-abstract value)
@@ -1239,7 +1237,7 @@ of contained."))
     ((or Operation-Def ValueMember-Def Attribute-Def
          Typedef-Def Constant-Def Exception-Def))
     (otherwise
-     (error 'CORBA:BAD_PARAM :minor 4))))
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 
 (defmethod describe-contained ((def Value-Def))

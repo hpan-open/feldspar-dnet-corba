@@ -159,7 +159,7 @@
         (length (length arg)))
     (when (and (not (zerop max-length))
                (> length max-length))
-      (error 'CORBA:MARSHAL))
+      (raise-system-exception 'CORBA:MARSHAL))
     (marshal-ulong length buffer)
     (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
@@ -199,7 +199,7 @@
         (max-length (op:length tc))
         (length (length arg)))
     (unless (= length max-length)
-      (error 'CORBA:MARSHAL))
+      (raise-system-exception 'CORBA:MARSHAL))
     (map nil #'marshal arg (repeated el-type) (repeated buffer))))
 
 (defmethod unmarshal ((tc array-typecode) buffer)
@@ -300,57 +300,57 @@
 
 
 (defmethod tc-members ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 
 (define-method id ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method name ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method member_count ((tc corba:typecode))
   (length (tc-members tc)))
 
 (define-method member_name ((tc corba:typecode) index)
   (declare (ignore index))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method member_type ((tc corba:typecode) index)
   (declare (ignore index))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method member_label ((tc corba:typecode) index)
   (declare (ignore index))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method member_visibility ((tc corba:typecode) index)
   (declare (ignore index))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method discriminator_type ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method default_index ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method length ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method content_type ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method fixed_digits ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method fixed_scale ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method type_modifier ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (define-method concrete_base_type ((tc corba:typecode))
-  (error 'corba:typecode/badkind))
+  (error 'CORBA:typecode/badkind))
 
 (defgeneric tc-unalias (tc)
   (:method ((tc t)) tc)

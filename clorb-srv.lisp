@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.20 2003/12/16 00:44:00 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.21 2003/12/19 13:03:27 lenst Exp $	
 
 (in-package :clorb)
 
@@ -175,7 +175,7 @@
                   ((and reftype poa)
                    (poa-invoke poa oid operation buffer request))
                   (t
-                   (error 'CORBA:OBJECT_NOT_EXIST :minor 0 :completed :completed_no)))))
+                   (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
               (CORBA:SystemException
                (mess 2 "#~D Exception: ~A" req-id exception)
                (let ((buffer (get-request-response request :system_exception)))

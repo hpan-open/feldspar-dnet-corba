@@ -175,7 +175,7 @@
         (incf abs-pos indirection)
         (mess 1 "Indirection: ~S abs-pos: ~S" indirection abs-pos)
         (or (cdr (assoc abs-pos (car *indirection-record*)))
-            (error 'CORBA:MARSHAL)))
+            (raise-system-exception 'CORBA:MARSHAL)))
       (let ((*indirection-record* (or *indirection-record* (list nil))))
         (let ((typecode (make-typecode tk)))
           (push (cons start typecode) (car *indirection-record*))
@@ -251,7 +251,7 @@
       (unless (zerop n-profiles)
         (setq profiles (nreverse profiles))
         (unless profiles
-          (error 'omg.org/corba:inv_objref))
+          (raise-system-exception 'CORBA:inv_objref))
         (create-objref (the-orb buffer)
                        :ior-id type-id :expected-id expected-id
                        :profiles profiles :raw-profiles raw-profiles)))))

@@ -568,7 +568,7 @@ Where host is a string and port an integer.")
     (loop for exc in legal-exceptions
           when (string= id (symbol-ifr-id exc))
           do (error (exception-read exc buffer)))
-    (error 'corba:unknown :minor 0 :completed :completed_yes)))
+    (raise-system-exception 'corba:unknown 1 :completed_yes)))
 
 
 ;;;; CORBA:Request - deferred operations
@@ -602,8 +602,7 @@ Where host is a string and port an integer.")
     (if tc
       (setf (any-value retval) (unmarshal tc buffer)
             (any-typecode retval) tc)
-      (setf (any-value retval) (make-condition 'corba:unknown
-                                               :completed :completed_yes)
+      (setf (any-value retval) (system-exception 'corba:unknown 1 :completed_yes)
             (any-typecode retval) nil))))
 
 (defun request-unmarshal-systemexception (req buffer)

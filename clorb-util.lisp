@@ -88,14 +88,14 @@
 
 (define-method _get_interface ((obj CORBA:Object))
   (or (op:lookup_id *internal-interface-repository* (object-id obj))
-      (error 'omg.org/corba:intf_repos)))
+      (raise-system-exception 'CORBA:intf_repos)))
 
 (define-method _get_interface ((obj CORBA:Proxy))
   (let ((id (proxy-id obj)))
     (or (unless (equal id "")
           (op:lookup_id *internal-interface-repository* (object-id obj)))
         (object-interface obj)
-        (error 'omg.org/corba:intf_repos))))
+        (raise-system-exception 'CORBA:intf_repos))))
 
 
 

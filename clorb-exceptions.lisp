@@ -2,6 +2,21 @@
 
 (in-package :clorb)
 
+;;    const unsigned long OMGVMCID = 0x4f4d0000;
+(defconstant CORBA::OMGVMCID #x4f4d0000)
+(defconstant min-vmcid       #x10000)
+
+(define-enum CORBA:completion_status
+  :id "IDL:omg.org/CORBA/completion_status:1.0"
+  :name "completion_status"
+  :members ("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE"))
+
+(defparameter corba:tc_completion_status
+  (symbol-typecode 'CORBA:completion_status))
+
+
+
+;;;; Exception TypeCode
 
 (define-typecode except-typecode
   :kind :tk_except
@@ -18,6 +33,10 @@ Members on form: (name TypeCode)"
   (make-typecode :tk_except id name (coerce members 'vector)))
 
 
+
+;;;; Accessors
+
+
 (defgeneric exception-name (exception)
   (:documentation "The scoped symbol for the exception type"))
 
@@ -31,36 +50,56 @@ Members on form: (name TypeCode)"
 (defun exception-id (exception)
   (symbol-ifr-id (exception-name exception)))
 
-(define-enum CORBA:completion_status
-  :id "IDL:omg.org/CORBA/completion_status:1.0"
-  :name "completion_status"
-  :members ("COMPLETED_YES" "COMPLETED_NO" "COMPLETED_MAYBE"))
 
-(defparameter corba:tc_completion_status
-  (symbol-typecode 'CORBA:completion_status))
 
+;;;; System Exceptions
 
 (define-condition corba:systemexception (error corba:exception)
-  ((minor :initform 0
-	  :initarg :minor
-	  :reader system-exception-minor)
-   (completed :initform :completed_maybe
-	      :initarg :completed
-	      :reader system-exception-completed))
+  ((minor     :type CORBA:ULong 
+              :initarg :minor      :reader system-exception-minor
+              :initform 0 )
+   (completed :type symbol
+              :initarg :completed  :reader system-exception-completed
+              :initform :completed_maybe ))
   (:report report-systemexception))
 
-(define-method minor ((obj systemexception))
+(define-method minor ((obj corba:systemexception))
   (system-exception-minor obj))
 
-(define-method completed ((obj systemexception))
+(define-method completed ((obj corba:systemexception))
   (system-exception-completed obj))
 
 (defun report-systemexception (exc stream)
   (format stream
-          "Exception ~S (~A) ~A"
+          "~S (~X~@[ std ~D~]) ~A."
 	  (exception-name exc)
           (system-exception-minor exc)
+          (if (eql omg.org/corba::omgvmcid
+                   (logandc2 (system-exception-minor exc) (1- min-vmcid)))
+            (logand (system-exception-minor exc) (1- min-vmcid)))
           (system-exception-completed exc)))
+
+
+(defun system-exception (class &optional (minor 0) (completed :COMPLETED_MAYBE))
+  (if (< minor min-vmcid)
+    (setq minor (logior corba::omgvmcid minor)))
+  (make-condition class :minor minor :completed completed))
+
+(defun raise-system-exception (class &optional (minor 0) (completed :COMPLETED_MAYBE))
+  (error (system-exception class minor completed)))
+
+
+#+(or)
+(defmethod shared-initialize :after ((obj corba:systemexception) slot-names &key)
+  (declare (ignore slot-names))
+  (format t "~&;;; shared-initialize ~S :minor ~X" obj (system-exception-minor obj))
+)
+
+#+(or)
+(defmethod shared-initialize :after ((obj corba:systemexception) slot-names &key)
+  (declare (ignore slot-names))
+)
+
 
 
 (macrolet
@@ -73,7 +112,9 @@ Members on form: (name TypeCode)"
                       `(progn
                          (define-condition ,sym (corba:systemexception) ())
                          (defmethod exception-name ((exc ,sym)) ',sym)
-                         (set-symbol-ifr-id ',sym ,id)))))))
+                         (set-symbol-ifr-id ',sym ,id)
+                         (defun ,sym (&key (minor 0) (completed :completed_maybe))
+                           (system-exception ',sym minor completed))))))))
   (define-system-exceptions
       UNKNOWN BAD_PARAM NO_MEMORY IMP_LIMIT
       COMM_FAILURE INV_OBJREF NO_PERMISSION INTERNAL MARSHAL

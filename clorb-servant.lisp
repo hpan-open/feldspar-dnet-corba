@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.14 2003/11/12 07:20:07 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.15 2003/12/19 13:03:27 lenst Exp $
 
 (in-package :clorb)
 
@@ -41,8 +41,7 @@
 
 (defmethod servant-invoke ((servant portableserver:servant) operation input handler)
   (declare (ignore operation input handler))
-  (error 'omg.org/corba:bad_operation
-         :completed :completed_no))
+  (raise-system-exception 'CORBA:bad_operation :completed_no))
 
 (defmethod servant-invoke :around ((servant portableserver:servant) operation input handler)
   (cond ((string= operation "_locate") nil)
@@ -75,11 +74,11 @@
 
 (define-method invoke ((servant PortableServer:DynamicImplementation) sreq)
   (declare (ignore sreq))
-  (error 'CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (define-method primary_interface ((servant PortableServer:DynamicImplementation) oid poa)
   (declare (ignore oid poa))
-  (error 'CORBA:NO_IMPLEMENT))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT))
 
 (defmethod servant-invoke ((servant portableserver:dynamicimplementation) operation input handler)
   (let ((req (make-instance 'CORBA:ServerRequest
@@ -131,11 +130,11 @@
 
 (defun check-before-arg (r)
   (when (slot-boundp r 'arguments)
-    (error 'omg.org/corba:bad_inv_order )))
+    (raise-system-exception 'CORBA:bad_inv_order )))
 
 (defun check-after-arg (r)
   (unless (slot-boundp r 'arguments)
-    (error 'omg.org/corba:bad_inv_order )))
+    (raise-system-exception 'CORBA:bad_inv_order )))
 
 (define-method arguments ((self CORBA:ServerRequest) nv)
   (check-before-arg self)

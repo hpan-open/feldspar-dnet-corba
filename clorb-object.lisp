@@ -71,7 +71,7 @@
   :documentation "Used for implicit activation during marshalling.")
 
 (define-method "_THIS" ((object t))
-  (error 'CORBA:MARSHAL :minor 4))
+  (raise-system-exception 'CORBA:MARSHAL 4 :completed_no))
 
 
 
@@ -95,7 +95,7 @@
 
 (define-method _is_a ((obj t) interface-id)
   (declare (ignore interface-id))
-  (error 'corba:no_implement :minor 3))
+  (raise-system-exception 'CORBA:no_implement 3 :completed_no))
 
 (define-method _is_a ((obj CORBA:Object) interface-id)
   (object-is-a obj interface-id))
@@ -212,7 +212,7 @@
 
 (define-method _create_request ((obj t) ctx operation arg_list result req_flags)
   (declare (ignore ctx operation arg_list result req_flags))
-  (error 'CORBA:NO_IMPLEMENT :minor 4))
+  (raise-system-exception 'CORBA:NO_IMPLEMENT 4 :completed_no))
 
 
 (define-method _create_request ((obj CORBA:Object)
@@ -276,7 +276,10 @@
    (forward :initform nil :accessor request-forward)
    (status :initform nil :accessor request-status)
    (buffer :initform nil :accessor request-buffer)
-   (exceptions :initform nil :initarg :exceptions :accessor request-exceptions)))
+   (exception  :initform nil :initarg :exception  :accessor request-exception
+               :documentation "Reply exception")
+   (exceptions :initform nil :initarg :exceptions :accessor request-exceptions
+               :documentation "Valid exceptions")))
 
 
 (defmethod initialize-instance :before ((req client-request) &key (the-orb nil orb-p))
@@ -293,7 +296,7 @@
   (request-operation r))
 
 (define-method ctx ((r client-request))
-  (error 'omg.org/corba:no_implement))
+  (raise-system-exception 'CORBA:no_implement))
 
 (define-method result ((r client-request))
   (first (request-paramlist r)))

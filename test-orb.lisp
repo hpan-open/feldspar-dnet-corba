@@ -6,10 +6,10 @@
     (let ((orb (CORBA:ORB_init)))
       (ensure-exception
        (op:object_to_string orb orb)
-       corba:marshal 'op:minor 4)
+       corba:marshal 'op:minor (std-minor 4))
       (ensure-exception
        (op:_create_request orb nil "foo" nil nil 0)
-       CORBA:NO_IMPLEMENT 'op:minor 4)))
+       CORBA:NO_IMPLEMENT 'op:minor (std-minor 4))))
 
 
   (define-test "Initializing initial references"

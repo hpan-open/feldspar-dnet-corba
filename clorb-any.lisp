@@ -106,5 +106,5 @@
   obj)
 
 (defmethod any-value ((obj t))
-  (error 'CORBA:BAD_PARAM))
+  (raise-system-exception 'CORBA:BAD_PARAM))
 
