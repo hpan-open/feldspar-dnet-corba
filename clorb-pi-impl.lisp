@@ -20,18 +20,30 @@
     IOP::ServiceContext get_reply_service_context (in IOP::ServiceId id);
   };
 
-  local interface ClientRequestInfo : RequestInfo {
-    readonly attribute Object target;
-    readonly attribute Object effective_target;
-    readonly attribute IOP::TaggedProfile effective_profile;
-    readonly attribute any received_exception;
-    readonly attribute CORBA::RepositoryId received_exception_id;
-    IOP::TaggedComponent get_effective_component (in IOP::ComponentId id);
-    IOP_N::TaggedComponentSeq get_effective_components (in IOP::ComponentId id);
-    CORBA::Policy get_request_policy (in CORBA::PolicyType type);
-    void add_request_service_context (in IOP::ServiceContext service_context,
-                                      in boolean replace);
+  local interface ServerRequestInfo : RequestInfo {
+    readonly attribute any sending_exception;
+    readonly attribute CORBA::OctetSeq object_id;
+    readonly attribute CORBA::OctetSeq adapter_id;
+    readonly attribute CORBA::RepositoryId
+    target_most_derived_interface;
+    CORBA::Policy get_server_policy (in CORBA::PolicyType type);
+    void set_slot (in SlotId id, in any data) raises (InvalidSlot);
+    boolean target_is_a (in CORBA::RepositoryId id);
+    void add_reply_service_context (in IOP::ServiceContext service_context,
+                                    in boolean replace);
   };
+
+  local interface ServerRequestInterceptor : Interceptor {
+    void receive_request_service_contexts (in ServerRequestInfo ri)
+      raises (ForwardRequest);
+    void receive_request (in ServerRequestInfo ri)
+      raises (ForwardRequest);
+    void send_reply (in ServerRequestInfo ri);
+    void send_exception (in ServerRequestInfo ri)
+      raises (ForwardRequest);
+    void send_other (in ServerRequestInfo ri) raises (ForwardRequest);
+  };
+
 |#
 
 ;; ClientRequestInfo aspect of CORBA:Request 
@@ -132,15 +144,23 @@ PortableInterceptor::TRANSPORT_RETRY
   (DECLARE (IGNORE _ID))
   (ERROR 'OMG.ORG/CORBA:NO_IMPLEMENT))
 
-(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self client-request) id)
-  (or (find id (service-context-list self) :key #'op:context_id)
+(defun get-service-context (id service-context-list)
+  (or (find id service-context-list :key #'op:context_id)
       (error 'omg.org/corba:bad_param :minor 23)))
 
+(define-method "GET_REQUEST_SERVICE_CONTEXT" ((self client-request) id)
+  (get-service-context id (service-context-list self)))
 
 (define-method "GET_REPLY_SERVICE_CONTEXT" ((self client-request) id)
-  (or (find id (reply-service-context-list self) :key #'op:context_id)
-      (error 'omg.org/corba:bad_param :minor 23)))
+  (get-service-context id (reply-service-context-list self)))
 
+
+
+;;;; Request operations to support interceptors
+
+(defgeneric run-interceptors (req list operation))
+(defgeneric rerun-interceptors (req operation))
+(defgeneric pop-interceptors (req operation))
 
 
 ;;;; Test interceptor
@@ -199,13 +219,38 @@ PortableInterceptor::TRANSPORT_RETRY
 )
 
 (define-method "RECEIVE_OTHER" ((self my-client-interceptor) info)
-  (mess 3 "RECEIVE_OTHER")
+  (mess 3 "RECEIVE_OTHER: ~S" info)
 )
+
+
+(defclass my-server-interceptor (PortableInterceptor:ServerRequestInterceptor)
+  ((name :initarg :name)))
+
+(define-method RECEIVE_REQUEST_SERVICE_CONTEXTS ((self my-server-interceptor) info)
+  (mess 3 "RECEIVE_REQUEST_SERVICE_CONTEXTS: ~S" info))
+
+(define-method RECEIVE_REQUEST ((self my-server-interceptor) info)
+  (mess 3 "RECEIVE_REQUEST: ~S" info))
+
+(define-method SEND_REPLY ((self my-server-interceptor) info)
+  (mess 3 "SEND_REPLY: ~S" info))
+
+(define-method SEND_EXCEPTION ((self my-server-interceptor) info)
+  (mess 3 "SEND_EXCEPTION: ~S" info))
+
+(define-method SEND_OTHER ((self my-server-interceptor) info)
+  (mess 3 "SEND_OTHER: ~S" info))
+
 
 
 (defvar *my-interceptor* (make-instance 'my-client-interceptor
                            :name "Test client-interceptor"))
 
+(defvar *my-server-interceptor* (make-instance 'my-server-interceptor
+                                  :name "My Server Interceptor"))
+
+
 #|
 (pushnew *my-interceptor* (client-request-interceptors *the-orb*))
+(pushnew *my-server-interceptor* (server-request-interceptors *the-orb*))
 |#

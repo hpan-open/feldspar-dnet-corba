@@ -14,11 +14,13 @@
   ())
 
 (defclass ORB (CORBA:TypeCodeFactory)
-  ((adaptor :initform nil :accessor adaptor)
+  ((adaptor :initform nil     :accessor adaptor)
    (active  :initarg :active  :accessor orb-active)
    (host    :initarg :host    :accessor orb-host)
    (port    :initarg :port    :accessor orb-port)
    (client-request-interceptors :accessor client-request-interceptors
+                                :initform nil)
+   (server-request-interceptors :accessor server-request-interceptors
                                 :initform nil)
    (initial-references :initform '()
                        :accessor orb-initial-references)
@@ -291,6 +293,24 @@ Can be set to true globally for singel-process / development.")
 ;;;    typedef string ObjectId;
 ;;;    typedef sequence <ObjectId> ObjectIdList;
 ;;;
+
+;;;; ORB Operations for interceptors
+
+(defmethod has-received-request-header ((orb CORBA:ORB) server-request)
+  (run-interceptors server-request (server-request-interceptors orb)
+                    #'op:receive_request_service_contexts))
+
+(defmethod has-received-request ((orb CORBA:ORB) server-request)
+  (rerun-interceptors server-request #'op:receive_request))
+
+(defmethod will-send-exception ((orb CORBA:ORB) server-request)
+  (loop 
+    while (handler-case
+            (progn (pop-interceptors server-request #'op:send_exception)
+                   nil)
+            (systemexception (exc)
+                             (set-request-exception server-request exc)))))
+
 
 
 ;;;; Parsing Stringified Object Refrences
