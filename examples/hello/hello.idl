@@ -1,5 +1,13 @@
 module Hello {
+  valuetype Fox {
+    public string name;
+    public long value;
+  };
   interface World {
     string greet ();
+    Fox read (in string name);
+    void write (in Fox box);
+    string repr (in Fox box);
+    string write2 (in Fox box1, in Fox box2);
   };
 };

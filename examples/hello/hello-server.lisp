@@ -7,6 +7,26 @@
 (corba:define-method greet ((self hello-world))
   (slot-value self 'motd))
 
+(corba:define-method read ((self hello-world) name)
+  (cond ((equal name "") nil)
+        (t (make-instance 'hello:fox :name name :value (length name)))))
+
+(corba:define-method write ((self hello-world) box)
+  (clorb::mess 5 "~A" box))
+
+(corba:define-method repr ((self hello-world) box)
+  (princ-to-string box))
+
+(corba:define-method write2 ((self hello-world) box1 box2)
+  (cond ((eql box1 box2) "They are the same")
+        (t (format nil "~A and ~A" box1 box2))))
+
+
+(defmethod print-object ((fox hello:fox) stream)
+  (print-unreadable-object (fox stream :type t :identity t)
+    (format stream "~A #~A" (op:name fox) (op:value fox))))
+
+
 (defvar *hello-servant* nil)
 
 (defun setup-hello (&key file name)
