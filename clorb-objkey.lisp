@@ -4,9 +4,9 @@
 Layout for Object Key
 
 Transient ior:
-1. Magic number for transient IOR
+1. Magic number for transient IOR <UShort>
 2. POA-id <UShort>
-3. Unique number for this server instance
+3. Unique number for this server instance <ULong>
 4. ObjectId
 
 Persistent ior (1):
@@ -56,9 +56,9 @@ be no need to store the actual path to the POA in the object key.
                (subseq (buffer-octets buffer)
                        (buffer-position buffer))))
       (t
-       (break "illegal magic=~S" magic)
-       (mess 2 "Illegal magic number")
-       nil))))
+       ;;(warn "illegal magic=~S" magic)
+       ;; default poa for boot objects
+       (values :transient 0 (buffer-octets buffer))))))
 
 (defun decode-object-key (octets)
   (let ((buffer (make-buffer :octets octets)))

@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.16 2003/02/24 17:37:43 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.17 2003/03/10 22:27:09 lenst Exp $
 
 (in-package :clorb)
 
@@ -270,7 +270,8 @@
     policies))
 
 
-(defun create-POA (poa name manager policies orb)
+(defun create-POA (poa name manager policies orb
+                       &key poaid )
   (setq policies (canonical-policy-list policies))
   (when (and poa (find name (op:the_children poa)
                        :key #'op:the_name :test #'equal))
@@ -281,7 +282,7 @@
            :the_parent poa
            :the_POAmanager (or manager (make-instance 'PortableServer:poamanager))
            :policies policies
-           :poaid (incf *last-poaid*)
+           :poaid (or poaid (incf *last-poaid*))
            :orb orb)))
     (when poa
       (push newpoa (slot-value poa 'the_children)))

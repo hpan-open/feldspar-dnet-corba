@@ -1,9 +1,37 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.13 2003/01/16 23:05:07 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.14 2003/03/10 22:27:09 lenst Exp $	
 
 (in-package :clorb)
 
 
+;;;; Default POA (boot objects)
+
+(defvar *default-POA* nil)
+
+(defvar *boot-objects*
+  (make-hash-table :test #'equal))
+
+(defclass boot-object-manager (PortableServer:ServantActivator)
+  ())
+
+(defun setup-default-poa (orb)
+  (setq *default-poa* 
+        (create-POA nil "_default_" (op:the_POAManager *root-poa*) 
+                    '(:use_servant_manager :user_id)
+                    orb
+                    :poaid 0))
+  (op:set_servant_manager *default-poa* (make-instance 'boot-object-manager)))
+
+(define-method incarnate ((self boot-object-manager) oid adapter)
+  (declare (ignore adapter))
+  (let ((name (oid-to-string oid)))
+    (let ((obj (gethash name *boot-objects*)))
+      (when obj
+        (signal (omg.org/portableserver:forwardrequest
+                 :forward_reference obj)))
+      nil)))
+
+
 ;;;; Server proper
 
 (defun setup-server (&optional (orb (ORB_init)))
@@ -13,7 +41,10 @@
     (setf (orb-port orb) port)
     (unless (orb-host orb)
       (setf (orb-host orb) host))
-    (setup-shortcut)))
+    (setup-shortcut))
+  (unless *root-POA*
+    (setq *root-poa* (create-POA nil "root" nil nil orb)))
+  (setup-default-poa orb))
 
 (defun setup-incoming-connection (conn)
   (connection-init-read conn nil *iiop-header-size* #'poa-message-handler))
@@ -145,8 +176,6 @@
 (defun root-POA (&optional (orb (orb_init)))
   (unless (adaptor orb)
     (setup-server orb))
-  (unless *root-POA*
-    (setq *root-poa* (create-POA nil "root" nil nil orb)))
   *root-POA*)
 
 (defun initialize-poa (orb)
