@@ -174,6 +174,10 @@
     (:pk_wstring 'CORBA:wstring)))
 
 
+(defmethod target-type ((obj CORBA:FixedDef) target)
+  (declare (ignore target))
+  'corba:fixed)
+
 (defmethod target-type ((obj CORBA:SequenceDef) target)
   (declare (ignore target))
   `sequence)
@@ -188,6 +192,10 @@
 
 (defmethod target-type ((obj CORBA:StructDef) target)
   (scoped-target-symbol target obj))
+
+
+
+;;;; Target-typecode Methods
 
 (defmethod target-typecode ((obj CORBA:PrimitiveDef) target)
   (declare (ignore target))
@@ -212,6 +220,12 @@
    (:pk_wchar `CORBA:tc_wchar)
    (:pk_void `CORBA:tc_void)
    (:pk_value_base `CORBA:tc_valuebase)))
+
+
+(defmethod target-typecode ((obj CORBA:FixedDef) target)
+  (declare (ignore target))
+  `(create-fixed-tc ,(op:digits obj) ,(op:scale obj)))
+
 
 (defmethod target-typecode ((x CORBA:StringDef) target)
   (declare (ignore target))
@@ -335,13 +349,16 @@
        :type ,(target-type (op:original_type_def x) target)
        :typecode ,(target-typecode (op:original_type_def x) target) )))
 
+(defun enum-constant-p (const)
+  "True if the constant definition is for a generated constant for enum members."
+  (and (eq :tk_enum (op:kind (op:type const)))
+       (eq (op:defined_in const)
+           (op:defined_in (op:type_def const)))
+       (string-equal (any-value (op:value const))
+                     (op:name const))))
 
 (defmethod target-code ((const CORBA:ConstantDef) (target stub-target))
-  (unless (and (eq :tk_enum (op:kind (op:type const)))
-               (eq (op:defined_in const)
-                   (op:defined_in (op:type_def const)))
-               (string-equal (any-value (op:value const))
-                             (op:name const)))
+  (unless (enum-constant-p const)
     `(defconstant ,(scoped-target-symbol target const)
        ',(any-value (op:value const)))))
 
@@ -357,8 +374,9 @@
                        (target-base-list target bases #'target-proxy-class-symbol
                                          'CORBA:Proxy))
         :id ,(op:id idef)
-        :name ,(op:name idef)))
-
+        :name ,(op:name idef)
+        :version ,(op:version idef)
+        :defined_in ,(scoped-target-symbol target (op:defined_in idef))))
    (call-next-method)))
 
 
