@@ -115,14 +115,12 @@
                id))
 
 (defmethod local-translator ((self servant-wrapper))
-  (if (slot-boundp self 'local-translator)
-    (slot-value self 'local-translator)
-    (setf (slot-value self 'local-translator) (make-instance 'local-translator :wrapper self))))
+  (with-cache-slot (self local-translator)
+    (make-instance 'local-translator :wrapper self)))
 
 (defmethod remote-translator ((self servant-wrapper))
-  (if (slot-boundp self 'remote-translator)
-    (slot-value self 'remote-translator)
-    (setf (slot-value self 'remote-translator) (make-instance 'remote-translator :wrapper self))))
+  (with-cache-slot (self remote-translator)
+    (make-instance 'remote-translator :wrapper self)))
 
 
 (defun make-remote (wrapper obj)
