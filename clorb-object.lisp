@@ -2,6 +2,7 @@
 
 (in-package :clorb)
 
+
 ;;;; Connection forward
 
 (defgeneric profile-connection (profile orb))
@@ -118,6 +119,7 @@
 
 (defclass CORBA:PROXY (corba:object)
   ((id :initform nil :initarg :id :accessor proxy-id)
+   (the-orb  :initarg :the-orb  :accessor the-orb)
    (connection :initform nil :accessor object-connection)
    (raw-profiles :initform nil :initarg :raw-profiles
                  :accessor object-raw-profiles)

@@ -9,11 +9,6 @@
 
 (defvar *orb-initializers* nil)
 
-(defvar *running-orb* t
-  "Will be set to true in the process that is running the ORB server part.
-If this is true, orb-wait will check server streams also.
-Can be set to true globally for singel-process / development.")
-
 
 (deftype CORBA:ORBId ()
   'string)
@@ -58,6 +53,7 @@ Can be set to true globally for singel-process / development.")
   (make-instance (find-proxy-class 
                   (if (equal ior-id "") expected-id ior-id))
     :id ior-id
+    :the-orb orb
     :profiles profiles
     :raw-profiles raw-profiles ))
 
@@ -90,6 +86,11 @@ Can be set to true globally for singel-process / development.")
 (defmethod has-received-reply ((orb clorb-orb) client-request)
   (declare (ignore client-request))
   nil)
+
+(defmethod has-received-other ((orb clorb-orb) client-request)
+  (declare (ignore client-request))
+  nil)
+
 
 (defmethod will-send-request ((orb clorb-orb) client-request)
   (declare (ignore client-request))
@@ -143,7 +144,8 @@ Can be set to true globally for singel-process / development.")
 	  "IOR:~{~2,'0X~}"
 	  (map 'list #'identity (marshal-make-encapsulation
 				 (lambda (buffer)
-                                   (marshal-object objref buffer))))))
+                                   (marshal-object objref buffer))
+                                 (the-orb objref)))))
 
 ;;;    ObjectIdList list_initial_services ();
 (define-method list_initial_references ((orb orb))
@@ -455,9 +457,7 @@ Can be set to true globally for singel-process / development.")
       (op:resolve_initial_references orb (decode-objkey-string key)))
      (t
       (let ((key (decode-objkey-vector key))
-            (proxy (make-instance 'CORBA:Proxy
-                     :id ""
-                     :profiles '())))
+            (proxy (create-objref orb :ior-id "" :profiles '())))
         (dolist (addr addrs)
           (assert (eq :iiop (car addr)))
           (let ((version (second addr))
