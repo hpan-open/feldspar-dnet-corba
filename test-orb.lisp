@@ -114,7 +114,7 @@
 
   (define-test "DII- send multiple requests"
     (setup-test-out)
-    (let* ((orb (CORBA:ORB_init))
+    (let* ((orb (make-instance 'test-orb))
            (obj (test-object orb))
            (ops '("op1" "op2" "op3")))
       (flet ((req-list ()

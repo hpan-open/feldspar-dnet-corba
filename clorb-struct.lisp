@@ -161,10 +161,10 @@ of fields can be defaulted (numbers and strings)."
       (let ((keys (tc-keywords tc))
             (unmarshallers
              (loop for i from 0 below (op:member_count tc)
-                   do (unmarshal-function (op:member_type tc i)))))
+                   collect (unmarshal-function (op:member_type tc i)))))
         (case (length keys)
-          (2 (let ((k1 (first keys))
-                   (k2 (second keys))
+          (2 (let ((k1 (elt keys 0))
+                   (k2 (elt keys 1))
                    (m1 (first unmarshallers))
                    (m2 (second unmarshallers)))
                (lambda (buffer)
@@ -173,7 +173,7 @@ of fields can be defaulted (numbers and strings)."
                           k2 (funcall m2 buffer)))))
           (t (lambda (buffer)
                (apply constructor
-                      (loop for key in keys and fun in unmarshallers
+                      (loop for key across keys and fun in unmarshallers
                             collect key collect (funcall fun buffer))))))))))
 
 
