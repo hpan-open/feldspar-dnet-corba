@@ -1,11 +1,11 @@
 ;;;; clorb-srvreq.lisp
-;; $Id: clorb-srvreq.lisp,v 1.6 2001/07/01 20:37:46 lenst Exp $
+;; $Id: clorb-srvreq.lisp,v 1.7 2001/07/02 16:50:39 lenst Exp $
 
 (in-package :clorb)
 
 
 (defstruct server-request
-  stream
+  connection
   ;; Actual message
   buffer
   ;; Header info
@@ -35,46 +35,31 @@
 
 ;;;; Reading and Decoding
 
-(defun read-request (sreq stream)
+(defun read-request (sreq decode-fun)
+  ;; Called when message header has been read
   (let* ((buffer (server-request-buffer sreq))
-         (octets (buffer-octets buffer)))
-    (setf (fill-pointer octets) 12)
-    (setf (buffer-position buffer) 0)
-    (let ((read-length
-           (read-sequence octets stream)))
-      (mess 1 "read ~A bytes" read-length)
-      (when (< read-length (length octets))
-        (mess 1 "not read enough")
-        (close stream)
-        (mess 2 "Closing stream ~A" stream)
-        (return-from read-request nil)))
+         (conn (server-request-connection sreq)))
     (setf (server-request-msgtype sreq)
       (unmarshal-giop-header buffer))
-    (let ((size (+ (unmarshal-ulong buffer) 12)))
+    (let ((size (+ (unmarshal-ulong buffer) *iiop-header-size*)))
       (mess 1 "Message type ~A size ~A" (server-request-msgtype sreq) size)
-      ;; FIXME: check against array-dimension-limit
-      (if (< (array-total-size octets) size)
-          (adjust-array octets size))
-      (setf (fill-pointer octets) size)
-      (read-sequence octets stream :start 12)
-      (mess 2 "Receive (~D)" size)
-      t)))
+      (connection-init-read conn t size decode-fun))))
 
 
 (defun decode-request (sreq)
   (let ((buffer (server-request-buffer sreq)))
-    (with-slots 
+    (with-slots
         (service-context req-id response object-key operation principal)
         sreq
       (ecase (server-request-msgtype sreq)
-        (0    
+        (0
          (setf service-context (unmarshal-service-context buffer))
          (setf req-id (unmarshal-ulong buffer))
          (setf response (unmarshal-octet buffer))
          (setf object-key (unmarshal-osequence buffer))
          (setf operation (unmarshal-string buffer))
          (setf principal (unmarshal-osequence buffer))
-         (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'" 
+         (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
                req-id operation object-key principal))
         (3
          (setf req-id (unmarshal-ulong buffer))
@@ -100,15 +85,15 @@
 
 (defun set-request-exception (sreq condition)
   (when (eq 'locate (server-request-operation sreq))
-    (set-request-result sreq nil nil 
-                        :status 
+    (set-request-result sreq nil nil
+                        :status
                         (if (typep condition 'CORBA:OBJECT_NOT_EXIST)
                             0
                           1))
     (return-from set-request-exception))
   (when (typep condition 'userexception)
     ;; FIXME: Check that the exeception is defined for the op
-    (set-request-result 
+    (set-request-result
      sreq
      (cons (exception-id condition)
            (userexception-values condition))
@@ -118,7 +103,7 @@
                (slot-value condition 'types)
              (handler-case
                  (map 'list #'second
-                      (third (typecode-params 
+                      (third (typecode-params
                               (get-typecode (exception-id condition)))))
                (error (exc)
                  (mess 8 "~A: ~A" condition exc)
@@ -129,12 +114,12 @@
     (mess 8 "Unknown exception: ~A" condition)
     (setf condition (make-condition 'corba:unknown :minor 1009)))
   (when (typep condition 'corba:systemexception)
-    (set-request-result sreq 
+    (set-request-result sreq
                         (list (exception-id condition)
                               (system-exception-minor condition)
                               (system-exception-completed condition))
-                        (list :tk_string 
-                              :tk_ulong 
+                        (list :tk_string
+                              :tk_ulong
                               OMG.ORG/CORBA::TC_completion_status)
                         :status 2)))
 
@@ -144,9 +129,9 @@
   (unless (or (not (zerop (server-request-status sreq)))
               (eq (server-request-arguments sreq) :unset))
     (decode-arguments-for-output sreq))
-  (with-slots (buffer stream response req-id status values types) sreq
+  (with-slots (response req-id status) sreq
     (when (and (logbitp 0 response)
-               (not (eq values 'defer)))
+               (not (eq (server-request-values sreq) 'defer)))
       (let ((buffer (get-work-buffer))
             (msg-type nil))
         (cond ((eq (server-request-operation sreq) 'locate)
@@ -160,20 +145,23 @@
                (marshal-ulong 0 buffer) ; service-context
                (marshal-ulong req-id buffer)
                (marshal-ulong status buffer)
-               (marshal-multiple values types buffer)))
+               (marshal-multiple (server-request-values sreq)
+                                 (server-request-types sreq)
+                                 buffer)))
         (marshal-giop-set-message-length buffer)
-        (write-sequence (buffer-octets buffer) stream)
-        (mess 3 "#~D reply type ~A status ~A (len ~D)" 
-              req-id msg-type status (length (buffer-octets buffer)))
-        (force-output stream)))))
+        (connection-send-buffer (server-request-connection sreq)
+                                buffer)
+        (mess 3 "#~D reply type ~A status ~A (len ~D)"
+              req-id msg-type status (length (buffer-octets buffer)))))))
+
 
 (defun decode-arguments-for-output (sreq)
   (with-slots (arguments result values types) sreq
-    (loop for arg in arguments 
+    (loop for arg in arguments
         unless (zerop (logand ARG_OUT (op:arg_modes arg)))
         collect (any-value (op:argument arg)) into a-values
         collect (any-typecode (op:argument arg)) into a-types
-        finally (setf types a-types 
+        finally (setf types a-types
                       values a-values))
     (when result
       (let ((res-type (any-typecode result))
@@ -205,7 +193,7 @@
     (error 'BAD_INV_ORDER))
   (setf (server-request-arguments sreq) nvlist)
   (doseq (nv nvlist)
-    (cond 
+    (cond
      ((/= 0 (logand ARG_IN (op:arg_modes nv)))
       (setf (any-value (op:argument nv))
         (unmarshal (any-typecode (op:argument nv))
