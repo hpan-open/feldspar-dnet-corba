@@ -149,6 +149,13 @@
            (id2 (poa-poaid poa2)))
       (ensure-eql (gethash id1 *poa-map*) poa1)
       (ensure-eql (gethash id2 *poa-map*) poa2)
+      ;; Following method tests what happens if we call create_POA during
+      ;; destruction, before the destruction is "apparent".
+      (define-method op:destroy :before ((poa (eql poa2)) f1 f2)
+        (declare (ignore f1 f2))
+        (ensure-exception
+         (op:create_POA poa1 "p9" nil nil)
+         CORBA:BAD_INV_ORDER 'op:minor (std-minor 17)))
       (op:destroy poa1 t t)
       (handler-case
         (progn (op:find_POA root-poa "p1" nil)
@@ -160,7 +167,7 @@
               "UnRegistered with the manger")
       (ensure-exception
        (op:create_POA poa1 "p9" nil nil)
-       CORBA:BAD_INV_ORDER 'op:minor (std-minor 17))))
+       CORBA:OBJECT_NOT_EXIST)))
 
 
   (define-test "POA Activator"
@@ -229,11 +236,11 @@
         (ensure (every (lambda (item) (typep item 'CORBA:Octet)) id)))))
 
 
-;;;; Adapter Activator
-  (define-test "Adapter Activator"
+;;;; Servant Activator
+  (define-test "Servant Activator"
     (let* ((poa (op:create_POA root-poa "p" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
-                                     (op:create_servant_retention_policy root-poa :retain))))
+                                     (op:create_servant_retention_policy root-poa :retain) )))
            (my-oid '(18))
            (activator (make-instance 'mock-activator
                         :adapter poa
@@ -244,23 +251,29 @@
       ;; pattern for etheralize arguments
       (setf (slot-value activator 'etheralize-verifier)
             (sexp-pattern
-             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
+             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t nil)))
       (op:deactivate (op:the_poamanager poa) t t)
       (ensure-eql (slot-value activator 'etheralize-called) 1)
-      ;; Again, but with destroy
+      ;; Again, but with destroy and extra servant
       (setq poa (op:create_POA root-poa "p2" nil
                                (list (op:create_request_processing_policy root-poa :use_servant_manager)
-                                     (op:create_servant_retention_policy root-poa :retain))))
+                                     (op:create_servant_retention_policy root-poa :retain)
+                                      (op:create_id_uniqueness_policy root-poa :multiple_id))))
       (setf (slot-value activator 'adapter) poa)
       (op:set_servant_manager poa activator)
       (op:activate (op:the_poamanager poa))
       (test-poa-invoke poa :operation "_non_existent" :oid my-oid :args '())
+      (op:activate_object_with_id poa '(17) (slot-value activator 'created-servant))
+      (setf (slot-value activator 'etheralize-verifier)
+            (sexp-pattern
+             `(,(sequence-pattern 17) ,poa ,(slot-value activator 'created-servant) nil t)))
+      (op:deactivate_object poa '(17))
       ;; pattern for etheralize arguments
       (setf (slot-value activator 'etheralize-verifier)
             (sexp-pattern
-             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t t)))
+             `(,(sequence-pattern 18) ,poa ,(slot-value activator 'created-servant) t nil)))
       (op:destroy poa t t)
-      (ensure-eql (slot-value activator 'etheralize-called) 2)))
+      (ensure-eql (slot-value activator 'etheralize-called) 3) ))
 
 
 ;;;; State changes
@@ -286,6 +299,7 @@
     (let* ((oid #(1))
            (proxy (op:activate_object_with_id root-poa oid (make-instance 'null-servant)))
            (r1 (test-poa-dispatch root-poa :operation "_is_a" :args '("foo") :oid oid)))
+      (declare (ignore proxy))
       (ensure-eql (request-state r1) :wait)
       (op:discard_requests (op:the_poamanager root-poa) t)
       (ensure-pattern* r1

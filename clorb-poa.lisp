@@ -1,7 +1,13 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.37 2005/02/15 21:08:43 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.38 2005/02/21 18:12:32 lenst Exp $
 
 (in-package :clorb)
+
+;;; Variables
+
+(defvar *poa-current* nil
+  "The current invocation data for the PortableServer::Current object.")
+
 
 
 ;;;; Servant manager
@@ -49,19 +55,13 @@
  :id "IDL:omg.org/PortableServer/AdapterActivator:1.0"
  :name "AdapterActivator")
 
-(DEFINE-METHOD "UNKNOWN_ADAPTER" ((OBJ PortableServer:ADAPTERACTIVATOR)
-                                  _PARENT _NAME)
-  (declare (ignore _PARENT _NAME)))
+(define-method unknown_adapter ((OBJ PortableServer:AdapterActivator)
+                                _parent _name)
+  (declare (ignore _parent _name)))
 
 
 ;;;; PortableServer::POA
-#|
-(active-servant-map
-           :initform (make-hash-table)
-           :reader poa-active-servant-map
-           :documentation "servant->id")
-:reader poa-active-object-map
-|#
+
 (define-corba-class PortableServer:POA ()
   :attributes ((the_name :readonly)
                (the_parent :readonly) 
@@ -78,7 +78,9 @@
           (auto-id :accessor poa-auto-id :initform 0)
           (the-orb :initarg :orb :accessor the-orb)
           (state :initform nil :accessor poa-state)
-          (destroy-in-progres-p :initform nil :accessor destroy-in-progres-p)
+          (life-state :initform nil :accessor life-state
+                      :documentation "Living, destroy in progress or destroyed")
+          (etherealize-complete :initform nil :accessor etherealize-complete)
           (queue :initform nil :accessor poa-request-queue)))
 
 (defmethod print-object ((p portableserver:poa) stream)
@@ -86,6 +88,15 @@
     (format stream "~A ~D objects"
             (op:the_name p)
             (activation-count (active-object-map p)))))
+
+(defmethod destroy-in-progres-p ((poa PortableServer:POA))
+  (eql (life-state poa) :destroy-in-progres))
+(defmethod (setf destroy-in-progres-p) (new-value (poa PortableServer:POA))
+  (setf (life-state poa) (if new-value :destroy-in-progres)))
+
+(defmethod destroyed-p ((poa PortableServer:POA))
+  (eql (life-state poa) :destroyed))
+
 
 (defun poa-name (poa)
   (labels ((name-list (poa parent)
@@ -100,11 +111,17 @@
   (or (poa-state poa)
       (op:get_state (op:the_poamanager poa))))
 
+(defun check-live-poa (poa)
+  (when (destroyed-p poa)
+    (raise-system-exception 'CORBA:OBJECT_NOT_EXIST)))
 
 (defmethod wait-for-completion ((poa portableserver:poa))
   ;; Currently we have no way to do this and as long as we are single
   ;; threaded it should not be much of an issue.
-  t)
+  (unless (etherealize-complete poa)
+    (if *poa-current*
+        (raise-system-exception 'CORBA:BAD_INV_ORDER 3 :completed_yes)
+        (orb-run-queue (the-orb poa)))))
 
 
 (defmethod poa-new-state ((poa portableserver:poa) new-state)
@@ -122,9 +139,6 @@
 
 
 ;;;; PortableServer::Current
-
-(defvar *poa-current* nil
-  "The current invocation data for the PortableServer::Current object.")
 
 (defun make-poa-current (poa oid servant) (list* poa oid servant))
 (defun poa-current-poa (poa-current) (car poa-current))
@@ -201,7 +215,7 @@
 
 
 (defun poamanager-new-state (pm new-state wait-for-completion
-                                    &optional etheralize-objects)
+                                    &optional etherealize-objects)
   (when wait-for-completion 
     (when (in-invocation-context pm)
       (raise-system-exception 'CORBA:bad_inv_order 3)))
@@ -214,8 +228,8 @@
       (unless (eql new-state old-state)
         (dolist (poa (managed-poas pm))
           (poa-new-state poa new-state)
-          (when etheralize-objects
-            (start-etheralize poa))))))
+          (when etherealize-objects
+            (start-etherealize poa))))))
   (when wait-for-completion
     (dolist (poa (managed-poas pm))
       (wait-for-completion poa))))
@@ -354,6 +368,7 @@
 ;; raises (AdapterAlreadyExists, InvalidPolicy);
 
 (define-method create_POA ((poa PortableServer:POA) adapter-name poamanager policies)
+  (check-live-poa poa)
   (when (destroy-in-progres-p poa)
     (raise-system-exception 'CORBA:BAD_INV_ORDER 17))
   (create-POA poa adapter-name poamanager policies (the-orb poa)))
@@ -376,6 +391,7 @@
 
 
 (define-method find_POA ((poa PortableServer:POA) name &optional activate-it)
+  (check-live-poa poa)
   (or (find-requested-poa poa name activate-it nil) 
       (error 'PortableServer:POA/AdapterNonexistent)))
 
@@ -425,7 +441,7 @@ The wait_for_completion parameter is handled as follows:
 * If wait_for_completion is FALSE, the destroy operation destroys the POA and
 its children but waits neither for active requests to complete nor for etherealization
 to occur. If destroy is called multiple times before destruction is complete
-(because there are active requests), the etherealize_objects parameter applies
+\(because there are active requests), the etherealize_objects parameter applies
 only to the first call of destroy. Subsequent calls with conflicting
 etherealize_objects settings use the value of etherealize_objects from the first
 call. The wait_for_completion parameter is handled as defined above for each
@@ -434,33 +450,34 @@ individual call (some callers may choose to block, while others may not).
 |#
 
 
-(defun start-etheralize (poa)
+(defun start-etherealize (poa &optional (wait-for-completion t))
   (when (and (poa-has-policy poa :retain)
              (poa-has-policy poa :use_servant_manager)
              (POA-servant-manager poa))
-    (map-activations 
-     (active-object-map poa)
-     (lambda (oid servant)
-       (op:etherealize (POA-servant-manager poa) 
-                       oid poa servant t 
-                       (not (null (servant-active-p (active-object-map poa)
-                                                    servant))))))))
+    (flet ((do-etherealize ()
+             (let ((aom (active-object-map poa)))
+               (flet ((etherealize-activation (oid servant)
+                        (remove-activation aom oid)
+                        (op:etherealize (POA-servant-manager poa) 
+                                        oid poa servant t
+                                        (not (null (servant-active-p aom servant))))))
+                 (map-activations aom #'etherealize-activation t)))))
+      (if wait-for-completion
+          (do-etherealize)
+          (enqueu-work (the-orb poa) #'do-etherealize)))))
 
 
-(define-method destroy ((poa PortableServer:POA) etherealize-objects wait-for-completion)
-#|
-* If wait_for_completion is TRUE and the current thread is in an invocation
-context dispatched from some POA belonging to the same ORB as this POA, the
-BAD_INV_ORDER system exception with standard minor code 3 is raised and
-POA destruction does not occur.
-|#
+
+(define-method op:destroy ((poa PortableServer:POA)
+                           etherealize-objects wait-for-completion)
+  (check-live-poa poa)
   (when (and wait-for-completion *poa-current*)
     (raise-system-exception 'CORBA:BAD_INV_ORDER 3 :completed_yes))
   (unless (eq :inactive (poa-effective-state poa))
     (poa-new-state poa :discarding))
-  (setf (destroy-in-progres-p poa) t)
   (let ((manager (op:the_poamanager poa)))
     (remove-poa manager poa))
+  (setf (destroy-in-progres-p poa) t)
   (dolist (child (op:the_children poa))
     (op:destroy child etherealize-objects wait-for-completion))
   ;; wait for ongoing requests to finnish,
@@ -469,9 +486,11 @@ POA destruction does not occur.
     (setf (slot-value parent 'the_children)
           (delete poa (op:the_children parent))))
   (unregister-poa poa)
-  (when etherealize-objects
-    (start-etheralize poa)))
-
+  (setf (life-state poa) :destroyed)
+  (if etherealize-objects
+      (start-etherealize poa wait-for-completion)
+      (if wait-for-completion
+          (wait-for-completion poa))))
 
 
 
@@ -485,6 +504,7 @@ POA destruction does not occur.
 ;;;    raises (WrongPolicy);
 
 (define-method get_servant_manager ((poa PortableServer:POA))
+  (check-live-poa poa)
   (check-policy poa :use_servant_manager)
   (poa-servant-manager poa))
 
@@ -492,6 +512,7 @@ POA destruction does not occur.
 ;;;    raises (WrongPolicy);
 
 (define-method set_servant_manager ((poa PortableServer:POA) imgr)
+  (check-live-poa poa)
   (check-policy poa :use_servant_manager)
   (unless (typep imgr (if (poa-has-policy poa :retain)
                         'PortableServer:ServantActivator
@@ -505,6 +526,7 @@ POA destruction does not occur.
 ;;;    raises (NoServant, WrongPolicy);
 
 (define-method get_servant ((poa PortableServer:POA))
+  (check-live-poa poa)
   (check-policy poa :use_default_servant)
   (unless (slot-boundp poa 'default-servant)
     (error 'omg.org/portableserver:poa/noservant))
@@ -514,6 +536,7 @@ POA destruction does not occur.
 ;;;    raises (WrongPolicy);
 
 (define-method set_servant ((poa PortableServer:POA) servant)
+  (check-live-poa poa)
   (check-policy poa :use_default_servant)
   (setf (poa-default-servant poa) servant))
 
@@ -529,9 +552,11 @@ POA destruction does not occur.
     (to-object-id (incf (POA-auto-id poa)))))
 
 (define-method activate_object ((poa PortableServer:POA) servant)
+  (check-live-poa poa)
   (op:activate_object_with_id poa (generate-id poa) servant))
 
 (define-method activate_object_with_id ((poa PortableServer:POA) id servant)
+  (check-live-poa poa)
   (check-policy poa :retain)
   (setq id (to-object-id id))
   (when (oid-servant (active-object-map poa) id)
@@ -543,6 +568,7 @@ POA destruction does not occur.
   id)
 
 (define-method deactivate_object ((poa PortableServer:POA) oid)
+  (check-live-poa poa)
   (check-policy poa :retain)
   (setq oid (to-object-id oid))
   (let ((activation (remove-activation (active-object-map poa) oid)))
@@ -570,6 +596,7 @@ POA destruction does not occur.
 ;;	raises (WrongPolicy);
 
 (define-method create_reference_with_id ((poa PortableServer:POA) oid intf)
+  (check-live-poa poa)
   (check-type intf string)
   (create-objref
    (the-orb poa)
@@ -601,6 +628,7 @@ POA destruction does not occur.
 ;;;     raises (ServantNotActive, WrongPolicy);
 
 (define-method servant_to_id ((poa PortableServer:POA) servant)
+  (check-live-poa poa)
   (cond ((in-servant-invocation-context poa servant)
          (op:_object_id servant))
         ((and (poa-has-policy poa :unique_id)
@@ -628,12 +656,14 @@ POA destruction does not occur.
 ;;;     raises (ObjectNotActive, WrongAdapter, WrongPolicy);
 
 (define-method reference_to_servant ((poa PortableServer:POA) reference)
+  (check-live-poa poa)
   (op:id_to_servant poa (op:reference_to_id poa reference)))
 
 ;;;   ObjectId reference_to_id(in Object reference)
 ;;;     raises (WrongAdapter, WrongPolicy);
 
 (define-method reference_to_id ((poa PortableServer:POA) reference)
+  (check-live-poa poa)
   (let ((profiles (object-profiles reference)))
     (unless profiles
       (error 'PortableServer:poa/wrongadapter))
@@ -662,6 +692,7 @@ POA destruction does not occur.
 ;;;     raises (ObjectNotActive, WrongPolicy);
 
 (define-method id_to_reference ((poa PortableServer:POA) oid)
+  (check-live-poa poa)
   (op:servant_to_reference poa
                             (op:id_to_servant poa oid)))
 
@@ -670,26 +701,31 @@ POA destruction does not occur.
 ;;;; Policy creation
 ;; ----------------------------------------------------------------------
 
-(define-method "CREATE_REQUEST_PROCESSING_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:REQUEST_PROCESSING_POLICY_ID value))
+(define-method "CREATE_REQUEST_PROCESSING_POLICY" ((poa PortableServer:POA) value)
+  (check-live-poa poa)
+  (op:create_policy (the-orb poa) PortableServer:REQUEST_PROCESSING_POLICY_ID value))
 
-(define-method "CREATE_SERVANT_RETENTION_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:SERVANT_RETENTION_POLICY_ID value))
+(define-method "CREATE_SERVANT_RETENTION_POLICY" ((poa PortableServer:POA) value)
+  (op:create_policy (the-orb poa) PortableServer:SERVANT_RETENTION_POLICY_ID value))
 
-(define-method "CREATE_IMPLICIT_ACTIVATION_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:IMPLICIT_ACTIVATION_POLICY_ID value))
+(define-method "CREATE_IMPLICIT_ACTIVATION_POLICY" ((poa PortableServer:POA) value)
+  (check-live-poa poa)
+  (op:create_policy (the-orb poa) PortableServer:IMPLICIT_ACTIVATION_POLICY_ID value))
 
-(define-method "CREATE_ID_ASSIGNMENT_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:ID_ASSIGNMENT_POLICY_ID value))
+(define-method "CREATE_ID_ASSIGNMENT_POLICY" ((poa PortableServer:POA) value)
+  (check-live-poa poa)
+  (op:create_policy (the-orb poa) PortableServer:ID_ASSIGNMENT_POLICY_ID value))
 
-(define-method "CREATE_ID_UNIQUENESS_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:ID_UNIQUENESS_POLICY_ID value))
+(define-method "CREATE_ID_UNIQUENESS_POLICY" ((poa PortableServer:POA) value)
+  (op:create_policy (the-orb poa) PortableServer:ID_UNIQUENESS_POLICY_ID value))
 
-(define-method "CREATE_LIFESPAN_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:LIFESPAN_POLICY_ID value))
+(define-method "CREATE_LIFESPAN_POLICY" ((poa PortableServer:POA) value)
+  (check-live-poa poa)
+  (op:create_policy (the-orb poa) PortableServer:LIFESPAN_POLICY_ID value))
 
-(define-method "CREATE_THREAD_POLICY" ((OBJ PortableServer:POA) value)
-  (op:create_policy (the-orb obj) PortableServer:THREAD_POLICY_ID value))
+(define-method "CREATE_THREAD_POLICY" ((poa PortableServer:POA) value)
+  (check-live-poa poa)
+  (op:create_policy (the-orb poa) PortableServer:THREAD_POLICY_ID value))
 
 
 ;; ----------------------------------------------------------------------
