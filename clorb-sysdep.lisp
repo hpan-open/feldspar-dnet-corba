@@ -50,6 +50,8 @@
   "Returns an UNCONNECTED-SOCKET for a TCP socket listening on PORT.  Set SO_REUSEADDDR if possible"
   (%SYSDEP
    "open listener socket"
+   #+dummy-tcp
+   (list 'dummy-listner (or port 115577))
    #+(or allegro use-acl-socket)
    (socket:make-socket :connect :passive :local-port port
                        :format :binary
@@ -72,6 +74,8 @@
 (defun passive-socket-host (socket)
   (%SYSDEP
    "Get the hostname/IP of socket"
+   #+dummy-tcp
+   "localhost"
    #+clisp
    (socket-server-host socket)
    #+(and mcl (not use-acl-socket))
@@ -91,6 +95,8 @@
   (declare (ignorable socket))
   (%SYSDEP
    "Get the port of socket"
+   #+dummy-tcp
+   (second socket)
    #+clisp
    (if socket (socket-server-port socket) *port*)
    #+(or Allegro use-acl-socket)
@@ -110,6 +116,8 @@
   "Open a TCP connection to HOST:PORT, and return the stream asociated with it"
   (%SYSDEP
    "open socket to host/port"
+   #+dummy-tcp
+   (error "Dummy TCP can connect")
    #+clisp 
    (socket-connect port host :element-type '(unsigned-byte 8))
    #+cmucl-sockets
@@ -138,6 +146,8 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (declare (ignorable blocking))
   (%SYSDEP
    "accept a connection"
+   #+dummy-tcp
+   nil
    #+cmucl-sockets
    (when blocking
      (let ((new (ext:accept-tcp-connection socket)))

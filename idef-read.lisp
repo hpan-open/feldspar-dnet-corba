@@ -212,7 +212,7 @@
    (t
     (error "Illegal type spec: ~S" type-sexp))))
 
-(define-method defined_in ((r repository))
+(define-method defined_in ((r CORBA:Repository))
   nil)
 
 (defun lookup-name-in (container qname &optional (default nil no-error-p))
