@@ -618,9 +618,7 @@
         ,(list* (scoped-target-symbol target idef)
                 (target-base-list target bases #'target-servant-class-symbol
                                   'PortableServer:Servant))
-        :attributes ,(servant-attribute-declaration idef))
-     `(defmethod interface-name ((servant ,class-symbol))
-        ',(scoped-target-symbol target idef)))))
+        :attributes ,(servant-attribute-declaration idef)))))
 
 
 (defun servant-attribute-declaration (idef)
