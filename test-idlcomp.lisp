@@ -172,12 +172,12 @@ typedef string aa[2][9];
     
     "S" (def-pattern :dk_constant
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_string)
-          'op:value (pattern 'any-typecode omg.org/corba:tc_string
+          'op:value (pattern 'any-typecode corba:tc_string
                              'any-value "wibbel"))
     
     "D" (def-pattern :dk_constant 
           'op:type_def (def-pattern :dk_primitive 'op:kind :pk_boolean)
-          'op:value (pattern 'any-typecode omg.org/corba:tc_boolean
+          'op:value (pattern 'any-typecode corba:tc_boolean
                              'any-value t)))
   
   

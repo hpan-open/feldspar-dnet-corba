@@ -158,13 +158,13 @@
                       (pattern 'op:kind :tk_alias 'op:id "IDL:a:1.0" 'op:name "a" ))
       (ensure-pattern (op:CREATE_ENUM_TC factory "IDL:e:1.0" "e" '("A" "B"))
                       (pattern 'op:kind :tk_enum 'op:name "e" 'op:member_count 2))
-      (ensure-pattern (op:create_union_tc factory "IDL:u:1.0" "u" omg.org/corba:tc_boolean
-                                          (list (omg.org/corba:unionmember
+      (ensure-pattern (op:create_union_tc factory "IDL:u:1.0" "u" corba:tc_boolean
+                                          (list (corba:unionmember
                                                  :name "a" :type corba:tc_string
-                                                 :label (any :any-value t :any-typecode omg.org/corba:tc_boolean))
-                                                (omg.org/corba:unionmember
+                                                 :label (any :any-value t :any-typecode corba:tc_boolean))
+                                                (corba:unionmember
                                                  :name "b" :type corba:tc_long
-                                                 :label (any :any-value nil :any-typecode omg.org/corba:tc_boolean))))
+                                                 :label (any :any-value nil :any-typecode corba:tc_boolean))))
                       (pattern 'op:kind :tk_union 'op:member_count 2))
       (ensure-pattern (op:CREATE_STRUCT_TC factory "IDL:s:1.0" "s"
                                            (list (corba:structmember :name "a" :type  CORBA:tc_long)
@@ -191,13 +191,13 @@
       (ensure-pattern* (op:create_value_tc factory "IDL:CORBA/vt:1.0" "vt" 
                                            corba:vm_none
                                            nil
-                                           (list (omg.org/corba:valuemember
+                                           (list (corba:valuemember
                                                   :name "m1" 
                                                   :id "IDL:Hoopp:1.0"
                                                   :version "1.0"
                                                   :type CORBA:tc_long
                                                   :type_def nil
-                                                  :access omg.org/corba:public_member)))
+                                                  :access corba:public_member)))
                        'op:kind :tk_value)
 
       (let ((recursive_tc (op:create_recursive_tc factory "IDL:V:1.0")))

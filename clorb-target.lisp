@@ -701,7 +701,7 @@
 ;;;; Local Interfaces
 
 
-(defmethod target-code ((def omg.org/corba:localinterfacedef) target)
+(defmethod target-code ((def corba:localinterfacedef) target)
   (make-progn*
    `(defclass ,(scoped-target-symbol target def) 
       ,(let ((bases (op:base_interfaces def)))
@@ -715,8 +715,8 @@
                #'<  :key #'target-sort-key )))))
 
 
-(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
-                                  (obj omg.org/corba:operationdef)
+(defmethod target-code-contained ((container corba:localinterfacedef)
+                                  (obj corba:operationdef)
                                   (target stub-target))
   (let ((param-list (in-param-list (op:params obj))))
   `(define-method ,(string-upcase (op:name obj))
@@ -724,8 +724,8 @@
      (declare (ignore ,@param-list))
      (raise-system-exception 'CORBA:no_implement))))
 
-(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
-                                  (obj omg.org/corba:attributedef)
+(defmethod target-code-contained ((container corba:localinterfacedef)
+                                  (obj corba:attributedef)
                                   (target stub-target))
   (let* ((class (scoped-target-symbol target container))
          (name (string-upcase (op:name obj)))
@@ -738,13 +738,13 @@
                      (declare (ignore newval))
                      (raise-system-exception 'CORBA:no_implement)))))))
 
-(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
-                                  (obj omg.org/corba:idltype)
+(defmethod target-code-contained ((container corba:localinterfacedef)
+                                  (obj corba:idltype)
                                   (target stub-target))
   (target-code obj target))
 
-(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
-                                  (obj omg.org/corba:exceptiondef)
+(defmethod target-code-contained ((container corba:localinterfacedef)
+                                  (obj corba:exceptiondef)
                                   (target stub-target))
   (target-code obj target))
 

@@ -2,7 +2,7 @@
 
 (define-abstract-interface test-abint-1 (corba:abstractbase)
   :mixin test-abint-1-mixin
-  :proxy (test-abint-1-PROXY OMG.ORG/CORBA:PROXY)
+  :proxy (test-abint-1-PROXY CORBA:PROXY)
   :id "IDL:test/abint1:1.0"
   :name "abint1")
 
@@ -36,7 +36,7 @@
   :name "value3"
   :base_value test-value-1 
   :is_truncatable t
-  :members (("next" omg.org/corba:tc_valuebase 0)))
+  :members (("next" corba:tc_valuebase 0)))
 
 
 (define-value-box test-box-1 

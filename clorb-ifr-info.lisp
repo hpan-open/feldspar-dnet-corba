@@ -51,7 +51,7 @@
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef)
                                    (target ifr-info-target))
-  (let ((desc (op:value (omg.org/features:describe op))))
+  (let ((desc (op:value (op:describe op))))
     (assert (typep desc 'corba:operationdescription))
     (make-progn* 
      (call-next-method)
@@ -60,7 +60,7 @@
         :name ,(op:name desc)
         :defined_in ,(scoped-target-symbol target (op:defined_in op))
         :version ,(op:version desc)
-        :result ,(target-typecode (omg.org/features:result_def op) target)
+        :result ,(target-typecode (op:result_def op) target)
         :mode ,(op:mode desc)
         :contexts ,(op:contexts desc)
         :parameters ,(map 'list (lambda (param)
@@ -73,7 +73,7 @@
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) 
                                    (target ifr-info-target))
-  (let ((desc (op:value (omg.org/features:describe attr))))
+  (let ((desc (op:value (op:describe attr))))
     (make-progn*
      (call-next-method)
      `(define-attribute ,(scoped-target-symbol target attr)

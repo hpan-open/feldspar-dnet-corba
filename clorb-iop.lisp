@@ -31,21 +31,21 @@
  :id "IDL:IOP/ServiceContext:1.0"
  :name "ServiceContext"
  :members (("context_id" (SYMBOL-TYPECODE 'IOP:SERVICEID) CONTEXT_ID)
-           ("context_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET)
+           ("context_data" (create-sequence-tc 0 CORBA:TC_OCTET)
             CONTEXT_DATA))
  :read ((BUFFER)
         (IOP:SERVICECONTEXT
           :context_id (UNMARSHAL-ULONG BUFFER)
           :context_data (UNMARSHAL-OSEQUENCE BUFFER)))
  :write ((OBJ BUFFER)
-         (MARSHAL-ULONG (OMG.ORG/FEATURES:CONTEXT_ID OBJ) BUFFER)
-         (MARSHAL-OSEQUENCE (OMG.ORG/FEATURES:CONTEXT_DATA OBJ) BUFFER)))
+         (MARSHAL-ULONG (op:CONTEXT_ID OBJ) BUFFER)
+         (MARSHAL-OSEQUENCE (op:CONTEXT_DATA OBJ) BUFFER)))
 
 (DEFINE-ALIAS IOP:SERVICEID
  :id "IDL:IOP/ServiceId:1.0"
  :name "ServiceId"
- :type OMG.ORG/CORBA:ULONG
- :typecode OMG.ORG/CORBA:TC_ULONG)
+ :type CORBA:ULONG
+ :typecode CORBA:TC_ULONG)
 
 (defconstant iop:tag_dce_sec_mech (quote 103))
 
