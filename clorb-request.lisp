@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.11 2004/02/03 17:01:23 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.12 2004/02/08 19:18:57 lenst Exp $
 
 (in-package :clorb)
 
@@ -46,7 +46,7 @@
    (effective-profile
     :accessor request-effective-profile)
    (status
-    :initarg :status                :initform nil
+    :initarg :status                :initform :initial
     :accessor request-status)
    (buffer
     :initarg :buffer                :initform nil
@@ -218,15 +218,24 @@
 
 ;;; void send_oneway ()
 
+;; Calling send on a request after invoke, send, or
+;; send_multiple_requests for that request was called raises
+;; BAD_INV_ORDER with standard minor code 10.
+
 (define-method send_oneway ((req client-request))
-  (setf (response-expected req) nil)  
+  (unless (eql (request-status req) :initial)
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 10 :completed_no))
+  (setf (response-expected req) nil)
   (request-send req))
 
 
 ;;; void send_deferred ()
 
 (define-method send_deferred ((req client-request))
-  (request-send req))
+  (unless (eql (request-status req) :initial)
+    (raise-system-exception 'CORBA:BAD_INV_ORDER 10 :completed_no))
+  (request-send req)
+  (add-pending-client-request (the-orb req) req))
 
 
 
@@ -251,6 +260,7 @@
 
 (defun request-handle-error (req)
   (has-received-other (the-orb req) req)
+  (setf (request-status req) :returned)
   (funcall (error-handler req) (request-exception req)))
 
 
@@ -258,6 +268,7 @@
   (request-wait-response req)
   (let ((buffer (request-buffer req)))
     (case (request-status req)
+      (:initial (raise-system-exception 'CORBA:BAD_INV_ORDER))
       (:error                             ; Communication error
        (setf (request-status req) :system_exception)
        (request-handle-error req))
@@ -285,6 +296,7 @@
        ;; result as we do here for static calls. The static call would
        ;; have to cons a list of results..
        (has-received-reply (the-orb req) req)
+       (setf (request-status req) :returned)
        (funcall (input-func req) req buffer)))))
 
 
@@ -306,21 +318,41 @@
 ;; transaction context that differs from that of the request.
 
 (define-method op::get_response ((req client-request))
+  (unless (remove-pending-request (the-orb req) req)
+    ;; FIXME: ??
+    (raise-system-exception 'CORBA:BAD_INV_ORDER))
   (request-get-response req)
   (values))
 
 
-(define-method poll_response ((req client-request))
-  ;; FIXME: possibly (orb-wait ...) if without timeout
-  (not (null (request-status req))))
+;;; boolean poll_response ();
+;;
+;; poll_response determines whether the request has completed. A TRUE return indicates
+;; that it has; FALSE indicates it has not.
+;;
+;; Return is immediate, whether the response has completed or not. Values in the request are
+;; not changed.
 
+;; Exception BAD_INV_ORDER with minor
+;;  * 11 - request not sendt
+;;  * 12 - request already returned
+;;  * 13 - request invoked
+
+(define-method poll_response ((req client-request))
+  ;; FIXME: 13
+  (case (request-status req)
+    ((:initial) (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
+    ((:returned) (raise-system-exception 'CORBA:BAD_INV_ORDER 12 :completed_yes))
+    ((nil) nil)
+    (otherwise t)))
 
 
 ;;; void invoke ()
 
 (define-method op::invoke ((req client-request))
-  (op:send_deferred req)
-  (op:get_response req))
+  (request-send req)
+  (request-get-response req)
+  (values))
 
 
 (defun request-funcall (req)
@@ -361,15 +393,29 @@
 
 ;;;; Stub support
 
+
+(defun symbol-op-info (sym)
+  "Returns: name result params mode exc-syms"
+  (values (get sym 'ifr-name)
+          (get sym 'ifr-result)
+          (get sym 'ifr-params)
+          (get sym 'ifr-mode)
+          (get sym 'ifr-exceptions)))
+
+
+(defun symbol-attr-info (sym)
+  "Returns: name type mode"
+  (values (get sym 'ifr-name)
+          (get sym 'ifr-type)
+          (get sym 'ifr-mode)))
+
+
 (defun compute-static-call (sym)
   (let (input-func output-func exceptions op response-expected)
     (lambda (obj &rest args)
       (unless input-func
-        (let ((name (get sym 'ifr-name))
-              (result (get sym 'ifr-result))
-              (params (get sym 'ifr-params))
-              (exc-syms (get sym 'ifr-exceptions))
-              (mode (get sym 'ifr-mode)))
+        (multiple-value-bind (name result params mode exc-syms)
+                             (symbol-op-info sym)
           (setq input-func
                 (let ((ufuns (loop for (nil pmode tc) in params
                                    unless (eql pmode :param_in) collect (unmarshal-function tc))))
@@ -391,6 +437,42 @@
       (do-static-call obj op response-expected 
                       (lambda (req buffer) (funcall output-func req buffer args))
                       input-func exceptions))))
+
+(defun compute-static-get (sym)
+  (let (op input-func)
+    (lambda (obj)
+      (unless input-func
+        (multiple-value-bind (name type)
+                             (symbol-attr-info sym)
+          (setq op (getter-name name))
+          (setq input-func
+                (let ((mfun (unmarshal-function type)))
+                  (lambda (req buffer)
+                    (declare (ignore req))
+                    (funcall mfun buffer))))))
+      (do-static-call obj op t (lambda (req buffer) (declare (ignore req buffer)))
+                      input-func nil))))
+
+
+(defun compute-static-set (sym)
+  (let (op output-func)
+    (lambda (obj value)
+      (unless output-func
+        (multiple-value-bind (name type mode)
+                             (symbol-attr-info sym)
+          (assert (eql mode :attr_normal))
+          (setq op (setter-name name))
+          (setq output-func
+                (let ((mfun (marshal-function type)))
+                  (lambda (req buffer arg)
+                    (declare (ignore req))
+                    (funcall mfun arg buffer))))))
+      (do-static-call obj op t 
+                      (lambda (req buffer)
+                        (funcall output-func req buffer value))
+                      (lambda (req buffer) (declare (ignore req buffer)))
+                      nil))))
+
 
 
 ;;; clorb-request.lisp ends here
