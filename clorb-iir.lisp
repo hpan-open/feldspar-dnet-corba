@@ -90,7 +90,9 @@
 
 (defun simplify-type (typecode)
   (macrolet ((mush (id def)
-               `(add-typecode-with-id ,id ,def))
+               `(or (known-idl-type ,id)
+                    (progn (add-typecode-with-id ,id typecode)
+                           ,def)))
              (simplifyf (var)
                `(progn (setf ,var (simplify-type ,var))
                  typecode))
