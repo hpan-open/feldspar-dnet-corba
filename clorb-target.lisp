@@ -200,6 +200,7 @@
    (:pk_octet `CORBA:tc_octet)
    (:pk_short `CORBA:tc_short)
    (:pk_string `CORBA:tc_string)
+   (:pk_wstring `CORBA:tc_wstring)
    (:pk_typecode `CORBA:tc_typecode)
    (:pk_ulong `CORBA:tc_ulong)
    (:pk_ulonglong `CORBA:tc_ulonglong)
