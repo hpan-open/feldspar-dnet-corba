@@ -135,9 +135,20 @@
           (parse-type-in container type))))))
 
 
+(defmethod idef-read-part ((op (eql 'define-constant)) sexp container)
+  (destructuring-bind (name type value &key id version) sexp
+    (let ((def (make-instance-in container 'constant-def 
+                                 :name name :value value
+                                 :id id :version version)))
+      (lambda ()
+        (setf (op:type_def def)
+          (parse-type-in container type))))))
+
+
 (defun make-instance-in (container class &rest args
                          &key name version id
                          &allow-other-keys)
+  (setq name (string name))
   (setq version (or version "1.0"))
   (setq id (or id
                (apply #'concatenate 'string
@@ -147,6 +158,7 @@
                           ,@(nreverse (repo-path container))
                           ,name ":" ,version))) )
   (let ((obj (apply #'make-instance class
+                    :name name
                     :id id 
                     :version version
                     :defined_in container
@@ -172,8 +184,15 @@
     (destructuring-bind (member-type &optional (bound 0))
         (cdr type-sexp)
       (make-instance 'sequence-def
-        :bound bound
+        :bound (or bound 0)
         :element_type_def (parse-type-in container member-type))))
+   ((and (consp type-sexp) (member (car type-sexp) '(string wstring)))
+    (destructuring-bind (string-type &optional (bound 0))
+        (cdr type-sexp)
+      (make-instance (if (eq string-type 'string)
+                      'string-def
+                      'wstring-def)
+        :bound bound)))
    (t
     (error "Illegal type spec: ~S" type-sexp))))
 
