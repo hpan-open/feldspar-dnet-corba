@@ -1,10 +1,8 @@
 (in-package :cl-user)
 
 (pushnew :clorb-dev *features*)
-(pushnew :use-my-idlparser *features*)
-(pushnew :no-idlcomp *features*)
 
-
+(setq custom:*parse-namestring-ansi* t)
 
 (setf (logical-pathname-translations "clorb")
   '(("SRC;**;*.*"  "/Users/lenst/src/clorb/**/*.*")
@@ -15,20 +13,21 @@
       '(("**;*.*"  "home:**;*.*")))
 
 
-;;(setq CLOS::*GF-WARN-ON-REPLACING-METHOD*       nil)
-;;(setq CLOS::*WARN-IF-GF-ALREADY-CALLED*         nil)
+(in-package "CLOS")
+(setq *gf-warn-on-replacing-method*       nil)
+(setq *warn-if-gf-already-called*         nil)
+(in-package :cl-user)
 
-#+use-my-idlparser
-(packer:require-package :net.cddr.redpas)
 
-(load "clorb-files")
+(load "~/src/clorb/clorb-files")
+(setq net.cddr.clorb.system::*binary-folder* "fasl")
 (net.cddr.clorb.system:reload)
 
 
 (setq clorb:*host* "localhost")
 (setq clorb::*host-translations* nil)
 
-(defvar *orb*
+(defvar *the-orb*
   (CORBA:ORB_init
    (list
     ;;"-ORBInitRef NameService=corbaloc::quad.local./NameService"
@@ -38,6 +37,7 @@
 
 (format t "~&;;; Activating the POA~%")
 (op:activate (op:the_poamanager (clorb::root-poa)))
-(format t "~&;;; ORB listening on port ~A~%" (clorb::orb-port clorb::*the-orb*))
+(format t "~&;;; ORB listening on port ~A~%"
+        (clorb::orb-port clorb::*the-orb*))
 
-(load (translate-logical-pathname "clorb:examples;hello;auto.lisp"))
+(load (logical-pathname "clorb:examples;hello;auto.lisp"))

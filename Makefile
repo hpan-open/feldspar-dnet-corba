@@ -18,3 +18,6 @@ setmcl:
 
 prep-cvs:
 	cd idlcomp; make prep-cvs
+
+tags:
+	etags *.lisp redpas/*.lisp luna/*.lisp
