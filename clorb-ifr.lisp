@@ -730,38 +730,22 @@
 
 (define-ir-class struct-def (corba:StructDef typedef-def)
   :id "IDL:omg.org/CORBA/StructDef:1.0"
-  :attributes ((members :virtual members))
-  :slots ((member-list :initarg :member-list
-                       :accessor member-list))
   :def_kind :dk_Struct
-  :defaults ())
+  :attributes ((members)))
 
-(defmethod members ((sdef struct-def))
-  (map 'vector
-    (lambda (item)
-      (CORBA:StructMember
-       :name (car item)
-       :type_def (cdr item)
-       :type (op:type (cdr item))))
-    (member-list sdef)))
+(defmethod op:members :before ((obj struct-def) &rest x)
+  (declare (ignore x))
+  (doseq (m (slot-value obj 'members))
+    (setf (op:type m) (op:type (op:type_def m)))))
 
-(defmethod (setf members) (mlist (sdef struct-def))
-  (setf (member-list sdef)
-    (map 'vector (lambda (smdef)
-                   (cons (op:name sdef) (op:type_def sdef)))
-         mlist))
-  (slot-makunbound sdef 'type))
 
 (defmethod idltype-tc ((def struct-def))
   (make-typecode :tk_struct
                  (op:id def)
                  (op:name def)
                  (map 'vector
-                   (lambda (x)
-                     (let ((name (car x))
-                           (type (op:type (cdr x))))
-                       (list name type)))
-                   (member-list def))))
+                      (lambda (x) (list (op:name x) (op:type x)))
+                      (op:members def))))
 
 ;;;; interface UnionDef : TypedefDef
 ;;;   readonly attribute TypeCode discriminator_type;

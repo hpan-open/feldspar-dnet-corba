@@ -129,10 +129,12 @@
     (let ((def (create-contained container 'struct-def
                                  :name name :version version :id id)))
       (lambda ()
-        (setf (member-list def)
+        (setf (op:members def)
           (mapcar (lambda (x)
-                    (cons (string (first x))
-                          (parse-type-in container (second x))))
+                    (CORBA:StructMember
+                     :name (string (first x))
+                     :type_def (parse-type-in container (second x))
+                     :type CORBA:tc_void ))
                   members))))))
 
 (defmethod idef-read-part ((op (eql 'define-union)) sexp container)
