@@ -143,7 +143,7 @@
            (obj (test-object orb))
            (req (nth-value 1 (op:_create_request obj nil "op" nil nil 0))))
       (op:send_deferred req)
-      (test-write-response req nil)
+      (test-write-response :request req)
       (orb-work orb nil t)
       (ensure (op:poll_next_response orb) "response should be ready")
       (let ((req1 (op:get_next_response orb)))

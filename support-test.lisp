@@ -119,7 +119,9 @@
 (defclass test-connection (connection)
   ((response-func :initarg response-func 
                   :initform nil
-                  :accessor response-func)))
+                  :accessor response-func)
+   (label :initarg :label  :initform "test"
+          :accessor test-label)))
 
 (defmethod connection-write-ready :after ((conn test-connection))
   (let ((fun (response-func conn))
@@ -127,10 +129,14 @@
     (when (and fun req)
       (funcall fun req))))
 
+(defmethod print-object ((conn test-connection) stream)
+  (print-unreadable-object (conn stream :type t :identity t)
+    (princ (test-label conn) stream)))
+
 
 ;;; Setup code
 
-(defun make-test-connection ()
+(defun make-test-connection (&optional (label "test"))
   (let ((desc (make-io-descriptor))
         (i-stream (make-octet-stream "i-stream"))
         (o-stream (make-octet-stream "o-stream")))
@@ -141,7 +147,7 @@
       (setf (io-descriptor-stream desc) (make-shortcut-stream i-stream o-stream))
       (setf (io-descriptor-shortcut-p desc) other)
       (let ((conn (make-instance 'test-connection
-                    :orb (CORBA:ORB_init)
+                    :orb (CORBA:ORB_init) :label label
                     :io-descriptor desc)))
         (io-descriptor-associate-connection desc conn)
         (values conn other o-stream)))))
@@ -149,12 +155,12 @@
 
 (defun setup-test-out ()
   (multiple-value-setq (*test-out-conn* *test-response-desc* *test-sink-stream*)
-    (make-test-connection)))
+    (make-test-connection "test-out")))
 
 
 (defun setup-test-in ()
   (multiple-value-setq (*test-in-conn* *test-request-desc* *test-response-sink*)
-    (make-test-connection))
+    (make-test-connection "test-in"))
   (setup-incoming-connection *test-in-conn*))
         
 
@@ -222,14 +228,22 @@ Requests sent to this object will end up in *test-sink-stream*."
                          (corba:any-value a)))
         request))))
 
-(defun test-write-response (req results)
+
+(defun test-write-response (&key (orb *the-orb*)
+                                     request message-type message
+                                     fragmented (giop-version giop-1-0))
+  (unless orb (setq orb (the-orb request)))
   (setup-outgoing-connection *test-out-conn*)
-  (let ((buffer (get-work-buffer (the-orb req))))
-    (marshal-giop-header :REPLY buffer)
-    (marshal-service-context nil buffer) 
-    (marshal-ulong (request-id req)  buffer)
-    (marshal :no_exception (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
-    (dolist (any results)
+  (let ((buffer (get-work-buffer orb)))
+    (cond (request
+           (marshal-giop-header :REPLY buffer giop-version fragmented)
+           (marshal-service-context nil buffer) 
+           (marshal-ulong (request-id request)  buffer)
+           (marshal :no_exception (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer))
+          (message-type
+           (marshal-giop-header message-type buffer giop-version fragmented))
+          (t (break)))
+    (dolist (any message)
       (marshal-any-value any buffer))
     (marshal-giop-set-message-length buffer)
     (let ((octets (buffer-octets buffer)))
