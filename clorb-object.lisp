@@ -58,6 +58,7 @@
                (argument) 
                (arg_modes)))
 
+
 (defun corba:namedvalue (&key (name "") argument (arg_modes ARG_IN))
   (make-instance 'CORBA:NamedValue 
     :name name :argument argument :arg_modes arg_modes))
@@ -86,7 +87,7 @@
   (raise-system-exception 'CORBA:MARSHAL 4 :completed_no))
 
 
-
+
 ;;;; CORBA:Object
 
 (define-interface CORBA:Object ()
@@ -94,7 +95,7 @@
   :name "Object")
 
 
-;;;| boolean	 is_nil();
+;;;| boolean is_nil();
 
 (define-method _is_nil ((x null))
   t)
@@ -113,7 +114,7 @@
   (object-is-a obj interface-id))
 
 
-
+
 ;;;; CORBA:Proxy
 
 
@@ -128,8 +129,10 @@
    (forward :initform nil :initarg :forward :accessor object-forward)
    (forward-reset :initform nil :accessor object-forward-reset)))
 
+
 (defgeneric profile-short-desc (profile stream)
   (:method ((profile t) stream) (write-string "*" stream)))
+
 
 (defmethod print-object ((o corba:proxy) stream)
   (print-unreadable-object (o stream :type t)
@@ -227,8 +230,6 @@
        maximum))
 
 
-
-
 ;;;| Status create_request (			
 ;;; _create_request in lisp mapping
 ;;;|     in Context	ctx,				
@@ -238,26 +239,24 @@
 ;;;|     out Request	request,		
 ;;;|     in Flags        req_flags    );
 
-(define-method _create_request ((obj t) ctx operation arg_list result req_flags)
+(define-method _create_request ((obj t)
+                                ctx operation arg_list result req_flags)
   (declare (ignore ctx operation arg_list result req_flags))
   (raise-system-exception 'CORBA:NO_IMPLEMENT 4 :completed_no))
 
-
 (define-method _create_request ((obj CORBA:Object)
                                 ctx operation arg_list result req_flags)
-  (declare (ignorable req_flags))
+  (declare (ignorable req_flags ctx))
   (if result
       (setf (op:arg_modes result) ARG_OUT)
     (setq result (CORBA:NamedValue :arg_modes ARG_OUT
                                    :argument (CORBA:Any))))
-  (values
-   result
-   (make-instance 'client-request
-     :target obj
-     :operation operation
-     :paramlist (cons result (copy-seq arg_list))
-     :ctx ctx)))
-
+  (values result
+          (create-client-request (the-orb obj)
+                                 :target obj
+                                 :operation operation
+                                 :paramlist (cons result (copy-seq arg_list))
+                                 #| :ctx ctx |# )))
 
 
 (define-method _is_a ((obj CORBA:Proxy) interface-id)
@@ -301,11 +300,11 @@
   (when (symbolp id)
     (setq id (symbol-ifr-id id)))
   (cond ((op:_is_a obj id)
-         (make-instance (find-proxy-class id)
-                        :id id
-                        :forward (object-forward obj)
-                        :profiles (object-profiles obj)
-                        :raw-profiles (object-raw-profiles obj)))
+         (let ((new (create-objref (the-orb obj)
+                        :ior-id id :profiles (object-profiles obj)
+                        :raw-profiles (object-raw-profiles obj))))
+           (setf (object-forward new) (object-forward obj))
+           new))
         (no-error nil)
         (t
          (error "Object of wrong type for narrowing"))))
@@ -347,12 +346,14 @@ Might destructivley change the original object."
          (call-next-method))))
 
 
+
 ;;;; ValueBase
 
 (defclass CORBA:ValueBase ()
   ())
 
 
+
 ;;;; AbstractBase
 
 (defclass CORBA:AbstractBase (CORBA:Object)
