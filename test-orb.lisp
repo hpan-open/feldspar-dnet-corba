@@ -10,7 +10,7 @@
 
 
 
-(define-test "Test ORB Pseudo object"
+(define-test-suite "Test ORB Pseudo object"
   
   (define-test "Can't marshal local objects"
     (let ((orb (CORBA:ORB_init)))
@@ -160,4 +160,3 @@
 
   
   #|end|#)
-  
