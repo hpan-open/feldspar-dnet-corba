@@ -217,7 +217,7 @@
 
 (defun connection-send-buffer (conn buffer)
   (when (connection-write-buffer conn)
-    (orb-wait (lambda (conn) (not (connection-write-buffer conn)) conn)))
+    (orb-wait (lambda (conn) (not (connection-write-buffer conn))) conn))
   (setf (connection-write-buffer conn) buffer)
   (setf (connection-write-callback conn) #'write-done)
   (let ((desc (connection-io-descriptor conn))
@@ -543,8 +543,16 @@ Where host is a string and port an integer.")
   (or
    (let ((forward (object-forward proxy)))
      (if forward
-       (or (setf (object-connection proxy) (connect-object forward))
-           (setf (object-forward proxy) nil))))
+       (cond ((setf (object-connection proxy) (connect-object forward))
+              (setf (object-forward-reset proxy) nil)
+              (object-connection proxy))
+             ((object-forward-reset proxy)
+              (setf (object-forward proxy) nil)
+              (warn "Object forwarding fail")
+              (return-from connect-object nil))
+             (t
+              (setf (object-forward-reset proxy) t)
+              (setf (object-forward proxy) nil)))))
    (dolist (profile (object-profiles proxy))
      (let* ((host (iiop-profile-host profile))
             (port (iiop-profile-port profile))
