@@ -21,10 +21,10 @@
 
 (defun corba:idl (file &key print (eval t) output (package-decl t)
                          only (exclude *default-exclude*)
-                         (skeleton t) target
+                         (skeleton t) target repository
                          (compiler *default-idl-compiler*)
                          (pprint-dispatch *target-pprint-dispatch*))
-  (let ((repository (make-instance 'repository)))
+  (let ((repository (or repository (make-instance 'repository))))
     (load-repository compiler repository file)
     (flet ((lookup (name) (op:lookup repository name)))
       (let* ((target (make-instance (or target (if skeleton 'all-target 'static-stub-target))
