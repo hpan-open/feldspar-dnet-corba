@@ -3,6 +3,13 @@
 (in-package :clorb)
 
 
+(define-typecode except-typecode
+  :kind :tk_except
+  :cdr-syntax (complex :tk_string :tk_string (sequence (:tk_string :tk_typecode)))
+  :params (id name :members)
+  :member-params (member_name member_type))
+
+
 (defun create-exception-tc (id name members)
   "Create Exception TypeCode for interface repository ID and NAME, with MEMEBERS.
 Members on form: (name TypeCode)"

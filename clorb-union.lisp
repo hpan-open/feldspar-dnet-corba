@@ -11,6 +11,14 @@
     :accessor union-value )))
 
 
+(define-typecode union-typecode
+  :kind :tk_union
+  :cdr-syntax (complex :tk_string :tk_string :tk_typecode :tk_long     
+                       (sequence (2 :tk_string :tk_typecode)))
+  :params (id name discriminator_type default_index :members)
+  :member-params (member_label member_name member_type))
+
+
 (defun create-union-tc (id name discriminator-type members)
   "Create a TypeCode for union type.
 members = ( (label name typecode)* )

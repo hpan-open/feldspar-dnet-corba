@@ -6,6 +6,14 @@
   ())
 
 
+(define-typecode struct-typecode
+  :kind :tk_struct
+  :cdr-syntax (complex :tk_string :tk_string
+                       (sequence (:tk_string :tk_typecode)))
+  :params (id name :members)
+  :member-params (member_name member_type))
+
+
 (defun create-struct-tc (id name members)
   (check-type id string)
   (check-type name string)
