@@ -25,6 +25,9 @@
     ("clorb-opdef" t)
     ("clorb-iir" t)
     "clorb-util"
+    "local-ir"
+    "target"
+    "clorb-idl"
     "dumpir"))
 
 (defparameter *server-files*
@@ -40,7 +43,6 @@
 (defparameter *x-files*
   '("test-suite"
     ;; Experimental
-    "local-ir"
     "internalize"
     "idef-read"
     "idef-write"
@@ -55,8 +57,6 @@
     "hello-idl"
     "hello-server"
     "hello-client"
-    ;; Code Gen
-    "target"
     ))
 
 
@@ -153,4 +153,5 @@
 (gen-package-decl "CORBA")
 (gen-package-decl "OP")
 (gen-package-decl "IOP")
+(gen-package-decl "OMG.ORG/PORTABLESERVER")
 |#
