@@ -1,8 +1,15 @@
 (in-package :clorb)
 
+(define-abstract-interface test-abint-1 (corba:abstractbase)
+  :mixin test-abint-1-mixin
+  :proxy (test-abint-1-PROXY OMG.ORG/CORBA:PROXY)
+  :id "IDL:test/abint1:1.0"
+  :name "abint1")
+
 (define-value test-value-1
   :id "IDL:test/value1:1.0"
   :name "value1"
+  :supported_interfaces (test-abint-1)
   :members (("name" CORBA:tc_string 0)))
 
 (define-value test-value-2
@@ -23,23 +30,13 @@
       ((or (not (typep hare 'test-value-2))
            (eql hare turtle))
        (if hare (1+ count) count))))
-#|
-(op:depth (make-instance 'test-value-2-user 
-            :left (make-instance 'test-value-2-user 
-                    :left (make-instance 'test-value-1))))
-(let ((tree (make-instance 'test-value-2-user 
-            :left (make-instance 'test-value-2-user))))
-  (setf (op:left (op:left tree)) tree)
-  (op:depth tree))
-|#
-
 
 (define-value test-value-3
   :id "IDL:test/value3:1.0"
   :name "value3"
   :base_value test-value-1 
   :is_truncatable t
-  :members (("next" (symbol-typecode 'test-value-3) 0)))
+  :members (("next" omg.org/corba:tc_valuebase 0)))
 
 
 (define-value-box test-box-1 
@@ -55,6 +52,12 @@
   :original_type CORBA:tc_string
   :type string)
 
+(define-value test-box-in-value
+  :id "IDL:test/boxinvalue:1.0"
+  :name "boxinvalue"
+  :base_value test-value-1
+  :is_truncatable t
+  :members (("box" (symbol-typecode 'test-box-1) 0)))
 
 (define-test-suite "Value"
   (variables
@@ -65,6 +68,9 @@
    (id2 (symbol-ifr-id 'test-value-2))
    (v2 (make-instance 'test-value-2 :name "root" :left v1 :right nil))
    (v2b (make-instance 'test-value-2 :name "v2b" :left v1 :right v1))
+   (tc3 (let ((tc (symbol-typecode 'test-value-3)))
+          (setf (gethash (op:id tc) *ifr-id-symbol*) 'test-value-3)
+          tc))
    (buffer (get-work-buffer)))
 
   (define-test "simple"
@@ -141,6 +147,25 @@
         (ensure-equalp r2 s2)
         (ensure-equalp r1 r3))))
 
+  (define-test "chunked"
+    (let ((v3 (make-instance 'test-value-3 :name "foo" 
+                             :next (make-instance 'test-value-3 :name "bar" 
+                                                  :next nil))))
+      (marshal v3 tc1 buffer)
+      (ensure-pattern* (unmarshal tc1 buffer) 
+                       'op:name "foo"
+                       'op:next (pattern 'identity (isa 'test-value-3)
+                                         'op:name "bar"
+                                         'op:next nil))))
+  (define-test "chunked box"
+    (let ((v (make-instance 'test-box-in-value :name "foo" 
+                             :box (make-instance 'test-box-1 :data 989))))
+      (marshal v tc1 buffer)
+      (ensure-pattern* (unmarshal (symbol-typecode 'test-box-in-value) buffer) 
+                       'op:name "foo"
+                       'op:box (pattern 'op:data 989))))
+  
+
   (define-test "truncated"
     (let ((v3 (make-instance 'test-value-3 :name "foo" 
                              :next (make-instance 'test-value-3 :name "bar" 
@@ -172,8 +197,21 @@
                          'identity (isa 'test-value-1)
                          'op:name "hx")))) 
 
-
-;; 
+  (define-test "Abstract Interface"
+    (let ((ab-tc (symbol-typecode 'test-abint-1))
+          (abi (make-instance 'test-abint-1-proxy
+                 :profiles (list (make-iiop-profile :version '(1 . 0)
+                                                    :host "he" :port 98
+                                                    :key (string-to-oid "hej"))))))
+      (marshal v1 ab-tc buffer)
+      (marshal nil ab-tc buffer)
+      (marshal abi ab-tc buffer)
+      (ensure-pattern* (unmarshal ab-tc buffer)
+                       'op:name (op:name v1))
+      (ensure-eql (unmarshal ab-tc buffer) nil)
+      (ensure-pattern* (unmarshal ab-tc buffer)
+                       'identity (isa 'CORBA:Proxy)
+                       `(op:_is_a * ,(op:id ab-tc)) t)))
 
 
 #| end test suite |#)
