@@ -40,9 +40,6 @@
    (writepending nil))
  )
 
-
-(defmacro %value (x) `(select-value ,x))
-
 #+sbcl
 (defmacro %add-fd (select-obj fd-number set)
   (let ((sobj '#:sobj)
@@ -61,7 +58,7 @@
    "add listner to select"
 
    #+clisp-new-socket-status
-   `(length (push ,socket (%value ,select-obj)))
+   `(length (push ,socket (select-value ,select-obj)))
 
    #+sbcl
    `(%add-fd ,select-obj
@@ -69,7 +66,7 @@
      select-rset)
 
    #+allegro
-   `(push (socket:socket-os-fd ,socket) (%value ,select-obj))
+   `(push (socket:socket-os-fd ,socket) (select-value ,select-obj))
 
    ;; Default
    nil))
@@ -90,10 +87,10 @@ status for stream."
               (cond ((not input)  :output)
                     ((not output) :input)
                     (t            :io)))
-             (%value select)))
+             (select-value select)))
 
    #+clisp
-   (length (push stream (%value select)))
+   (length (push stream (select-value select)))
 
    #+sbcl
    (let ((fd (sb-sys:fd-stream-fd stream)))
@@ -109,7 +106,7 @@ status for stream."
       (when output
         (setf (select-writepending select) t))
       (when input
-        (car (push stream (%value select)))))
+        (car (push stream (select-value select)))))
 
    ;; Default
    0))
@@ -127,7 +124,7 @@ Returns select result to be used in getting status for streams."
      (mess 1 "Selecting ~A" select)
      ;; FIXME: can use larger timeout when socket-status is fixed
      ;; to work on server sockets.
-     (let ((select-list (%value select)))
+     (let ((select-list (select-value select)))
        (when select-list
          (setq result (socket:socket-status (nreverse select-list) 10))))
      (mess 1 "Select result ~A" result)
@@ -135,7 +132,7 @@ Returns select result to be used in getting status for streams."
 
    #+allegro
    (mp:wait-for-input-available
-    (%value select)
+    (select-value select)
     :timeout (if (select-writepending select) 0 20)
     :whostate "wating for CORBA input")
 
