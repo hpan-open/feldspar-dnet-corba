@@ -7,11 +7,12 @@
 
 ;; Interface:
 (defun invoke (obj op &rest args)
-  (request-invoke
+  (request-funcall
    (object-create-request obj op args)))
 
 (defun corba:funcall (op obj &rest args)
-  (apply 'invoke obj op args))
+  (request-funcall
+   (object-create-request obj op args)))
 
 
 (defun object-interface (obj)
