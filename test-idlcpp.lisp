@@ -19,6 +19,7 @@
           "# 1 \"foo.idl\""
           "// foo"
           "#pragma prefix \"foo\""
+          "#pragma package-prefix \"pp\""
           "# 1 \"bar.idl\" 1"
           "// bar"
           "module Bar {"
@@ -137,18 +138,22 @@ bas bara" )
         (ensure-equalp (read-cpp-line cpp) "// foo")
         (ensure-equalp (read-cpp-line cpp) "")
         (ensure-equalp (idl-prefix cpp) "foo")
+        (ensure-equalp (read-cpp-line cpp) "") ; package-prefix "pp"
+        (ensure-equalp (package-prefix cpp) "pp")
         (ensure-equalp (read-cpp-line cpp) "")
         (ensure-equalp (read-cpp-line cpp) "// bar")
         (ensure-equalp (current-file cpp) "bar.idl")
         (ensure-equalp (read-cpp-line cpp) "module Bar {")
         (ensure-equalp (idl-prefix cpp) "")
+        (ensure-equalp (package-prefix cpp) "")
         (ensure-equalp (read-cpp-line cpp) "") ; #pragma prefix "bar"
         (ensure-equalp (read-cpp-line cpp) "  const x=1;")
         (ensure-equalp (idl-prefix cpp) "bar")
         (ensure-equalp (read-cpp-line cpp) "};")
         (ensure-equalp (read-cpp-line cpp) "")
         (ensure-equalp (read-cpp-line cpp) "module Foo;")
-        (ensure-equalp (idl-prefix cpp) "foo"))))
+        (ensure-equalp (idl-prefix cpp) "foo")
+        (ensure-equalp (package-prefix cpp) "pp"))))
       
 
   (define-test "using-cpp-stream"

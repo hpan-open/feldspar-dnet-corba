@@ -14,8 +14,10 @@
 
 
 (defun named-create (container create-op name &rest args)
-  (apply create-op container (repo-id name *container*) name "1.0"
-         args)) 
+  (let ((obj (apply create-op container (repo-id name *container*) name "1.0"
+                    args)))
+    (setf (package-prefix obj) (package-prefix *current-cpp*))
+    obj))
 
 (defun repo-id (name container &optional (version "1.0"))
   (apply #'concatenate 'string

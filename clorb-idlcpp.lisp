@@ -5,6 +5,10 @@
 (defgeneric idl-prefix (preprocessed-stream)
   (:documentation "Return the current prefix as specified by #pragma prefix in the preprocessed files."))
 
+(defgeneric package-prefix (preprocessed-stream)
+  (:documentation 
+   "Return the current package-prefix as specified by #pragma package-prefix in the preprocessed files."))
+
 (defgeneric idl-source-position (preprocessed-stream)
   (:documentation "Return (FILE LINE# ..) for last returned line from the stream"))
 
@@ -14,9 +18,9 @@
 (defclass PREPROCESSED-STREAM ()
   ((cpp-stream :initarg :cpp-stream :accessor cpp-stream)
    (file-stack
-    :initform (list (list "" 0 ""))
+    :initform (list (list "" 0 "" ""))
     :accessor cpp-file-stack
-    :documentation "Keep tracks of nested include files. The stack has records containing: (file line# prefix)")
+    :documentation "Keep tracks of nested include files. The stack has records containing: (file line# prefix package-prefix)")
    (pragma-list 
     :initform nil
     :accessor cpp-pragma-list)))
@@ -33,6 +37,12 @@
 
 (defmethod (setf idl-prefix) (value (self preprocessed-stream))
   (setf (caddar (cpp-file-stack self)) value))
+
+(defmethod package-prefix ((self preprocessed-stream))
+  (fourth (car (cpp-file-stack self))))
+
+(defmethod (setf package-prefix) (value (self preprocessed-stream))
+  (setf (fourth (car (cpp-file-stack self))) value))
 
 
 (defmethod current-file ((self preprocessed-stream))
@@ -55,7 +65,7 @@
 (defmethod new-file-info ((self preprocessed-stream) file line why)
   (case why
     (:initial (setf (current-file self) file))
-    (:push (push (list file line "")
+    (:push (push (list file line "" "")
                  (cpp-file-stack self)))
     (:pop (assert (cdr (cpp-file-stack self)))
           (pop (cpp-file-stack self))
@@ -178,6 +188,8 @@
              (skip-ws)
              (cond ((match "prefix")
                     (setf (idl-prefix cpp) (string-literal)))
+                   ((match "package-prefix")
+                    (setf (package-prefix cpp) (string-literal)))
                    ((match "ID")
                     (let* ((name (ident))
                            (id (string-literal)))
@@ -188,7 +200,7 @@
                            (version (ident)))
                       (push (list :version name version)
                             (cpp-pragma-list cpp))))
-                   (t (warn "Ukp: ~S" line))))
+                   (t (warn "Unknown pragma: ~S" line))))
             (t
              (warn "Uk#: ~S" line))))))
 

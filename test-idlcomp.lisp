@@ -345,8 +345,18 @@ typedef long a[y];
 	}; "
     "Foo" (pattern 'op:id "IDL:Foo:1.2"))
 
-
-
+  (define-idl-test "Package-prefix pragma"
+    "#pragma package-prefix \"FOO-\"
+module Bar { interface Fum { exception Ouch {}; }; };"
+    "Bar::Fum" (pattern 'op:absolute_name "::Bar::Fum")
+    "Bar::Fum::Ouch" (pattern
+                      `(target-code * ,(make-instance 'stub-target))
+                      (sexp-pattern 
+                       `(define-user-exception 
+                          ,(pattern 'symbol-name "FUM/OUCH"
+                                    'symbol-package
+                                    (pattern 'package-name "FOO-BAR"))
+                          &any-rest))))
 
   #|end|# ) ; end test suite
 

@@ -45,51 +45,50 @@
     (pushnew symbol  (slot-value target 'symbols))
     symbol))
 
-(defun scoped-target-symbol (target obj)
-  (if (typep obj 'CORBA:Repository)
-    nil
-    (let* ((this-type (op:def_kind obj))
-           (container (op:defined_in obj))
-           (container-type (and container (op:def_kind container)))
-           (name
-            (if (or (null container)
-                    (eq container-type :dk_Repository)
-                    (and (not (eq this-type :dk_Module))
-                         (eq container-type :dk_Module)))
-              (op:name obj)
-              (concatenate 'string
-                           (symbol-name (scoped-target-symbol target container))
-                           "/" (op:name obj))))
-           (package
-            (if (eq this-type :dk_Module)
-              :keyword
-              ;; Find enclosing Module
-              (do* ((container container (op:defined_in container))
-                    (container-type container-type
-                                    (and container (op:def_kind container))))
-                   ((or (null container) (eq container-type :dk_Module))
-                    (if container (scoped-target-symbol target container)
-                        "OMG.ORG/ROOT"))))))
-      (make-target-symbol target name package))))
+
+(defun scoped-symbol-name (obj)
+  (scoped-subsymbol-name (op:defined_in obj) obj))
+
+(defgeneric scoped-subsymbol-name (container obj)
+  ;; values package-name, symbol-name
+  ;; Top-level definitions
+  (:method ((container CORBA:Repository) (obj CORBA:Contained))
+           (values "OMG.ORG/ROOT" (op:name obj)))
+  ;; Definitions in a Module
+  (:method ((module CORBA:ModuleDef) (obj CORBA:Contained))
+           (values (scoped-symbol-name module) (op:name obj)))
+  ;; Nested definitions (in interface, struct, union, etc.)
+  (:method ((container CORBA:Container) (obj CORBA:Contained))
+           (multiple-value-bind (package name) (scoped-symbol-name container)
+             (values package (concatenate-name name (op:name obj)))))
+  ;; Top-level modules
+  (:method ((container CORBA:Repository) (module CORBA:ModuleDef))
+           (concatenate 'string (package-prefix module) (op:name module)))
+  ;; Nested modules
+  (:method ((container CORBA:ModuleDef) (module CORBA:ModuleDef))
+           (concatenate-name (scoped-symbol-name container) (op:name module))))
+
+(defun concatenate-name (name1 name2)
+  (concatenate 'string name1 "/" name2))
+
+
+(defgeneric scoped-target-symbol (target obj)
+  (:method (target (obj t))
+           (multiple-value-bind (package-name symbol-name) (scoped-symbol-name obj)
+             (if symbol-name
+               (make-target-symbol target symbol-name package-name)
+               (make-target-symbol target package-name :keyword))))
+  (:method (target (obj CORBA:Repository))
+           (declare (ignore target))
+           nil))
+  
 
 (defun scoped-target-symbol-in (target name container)
-  (let* ((container-type (and container (op:def_kind container)))
-         (name
-          (if (or (null container)
-                  (eq container-type :dk_Repository))
-            name
-            (concatenate 'string
-                         (symbol-name (scoped-target-symbol target container))
-                         "/" name)))
-         (package
-          ;; Find enclosing Module
-          (do* ((container container (op:defined_in container))
-                (container-type container-type
-                                (and container (op:def_kind container))))
-               ((or (null container) (eq container-type :dk_Module))
-                (if container (scoped-target-symbol target container)
-                    "OMG.ORG/ROOT")))))
-    (make-target-symbol target name package)))
+  ;; used for subnames for non IDL-types, e.g. union members
+  (multiple-value-bind (package-name symbol-name) (scoped-symbol-name container)
+    (make-target-symbol target 
+                        (concatenate-name symbol-name name)
+                        package-name)))
 
 
 (defun make-progn (l)
