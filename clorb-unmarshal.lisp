@@ -238,9 +238,11 @@
 
 (defun unmarshal-exception (params buffer)
   (let* ((class (id-exception-class (tcp-id params)))
-         (initargs (loop for m in (tcp-members params)
-                for s in (tcp-member-symbols params)
-                nconc (list s (unmarshal (second m) buffer)) )))
+         (initargs '()))
+    (doseq (m (tcp-members params))
+      (push (lispy-name (first m)) initargs)
+      (push (unmarshal (second m) buffer) initargs))
+    (setq initargs (nreverse initargs))
     (if class
       (apply #'make-condition class initargs)
       (make-condition 'unknown-users-exception

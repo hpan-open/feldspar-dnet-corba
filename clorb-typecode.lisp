@@ -171,7 +171,7 @@
    (CORBA:tc_any :tk_any)
    (CORBA:tc_typecode :tk_typecode)
    ;;(CORBA:tc_principal :tk_principal)
-   (CORBA:tc_objref :tk_objref "")
+   (CORBA:tc_objref :tk_objref "" "")
    ;;(CORBA:tc_struct :tk_struct)
    ;;(CORBA:tc_union :tk_union)
    ;;(CORBA:tc_enum :tk_enum)

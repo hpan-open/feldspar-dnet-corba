@@ -2,6 +2,8 @@
 
 (in-package :clorb)
 
+(defvar *repositories* '())
+
 
 ;;;; Easy DII
 
@@ -28,16 +30,15 @@
         (error exc)))))
 
 
-(defun object-opdef (object op &aux effective-id)
-  (if (consp op)
-      (setq effective-id (first op)
-            op (second op))
-    (setq effective-id (object-id object)))
-  (or (find-opdef *object-interface* op)
-      (find-opdef (or (known-interface effective-id)
-                      (object-interface object)
-                      (get-interface effective-id)) 
-                  op)))
+(defun object-opdef (object op)
+  (let ((effective-id (object-id object)))
+    (or (find-opdef *object-interface* op)
+        (find-opdef (or (known-interface effective-id)
+                        (object-interface object)
+                        (loop for rep in *repositories*
+                              thereis (op:lookup_id (if (symbolp rep) (symbol-value rep) rep) effective-id))
+                        (get-interface effective-id)) 
+                    op))))
 
 
 (defun object-create-request (object op args)
@@ -58,16 +59,17 @@
       (loop for param in (opdef-params opdef)
           collect 
             (CORBA:NamedValue
-             :name (param-name param)
-             :argument (CORBA:Any :any-typecode (param-typecode param)
-                                  :any-value (if (eq (param-mode param) 
+             :name (op:name param)
+             :argument (CORBA:Any :any-typecode (op:type param)
+                                  :any-value (if (eq (op:mode param) 
                                                      :param_out)
                                                  nil
                                                (pop args)))
-             :arg_modes (ecase (param-mode param)
+             :arg_modes (ecase (op:mode param)
                           (:param_in ARG_IN)
                           (:param_out ARG_OUT)
-                          (:param_inout ARG_INOUT))))))))
+                          (:param_inout ARG_INOUT)))))
+     :exceptions (opdef-raises opdef))))
 
 
 ;;;; Easy name service access

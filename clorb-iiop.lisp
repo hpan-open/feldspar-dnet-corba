@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.6 2002/05/30 06:41:49 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.7 2002/06/01 05:49:05 lenst Exp $
 
 (in-package :clorb)
 
@@ -256,12 +256,12 @@
        (setf (any-value retval)
              (make-condition (gethash id *system-execption-classes*
                                       'corba:systemexception)
-                             :id id :minor minor :completed status)
+                             :minor minor :completed status)
              (any-typecode retval) nil)))))
 
 (defun request-exception-typecode (request id)
   (find id (request-exceptions request)
-        :key #'op:id))
+        :key #'op:id :test #'equal))
 
 
 ;;;; Event loop (orb-wait)

@@ -1,5 +1,11 @@
 (in-package :clorb)
 
+(EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+  (ENSURE-CORBA-PACKAGE
+    "COSNAMING"
+    :EXPORT '("NAMINGCONTEXT-SERVANT" "BINDINGITERATOR-SERVANT")))
+
+
 ;;; Define the skeleton classes
 
 
