@@ -209,14 +209,21 @@
            (tcp-equal (typecode-params tc1)
                       (typecode-params tc2)))))
 
+(define-method equal ((x t) y)
+  (equalp x y))
+
+(define-method equal ((x string) y)
+  (equalp x y))
+
+(define-method equal ((x vector) y)
+  (every #'op:equal x y))
+
+(define-method equal ((x cons) y)
+  (every #'op:equal x y))
+
 (defun tcp-equal (tcp1 tcp2)
   (or (eq tcp1 tcp2)
-      (every (lambda (p1 p2)
-               (if (vectorp p1)
-                   (every #'equalp p1 p2)
-                 (equalp p1 p2)))
-             tcp1
-             tcp2)))
+      (every #'op:equal tcp1 tcp2)))
 
 (define-method kind ((tc corba:typecode))
   (typecode-kind tc))
