@@ -219,7 +219,7 @@
 
 (defun setup-ns (&optional force)
   (let ((orb (corba:orb_init)))
-    (with-open-file (wr "NameService" :direction :output
+    (with-open-file (wr *name-service* :direction :output
                         :if-exists :supersede)
                     (princ (orb-object-to-string orb (root-ns force)) wr))))
 
