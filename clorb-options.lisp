@@ -1,15 +1,19 @@
 (in-package :clorb) 
 
-(defparameter *host* "127.0.0.1")
+(defparameter *host* nil
+  "The host that should be used in IORs.
+If nil, use default.")
 
-(defparameter *port* 4722)
+(defparameter *port* nil
+  "The port to listen to.
+If nil, let implementation choose a port.")
 
-(defparameter *name-service* "NameService"
+(defparameter *name-service* "/tmp/NameService"
   "Reference to the CORBA NameService.
 This should be the name of a file where the name service IOR is stored
 or the IOR.")
 
-(defparameter *interface-repository* "InterfaceRepository"
+(defparameter *interface-repository* "/tmp/InterfaceRepository"
   "Reference to the CORBA InterfaceRepository.
 This should be the name of a file where the service IOR is stored
 or the IOR.")

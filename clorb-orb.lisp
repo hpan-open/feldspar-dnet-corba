@@ -24,6 +24,8 @@
 (defgeneric client-streams (adaptor))
 (defgeneric handle-stream (adaptor stream))
 (defgeneric server-fallback (adaptor))
+(defgeneric listner-host (adaptor))
+(defgeneric listner-port (adaptor))
 
 
 (defun ORB_init (&optional args (orbid ""))
@@ -153,3 +155,8 @@ Returns
     (loop while (orb-active orb)
         do (orb-wait orb nil))))
 
+(defun orb-host (orb)
+  (listner-host (adaptor orb)))
+
+(defun orb-port (orb)
+  (listner-port (adaptor orb)))
