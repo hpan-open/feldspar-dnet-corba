@@ -29,14 +29,14 @@
   (unmarshal-encapsulation data #'unmarshal-any))
 
 ;;; any decode_value (
-;;		in CORBA::OctetSeq data, 
+;;		in CORBA::OctetSeq data,
 ;;		in CORBA::TypeCode tc)
 ;;		raises (FormatMismatch, TypeMismatch);
 
 (define-method decode_value ((codec codec-impl) data tc)
   (unmarshal-encapsulation data (lambda (buffer) (unmarshal tc buffer))))
 
-;;; CORBA::OctetSeq encode (in any data) 
+;;; CORBA::OctetSeq encode (in any data)
 ;;		raises (InvalidTypeForEncoding);
 
 (define-method encode ((codec codec-impl) data)
@@ -79,7 +79,7 @@
 
 
 (defun set-codec-factory (orb)
-  (set-initial-reference orb "CodecFactory" nil 
+  (set-initial-reference orb "CodecFactory" nil
                          (make-instance 'codecfactory-impl :the-orb orb)))
 
 
