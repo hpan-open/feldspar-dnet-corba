@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.22 2004/01/14 17:11:19 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.23 2004/01/21 17:25:31 lenst Exp $	
 
 (in-package :clorb)
 
@@ -50,7 +50,8 @@
 
 
 (defun setup-incoming-connection (conn)
-  (connection-init-read conn nil *iiop-header-size* #'poa-message-handler))
+  (setf (connection-error-callback conn) #'comm-failure-handler)
+  (connection-init-read conn nil +iiop-header-size+ #'poa-message-handler))
 
 
 (defun setup-shortcut ()
@@ -84,7 +85,7 @@
           (mess 1 "Message type ~A size ~A" msgtype size)
           (if (zerop size)
             (funcall decode-fun conn)
-            (connection-init-read conn t (+ size *iiop-header-size*) decode-fun)))))))
+            (connection-init-read conn t (+ size +iiop-header-size+) decode-fun)))))))
 
 
 
