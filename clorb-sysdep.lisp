@@ -414,6 +414,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
  (defstruct SELECT
    (fds  nil)
    (cookies nil)
+   (direct-input nil)
    (rset 0)
    (wset 0)
    (maxn 0 :type fixnum))
@@ -500,6 +501,10 @@ status for stream."
    (let ((fd (%stream-fd stream)))
      (declare (fixnum fd))
      (when input
+       ;; there is buffering in the stream, need to empty the buffer
+       ;; before doing a real select
+       (when (socket-stream-listen stream)
+         (push cookie (select-direct-input select)))
        (%add-fd select fd select-rset))
      (when output
        (%add-fd select fd select-wset))
@@ -553,17 +558,20 @@ Returns select result to be used in getting status for streams."
      select)
 
    #+(or cmu18 sbcl)
-   (multiple-value-bind (result rset wset xset)
-       (%unix-select (1+ (select-maxn select))
-                     (select-rset select)
-                     (select-wset select)
-                     0 200)
-     (declare (ignorable xset))
-     ;;FIXME: should perhaps use xset
-     (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
-     (setf (select-rset select) rset)
-     (setf (select-wset select) wset)
+   (progn
+     (unless (select-direct-input select)
+       (multiple-value-bind (result rset wset xset)
+           (%unix-select (1+ (select-maxn select))
+                         (select-rset select)
+                         (select-wset select)
+                         0 200)
+         (declare (ignorable xset))
+         ;;FIXME: should perhaps use xset
+         (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
+         (setf (select-rset select) rset)
+         (setf (select-wset select) wset)))
      select)
+
 
    ;; Default
    (progn
@@ -590,15 +598,18 @@ Returns select result to be used in getting status for streams."
                         :io :output)))
 
    #+(or sbcl cmu18)
-   (loop
-      with rset = (select-rset select)
-      with wset = (select-wset select)
-      for cookie in (select-cookies select)
-      for fd in (select-fds select)
-      do (let ((status (if (logbitp fd rset)
-                           (if (logbitp fd wset) :io :input)
-                           (if (logbitp fd wset) :output nil))))
-           (when status (funcall func cookie status))))
+   (if (select-direct-input select)
+       (loop for cookie in (select-direct-input select)
+            do (funcall func cookie :input))
+       (loop
+          with rset = (select-rset select)
+          with wset = (select-wset select)
+          for cookie in (select-cookies select)
+          for fd in (select-fds select)
+          do (let ((status (if (logbitp fd rset)
+                               (if (logbitp fd wset) :io :input)
+                               (if (logbitp fd wset) :output nil))))
+               (when status (funcall func cookie status)))))
 
    ;; Default
    (loop for cookie in (select-cookies select)

@@ -312,22 +312,16 @@
     (dolist (desc *io-descriptions*)
       (let ((stream (io-descriptor-stream desc)))
         (when stream
-          ;; SBCL has always an input buffer, empty that before doing select
-          #+(or sbcl cmu18)
-          (when (and (io-descriptor-read-ready desc)
-                     (socket-stream-listen stream))
-            (io-poll-desc desc :input))
           (let ((input (io-descriptor-read-ready desc))
                 (output (io-descriptor-write-ready desc)))
             (when (or input output)
               (select-add-stream select stream input output desc) )))))
-    (unless *io-event-queue*
-      (when *io-socket*
-        (select-add-listener select *io-socket*))
-      (setq select (select-wait select))
-      (select-do-result select #'io-poll-desc)
-      (when *io-socket*
-        (io-listen nil)))))
+    (when *io-socket*
+      (select-add-listener select *io-socket*))
+    (setq select (select-wait select))
+    (select-do-result select #'io-poll-desc)
+    (when *io-socket*
+      (io-listen nil))))
 
 
 (defmethod io-system-driver ((system io-system-select))
