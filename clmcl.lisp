@@ -51,7 +51,7 @@
 (setq clorb::*host*
       (ccl::tcp-addr-to-str (ccl::local-interface-ip-address)))
 
-#+if-t2-has-ifr
+#+t2-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.18" 5111))
   (let ((ior (read-line s)))
     (when (and (stringp ior)
@@ -61,14 +61,17 @@
         (setq ior (subseq ior 0 (1- (length ior)))))
       (setq clorb::*interface-repository* ior))))
 
+;;#+pentax-has-ifr
 (with-open-stream (s (ccl::open-tcp-stream "172.17.17.1" 80))
   (let ((crlf (coerce (vector #\Return #\Linefeed) 'string)))
-    (format s "GET /InterfaceRepository~A" crlf))
-  (let ((ior (read-line s)))
-    (when (and (stringp ior)
-               (> (length ior) 4)
-               (string= "IOR:" ior :end2 4))
-      (when (eql #\Linefeed (char ior (1- (length ior))))
-        (setq ior (subseq ior 0 (1- (length ior)))))
-      (setq clorb::*interface-repository* ior))))
+    (format s "GET /InterfaceRepository~A" crlf)
+    (let ((ior (read-line s)))
+      (when (and (stringp ior)
+                 (> (length ior) 4)
+                 (string= "IOR:" ior :end2 4))
+        (setq ior (string-right-trim crlf ior))
+        (setq clorb::*interface-repository* ior)))))
 
+(defun run ()
+  (setup-pns)
+  (op:run clorb::*the-orb*))

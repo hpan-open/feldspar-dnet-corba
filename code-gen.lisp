@@ -88,7 +88,7 @@
   (let* ((att-name (op:name op))
          (lisp-name (make-corba-symbol att-name :op)))
     `(progn
-       (defmethod ,lisp-name ((obj ,class) &rest)
+       (defmethod ,lisp-name ((obj ,class) &rest args)
          (apply 'clorb::invoke obj ,(getter-name att-name)))
        ,@(if (eq (op:mode op) :attr_normal)
              (list `(defmethod (setf ,lisp-name) (newval (obj ,class))

@@ -1,5 +1,5 @@
 
-(in-package :user)
+(in-package :cl-user)
 
 (defclass clive-class (PortableServer:DynamicImplementation)
   ())

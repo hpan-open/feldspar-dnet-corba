@@ -2,7 +2,7 @@
 all:
 
 clean:
-	rm -f *.fasl *.fas *.lib *.x86f *.err
+	rm -f *.fasl *.fas *.lib *.x86f *.err *.pfsl
 
 tomac:
 	tomac *.lisp *.system
