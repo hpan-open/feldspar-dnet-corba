@@ -484,7 +484,7 @@
            (val (op:create_value repository id name ver nil nil nil nil nil nil init))
            (val2 (op:create_value repository id2 name2 ver nil nil val nil nil nil nil))
            (vm1 (op:create_value_member val "IDL:my/val/a:1.0" "a" "1.0" a-ulong corba:private_member))
-           (vm2 (op:create_value_member val2 "IDL:my/val/b:1.0" "b" "1.0" a-string corba:public_member))
+           (vm2 (op:create_value_member val2 "IDL:my/val/b:1.0" "b" "1.0" val corba:public_member))
            (a1  (op:create_attribute val "IDL:my/val/at:1.0" "at" ver a-string :attr_readonly))
            (op1 (op:create_operation val "IDL:my/val/op1:1.0" "op1" ver a-ulong :op_normal nil nil nil)))
       (ensure-repository 
@@ -498,6 +498,9 @@
                                                                                (struct-pattern 'op:name "size"))))
                'op:base_value nil
                'op:abstract_base_values (sequence-pattern)
+               'op:type (pattern 'op:kind :tk_value 'op:member_count 1
+                                 '(op:member_name * 0) "a"
+                                 '(op:member_visibility * 0) CORBA:private_member)
                'op:describe_value (struct-pattern
                                    'struct-class-name 'CORBA:ValueDef/FullValueDescription
                                    'op:id id 'op:name name 'op:version ver
@@ -513,7 +516,10 @@
        
        "val2" (def-pattern :dk_value 'identity val2
                 'op:supported_interfaces (sequence-pattern)
-                'op:base_value val))
+                'op:base_value val
+                'op:type (pattern 'op:kind :tk_value 'op:member_count 1
+                                  '(op:member_name * 0) "b"
+                                  '(op:member_visibility * 0) CORBA:public_member)))
       (ensure-pattern
        (op:contents val :dk_attribute nil)
        (sequence-pattern a1))
