@@ -70,6 +70,10 @@
            (members (list (CORBA:UnionMember :name "aa"
                                              :label 1
                                              :type_def a-string)
+                          (CORBA:UnionMember :name "_def_"
+                                             :label (CORBA:Any :any-typecode CORBA:tc_octet
+                                                               :any-value 0)
+                                             :type_def a-ulong )
                           (CORBA:UnionMember :name "bb"
                                              :label 2
                                              :type_def a-ulong)))
@@ -81,6 +85,7 @@
                      (length members))
       (ensure-equalp (op:kind (op:discriminator_type obj))
                      :tk_ulong)
+      (ensure-equalp (omg.org/features:default_index (op:type obj)) 1)
       ;; update
       (setf (op:discriminator_type_def obj)
             (op:get_primitive repository :pk_ushort))
