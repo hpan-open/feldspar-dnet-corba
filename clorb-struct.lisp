@@ -1,5 +1,5 @@
 ;;;; clorb-struct.lisp -- CORBA Structure support
-;; $Id: clorb-struct.lisp,v 1.3 2001/05/06 15:45:49 lenst Exp $
+;; $Id: clorb-struct.lisp,v 1.4 2001/06/03 20:45:14 lenst Exp $
 
 (in-package :clorb)
 
@@ -168,20 +168,6 @@ NV-PAIRS is a list field names and field values."
                    when (slot-boundp s n)
                    collect (cons f (slot-value s n))))
              (add-struct-class ',name)))))
-
-
-(define-corba-struct CORBA:ParameterDescription
-    :id "IDL:omg.org/CORBA/ParameterDescription:1.0"
-    :members ((name     "")
-              (type     nil)
-              (type_def nil)
-              (mode     :PARAM_IN)))
-
-(defmethod op:type :before ((s CORBA:ParameterDescription) &rest x)
-  (declare (ignore x))
-  (unless (slot-value s 'type)
-    (setf (slot-value s 'type)
-      (op:type (op:type_def s)))))
 
 
 ;;; clorb-struct.lisp ends here
