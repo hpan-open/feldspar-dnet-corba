@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.23 2004/01/29 19:50:15 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.24 2004/02/08 14:32:43 lenst Exp $
 
 
 ;; io-reset ()
@@ -34,6 +34,7 @@
 (defvar *io-descriptions* nil
   "List of all io-descriptors that we will do I/O on.")
 
+(defvar *io-work-pending* nil)
 
 
 ;;;; Event Queue
@@ -41,6 +42,8 @@
 (defun io-queue-event (type desc)
   (push (list type desc) *io-event-queue*))
 
+(defun io-work-pending-p ()
+  (or *io-work-pending* *io-event-queue*))
 
 
 ;;;; IO-DESCRIPTOR
@@ -48,6 +51,7 @@
 (defstruct io-descriptor
   status
   error
+  connection
   ;; -- internal --
   stream
   (read-buffer  nil :type (or null octets))
@@ -69,44 +73,55 @@
 ;;;; Shortcut stream
 
 
-(defclass octets-stream ()
-  ((buffer  :initform nil  :accessor octets-stream-buffer)))
+(defun make-octet-stream (&optional (label (gensym)))
+  (let ((buffer nil))
+    (labels 
+      ((reader (buf start end)
+         (let ((len (- end start)))
+           (when (<= len (length buffer))
+             (mess 1 "Reading ~A (~D ~D)" label start end)
+             (replace buf buffer 
+                      :start1 start :end1 end
+                      :start2 0 :end2 len)
+             (setf buffer (subseq buffer len))
+             len)))
+       (writer (buf start end)
+         (mess 1 "Writing ~A (~D ~D)" label start end)
+         (let ((len (- end start)))
+           (setf buffer (concatenate 'vector buffer (subseq buf start end)))
+           len)))
+      (lambda (op)
+        (ecase op
+          ((reader) #'reader)
+          ((writer) #'writer)
+          ((buffer) buffer))))))
 
-(defclass shortcut-stream ()
-  ((output  :initarg :output  :accessor shortcut-stream-output)
-   (input   :initarg :input   :accessor shortcut-stream-input )))
 
-
-(defun io-ostream-write (octets-stream seq start end)
-  (with-accessors ((buffer octets-stream-buffer)) octets-stream
-    (setf buffer (concatenate 'octets buffer (subseq seq start end)))))
-
-(defun io-ostream-read (octets-stream seq start end)
-  (let ((len (- end start)))
-    (with-accessors ((buffer octets-stream-buffer)) octets-stream
-      (unless (> len (length buffer))
-        (replace seq buffer :start1 start :end1 end :start2 0 :end2 len)
-        (setf buffer (subseq buffer len))
-        t))))
-
+(defun make-shortcut-stream (input output)
+  (let ((reader (funcall input 'reader))
+        (writer (funcall output 'writer)))
+    (lambda (op buf start end)
+      (ecase op
+        ((read) (funcall reader buf start end))
+        ((write) (funcall writer buf start end))))))
 
 (defun io-shortcut-write (shortcut-stream seq start end)
-  (io-ostream-write (shortcut-stream-output shortcut-stream) seq start end))
+  (funcall shortcut-stream 'write seq start end))
 
 (defun io-shortcut-read (shortcut-stream seq start end)
-  (io-ostream-read (shortcut-stream-input shortcut-stream) seq start end))
+  (funcall shortcut-stream 'read seq start end))
 
 
 (defun io-descriptor-shortcut-connect (desc)
-  (let ((i-stream (make-instance 'octets-stream))
-        (o-stream (make-instance 'octets-stream)))
+  (let ((i-stream (make-octet-stream))
+        (o-stream (make-octet-stream)))
     (let ((other (make-io-descriptor
-                  :stream (make-instance 'shortcut-stream :input o-stream :output i-stream)
+                  :stream (make-shortcut-stream o-stream i-stream)
                   :status :connected
                   :shortcut-p desc)))
       (push other *io-descriptions*)
       (io-queue-event :new other)
-      (setf (io-descriptor-stream desc) (make-instance 'shortcut-stream :input i-stream :output o-stream))
+      (setf (io-descriptor-stream desc) (make-shortcut-stream i-stream o-stream))
       (setf (io-descriptor-shortcut-p desc) other))))
 
 
@@ -178,16 +193,19 @@
   (values port (passive-socket-host *io-socket*)))
 
 
-(defun io-create-descriptor ()
-  (let ((desc (make-io-descriptor)))
+(defun io-create-descriptor (&optional conn)
+  (let ((desc (make-io-descriptor :connection conn)))
     (push desc *io-descriptions*)
     desc))
 
+(defun io-descriptor-associate-connection (desc conn)
+  (setf (io-descriptor-connection desc) conn))
 
 (defun io-descriptor-destroy (desc)
   (setf (io-descriptor-status desc) :broken)
   (ignore-errors
     (close (io-descriptor-stream desc)))
+  (setf (io-descriptor-connection desc) nil)
   (setq *io-descriptions* (delete desc *io-descriptions*)))
 
 
@@ -379,15 +397,18 @@
 
 
 (defmethod io-system-driver ((system io-system-select))
+  (setq *io-work-pending* nil)
   (io-poll-select))
 
 
 (defmethod io-ready-for-write ((system io-system-select) desc)
+  (setq *io-work-pending* t)
   (if (io-descriptor-shortcut-p desc)
     (io-poll-shortcut desc :write)))
 
 
 (defmethod io-ready-for-read ((system io-system-select) desc)
+  (setq *io-work-pending* t)
   (if (io-descriptor-shortcut-p desc)
     (io-poll-shortcut desc :read)))
 
@@ -475,7 +496,7 @@
 ;;;; Driver
 
 
-(defun io-driver ()
-  (loop until *io-event-queue* do (io-system-driver *io-system*))
-  (values-list (pop *io-event-queue*)))
+(defun io-driver (n)
+  (loop repeat n until *io-event-queue* do (io-system-driver *io-system*))
+  (pop *io-event-queue*))
 
