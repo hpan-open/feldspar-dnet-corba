@@ -2,22 +2,13 @@
 
 (in-package :clorb)
 
-
 (defstruct opdef
   name
   (params nil )
   (result CORBA:tc_void)
   raises)
 
-(define-slot-dumper opdef)
-
-
-(define-corba-struct CORBA:ParameterDescription
-    :id "IDL:omg.org/CORBA/ParameterDescription:1.0"
-    :members ((name     "")
-              (type     nil)
-              (type_def nil)
-              (mode     :PARAM_IN)))
+;;(define-slot-dumper opdef)
 
 (defmethod op:type :before ((s CORBA:ParameterDescription) &rest x)
   (declare (ignore x))
@@ -25,11 +16,6 @@
     (setf (slot-value s 'type)
       (op:type (op:type_def s)))))
 
-
-;; enum ParameterMode {PARAM_IN, PARAM_OUT, PARAM_INOUT};
-
-(deftype CORBA::ParameterMode ()
-  `(member :PARAM_IN :PARAM_OUT :PARAM_INOUT))
 
 (setf (get :in 'param-mode) :param_in) 
 (setf (get :out 'param-mode) :param_out)
