@@ -144,7 +144,7 @@
         :arg_modes ARG_OUT)
        0)
     (declare (ignore result))
-    (or (request-invoke req)
+    (or (request-funcall req)
         (error "InterfaceRepository does not know about ~A" id))))
 
 (defun get-attribute (obj getter result-tc)
@@ -155,7 +155,8 @@
         :argument (CORBA:Any :any-typecode result-tc)
         :arg_modes ARG_OUT)
        0)
-    (request-invoke req)))
+    (declare (ignore result))
+    (request-funcall req)))
 
 (defun opdef-from-attrdef (irdef)
   (let ((name (get-attribute irdef "_get_name" CORBA:tc_string))
@@ -198,10 +199,11 @@
           :argument (CORBA:Any :any-typecode cseq)
           :arg_modes ARG_OUT)
          0)
+      (declare (ignore result))
       ;; FIXME: definition kind
       (add-arg req "limit_type" ARG_IN CORBA:tc_long limit-type)
       (add-arg req "exclude_inherit" ARG_IN CORBA:tc_boolean exclude-inherit)
-      (request-invoke req))))
+      (request-funcall req))))
 
 
 (defun interface-from-def-cached (def)
