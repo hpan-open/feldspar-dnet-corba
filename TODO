@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.1 2000/11/14 22:50:04 lenst Exp $
+ $Id: TODO,v 1.2 2001/06/06 15:15:58 lenst Exp $
 
 + Final Lisp Mapping
 
@@ -15,8 +15,6 @@ TODO                        -*- indented-text -*-
 - 5.9 (corba:funcall op obj z) ~= (clorb:invoke obj op z)
 But lots of variantions possible in operation name. And also
 exceptions should be returned not raised.
-
-- 5.10 (define-class CORBA:ServerRequest ())
 
 - 5.12 CORBA:ORBid,
   (CORBA:ORB_init argv orb_identifier ) -> ORB, argv'
