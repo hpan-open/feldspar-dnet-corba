@@ -1,3 +1,5 @@
+;;;; clorb-target.lisp -- Code Generator for CLORB
+
 (in-package :clorb)
 
 (defclass code-target ()
@@ -222,6 +224,7 @@
                         ,(op:length x)))
 
 
+
 ;;;; target-code methods
 
 (defmethod target-code ((x CORBA:Contained) target)
@@ -293,13 +296,13 @@
        (define-method ,lisp-name ((obj ,class))
          ,(if (target-dynamic-stubs target)
             `(corba:funcall ,(getter-name att-name) obj)
-            `(get-attribute obj ,(getter-name att-name) 
+            `(get-attribute obj ,(getter-name att-name)
                             ,(target-typecode (op:type_def op) target))))
        ,@(if (eq (op:mode op) :attr_normal)
              (list `(define-method (setf ,lisp-name) (newval (obj ,class))
-                      ,(if (target-dynamic-stubs target)                      
+                      ,(if (target-dynamic-stubs target)
                          `(corba:funcall ,(setter-name att-name) obj newval)
-                         `(set-attribute obj ,(setter-name att-name) 
+                         `(set-attribute obj ,(setter-name att-name)
                                          ,(target-typecode (op:type_def op) target) newval))))))))
 
 
@@ -363,7 +366,7 @@
       (setf (caar default-member)
             (block nil
               (typecode-values-do (lambda (x) (unless (member x used-labels) (return x)))
-                                  (op:discriminator_type def))))) 
+                                  (op:discriminator_type def)))))
     `(define-union ,(scoped-target-symbol target def)
        :id   ,(op:id def)
        :name ,(op:name def)
@@ -371,7 +374,7 @@
        :members ,(nreverse collected-members))))
 
 
-
+
 ;;;; Stub code generator
 
 (defparameter *stub-code-ignored-packages*
@@ -407,7 +410,7 @@
         (pprint x))
       (terpri))))
 
-
+
 ;; ----------------------------------------------------------------------
 ;;;; Configure the pretty printer
 ;; ----------------------------------------------------------------------
@@ -434,6 +437,7 @@
                                     define-struct define-union))
                      'pprint-def-and-keys)
 
+
 #||
 (load "clorb:src;iop-idl")
 (gen-stub-file (lookup-name "IOP") "clorb:x-iop.lisp")
@@ -451,3 +455,5 @@
 (defvar *target* (make-instance 'code-target))
 (target-code (lookup-name "CosNaming") *target*)
 ||#
+
+;;;; clorb-target.lisp ends here

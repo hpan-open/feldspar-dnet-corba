@@ -1,5 +1,5 @@
-;;;; local-ir.lisp -- An Interface Repository Implementation
-;; $Id: clorb-ifr.lisp,v 1.1 2002/10/05 13:56:57 lenst Exp $
+;;;; clorb-ifr.lisp -- An Interface Repository Implementation
+;; $Id: clorb-ifr.lisp,v 1.2 2002/10/05 14:01:46 lenst Exp $
 
 (in-package :clorb)
 
@@ -85,7 +85,7 @@
     (format stream "~A" (slot-value obj 'name))))
 
 (defmethod (setf op:id) (new-id (obj Contained))
-  (let ((repository (omg.org/features:containing_repository obj))
+  (let ((repository (op:containing_repository obj))
         (old-id (op:id obj)))
     (unless (equal new-id old-id)
       (register-irobj repository new-id obj)
@@ -788,7 +788,7 @@
                 (eql :tk_octet (op:kind (any-typecode label)))
                                 (= 0 (any-value label)))))
     (create-union-tc (op:id obj) (op:name obj)
-                     (op:discriminator_type obj)  
+                     (op:discriminator_type obj)
                      (map 'list (lambda (m)
                                   (list (if (default-label-p (op:label m))
                                           'default
@@ -941,4 +941,4 @@
     (format out "~A~%" (op:object_to_string (orb_init) *ifr-servant*))))
 
 
-;;; local-ir.lisp ends here
+;;; clorb-ifr.lisp ends here
