@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.4 2002/03/21 19:31:12 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.5 2002/04/23 10:57:06 lenst Exp $
 
 (in-package :clorb)
 
@@ -352,9 +352,12 @@ Where host is a string and port an integer.")
 
 (defun get-object-connection (proxy)
   ;; get the connection to use for a proxy object.
-  (or
-   (object-connection proxy)
-   (connect-object proxy)))
+  (let ((conn (object-connection proxy)))
+    (unless (and conn (connection-working-p conn))
+      (setf (object-connection proxy) nil)
+      (setq conn (connect-object proxy)))
+    conn))
+
 
 (defun connect-object (proxy)
   ;; select a profile and create a connection for that profile
