@@ -62,8 +62,9 @@
     "hello-client"
     ;; IDL Compiler
     "scanner-support"
-    "idl-compiler"
+    "idl-compiler-support"
     "idl-scanner-parser"
+    "idl-compiler"
     ))
 
 
