@@ -36,8 +36,8 @@
 
 (defun make-target-symbol (target name package)
   (let* ((package
-          (or #+clisp (if (packagep package) package)
-              (find-package package)
+          (or (if (packagep package) package)
+              (find-package (setq package (string-upcase package)))
               (make-package package :use '())))
          (symbol (intern (string-upcase name) package)))
     (export symbol package)
@@ -698,6 +698,57 @@
 
 
 
+;;;; Local Interfaces
+
+
+(defmethod target-code ((def omg.org/corba:localinterfacedef) target)
+  (make-progn*
+   `(defclass ,(scoped-target-symbol target def) 
+      ,(let ((bases (op:base_interfaces def)))
+         (unless (zerop (length bases))
+           (target-base-list target bases #'scoped-target-symbol nil)))
+      ())
+   (make-progn
+    (map 'list 
+         (lambda (sub) (target-code-contained def sub target))
+         (sort (op:contents def :dk_All t)
+               #'<  :key #'target-sort-key )))))
+
+
+(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
+                                  (obj omg.org/corba:operationdef)
+                                  (target stub-target))
+  (let ((param-list (in-param-list (op:params obj))))
+  `(define-method ,(string-upcase (op:name obj))
+                  ((self ,(scoped-target-symbol target container)) ,@param-list)
+     (declare (ignore ,@param-list))
+     (error 'omg.org/corba:no_implement))))
+
+(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
+                                  (obj omg.org/corba:attributedef)
+                                  (target stub-target))
+  (let* ((class (scoped-target-symbol target container))
+         (name (string-upcase (op:name obj)))
+         (reader `(define-method ,name ((self ,class)) (error 'omg.org/corba:no_implement))))
+    (cond ((eql (op:mode obj) :attr_readonly)
+           reader)
+          (t
+           `(progn ,reader
+                   (define-method (setf ,name) (newval (self ,class))
+                     (declare (ignore newval))
+                     (error 'omg.org/corba:no_implement)))))))
+
+(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
+                                  (obj omg.org/corba:idltype)
+                                  (target stub-target))
+  (target-code obj target))
+
+(defmethod target-code-contained ((container omg.org/corba:localinterfacedef)
+                                  (obj omg.org/corba:exceptiondef)
+                                  (target stub-target))
+  (target-code obj target))
+
+
 
 ;;;; Stub code generator
 
@@ -729,6 +780,7 @@
     (write-char #\Space)
     (pprint-exit-if-list-exhausted)
     (write (pprint-pop))
+    (pprint-indent :block 1)
     (loop
       (pprint-exit-if-list-exhausted)
       (write-char #\Space)
