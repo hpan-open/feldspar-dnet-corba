@@ -22,6 +22,11 @@
       (loop for pint in (interface-inherit interface)
           thereis (find-opdef pint operation))))
 
+(define-method is_a ((interface interface) id)
+  (or (equal id (interface-id interface))
+      (some (lambda (i) (op:is_a i id))
+            (interface-inherit interface))))
+
 
 (defun print-interface (intf &optional (stream *standard-output*) k)
   (declare (ignore k))
