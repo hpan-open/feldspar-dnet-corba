@@ -44,13 +44,18 @@
   '(unsigned-byte 64))
 
 (deftype corba:float ()
-  'real)
+  (%SYSDEP "24 bit float"
+           (if (>= (float-precision short-float-epsilon) 24)
+               'short-float
+               'single-float)))
 
 (deftype corba:double ()
-  'real)
+  (%SYSDEP "53 bit float"
+             'double-float))
 
 (deftype corba:longdouble ()
-  'real)
+  (%SYSDEP`"112 bit float"
+          'long-float))
 
 (deftype corba:fixed ()
   'rational)
