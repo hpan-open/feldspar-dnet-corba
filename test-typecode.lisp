@@ -140,23 +140,23 @@
 
   (define-test "TypeCodeFactory"
     (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
-      (ensure-pattern (op:CREATE_ARRAY_TC factory 2 CORBA:tc_short)
+      (ensure-pattern (op:create_array_tc factory 2 CORBA:tc_short)
                       (pattern 'op:kind :tk_array 'op:length 2 'op:content_type CORBA:tc_short))
-      (ensure-pattern (op:CREATE_SEQUENCE_TC factory 0 CORBA:tc_short)
+      (ensure-pattern (op:create_sequence_tc factory 0 CORBA:tc_short)
                       (pattern 'op:kind :tk_sequence))
-      (ensure-pattern (op:CREATE_FIXED_TC factory 10 2)
+      (ensure-pattern (op:create_fixed_tc factory 10 2)
                       (pattern 'op:kind :tk_fixed 'op:fixed_digits 10 'op:fixed_scale 2))
-      (ensure-pattern (op:CREATE_WSTRING_TC factory 0)
+      (ensure-pattern (op:create_wstring_tc factory 0)
                       (pattern 'op:kind :tk_wstring 'op:length 0))
-      (ensure-pattern (op:CREATE_STRING_TC factory 12)
+      (ensure-pattern (op:create_string_tc factory 12)
                       (pattern 'op:kind :tk_string 'op:length 12))
-      (ensure-pattern (op:CREATE_INTERFACE_TC factory "IDL:I:1.0" "I")
+      (ensure-pattern (op:create_interface_tc factory "IDL:I:1.0" "I")
                       (pattern 'op:kind :tk_objref 'op:name "I"))
-      (ensure-pattern (op:CREATE_EXCEPTION_TC factory "IDL:e:1.0" "e" nil)
+      (ensure-pattern (op:create_exception_tc factory "IDL:e:1.0" "e" nil)
                       (pattern 'op:kind :tk_except 'op:name "e"))
-      (ensure-pattern (op:CREATE_ALIAS_TC factory "IDL:a:1.0" "a" CORBA:tc_ushort)
+      (ensure-pattern (op:create_alias_tc factory "IDL:a:1.0" "a" CORBA:tc_ushort)
                       (pattern 'op:kind :tk_alias 'op:id "IDL:a:1.0" 'op:name "a" ))
-      (ensure-pattern (op:CREATE_ENUM_TC factory "IDL:e:1.0" "e" '("A" "B"))
+      (ensure-pattern (op:create_enum_tc factory "IDL:e:1.0" "e" '("A" "B"))
                       (pattern 'op:kind :tk_enum 'op:name "e" 'op:member_count 2))
       (ensure-pattern (op:create_union_tc factory "IDL:u:1.0" "u" corba:tc_boolean
                                           (list (corba:unionmember
@@ -166,7 +166,7 @@
                                                  :name "b" :type corba:tc_long
                                                  :label (any :any-value nil :any-typecode corba:tc_boolean))))
                       (pattern 'op:kind :tk_union 'op:member_count 2))
-      (ensure-pattern (op:CREATE_STRUCT_TC factory "IDL:s:1.0" "s"
+      (ensure-pattern (op:create_struct_tc factory "IDL:s:1.0" "s"
                                            (list (corba:structmember :name "a" :type  CORBA:tc_long)
                                                  (corba:structmember :name "b" :type CORBA:tc_long)))
                       (pattern 'op:kind :tk_struct 'op:name "s" 
@@ -207,6 +207,101 @@
                                               :type recursive_tc)))))
           (ensure-typecode recursive_tc tc)))))
 
+
+  (define-test "Create name/id error checking"
+    (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
+      ;; legal name and id
+      (dolist (case `((op:create_interface_tc factory "IDL:I:1.0" "I")
+                      (op:create_exception_tc factory "IDL:e:1.0" "e" nil)
+                      (op:create_alias_tc factory "IDL:a:1.0" "a" ,CORBA:tc_ushort)
+                      (op:create_enum_tc factory "IDL:e:1.0" "e" ("A" "B"))
+                      (op:create_union_tc factory "IDL:u:1.0" "u" ,corba:tc_boolean nil)
+                      (op:create_struct_tc factory "IDL:s:1.0" "s" nil)
+                      (op:create_value_box_tc factory "IDL:Foo/Box:1.0" "Box" ,corba:tc_string)
+                      (op:create_native_tc factory "IDL:CORBA/nat:1.0" "nat")
+                      (op:create_abstract_interface_tc factory "IDL:CORBA/abs:1.0" "abs")
+                      (op:create_local_interface_tc factory "IDL:CORBA/local:1.0" "local")
+                      (op:create_value_tc factory "IDL:CORBA/vt:1.0" "vt" ,corba:vm_none nil nil)))
+        (let ((op (car case)))
+          (with-sub-test ((symbol-name op))
+            (apply op factory (cddr case))
+            (ensure-exception 
+             (apply op factory "IDL:x:1.0" "not legal" (cddddr case))
+             CORBA:BAD_PARAM 'op:minor (std-minor 15))
+            (ensure-exception
+             (apply op factory "bad id" (cdddr case))
+             CORBA:BAD_PARAM 'op:minor (std-minor 16)))))))
+
+
+  (define-test "Create tc member name error checking"
+    (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
+      (macrolet ((check (form) `(ensure-exception ,form CORBA:BAD_PARAM 'op:minor ,(std-minor 17))))
+        (macrolet 
+          ((check-names (n1 n2)
+             `(progn
+                (check (op:create_struct_tc factory "IDL:s:1.0" "s"
+                                            (list (CORBA:StructMember 
+                                                   :name ,n1 :type corba:tc_long :type_def nil)
+                                                  (CORBA:StructMember 
+                                                   :name ,n2 :type corba:tc_long :type_def nil))))
+                (check (op:create_exception_tc factory "IDL:s:1.0" "s"
+                                               (list (CORBA:StructMember 
+                                                      :name ,n1 :type corba:tc_long :type_def nil)
+                                                     (CORBA:StructMember 
+                                                      :name ,n2 :type corba:tc_long :type_def nil))))
+                (check (op:create_enum_tc factory "IDL:e:1.0" "e" '(,n1 ,n2)))
+                (check (op:create_union_tc factory "IDL:u:1.0" "u" corba:tc_boolean
+                                           (list (corba:unionmember
+                                                  :name ,n1 :type corba:tc_string
+                                                  :label (any :any-value t :any-typecode corba:tc_boolean))
+                                                 (corba:unionmember
+                                                  :name ,n2 :type corba:tc_long
+                                                  :label (any :any-value nil :any-typecode corba:tc_boolean)))))
+                (check (op:create_value_tc factory "IDL:CORBA/vt:1.0" "vt" 
+                                           corba:vm_none nil
+                                           (list (corba:valuemember
+                                                  :name ,n1 :id "IDL:Hoopp1:1.0" :version "1.0"
+                                                  :type CORBA:tc_long :type_def nil
+                                                  :access corba:public_member)
+                                                 (corba:valuemember
+                                                  :name ,n2 :id "IDL:Hoopp2:1.0" :version "1.0"
+                                                  :type CORBA:tc_long :type_def nil
+                                                  :access corba:public_member)))))))
+          (with-sub-test ("duplicated names")
+            (check-names "foo" "foo"))
+          (with-sub-test ("illegal name") 
+            (check-names "12f" "foo"))))))
+        
+
+  (define-test "Create tc content type error checking"
+    (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
+      (macrolet ((check (form)
+                   `(ensure-exception ,form
+                                      CORBA:BAD_TYPECODE 'op:minor ,(std-minor 2))))
+        (dolist (case `(("tk_null" ,corba:tc_null)
+                        ("tk_void" ,corba:tc_void)
+                        ("tk_except" ,(create-exception-tc "IDL:foo:1.0" "foo" nil))))
+          (let ((name (car case)) (type (cadr case)))
+            (with-sub-test (name)
+              (check (op:create_alias_tc factory "IDL:a:1.0" "a" type))
+              (check (op:create_struct_tc factory "IDL:s:1.0" "s"
+                                          (list (CORBA:StructMember
+                                                 :name "a" :type type :type_def nil))))
+              (check (op:create_exception_tc factory "IDL:s:1.0" "s"
+                                             (list (CORBA:StructMember
+                                                    :name "a" :type type :type_def nil))))
+              (check (op:create_value_box_tc factory "IDL:a:1.0" "a" type))
+              (check (op:create_array_tc factory 2 type))
+              (check (op:create_sequence_tc factory 0 type))
+              (check (op:create_union_tc factory "IDL:u:1.0" "u" corba:tc_boolean
+                                         (list (corba:unionmember
+                                                :name "a" :type type :label (any :any-value t :any-typecode corba:tc_boolean)))))
+              (check (op:create_value_tc factory "IDL:CORBA/vt:1.0" "vt" 
+                                         corba:vm_none nil
+                                         (list (corba:valuemember
+                                                :name "m1" :id "IDL:Hoopp:1.0" :version "1.0"
+                                                :type type :type_def nil
+                                                :access corba:public_member))))))))))
 
 
   (define-test "get_compact_typecode"
