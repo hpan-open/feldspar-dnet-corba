@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.44 2005/03/23 15:52:41 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.45 2005/05/03 13:25:31 lenst Exp $
 
 
 (in-package :clorb)
@@ -525,6 +525,10 @@ Where host is a string and port an integer.")
         (port (iiop-profile-port profile)))
     (get-iiop-connection orb host port)))
 
+(defmethod profile-connection ((profile vector) orb)
+  ;; Multi profile
+  ;; FIXME: not handled yet, should it be stored in the proxy ??
+  nil)
 
 
 ;;;; Locate
