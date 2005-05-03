@@ -269,7 +269,7 @@
                                                   :access corba:public_member)))))))
           (with-sub-test ("duplicated names")
             (check-names "foo" "foo"))
-          (with-sub-test ("illegal name") 
+          (with-sub-test ("invalid name") 
             (check-names "12f" "foo"))))))
         
 

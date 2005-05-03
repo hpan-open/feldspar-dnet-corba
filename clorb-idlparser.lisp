@@ -517,8 +517,14 @@
   (alt (<literal>) 
        (let (obj)
          (seq (-> (<scoped_name>-lookup) obj)
-              (action (check-type obj CORBA:ConstantDef)
-                      (any-value (op:value obj)))))
+              (action (unless (eql (op:def_kind obj) :dk_constant)
+                        (error "Identifier '~A' should be a constant" (op:name obj)))
+                      (let ((tc (op:type obj)))
+                        (if (eq :tk_fixed (op:kind tc))
+                          (make-idl-fixed (op:fixed_digits tc)
+                                          (op:fixed_scale tc)
+                                          (any-value (op:value obj)))
+                          (any-value (op:value obj)))))))              
        (seq "(" (-> (<const_exp>) value) ")" (action value))))
 
 (defun <or_expr> nil
@@ -570,6 +576,31 @@
   (- n1 n2))
 
 
+(defmethod mul ((n1 cons) (n2 cons))
+  (multiple-value-bind (d1 s1 m1) (idl-fixed-values n1)
+    (multiple-value-bind (d2 s2 m2) (idl-fixed-values n2)
+      (make-idl-fixed (+ d1 d2)
+                      (+ s1 s2)
+                      (* m1 m2)))) )
+
+(defmethod mul (n1 n2)
+  (* n1 n2))
+
+
+
+(defmethod div ((n1 cons) (n2 cons))
+  (let ((sinf 9999999))
+    (multiple-value-bind (d1 s1 m1) (idl-fixed-values n1)
+      (multiple-value-bind (d2 s2 m2) (idl-fixed-values n2)
+        (declare (ignore d2))
+        (make-idl-fixed (+ d1 (- s1) s2 sinf)
+                        sinf
+                        (/ m1 m2)))) ))
+
+(defmethod div (n1 n2)
+  (/ n1 n2))
+
+
 (defun <add_expr> nil
   (let (x y)
     (seq (-> (<mult_expr>) x)
@@ -580,8 +611,8 @@
 (defun <mult_expr> nil
   (let (x y)
     (seq (-> (<unary_expr>) x)
-         (seq* (alt (seq "*" (-> (<unary_expr>) y) (action (setq x (* x y))))
-                    (seq "/" (-> (<unary_expr>) y) (action (setq x (/ x y))))
+         (seq* (alt (seq "*" (-> (<unary_expr>) y) (action (setq x (mul x y))))
+                    (seq "/" (-> (<unary_expr>) y) (action (setq x (div x y))))
                     (seq "%" (-> (<unary_expr>) y) (action (setq x (rem x y))))))
          (action x))))
 
