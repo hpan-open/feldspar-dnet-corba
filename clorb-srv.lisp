@@ -1,5 +1,5 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.33 2005/02/23 19:18:47 lenst Exp $	
+;; $Id: clorb-srv.lisp,v 1.34 2005/05/03 10:53:45 lenst Exp $	
 
 (in-package :clorb)
 
@@ -93,6 +93,7 @@
                 (prog1 (if fragmented #'get-fragment-request #'get-fragment-last)
                   (setq fragmented nil))))))
         (cond ((> (giop-version-minor version) 1)
+               (warn "Receiving unsupported GIOP version: ~A" version)
                (connection-message-error conn giop-1-1))
               ((null decode-fun)
                (warn "Unknown message type: ~A" msgtype)

@@ -251,9 +251,10 @@
      (acl-socket:remote-port conn))
     #+openmcl
     (values (let ((host (openmcl-socket:remote-host conn)))
-              (or (ignore-errors
-                   (openmcl-socket:ipaddr-to-hostname host))
-                  (openmcl-socket:ipaddr-to-dotted host)))
+              (and host
+                   (or (ignore-errors
+                         (openmcl-socket:ipaddr-to-hostname host))
+                       (openmcl-socket:ipaddr-to-dotted host))))
             (openmcl-socket:remote-port conn))
     #+Digitool
     (values (let ((host (ccl::stream-remote-host conn)))

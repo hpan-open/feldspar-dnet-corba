@@ -46,7 +46,7 @@ be no need to store the actual path to the POA in the object key.
                   (subseq (buffer-octets buffer)
                           (buffer-in-pos buffer)))
           (progn
-            (mess 2 "Illegal unique id, IOR from other instance")
+            (mess 2 "Invalid unique id, IOR from other instance")
             nil))))
      ((and (eql magic +persistent-ior-magic1+)
            (>= (buffer-length buffer) 4))
@@ -62,7 +62,7 @@ be no need to store the actual path to the POA in the object key.
               (subseq (buffer-octets buffer)
                       (buffer-in-pos buffer))))
      (t
-      ;;(warn "illegal magic=~S" magic)
+      ;;(warn "invalid magic=~S" magic)
       ;; default poa for boot objects
       (values :transient 0 (buffer-octets buffer))))))
 

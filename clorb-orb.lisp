@@ -443,7 +443,7 @@
 
 (defun process-opt-initial-reference (orb arg)
   (let ((eq-pos (position #\= arg)))
-    (unless eq-pos (error "Illegal InitialReferences option: ~A" arg))
+    (unless eq-pos (error "Invalid InitialReferences option: ~A" arg))
     (let ((name (subseq arg 0 eq-pos))
           (ior  (subseq arg (+ eq-pos 1))))
       (set-initial-reference orb name ior))))
@@ -483,7 +483,7 @@
   (multiple-value-bind (method rest)
                        (split-url str)
     (cond
-     ((null method) (error "Illegal object reference: ~A" str))
+     ((null method) (error "Invalid object reference: ~A" str))
      ((string-equal method "corbaloc")
       (corbaloc-to-object orb rest))
      ((string-equal method "corbaname")

@@ -297,7 +297,7 @@
               ((fixed)
                (destructuring-bind (digits scale) (cdr type-sexp)
                  (op:create_fixed repository digits scale))))))
-     (error "Illegal type spec: ~S" type-sexp))))
+     (error "Invalid type spec: ~S" type-sexp))))
 
 
 (define-method defined_in ((r CORBA:Repository))

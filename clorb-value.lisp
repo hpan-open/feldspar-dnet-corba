@@ -157,7 +157,7 @@
            (let ((pos (+ (buffer-in-pos buffer)
                          (unmarshal-long buffer))))
              (or (gethash pos (buffer-record buffer))
-                 (error "Illegal indirection"))))
+                 (error "Invalid indirection"))))
           (t
            (let ((start-pos (- (buffer-in-pos buffer) 4))
                  (registered nil))

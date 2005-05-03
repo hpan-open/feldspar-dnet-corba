@@ -1,7 +1,8 @@
 (in-package :clorb)
 
 (defun describe-repo (r)
-  (let ((l (coerce (op:contents r :dk_all t) 'list))
+  (let ((l (coerce (op:contents (object-narrow r 'corba:container)
+                                :dk_all t) 'list))
         (k (op:def_kind r)))
     (pprint-logical-block (*standard-output* l :prefix "  ")
       (loop for x in l

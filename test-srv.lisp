@@ -61,7 +61,7 @@
                     "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" )))
 
 
-  (define-test "Illegal version"
+  (define-test "Invalid version"
     (test-request-response
      :request (list (giop:messageheader_1_1
                      :magic "GIOP" 

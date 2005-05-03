@@ -164,7 +164,7 @@ In body:
                               (or (null *chunk-end*)
                                   (>= (buffer-in-pos buffer) (the fixnum *chunk-end*))))
                      (start-in-chunk buffer))
-                   ,(unless (zerop n)
+                   ,(unless (zerop (the fixnum n))
                       `(setf pos
                              (the buffer-index
                                (+ pos (the fixnum (logand (- ,n (the (integer 0 ,n)
