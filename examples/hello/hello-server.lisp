@@ -1,35 +1,11 @@
 (in-package :cl-user)
 
-(defclass HELLO-WORLD (hello:world-servant)
+(defclass HELLO-WORLD (CLORB_EX:helloworld-servant)
   ((motd :initform 
          (format nil "Hello World from ~A" (lisp-implementation-type)))))
 
 (corba:define-method greet ((self hello-world))
   (slot-value self 'motd))
-
-(corba:define-method read ((self hello-world) name)
-  (cond ((equal name "") nil)
-        (t (make-instance 'hello:fox :name name :value (length name)))))
-
-(corba:define-method write ((self hello-world) box)
-  (clorb::mess 5 "~A" box))
-
-(corba:define-method repr ((self hello-world) box)
-  (princ-to-string box))
-
-(corba:define-method write2 ((self hello-world) box1 box2)
-  (cond ((eql box1 box2) "They are the same")
-        (t (format nil "~A and ~A" box1 box2))))
-
-(corba:define-method longs ((self hello-world) box1 box2)
-  (cond ((eql box1 box2) "They are the same")
-        ((or (null box1) (null box2)) "One or both is null")
-        (t (format nil "~A and ~A" box1 box2))))
-
-
-(defmethod print-object ((fox hello:fox) stream)
-  (print-unreadable-object (fox stream :type t :identity t)
-    (format stream "~A #~A" (op:name fox) (op:value fox))))
 
 
 (defvar *hello-servant* nil)
