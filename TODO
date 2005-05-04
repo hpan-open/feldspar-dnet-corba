@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.22 2005/03/11 16:48:13 lenst Exp $
+ $Id: TODO,v 1.23 2005/05/04 08:40:11 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -15,12 +15,7 @@ Lots of variantions possible in operation name.
 
 * IDL Compiler
 
-- Parsing of litterals (float, fixed)
-
 - Wide char / Wide string ?
-
-- Check valuetype / id pragma
-
 
 
 * Misc

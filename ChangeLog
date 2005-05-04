@@ -1,3 +1,12 @@
+2005-05-04  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* Version 0.6
+
+2005-05-03  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-iiop.lisp (profile-connection): medtod for vector (multi
+	profile) to avoid error.
+
 2005-04-05  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* test-idllexer.lisp ("IDL Lexer"): new fixed point literals
