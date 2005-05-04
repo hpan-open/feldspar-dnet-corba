@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.27 2004/12/28 00:02:07 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.28 2005/05/04 14:57:06 lenst Exp $
 
 
 ;; io-reset ()
@@ -404,7 +404,7 @@
     (setq select (select-wait select poll))
     (select-do-result select #'io-poll-desc)
     (when *io-socket*
-      (io-listen nil))))
+      (io-listen (select-listener select *io-socket*)))))
 
 
 (defmethod io-system-driver ((system io-system-select) poll)
