@@ -128,6 +128,12 @@
 	* clorb-conn.lisp (connection-add-server-request): new func
 	(connection-remove-server-request): new func
 
+2004-12-05  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-marshal.lisp (marshal-add-encapsulation): restore buffer
+	start pos before marshalling the length, otherwise align might
+	croak
+
 2004-11-26  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-idl.lisp (corba:idl): added new keyword parameter

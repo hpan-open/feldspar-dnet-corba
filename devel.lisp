@@ -38,7 +38,7 @@
 (defvar *the-orb*
   (CORBA:ORB_init
    (list #+digitool "-ORBPort 4711"
-         #+CMUCL    "-ORBPort 4720"
+         #+cmu      "-ORBPort 4713"
          ;;"-ORBInitRef NameService=corbaloc::/NameService" 
          "-ORBInitRef NameService=corbaloc:rir:/CLORB-PNS" )))
 
