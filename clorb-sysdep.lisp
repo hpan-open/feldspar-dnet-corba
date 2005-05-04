@@ -89,7 +89,7 @@
    (if port (ext:socket-server port) (ext:socket-server))
 
    #+clorb::cmucl-sockets 
-   (ext:create-inet-listener port)
+   (ext:create-inet-listener (or port 0))
 
    #+clorb::db-sockets
    (let ((s (sockets:make-inet-socket :stream :tcp)))
