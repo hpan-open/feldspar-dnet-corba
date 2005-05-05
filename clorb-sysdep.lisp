@@ -516,8 +516,9 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    "listener ready in select result"
 
    #+(or sbcl cmu18 cmu19)
-   (logbitp (%socket-file-descriptor socket)
-            (select-rset select))
+   (and (not (select-direct-input select))
+        (logbitp (%socket-file-descriptor socket)
+                 (select-rset select)))
 
    ;; Default
    nil))
