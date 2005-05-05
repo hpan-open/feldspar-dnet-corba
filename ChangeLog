@@ -1,10 +1,15 @@
 2005-05-05  Lennart Staflin  <lenst@lysator.liu.se>
 
-	* clorb-sysdep.lisp (select-listener): ignore if select-direct-input
-
+	* Version 0.6
+	
 2005-05-04  Lennart Staflin  <lenst@lysator.liu.se>
 
-	* Version 0.6
+	* clorb-sysdep.lisp (select-listener): ignore if select-direct-input
+
+	* clorb-io.lisp (io-poll-select): use select-listener
+
+	* clorb-sysdep.lisp (select-listener): new func
+	Also cmu19 like cmu18
 
 2005-05-03  Lennart Staflin  <lenst@lysator.liu.se>
 
