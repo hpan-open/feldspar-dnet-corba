@@ -1,3 +1,7 @@
+2005-05-05  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-sysdep.lisp (select-listener): ignore if select-direct-input
+
 2005-05-04  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* Version 0.6
