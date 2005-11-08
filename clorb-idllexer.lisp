@@ -89,20 +89,20 @@
 
 
 (defun idl-comment ()
-  (seq #\/
-       (alt (seq #\*
-                 (repeat (0) #'(lambda (ch) (char/= ch #\*)))
-                 #\*
-                 (repeat (0)
-                   #'(lambda (ch) (char/= ch #\/))
-                   (repeat (0) #'(lambda (ch) (char/= ch #\*)))
-                   #\*)
-                 #\/
-                 (action nil))
-            (seq #\/
-                 (seq* #'(lambda (ch) (char/= ch #\Newline)))
-                 (action nil))
-            (seq (action "/")))))
+  (flet ((not-* (ch) (char/= ch #\*))
+         (not-/ (ch) (char/= ch #\/))
+         (not-newline (ch) (char/= ch #\Newline)))
+    (seq #\/
+         (alt (seq #\*
+                   (seq* #'not-*)
+                   #\*
+                   (seq* #'not-/ (seq* #'not-*) #\*)
+                   #\/
+                   (action nil))
+              (seq #\/
+                   (seq* #'not-newline)
+                   (action nil))
+              (seq (action "/"))))))
 
 
 (defun ident-start-char-p (c)
@@ -117,7 +117,7 @@
   (let (ch name)
     (seq (-> #'ident-start-char-p ch)
          (action (push ch name))
-         (repeat (0)
+         (seq*
            (-> #'ident-char-p ch)
            (action (push ch name)))
          (action (coerce (nreverse name) 'string)))))
