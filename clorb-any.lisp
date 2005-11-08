@@ -23,6 +23,12 @@
     (setf (slot-value any 'typecode)
       (any-typecode (slot-value any 'value)))))
 
+(defmethod print-object ((any corba:any) stream)
+  (print-unreadable-object (any stream :type t)
+    (dolist (slot '(typecode nil value))
+      (cond ((null slot) (princ " " stream))
+            ((slot-boundp any slot) (prin1 (slot-value any slot) stream))
+            (t (princ "?" stream))))))
 
 
 (defmethod any-typecode ((obj corba:any))
