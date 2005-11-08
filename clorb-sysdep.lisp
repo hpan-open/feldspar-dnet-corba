@@ -202,7 +202,7 @@
      (error "Dummy TCP cannot connect")
 
      #+clisp 
-     (ext:socket-connect port host :element-type type) 
+     (ext:socket-connect port host :element-type type :buffered nil) 
 
      #+clorb::cmucl-sockets
      (system:make-fd-stream (ext:connect-to-inet-socket host port)
@@ -262,6 +262,9 @@
               #+(or)
               (ccl::inet-host-name host))
             (ccl::stream-remote-port conn))
+    #+clisp
+    (values (ext:socket-stream-host conn)
+            (ext:socket-stream-port conn))
    
    ;; Default
    nil ))
@@ -320,7 +323,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clisp 
    (when (ext:socket-wait socket (if blocking 10 0))
      (let* ((conn (ext:socket-accept socket 
-                                 :element-type '(unsigned-byte 8))))
+                                 :element-type '(unsigned-byte 8) :buffered nil)))
        (mess 4 "Accepting connection from ~A"
              (ext:socket-stream-peer conn))
        conn))
@@ -841,7 +844,6 @@ Returns select result to be used in getting status for streams."
 
 
 (defun cpp-command-string (file include-directories &optional defines)
-  ;; FIXME: add support for defines
   (format nil
           #-MCL "cpp~{ -I'~A'~}~{ -D'~A'~} '~A'"
           ;; apples /usr/bin/cpp is buggy
