@@ -47,7 +47,16 @@
                                        (:id :required "IDL:test/a:1.0")
                                        (:name :required "a")
                                        (:type :required CORBA:Long)
-                                       (:typecode :required CORBA:tc_long))))))
+                                       (:typecode :required CORBA:tc_long))))
+      (setf (op:original_type_def alias-def) interface)
+      (ensure-pattern (target-code alias-def (make-instance 'stub-target))
+                      (let ((intf-symbol (intern "INTF" "MOD")))
+                        (sexp-pattern `(define-alias omg.org/root::a 
+                                           &key 
+                                         (:id :required "IDL:test/a:1.0")
+                                         (:name :required "a")
+                                         (:type :required ,intf-symbol)
+                                         (:typecode :required (symbol-typecode ',intf-symbol))))))))
 
   (define-test "exception"
     (let* ((members (list (CORBA:StructMember :name "a"

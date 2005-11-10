@@ -187,10 +187,12 @@
   ;;FIXME: handle multi dim arrays
   `(array t (,(op:length obj))))
 
-(defmethod target-type ((obj CORBA:AliasDef) target)
-  (scoped-target-symbol target obj))
+(defmethod target-type ((obj CORBA:StringDef) target)
+  (declare (ignore target))
+  'CORBA:string)
 
-(defmethod target-type ((obj CORBA:StructDef) target)
+
+(defmethod target-type ((obj CORBA:Contained) target)
   (scoped-target-symbol target obj))
 
 
@@ -309,7 +311,8 @@
                                         (op:mode param)
                                         (target-typecode (op:type_def param) target)))
                           (op:parameters desc))
-        :exceptions ,(map 'list #'scoped-target-symbol (repeated target) (op:exceptions op))))))
+        :exceptions ,(map 'list (lambda (exc) (scoped-target-symbol target exc))
+                          (op:exceptions op))))))
 
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) (target ifr-info-target))
@@ -338,7 +341,7 @@
 
 
 (defmethod target-code ((x CORBA:Contained) (target stub-target))
-  (declare (ignore target)) (call-next-method))
+  (declare (ignorable target)) (call-next-method))
 
 
 (defmethod target-code ((x CORBA:AliasDef) (target stub-target))
@@ -791,7 +794,7 @@
 
 
 (defun struct-name-p (x)
-  (and (symbolp x)
+  (and (symbolp x) (find-class x nil)
        (subtypep x 'CORBA:Struct)))
 
 
