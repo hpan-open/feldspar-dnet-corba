@@ -70,14 +70,16 @@ Members on form: (name TypeCode)"
   (system-exception-completed obj))
 
 (defun report-systemexception (exc stream)
-  (format stream
-          "~S (~X~@[ std ~D~]) ~A."
-	  (exception-name exc)
-          (system-exception-minor exc)
-          (if (eql omg.org/corba::omgvmcid
-                   (logandc2 (system-exception-minor exc) (1- min-vmcid)))
-            (logand (system-exception-minor exc) (1- min-vmcid)))
-          (system-exception-completed exc)))
+  (let ((minor (logand (system-exception-minor exc) (1- min-vmcid)))
+        (vmcid (logandc2 (system-exception-minor exc) (1- min-vmcid))))
+    (format stream
+            "~S vmcid: ~A minor code: ~D ~A."
+            (exception-name exc)
+            (if (eql vmcid omg.org/corba::omgvmcid)
+                "OMG"
+                (format nil "~X" vmcid))
+            minor
+            (system-exception-completed exc))))
 
 
 (defun system-exception (class &optional (minor 0) (completed :COMPLETED_MAYBE))
@@ -158,12 +160,15 @@ Members on form: (name TypeCode)"
       (funcall reader buffer)
       (unmarshal (symbol-typecode symbol) buffer))))
 
+
 (defun unmarshal-systemexception (buffer)
-  (make-condition (or (ifr-id-symbol (unmarshal-string buffer))
-                      'corba:systemexception)                      
-                  :minor (unmarshal-ulong buffer)
-                  :completed (unmarshal (symbol-typecode 'CORBA:completion_status) 
-                                        buffer)))
+  (let ((id (unmarshal-string buffer)))
+    (values
+     (make-condition (or (ifr-id-symbol id) 'corba:systemexception)                      
+                     :minor (unmarshal-ulong buffer)
+                     :completed (unmarshal (symbol-typecode 'CORBA:completion_status) 
+                                           buffer))
+     id)))
 
 
 (defmethod compute-marshal-function ((tc except-typecode))

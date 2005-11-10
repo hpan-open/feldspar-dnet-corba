@@ -30,16 +30,8 @@
 (DEFINE-STRUCT IOP:SERVICECONTEXT
  :id "IDL:omg.org/IOP/ServiceContext:1.0"
  :name "ServiceContext"
- :members (("context_id" (SYMBOL-TYPECODE 'IOP:SERVICEID) CONTEXT_ID)
-           ("context_data" (create-sequence-tc 0 CORBA:TC_OCTET)
-            CONTEXT_DATA))
- :read ((BUFFER)
-        (IOP:SERVICECONTEXT
-          :context_id (UNMARSHAL-ULONG BUFFER)
-          :context_data (UNMARSHAL-OSEQUENCE BUFFER)))
- :write ((OBJ BUFFER)
-         (MARSHAL-ULONG (op:CONTEXT_ID OBJ) BUFFER)
-         (MARSHAL-OSEQUENCE (op:CONTEXT_DATA OBJ) BUFFER)))
+ :members (("context_id" (SYMBOL-TYPECODE 'IOP:SERVICEID))
+           ("context_data" (create-sequence-tc 0 CORBA:TC_OCTET))))
 
 (DEFINE-ALIAS IOP:SERVICEID
  :id "IDL:omg.org/IOP/ServiceId:1.0"
@@ -173,13 +165,7 @@
  :NAME "Encoding"
  :MEMBERS (("format" (SYMBOL-TYPECODE 'IOP:ENCODINGFORMAT))
            ("major_version" OMG.ORG/CORBA:TC_OCTET)
-           ("minor_version" OMG.ORG/CORBA:TC_OCTET))
- :READ ((BUFFER)
-        (IOP:ENCODING :FORMAT (UNMARSHAL-SHORT BUFFER) :MAJOR_VERSION
-         (UNMARSHAL-OCTET BUFFER) :MINOR_VERSION (UNMARSHAL-OCTET BUFFER)))
- :WRITE ((OBJ BUFFER) (MARSHAL-SHORT (OMG.ORG/FEATURES::FORMAT OBJ) BUFFER)
-         (MARSHAL-OCTET (OMG.ORG/FEATURES::MAJOR_VERSION OBJ) BUFFER)
-         (MARSHAL-OCTET (OMG.ORG/FEATURES::MINOR_VERSION OBJ) BUFFER)))
+           ("minor_version" OMG.ORG/CORBA:TC_OCTET)))
 
 (DEFINE-INTERFACE IOP:CODEC (OBJECT)
  :ID "IDL:omg.org/IOP/Codec:1.0"
