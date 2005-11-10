@@ -1,5 +1,5 @@
 TODO                        -*- indented-text -*-
- $Id: TODO,v 1.23 2005/05/04 08:40:11 lenst Exp $
+ $Id: TODO,v 1.24 2005/11/10 13:52:41 lenst Exp $
 
 * Final Lisp Mapping
 
@@ -41,4 +41,12 @@ Lots of variantions possible in operation name.
   contain a field for the assigned network stream. The connection to
   the server could then be closed when there is no more objects from
   that server.
+
+* Maybe
+
+Remake pi support. Don't subclass but delegate. Remove
+create-client-request etc, and do make-instance directly, might allow
+clos optimizations. ORB could have a interceptor slot and delegate
+will-send-.. etc to that object. Will have to add extra slots to
+request objects.
 

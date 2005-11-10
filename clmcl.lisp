@@ -119,3 +119,20 @@
 ;;(op:bind_context (net.cddr.clorb::get-ns) (net.cddr.clorb::ns-name "main") (obj "corbaloc::/NameService" 'cosnaming:namingcontextext))
 ;;(op:bind_context (net.cddr.clorb::get-ns) (net.cddr.clorb::ns-name "saturn") (obj "corbaloc::saturn.local./NameService" 'cosnaming:namingcontextext))
 
+
+
+;;;; Bg driver
+(in-package :clorb)
+(defvar *work-pending* nil)
+(defun bg-driver ()
+  (loop
+    (process-wait "wating for main thread"
+                  (lambda () (not *work-pending*)))
+    (io-driver nil)
+    (when (io-work-pending-p)
+      (setq *work-pending* t)
+      (ccl:eval-enqueue (lambda ()
+                          (orb-work *the-orb* t t)
+                          (setq *work-pending* nil))))))
+  
+;;(ccl:process-run-function "orb" #'bg-driver)
