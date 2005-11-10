@@ -252,22 +252,17 @@
 
 (defun unmarshal-object (buffer &optional expected-id)
   (let* ((type-id (unmarshal-string buffer))
-         (n-profiles (unmarshal-ulong buffer))
-         (profiles '()))
+         (n-profiles (unmarshal-ulong buffer)))
     (let ((raw-profiles 
            (loop repeat n-profiles
                  for tag = (unmarshal-ulong buffer)
                  for encaps = (unmarshal-osequence buffer)
-                 for profile = (decode-ior-profile tag encaps)
-                 collect (cons tag encaps)
-                 when profile do (push profile profiles))))
+                 collect (IOP:TaggedProfile
+                          :tag tag :profile_data encaps))))
       (unless (zerop n-profiles)
-        (setq profiles (nreverse profiles))
-        (unless profiles
-          (raise-system-exception 'CORBA:inv_objref))
         (create-objref (the-orb buffer)
                        :ior-id type-id :expected-id expected-id
-                       :profiles profiles :raw-profiles raw-profiles)))))
+                       :raw-profiles raw-profiles)))))
 
 
 (defmethod decode-ior-profile ((tag (eql 1)) encaps)
