@@ -16,7 +16,8 @@
         (temp-file (merge-pathnames "working.idl" *temporary-directory*)))
     (with-open-file (out temp-file :direction :output :if-exists :supersede)
       (princ string out)
-      (terpri out))
+      ;;(terpri out)
+      )
     (load-repository *default-idl-compiler* repository temp-file)
     repository))
 
@@ -34,7 +35,8 @@
 
   (define-idl-test "comments"
     "// Test
-    module Foo { /* bar */ interface Bar; };"
+    module Foo { /* bar */ interface Bar; };
+    // comment ending in EOF"
     "Foo" (def-pattern :dk_module))
 
   (define-idl-test "escaping identifiers"
