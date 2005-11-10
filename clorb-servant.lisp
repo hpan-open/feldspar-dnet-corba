@@ -1,5 +1,5 @@
 ;;;; clorb-servant.lisp
-;; $Id: clorb-servant.lisp,v 1.21 2005/02/15 21:08:44 lenst Exp $
+;; $Id: clorb-servant.lisp,v 1.22 2005/11/10 14:54:08 lenst Exp $
 
 (in-package :clorb)
 
@@ -85,11 +85,55 @@
 (defun dsi-request-p (sreq)
   (not (slot-boundp sreq 'args)))
 
+(defun arguments-set-p (self)
+  (slot-boundp self 'arguments))
+
+(defun exception-set-p (self)
+  (request-exception self))
+
 (defmethod set-request-exception ((req server-request) exc)
   (setf (request-exception req) exc))
 
 (defmethod response-expected ((req server-request))
   (logbitp 0 (response-flags req)))
+
+
+(defmethod dynamic-arguments ((req server-request))
+  "Arguments for the request.
+List of (any . mode) for every argument. Only valid after arguments have
+been decoded."
+  (cond ((arguments-set-p req)          ; DSI with arguments
+         (map 'list (lambda (nv) (cons (op:argument nv) (op:mode nv)))
+              (request-arguments req)))
+        ((slot-boundp req 'params)
+         (let* ((args (request-args req))
+                (result-p (slot-boundp req 'result))
+                (result (if result-p
+                            (if (typep (request-result-type req) 'void-typecode)
+                                (request-result req)
+                                (cdr (request-result req))))))
+           (loop for (nil mode tc) in (request-params req)
+              collect (cons (CORBA:Any :any-value
+                                       (if (or (eql mode :param_in)
+                                               (not result-p))
+                                           (pop args)
+                                           (pop result))
+                                       :any-typecode tc)
+                            mode))))
+        (t (raise-system-exception 'CORBA:no_resources))))
+
+
+(defmethod dynamic-result ((req server-request))
+  (cond ((not (slot-boundp req 'result))
+         (raise-system-exception 'corba:no_resources))
+        ((dsi-request-p req)
+         (request-result req))
+        (t
+         (let ((type (request-result-type req)))
+           (CORBA:Any :any-typecode type
+                      :any-value (unless (typep type 'void-typecode)
+                                   (first (request-result req))))))))
+
 
 #+unused-function
 (defun get-request-response (request status)
@@ -107,7 +151,7 @@
       (:system_exception
        (will-send-exception orb request)))
     (marshal-giop-header :reply buffer)
-    (marshal-service-context (reply-service-context request) buffer) 
+    (marshal-service-context (reply-service-context request) buffer)
     (marshal-ulong (request-id request) buffer)
     (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
     buffer))
@@ -189,7 +233,7 @@
 
 
 (defun discard-request (req)
-  (server-request-systemexception-reply 
+  (server-request-systemexception-reply
    req (system-exception 'CORBA:TRANSIENT 1 :completed_no)))
 
 
@@ -212,13 +256,6 @@
 
 (define-method ctx ((self server-request))
   nil)
-
-
-(defun arguments-set-p (self)
-  (slot-boundp self 'arguments))
-
-(defun exception-set-p (self)
-  (request-exception self))
 
 
 (define-method arguments ((self server-request) nv)
@@ -349,9 +386,9 @@
           (type   (get sym 'ifr-type))
           (mode   (get sym 'ifr-mode)))
       (cond (result
-             (let ((params (get sym 'ifr-params)) 
+             (let ((params (get sym 'ifr-params))
                    (exceptions (get sym 'ifr-exceptions)))
-               (setf (gethash name table) 
+               (setf (gethash name table)
                      (compute-skel-operation name result params exceptions))))
             (type
              (setf (gethash (getter-name name) table)

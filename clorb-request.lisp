@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.16 2005/03/23 15:52:14 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.17 2005/11/10 14:54:08 lenst Exp $
 
 (in-package :clorb)
 
@@ -57,12 +57,19 @@
    (args
     :initarg :args
     :accessor request-args)
+   (params                              ; List of formals (name mode tc)*
+    :initarg :params
+    :accessor request-params)
    (input-func
     :initarg :input-func            :initform 'dii-input-func
     :accessor input-func)
    (error-handler
     :initarg :error-handler         :initform 'dii-error-handler
     :accessor error-handler)
+   (exception-id
+    :initarg :exception-id          :initform nil 
+    :accessor request-exception-id
+    :documentation "Reply exception repository ID")
    (exception
     :initarg :exception             :initform nil 
     :accessor request-exception
@@ -110,6 +117,27 @@
 
 (define-method arguments ((r client-request))
   (cdr (request-paramlist r)))
+
+
+(defmethod dynamic-arguments ((req client-request))
+  "Arguments for the request.
+List of (any . mode) for every argument. Only valid after arguments have 
+been decoded."
+  (cond ((request-paramlist req)        ; DII arguments
+         (map 'list (lambda (nv) (cons (op:argument nv) (op:mode nv)))
+              (op:arguments req)))
+        ((slot-boundp req 'params)
+         (let ((args (request-args req)))
+           (loop for (nil mode tc) in (request-params req)
+                 collect (cons (CORBA:Any :any-value (if (not (eql mode :param_out))
+                                                       (pop args))
+                                          :any-typecode tc)
+                               mode))))
+        (t (raise-system-exception 'CORBA:no_resources))))
+
+
+(defmethod dynamic-result ((self client-request))
+  (op:return_value self))
 
 
 (defun add-arg (req name mode &optional typecode value)
@@ -183,7 +211,8 @@
 (defvar *call-hook* nil)
 
 (defun do-static-call (obj operation response-expected
-                       output-func input-func exceptions &optional args)
+                       output-func input-func exceptions
+                       &optional args params)
   (let ((req (create-client-request
               (the-orb obj)
               :target obj
@@ -193,6 +222,7 @@
               :output-func output-func
               :input-func input-func 
               :args args
+              :params params
               :error-handler #'static-error-handler)))
     (request-send req)
     (if *call-hook* 
@@ -296,25 +326,24 @@
        (request-handle-error req))
       (:user_exception
        (let ((id (unmarshal-string buffer)))
+         (setf (request-exception-id req) id)
          (let ((tc (find id (request-exceptions req)
                          :key #'op:id :test #'equal)))
-         (setf (request-exception req) 
-               (cond (tc (unmarshal tc buffer))
-                     (t
-                      (setf (request-status req) :system_exception)
-                      (system-exception 'corba:unknown 1 :completed_yes))))))
+           (setf (request-exception req) 
+                 (cond (tc (unmarshal tc buffer))
+                       (t
+                        (setf (request-status req) :system_exception)
+                        (system-exception 'corba:unknown 1 :completed_yes))))))
        (request-handle-error req))
       (:system_exception
-       (setf (request-exception req) (unmarshal-systemexception buffer))
+       (multiple-value-bind (exc id) (unmarshal-systemexception buffer)
+         (setf (request-exception-id req) id)
+         (setf (request-exception req) exc))
        (request-handle-error req))
       (:no_exception
-       ;; FIXME: the has-received-reply should ideally be done after
-       ;; unmarshalling result, but then we can't simply return the
-       ;; result as we do here for static calls. The static call would
-       ;; have to cons a list of results..
-       (has-received-reply (the-orb req) req)
-       (setf (request-status req) :returned)
-       (funcall (input-func req) req buffer)))))
+       (multiple-value-prog1 (funcall (input-func req) req buffer)
+         (has-received-reply (the-orb req) req)
+         (setf (request-status req) :returned))))))
 
 
 ;;; void get_response () raises (WrongTransaction);
@@ -431,11 +460,12 @@
 
 
 (defun compute-static-call (sym)
-  (let (input-func output-func exceptions op response-expected)
+  (let (input-func output-func exceptions op response-expected params-list)
     (lambda (obj &rest args)
       (unless input-func
         (multiple-value-bind (name result params mode exc-syms)
                              (symbol-op-info sym)
+          (setq params-list params)
           (setq input-func
                 (let ((ufuns (loop for (nil pmode tc) in params
                                    unless (eql pmode :param_in) collect (unmarshal-function tc))))
@@ -455,7 +485,10 @@
           (setq op name)
           (setq response-expected (eq mode :op_normal))))
       (do-static-call obj op response-expected output-func input-func
-                      exceptions args))))
+                      exceptions args params-list))))
+
+(defun ignore2 (x y)
+  (declare (ignore x y)))
 
 (defun compute-static-get (sym)
   (let (op input-func)
@@ -469,27 +502,23 @@
                   (lambda (req buffer)
                     (declare (ignore req))
                     (funcall mfun buffer))))))
-      (do-static-call obj op t (lambda (req buffer) (declare (ignore req buffer)))
-                      input-func nil))))
+      (do-static-call obj op t #'ignore2 input-func nil))))
 
 
 (defun compute-static-set (sym)
-  (let (op output-func)
+  (let (op output-func params)
     (lambda (obj value)
       (unless output-func
         (multiple-value-bind (name type mode)
                              (symbol-attr-info sym)
           (assert (eql mode :attr_normal))
           (setq op (setter-name name))
+          (setq params (list "value" type :param_in))
           (setq output-func
                 (let ((mfun (marshal-function type)))
                   (lambda (req buffer)
                     (funcall mfun (request-args req) buffer))))))
-      (do-static-call obj op t 
-                      output-func
-                      (lambda (req buffer) (declare (ignore req buffer)))
-                      nil
-                      value))))
+      (do-static-call obj op t output-func #'ignore2 nil value params))))
 
 
 ;;;; Object stubs
