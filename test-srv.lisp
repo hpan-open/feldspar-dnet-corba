@@ -1,4 +1,5 @@
-;;; test-x
+;;; test-srv.lisp -- Test Server Request Processing
+
 (in-package :clorb)
 
 
@@ -9,7 +10,7 @@
   (make-instance 'null-servant)))
 
 
-(define-test-suite "Test Server Request Processing"
+(define-test-suite "Server Request Processing"
   (variables
    (*log-level* 5))
 

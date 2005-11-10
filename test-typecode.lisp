@@ -210,7 +210,7 @@
 
   (define-test "Create name/id error checking"
     (let ((factory (make-instance 'CORBA:TYPECODEFACTORY)))
-      ;; legal name and id
+      ;; valid name and id
       (dolist (case `((op:create_interface_tc factory "IDL:I:1.0" "I")
                       (op:create_exception_tc factory "IDL:e:1.0" "e" nil)
                       (op:create_alias_tc factory "IDL:a:1.0" "a" ,CORBA:tc_ushort)
@@ -226,7 +226,7 @@
           (with-sub-test ((symbol-name op))
             (apply op factory (cddr case))
             (ensure-exception 
-             (apply op factory "IDL:x:1.0" "not legal" (cddddr case))
+             (apply op factory "IDL:x:1.0" "not valid" (cddddr case))
              CORBA:BAD_PARAM 'op:minor (std-minor 15))
             (ensure-exception
              (apply op factory "bad id" (cdddr case))
