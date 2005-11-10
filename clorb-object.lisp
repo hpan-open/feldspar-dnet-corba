@@ -26,14 +26,14 @@
 ;;;| unsigned 	long hash(in unsigned long maximum);
 ;;; _hash in lisp mapping
 ;;;
-;;;| Status create_request (			
+;;;| Status create_request (
 ;;; _create_request in lisp mapping
-;;;|     in Context	ctx,				
-;;;|     in Identifier	operation,				
+;;;|     in Context	ctx,
+;;;|     in Identifier	operation,
 
-;;;|     in NVList	arg_list,				
-;;;|     inout NamedValue result,				
-;;;|     out Request	request,		
+;;;|     in NVList	arg_list,
+;;;|     inout NamedValue result,
+;;;|     out Request	request,
 ;;;|     in Flags        req_flags    );
 ;;;
 ;;;| Policy get_policy (in PolicyType policy_type );
@@ -54,13 +54,13 @@
 
 
 (define-corba-class CORBA:NamedValue ()
-  :attributes ((name) 
-               (argument) 
+  :attributes ((name)
+               (argument)
                (arg_modes)))
 
 
 (defun corba:namedvalue (&key (name "") argument (arg_modes ARG_IN))
-  (make-instance 'CORBA:NamedValue 
+  (make-instance 'CORBA:NamedValue
     :name name :argument argument :arg_modes arg_modes))
 
 
@@ -167,9 +167,8 @@
   ((id :initform nil :initarg :id :accessor proxy-id)
    (the-orb  :initarg :the-orb  :accessor the-orb)
    (connection :initform nil :accessor object-connection)
-   (raw-profiles :initform nil :initarg :raw-profiles
-                 :accessor object-raw-profiles)
-   (profiles :initform nil :initarg :profiles :accessor object-profiles)
+   (raw-profiles  :initarg :raw-profiles  )
+   (profiles      :initarg :profiles      )
    (selected-profile :initform nil :accessor selected-profile)
    (forward :initform nil :initarg :forward :accessor object-forward)
    (forward-reset :initform nil :accessor object-forward-reset)))
@@ -199,11 +198,30 @@
   (setf (object-connection proxy) nil))
 
 
-(defgeneric raw-profiles (proxy))
+(defgeneric encode-profile (profile orb))
+
+(defmethod raw-profiles ((obj CORBA:Proxy))
+  (with-cache-slot (obj raw-profiles)
+    (let ((orb (the-orb obj)))
+      (map 'list
+           (lambda (profile) (encode-profile profile orb))
+           (slot-value obj 'profiles)))))
+
+
+(defmethod object-profiles ((obj CORBA:Proxy))
+  (with-cache-slot (obj profiles)
+    (map 'list
+         (lambda (tagged-profile)
+           (decode-ior-profile (op:tag tagged-profile)
+                               (op:profile_data tagged-profile)))
+         (slot-value obj 'raw-profiles))))
+
 
 (defmethod marshal-object ((objref CORBA:Proxy) buffer)
   (marshal-string (proxy-id objref) buffer)
-  (marshal-sequence (raw-profiles objref) #'marshal-tagged-component buffer))
+  (marshal-sequence (raw-profiles objref)
+                    (marshal-function (symbol-typecode 'IOP:TAGGEDPROFILE))
+                    buffer))
 
 
 (defgeneric profile-component (profile tag))
@@ -272,13 +290,13 @@
        maximum))
 
 
-;;;| Status create_request (			
+;;;| Status create_request (
 ;;; _create_request in lisp mapping
-;;;|     in Context	ctx,				
-;;;|     in Identifier	operation,				
-;;;|     in NVList	arg_list,				
-;;;|     inout NamedValue result,				
-;;;|     out Request	request,		
+;;;|     in Context	ctx,
+;;;|     in Identifier	operation,
+;;;|     in NVList	arg_list,
+;;;|     inout NamedValue result,
+;;;|     out Request	request,
 ;;;|     in Flags        req_flags    );
 
 (define-method _create_request ((obj t)
@@ -304,10 +322,6 @@
                                  #| :ctx ctx |# )))
 
 
-
-
-
-
 
 ;;;; Registry for Proxy classes
 
@@ -326,8 +340,7 @@
     (setq id (symbol-ifr-id id)))
   (cond ((op:_is_a obj id)
          (let ((new (create-objref (the-orb obj)
-                        :ior-id id :profiles (object-profiles obj)
-                        :raw-profiles (object-raw-profiles obj))))
+                        :ior-id id :raw-profiles (raw-profiles obj))))
            (setf (object-forward new) (object-forward obj))
            new))
         (no-error nil)
@@ -367,7 +380,7 @@ Might destructivley change the original object."
               (typep (car args) 'CORBA:Proxy)
               (auto-narrow (car args)))
          (apply generic-function args))
-        (t 
+        (t
          (call-next-method))))
 
 

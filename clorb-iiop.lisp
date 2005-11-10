@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.45 2005/05/03 13:25:31 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.46 2005/11/10 13:56:35 lenst Exp $
 
 
 (in-package :clorb)
@@ -263,27 +263,23 @@
                    (unmarshal-iiop-componets buffer)))))
 
 
-
-(defmethod raw-profiles ((objref CORBA:Proxy))
-  (or (object-raw-profiles objref)
-      (setf (object-raw-profiles objref)
-            (map 'list
-                 (lambda (p)
-                   (cons iop:tag_internet_iop
-                         (marshal-make-encapsulation
-                          (lambda (buffer)
-                            (let ((version (iiop-profile-version p)))
-                              (marshal-octet (iiop-version-major version) buffer)
-                              (marshal-octet (iiop-version-minor version) buffer)
-                              (marshal-string (iiop-profile-host p) buffer)
-                              (marshal-ushort (iiop-profile-port p) buffer)
-                              (marshal-osequence (iiop-profile-key p) buffer)
-                              (if (> (iiop-version-minor version) 0)
-                                (marshal-iiop-components 
-                                 (iiop-profile-components p)
-                                 buffer))))
-                          (the-orb objref))))
-                 (object-profiles objref)))))
+(defmethod encode-profile ((profile iiop-profile) orb)
+  (IOP:TaggedProfile
+   :tag iop:tag_internet_iop
+   :profile_data 
+   (marshal-make-encapsulation
+    (lambda (buffer)
+      (let ((version (iiop-profile-version profile)))
+        (marshal-octet (iiop-version-major version) buffer)
+        (marshal-octet (iiop-version-minor version) buffer)
+        (marshal-string (iiop-profile-host profile) buffer)
+        (marshal-ushort (iiop-profile-port profile) buffer)
+        (marshal-osequence (iiop-profile-key profile) buffer)
+        (if (> (iiop-version-minor version) 0)
+          (marshal-iiop-components 
+           (iiop-profile-components profile)
+           buffer))))
+    orb)))
 
 
 

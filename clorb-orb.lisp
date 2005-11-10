@@ -53,12 +53,16 @@
 
 (defmethod create-objref ((orb clorb-orb) &key ior-id expected-id 
                            raw-profiles profiles)
-  (make-instance (find-proxy-class 
-                  (if (equal ior-id "") expected-id ior-id))
-    :id ior-id
-    :the-orb orb
-    :profiles profiles
-    :raw-profiles raw-profiles ))
+  (assert (and (or raw-profiles profiles)
+               (not (and raw-profiles profiles)))
+          () "Need profiles or raw-profiles, but not both")
+  (let ((key (if profiles :profiles :raw-profiles)))
+    (make-instance (find-proxy-class 
+                    (if (equal ior-id "") expected-id ior-id))
+      :id ior-id
+      :the-orb orb
+      key (or profiles raw-profiles))))
+        
 
 
 ;;; Work Queue
@@ -554,21 +558,14 @@
      ((eq (car addrs) :rir)
       (op:resolve_initial_references orb (decode-objkey-string key)))
      (t
-      (let ((key (decode-objkey-vector key))
-            (proxy (create-objref orb :ior-id "" :profiles '())))
-        (dolist (addr addrs)
-          (assert (eq :iiop (car addr)))
-          (let ((version (second addr))
-                (host (third addr))
-                (port (fourth addr)))
-            (let ((profile
+      (let ((key (decode-objkey-vector key)))
+        (flet ((make-profile (addr)
+                 (assert (eq :iiop (car addr)))
+                 (destructuring-bind (version host port) (cdr addr)
                    (make-iiop-profile
-                    :version version
-                    :host host
-                    :port port
-                    :key key)))
-              (push profile (object-profiles proxy)))))
-        proxy)))))
+                    :version version :host host :port port :key key))))
+          (create-objref orb :ior-id "" 
+                         :profiles (mapcar #'make-profile addrs))))))))
 
 
 (defun corbaname-to-object (orb rest)
