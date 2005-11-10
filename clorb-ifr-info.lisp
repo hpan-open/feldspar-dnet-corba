@@ -12,7 +12,18 @@
   (case (get-properties (symbol-plist symbol) '(ifr-result ifr-type ifr-bases))
     (ifr-result :dk_operation)
     (ifr-type   :dk_attribute)
-    (ifr-bases  :dk_interface)))
+    (ifr-bases  :dk_interface)
+    (otherwise
+     (let ((tc (get symbol 'typecode)))
+       (when tc
+         (case (typecode-kind tc)
+           (:tk_alias  :dk_alias)
+           (:tk_except :dk_exception)
+           (:tk_struct :dk_struct)
+           (:tk_enum   :dk_enum)
+           (:tk_value_box :dk_valuebox)
+           (:tk_value  :dk_value)))))))
+
 
 
 (defmethod generate-ifr-description ((tc except-typecode) symbol)
@@ -86,6 +97,9 @@
 ;;;  readonly attribute TypeCode type;
 ;;;  attribute StructMemberSeq members;
 
+;; EXPERIMENTAL - IFR-objects that are adapters for (get information
+;; from) description structs.
+
 (defclass desc-exceptiondef (CORBA:ExceptionDef)
   ((desc  :initarg :description  :accessor description)))
 
@@ -100,8 +114,7 @@
 ;;; readonly attribute TypeCode type;
 (define-method op:type ((obj desc-exceptiondef)) (op:type (description obj)))
 ;;; attribute StructMemberSeq members;
-(define-method op:members
-  ((obj desc-exceptiondef))
+(define-method op:members ((obj desc-exceptiondef))
   (let* ((tc (op:type (description obj)))
          (n  (op:member_count tc)))
     (loop for i from 0 below n
@@ -154,6 +167,16 @@
 ;;; DescriptionSeq describe_contents(in DefinitionKind limit_type,
 ;;;                                  in boolean exclude_inherited,
 ;;;                                  in long max_returned_objs);
+
+
+;;; interface IRObject {
+;;;   // read interface
+;;;   readonly attribute DefinitionKind def_kind;
+(define-method op:def_kind ((obj desc-exceptiondef)) :dk_exception)
+
+;;;   // write interface
+;;;   void destroy ();
+(define-method op:destroy ((obj desc-exceptiondef)) nil)
 
 
 #|
