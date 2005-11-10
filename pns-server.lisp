@@ -36,10 +36,19 @@
 (defvar *naming-poa* nil)
 
 (defclass NAMING-CONTEXT (cosnaming:namingcontextext-servant)
-  ((base :initarg :base :accessor nc-base)))
+  ((base :initarg :base :accessor nc-base)
+   (local-id :initarg :local-id :accessor local-id)))
 
 (define-method _default_POA ((servant naming-context))
   *naming-poa*)
+
+
+(defmethod stored-string-id ((obj CORBA:Proxy))
+  (op:object_to_string (clorb::the-orb obj) obj))
+
+(defmethod stored-string-id ((obj naming-context))
+  (local-id obj))
+
 
 (defparameter +safe-characters-extra+  "_-,")
 
@@ -95,8 +104,7 @@
 
 (defun pns-bind (nc n obj bind-type &optional rebind)
   (assert (= 1 (length n)))
-  (let ((orb (op:_orb nc))
-        (name-component (elt n 0)))
+  (let ((name-component (elt n 0)))
     ;; FIXME: if rebind, should check the type of (possibly) already existing binding
     (let ((path (pns-path nc name-component)))
       (ensure-directories-exist path)
@@ -106,7 +114,10 @@
                                               :supersede
                                               :error))
             (print bind-type out)
-            (print (op:object_to_string orb obj) out))
+            (print (if (eql bind-type :ncontext)
+                       (stored-string-id (opt-local (op:_poa nc) obj))
+                       (stored-string-id obj))
+                   out))
        (file-error ()
          (error 'COSNAMING:NAMINGCONTEXT/ALREADYBOUND))))))
 
@@ -120,7 +131,15 @@
       (with-standard-io-syntax ()
         (setq type (read stream))
         (setq ior (read stream))))
-    (values type (op:string_to_object (op:_orb self) ior))))
+    (values type
+      (if (clorb::string-starts-with ior "IOR:")
+          (op:string_to_object (op:_orb self) ior)
+          ;; ior is actually only local id, create a reference with that id
+          (op:create_reference_with_id (op:_default_POA self)
+                                       (portableserver:string-to-oid ior)
+                                       (clorb::object-id self))))))
+
+
 
 (defun opt-local (poa obj)
   (let (oid)
@@ -319,13 +338,16 @@
 (defclass NAMING-MANAGER (portableserver:servantactivator)
   ())
 
+
 (define-method incarnate ((m naming-manager) oid adapter)
   (declare (ignore adapter))
-  (make-instance 'naming-context
-    :base (merge-pathnames
-           (make-pathname
-            :directory `(:relative ,(portableserver:oid-to-string oid)))
-           *naming-base-path*)))
+  (let ((local-id (portableserver:oid-to-string oid)))
+    (make-instance 'naming-context 
+                   :local-id local-id
+                   :base (merge-pathnames
+                          (make-pathname :directory `(:relative ,local-id))
+                          *naming-base-path*))))
+
 
 (defun setup-naming-poa ()
   (let* ((orb (CORBA:ORB_init))
