@@ -140,7 +140,23 @@
                      (truename *load-pathname*))))
 
 
-(defvar *binary-folder* "fasl")
+(defvar *binary-folder*
+  (format nil "~(~A_~A~)"
+          (or #+Digitool "mcl"
+              #+CMU "cmucl"
+              #+Allegro "acl"
+              (lisp-implementation-type))
+          (or #+clisp
+              (let ((string (lisp-implementation-version)))
+                (subseq string 0 (position #\Space string)))
+              #+CMU
+              (substitute-if #\_ (lambda (x) (find x " /"))
+                             (lisp-implementation-version))
+              #+OpenMCL
+              (format nil "~A.~A" ccl::*openmcl-major-version*
+                      ccl::*openmcl-minor-version*)
+              #+allegro   excl::*common-lisp-version-number*
+              (lisp-implementation-version))))
 
 
 (defun dir-split (base)
@@ -168,10 +184,8 @@
                         (merge-pathnames
                          (make-pathname :name name :type "lisp"
                                         :directory
-                                        (cons :relative
-                                              (if dir
-                                                  (cons *binary-folder* dir)
-                                                  (list *binary-folder*))))
+                                        (list* :relative "fasl"
+                                               *binary-folder* dir))
                          *source-pathname-defaults*))
                       (compile-file-pathname sf)))
               (cf-tail (if *binary-folder*
