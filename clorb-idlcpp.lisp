@@ -107,7 +107,7 @@
     (values result start)))
 
 
-(defun parse-numeric-caracter (string start radix)
+(defun parse-numeric-character (string start radix)
   (loop with code = 0
         for char = (if (< start (length string))
                      (char string start)
@@ -122,10 +122,10 @@
 (defun parse-escape-sequence (string &optional (start 0))
   (let ((char (char string start)))
     (cond ((digit-char-p char 8)
-           (parse-numeric-caracter string start 8))
+           (parse-numeric-character string start 8))
           ((char-equal char #\x)
            (incf start)
-           (parse-numeric-caracter string start 16))
+           (parse-numeric-character string start 16))
           (t
            ;; singel char sequence
            (values (case char
