@@ -75,7 +75,7 @@
 
 ;;; ===========================================================================
 
-(define-condition alt-error ()
+(define-condition alt-error (error)
   ((lexer :initarg :lexer :reader error-lexer)
    (alt-tokens :initarg :alt-tokens :reader error-alt-tokens))
   (:report alt-error-print))
@@ -86,7 +86,7 @@
           (error-alt-tokens condition))
   (lexer-print-pos (error-lexer condition) stream))
 
-(define-condition failed-match ()
+(define-condition failed-match (error)
                   ((lexer :initarg :lexer :reader error-lexer)
                    (token :initarg :token
                           :initform nil
