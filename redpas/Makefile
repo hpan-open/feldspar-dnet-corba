@@ -7,7 +7,8 @@ setmcl:
 	/Developer/Tools/SetFile -t TEXT -c CCL2 *.lisp
 
 import:
-	cp ~/src/lisp/net/cddr/redpas/{package,lexer,parsys}.lisp .
+#	cp ~/src/lisp/net/cddr/redpas/{package,lexer,parsys}.lisp .
+	cp orig/{package,lexer,parsys}.lisp .
 
 export:
 	test -d orig

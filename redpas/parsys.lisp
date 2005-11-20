@@ -36,7 +36,7 @@
                   (mv2-or ,@(cdr forms))))))))
 
 #|
-(defun testr (n)
+ (defun testr (n)
   (mv2-or (values (= n 1) :a)
           (values (= n 2) :b)
           (values (= n 3) :c)))
