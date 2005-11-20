@@ -845,9 +845,9 @@ Returns select result to be used in getting status for streams."
 
 (defun cpp-command-string (file include-directories &optional defines)
   (format nil
-          #-MCL "cpp~{ -I'~A'~}~{ -D'~A'~} '~A'"
+          #-MCL "cpp -w -undef~{ -I'~A'~}~{ -D'~A'~} '~A'"
           ;; apples /usr/bin/cpp is buggy
-          #+MCL "cpp~{ -I\"'~A'\"~}~{ -D'~A'~} \"'~A'\""
+          #+MCL "cpp -w -undef~{ -I\"'~A'\"~}~{ -D'~A'~} \"'~A'\""
           (mapcar #'external-namestring include-directories)
           defines
           (external-namestring file)))
