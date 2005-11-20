@@ -1,5 +1,5 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.40 2005/02/26 20:24:01 lenst Exp $
+;; $Id: clorb-poa.lisp,v 1.41 2005/11/20 10:23:11 lenst Exp $
 
 (in-package :clorb)
 
@@ -38,7 +38,7 @@
 (deftype PortableServer:ServantLocator/cookie () t)
 
 (define-method preinvoke ((s PortableServer:ServantManager) oid adapter operation)
-  (declare (ignore oid adapter operation cookie))
+  (declare (ignore oid adapter operation))
   ;; result Servant, out cookie
   (values nil nil))
 

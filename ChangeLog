@@ -1,3 +1,10 @@
+2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* redpas/lexer.lisp (alt-error, failed-match): make error parent
+	of the conditions
+	
+	* clorb-sysdep.lisp (cpp-command-string): add -w -undef to cpp call
+
 2005-11-10  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* test-srv.lisp, test-typecode.lisp: cleanup
