@@ -1,5 +1,5 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.46 2005/11/10 13:56:35 lenst Exp $
+;; $Id: clorb-iiop.lisp,v 1.47 2005/12/10 13:28:55 lenst Exp $
 
 
 (in-package :clorb)
@@ -116,7 +116,7 @@
   (with-out-buffer (buffer)
     (let ((len pos))
       (setf pos 8)
-      (marshal-ulong (- len 12) buffer)
+      (marshal-ulong (- len +iiop-header-size+) buffer)
       (setf pos len))))
 
 
