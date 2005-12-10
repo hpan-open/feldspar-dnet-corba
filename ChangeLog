@@ -1,5 +1,7 @@
 2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-idlcpp.lisp (parse-numeric-character): spelling
+
 	* redpas/lexer.lisp (alt-error, failed-match): make error parent
 	of the conditions
 	
