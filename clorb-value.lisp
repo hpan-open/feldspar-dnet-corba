@@ -6,15 +6,15 @@
 
 (define-typecode value-typecode
   :kind :tk_value
-  :cdr-syntax (complex :tk_string :tk_string :tk_short :tk_typecode 
+  :cdr-syntax (complex :tk_string :tk_string :tk_short :tk_typecode
                        (sequence (:tk_string :tk_typecode :tk_short)))
   :params (id name type_modifier concrete_base_type :members)
   :member-params (member_name member_type member_visibility)
   :constant (corba::TC_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
                                  CORBA::VM_NONE nil ())
   :share named-typecode :shared-params 2
-  :extra-slots (truncatable-interfaces 
-                member-types all-member-types 
+  :extra-slots (truncatable-interfaces
+                member-types all-member-types
                 feature-symbols all-feature-symbols ))
 
 
@@ -26,22 +26,22 @@
   (check-type concrete-base (or null CORBA:TypeCode))
   (check-type members sequence)
   (map nil (lambda (m)
-             (check-type m 
-                         (cons string 
+             (check-type m
+                         (cons string
                                (cons CORBA:TypeCode (cons fixnum null)))))
        members)
-  (make-typecode :tk_value id name type-modifier 
+  (make-typecode :tk_value id name type-modifier
                  (or concrete-base CORBA:tc_null)
                  (coerce members 'vector)))
 
 
-(defmacro define-value (symbol &key id name base_value 
+(defmacro define-value (symbol &key id name base_value
                                is_abstract is_custom is_truncatable
                                supported_interfaces abstract_base_values members)
   (let ((value-bases (append (if base_value (list base_value))
                              abstract_base_values)))
   `(progn
-     (defclass ,symbol 
+     (defclass ,symbol
        (,@(or value-bases (list 'CORBA::ValueBase))
         ,@supported_interfaces)
        (,@(loop for (name) in members
@@ -53,14 +53,14 @@
        (call-next-method))
      (defmethod object-id ((value ,symbol))
        ,id)
-     ,@(loop for (name nil nil) in members nconc 
+     ,@(loop for (name nil nil) in members nconc
              (list `(define-method ,(feature name) ((value ,symbol))
                       (slot-value value ',(feature name)))
                    `(define-method (setf ,(feature name)) (new (value ,symbol))
                       (setf (slot-value value ',(feature name)) new))))
-     (set-symbol-id/typecode 
-      ',symbol ,id                      
-      (create-value-tc ,id ,name 
+     (set-symbol-id/typecode
+      ',symbol ,id
+      (create-value-tc ,id ,name
                        ,(cond (is_abstract corba:vm_abstract)
                               (is_truncatable corba:vm_truncatable)
                               (is_custom corba:vm_custom)
@@ -152,7 +152,7 @@
              (raise-system-exception 'CORBA:MARSHAL))))
     (cond ((zerop tag) nil)
           ((if (eql tag-type :unsigned)
-             (= tag unsigned-indirection-tag) 
+             (= tag unsigned-indirection-tag)
              (= tag signed-indirection-tag))
            (let ((pos (+ (buffer-in-pos buffer)
                          (unmarshal-long buffer))))
@@ -170,7 +170,7 @@
                           (setf (gethash start-pos (buffer-record buffer)) obj)))
                       obj))
                (let ((*unmarshal-record-register* #'register))
-                 (register (if tag-type 
+                 (register (if tag-type
                              (apply func tag args)
                              (funcall func buffer))))))))))
 
@@ -248,7 +248,7 @@
             (tc-feature-symbols tc))))
 
 (defun all-feature-values (tc value)
-  (loop for feature in (all-feature-symbols tc) 
+  (loop for feature in (all-feature-symbols tc)
         collect (slot-value value feature)))
 
 
@@ -287,11 +287,11 @@
                                          (eql corba:vm_truncatable (op:type_modifier tc)))))
                    (let ((chunking (or truncatable (> *chunking-level* 0)))
                          (repoid (cond (truncatable (truncatable-interfaces tc))
-                                       ((or (not exact-type) 
+                                       ((or (not exact-type)
                                             (not *exact-type-value-marshap-opt*))
                                         id))))
                      (marshal-value-header repoid chunking buffer)
-                     (marshal-value-state chunking 
+                     (marshal-value-state chunking
                                           (all-feature-values tc value)
                                           (all-member-types tc)
                                           buffer))))))))
@@ -335,10 +335,10 @@
                     (6 (unmarshal-string-record-list-record buffer))
                     (otherwise (raise-system-exception 'CORBA:no_implement)))))
              (values (not (zerop chunked-flag)) repoid url))))))
-         
+
 
 (defun unmarshal-value-state (chunked truncate keys types buffer)
-  (labels 
+  (labels
     ((read-tag () (unmarshal-long buffer))
      (rewind-tag () (incf (buffer-in-pos buffer) -4))
      (truncating ()
@@ -352,7 +352,7 @@
          (setf *chunk-end* nil)
          t))
      (find-end-of-value ()
-       (loop 
+       (loop
          (or (truncate-chunk)
              (let ((tag (without-chunking (buffer) (read-tag))))
                (cond ((eql tag (- *chunking-level*))
@@ -377,7 +377,7 @@
     (with-in-chunking (chunked)
       (prog1
         (loop for key in keys for tc in types
-              collect key collect (unmarshal tc buffer)) 
+              collect key collect (unmarshal tc buffer))
         (if chunking-p (find-end-of-value))))))
 
 
@@ -403,7 +403,7 @@
       (if (and truncate (not chunked))
         (raise-system-exception 'CORBA:MARSHAL))
       (or tc (setq tc (symbol-typecode symbol)))
-      (let ((value (make-instance (or (lookup-value-factory (op:id tc)) symbol) 
+      (let ((value (make-instance (or (lookup-value-factory (op:id tc)) symbol)
                      :create-for-unmarshal t)))
         (unmarshal-record-register value)
         (let ((keys nil) (types nil))
@@ -416,7 +416,7 @@
                 (push (key (op:member_name tc i)) keys)
                 (push (op:member_type tc i) types))))
           (apply #'reinitialize-instance value
-                 :create-for-unmarshal t 
+                 :create-for-unmarshal t
                  (unmarshal-value-state chunked truncate
                                         (nreverse keys)
                                         (nreverse types)
@@ -528,13 +528,8 @@
              (register-proxy-class ,id ',(car proxy))))
      (defmethod object-id ((obj ,mixin))
        ,id)
-     #-clisp
      (defmethod object-is-a or ((obj ,mixin) interface-id)
-                (string= interface-id ,id))
-     #+clisp
-     (defmethod object-is-a ((obj ,mixin) interface-id)
-       (or (string= interface-id ,id) (call-next-method))) ))
-  
+                (string= interface-id ,id))))
 
 (defmethod compute-marshal-function ((tc abstract_interface-typecode))
   (lambda (obj buffer)

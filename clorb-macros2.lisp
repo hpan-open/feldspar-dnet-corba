@@ -9,7 +9,7 @@
 
 
 
-;;;; Alias 
+;;;; Alias
 
 #|
 (DEFINE-ALIAS OMG.ORG/CORBA:REPOSITORYID
@@ -21,7 +21,7 @@
 
 (defmacro define-alias (symbol &key id name type typecode)
   `(progn (deftype ,symbol () ',type)
-          (set-symbol-id/typecode ',symbol ,id 
+          (set-symbol-id/typecode ',symbol ,id
                                   (create-alias-tc ,id ,name ,typecode))))
 
 ;;;; Enum
@@ -47,11 +47,11 @@
          (slots (mapcar #'feature slot-names))
          (keys  (mapcar #'key slot-names)))
     `(progn
-       (defclass ,symbol (corba:struct) 
+       (defclass ,symbol (corba:struct)
          ,(mapcar (lambda (slot key) (list slot :initarg key))
                   slots keys))
        (defun ,symbol (&key ,@slots)
-         (make-instance ',symbol 
+         (make-instance ',symbol
            ,@(mapcan #'list keys slots)))
        ,@(mapcar (lambda (slot)
                    `(define-method ,slot ((s ,symbol)) (slot-value s ',slot)))
@@ -66,9 +66,9 @@
                collect (cons f (slot-value s n))))
        (set-symbol-id/typecode ',symbol ,id
                                (create-struct-tc ,id ,name
-                                                 (vector ,@(loop for (name type) in members 
+                                                 (vector ,@(loop for (name type) in members
                                                                  collect `(list ,name ,type))))))))
-        
+
 
 
 ;;;; Union macrology
@@ -82,11 +82,11 @@
     (dolist (m members)
       (destructuring-bind (label type &key creator (name "") default
                                  (accessor (string-upcase name))) m
-        (push `(list ,(if default ''default label) ,name ,type) 
+        (push `(list ,(if default ''default label) ,name ,type)
               tc-members)
         (unless (member name used-names :test #'equal)
           (push name used-names)
-          (push `(progn 
+          (push `(progn
                    (define-method ,accessor ((obj ,symbol))
                      (union-value obj))
                    (define-method (setf ,accessor) (value (obj ,symbol))
@@ -97,16 +97,16 @@
                          (,symbol :union-value value :union-discriminator ,label))))
                 code)
           (when default
-            (push `(progn 
+            (push `(progn
                      (define-method default ((obj ,symbol)) (union-value obj))
                      (define-method (setf default) (value (obj ,symbol))
                        (setf (union-discriminator obj) ,label)
                        (setf (union-value obj) value))) code)))))
-    
+
     `(progn
        (defclass ,SYMBOL (corba:union) ())
        (defun ,symbol (&key union-value union-discriminator)
-         (make-instance ',symbol 
+         (make-instance ',symbol
            :value union-value
            :discriminator union-discriminator))
        (set-symbol-id/typecode ',symbol ,id
@@ -124,7 +124,7 @@
 |#
 
 
-;;;; Exceptions 
+;;;; Exceptions
 
 (defmacro define-user-exception (symbol &key (name "") (id "") (version "1.0") defined_in members)
   "Syntax: scoped-symbol :id repo-id :name repo-name :members (name typecode)*
@@ -161,7 +161,7 @@
 ;;;; Stub generation
 
 (defmacro static-call ((op obj) &key output input exceptions no-response)
-  (let ((req '#:REQ) 
+  (let ((req '#:REQ)
         (output-buf (or (caar output) '#:output-buf))
         (input-buf (or (caar input) '#:input-buf)))
     `(do-static-call
@@ -189,7 +189,7 @@
             ,obj ,value))
 
 
-      
+
 ;;;; Interface
 
 (defmacro define-interface (symbol super &key (id "") proxy (name "")
@@ -205,24 +205,20 @@
        ',symbol)
      (defmethod object-id ((obj ,symbol))
        ,id)
-     #-clisp
      (defmethod object-is-a or ((obj ,symbol) interface-id)
-       (string= interface-id ,id))
-     #+clisp
-     (defmethod object-is-a ((obj ,symbol) interface-id)
-       (or (string= interface-id ,id) (call-next-method)))))
+       (string= interface-id ,id))))
 
 
 (defmacro define-operation (symbol &key id name defined_in (version "1.0")
                                     (result 'CORBA:tc_void) (mode :op_normal)
                                     parameters exceptions contexts)
   (declare (ignore contexts))
-  `(set-ifr-info ',symbol 
+  `(set-ifr-info ',symbol
                  :id ,id :name ,name :defined_in ',defined_in :version ,version
                  :result ,result :mode ,mode
                  :parameters (list ,@(mapcar #'cons (repeated 'list) parameters))
                  :exceptions ',exceptions))
-  
+
 
 (defmacro define-attribute (symbol &key id name defined_in (version "1.0") (mode :attr_normal) type)
   `(set-ifr-info ',symbol

@@ -1,5 +1,5 @@
 ;;; clorb-macros.lisp -- Macros for CLORB
-;;; $Id: clorb-macros.lisp,v 1.21 2005/02/07 22:49:06 lenst Exp $
+;;; $Id: clorb-macros.lisp,v 1.22 2005/12/10 14:32:04 lenst Exp $
 
 (in-package :clorb)
 
@@ -14,7 +14,7 @@
 #+clisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (shadow 'format))
-		
+
 
 ;;;; Fix incomplete format in CLISP
 
@@ -36,8 +36,6 @@
 (require "ANSI-MAKE-LOAD-FORM")
 
 (defmacro define-slot-dumper (class)
-  #+clisp (declare (ignore class))
-  #-clisp
   `(defmethod make-load-form ((obj ,class) &optional env)
      (make-load-form-saving-slots obj :environment env)))
 
@@ -97,8 +95,8 @@
                ,@doc-string ,@body)
              `(defmethod ,opsym ,@qualifiers (,(first args) &rest -args-)
                ,@doc-string
-               ,@(if (rest args) 
-                  `((destructuring-bind ,(rest args) -args- 
+               ,@(if (rest args)
+                  `((destructuring-bind ,(rest args) -args-
                      ,@body))
                   `((declare (ignore -args-))
                     ,@body))))))))
@@ -137,7 +135,7 @@
 
 ;;;; Define Corba Class
 
-(defstruct ATTSPEC  
+(defstruct ATTSPEC
   name readonly virtual
   slotopts)
 
@@ -178,24 +176,24 @@
                  value))))))
 
 
-(defmacro define-corba-class (name superclasses 
+(defmacro define-corba-class (name superclasses
                               &key attributes slots defaults)
   (let ((asl (mapcar #'attspec-parse attributes)))
     `(progn
        (defclass ,NAME ,superclasses
          (,@(remove nil
-                    (mapcar 
+                    (mapcar
                      (lambda (attspec)
                        (if (attspec-virtual attspec)
                            nil
-                         (list* 
+                         (list*
                           (attspec-name attspec)
-                          :initarg 
+                          :initarg
                           (intern (string (attspec-name attspec)) :keyword)
                           (attspec-slotopts attspec))))
                      asl))
             ,@slots)
-         (:default-initargs 
+         (:default-initargs
            ,@defaults))
        ,@(mapcar #'(lambda (attspec) (attribute-ops attspec name))
                  asl))))

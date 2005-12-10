@@ -66,16 +66,8 @@
 
 ;;;; Generic Functions
 
-#-clisp
 (defgeneric object-is-a (object id)
   (:method-combination or))
-#+clisp
-(defgeneric object-is-a (object id))
-
-#+clisp
-(defmethod object-is-a ((object t) id)
-  (declare (ignore id))
-  nil)
 
 (defgeneric object-id (object))
 

@@ -94,7 +94,7 @@
 (defun make-progn (l)
   (cond ((and l (null (cdr l)))
          (car l))
-        (t 
+        (t
          (cons 'progn
                (loop for (x . more) on (loop for x in l
                                              append (if (and (consp x) (eq 'progn (car x)))
@@ -260,7 +260,7 @@
 
 
 (defmethod target-code :around ((mdef CORBA:Container) target)
-  (make-progn 
+  (make-progn
    (cons (call-next-method)
          (map 'list (lambda (contained)
                       (if (and (not (member contained (target-excludes target)))
@@ -288,7 +288,7 @@
 
 
 
-;;;; IFR info target 
+;;;; IFR info target
 
 (defclass ifr-info-target (code-target)
   ())
@@ -296,7 +296,7 @@
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef) (target ifr-info-target))
   (let ((desc (any-value (op:value (op:describe op)))))
     (assert (typep desc 'corba:operationdescription))
-    (make-progn* 
+    (make-progn*
      (call-next-method)
      `(define-operation ,(scoped-target-symbol target op)
         :id ,(op:id desc)
@@ -307,7 +307,7 @@
         :mode ,(op:mode desc)
         :contexts ,(op:contexts desc)
         :parameters ,(map 'list (lambda (param)
-                                  (list (op:name param) 
+                                  (list (op:name param)
                                         (op:mode param)
                                         (target-typecode (op:type_def param) target)))
                           (op:parameters desc))
@@ -412,9 +412,9 @@
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (opdef CORBA:OperationDef) (target static-stub-target))
   (let ((name-string (string-upcase (op:name opdef)) )
-        (in-params (loop for p in (coerce (op:params opdef) 'list) 
-                         unless (eq :param_out (op:mode p)) 
-                         collect (param-symbol p)))        
+        (in-params (loop for p in (coerce (op:params opdef) 'list)
+                         unless (eq :param_out (op:mode p))
+                         collect (param-symbol p)))
         (class-name (target-proxy-class-symbol target c))
         (op-name    (scoped-target-symbol target opdef)))
     (make-progn*
@@ -653,7 +653,7 @@
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (op CORBA:OperationDef) (target servant-target))
   (let ((class (target-servant-class-symbol target (op:defined_in op)))
         (feature (feature (op:name op))))
-    (make-progn* 
+    (make-progn*
      (call-next-method)
      `(defmethod ,feature ((self ,class) &rest -args-)
         (declare (ignore -args-))
@@ -663,7 +663,7 @@
 (defmethod target-code ((att CORBA:AttributeDef) (target servant-target))
   (let ((class (target-servant-class-symbol target (op:defined_in att)))
         (feature (feature (op:name att))))
-    (make-progn* 
+    (make-progn*
      (call-next-method)
      (if (eql :attr_normal (op:mode att))
        `(defmethod (setf ,feature) (val (self ,class))
@@ -803,13 +803,12 @@
 
 (let ((*print-pprint-dispatch* *target-pprint-dispatch*))
 
-  #-clisp
   (set-pprint-dispatch '(cons (member define-method))
                        (pprint-dispatch '(defmethod foo ()) ))
 
   (set-pprint-dispatch '(cons (member define-user-exception define-struct
                                       define-union define-enum define-alias
-                                      define-value define-operation define-attribute 
+                                      define-value define-operation define-attribute
                                       define-value-box))
                        #'pprint-def-and-keys)
 
