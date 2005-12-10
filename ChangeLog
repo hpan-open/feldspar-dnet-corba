@@ -1,3 +1,26 @@
+2005-12-10  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-macros.lisp, clorb-macros2.lisp, clorb-object.lisp, clorb-target.lisp, clorb-value.lisp, gen-package-decl.lisp:
+	Patch from Dmitri Hrapof: remove obsolete clisp read-time
+	conditionals.
+
+	* clorb-iiop.lisp: cleanup
+
+2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* redpas/Makefile, redpas/parsys.lisp: *** empty log message ***
+
+	* clorb-idlcpp.lisp (parse-numeric-character): spelling
+
+	* ChangeLog: *** empty log message ***
+
+	* redpas/lexer.lisp (alt-error, failed-match):
+	make error parent of the conditions
+
+	* clorb-sysdep.lisp (cpp-command-string): add -w -undef to cpp call
+
+	* clorb-poa.lisp: *** empty log message ***
+
 2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-idlcpp.lisp (parse-numeric-character): spelling
