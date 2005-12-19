@@ -16,7 +16,6 @@
 ;;; Load the CLORB system
 
 (load (merge-pathnames "clorb-files.lisp" *load-pathname*))
-#+Allegro (setq net.cddr.clorb.system::*binary-folder* "fasl-acl")
 (net.cddr.clorb.system:set-load-opts
  :server t  :idlcomp nil  :my-idlparser t
  :portable-interceptor nil  :support-test t
