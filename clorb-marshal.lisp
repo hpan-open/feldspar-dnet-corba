@@ -147,11 +147,11 @@
 
 
 (defun marshal-osequence (s buffer)
+  (when (stringp s)
+    (setq s (string->octets s)))
   (marshal-ulong (length s) buffer)
   (with-out-buffer (buffer)
     (etypecase s
-      (string
-       (loop for c across s do (put-octet (char-code c))))
       (vector
        (loop for c across s do (put-octet c)))
       (list
