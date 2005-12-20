@@ -5,6 +5,7 @@
 ;; - read/write of octet sequences, blocking and non-blocking
 ;; - multi processing
 ;; - external programs
+;; - octets <-> characters
 
 (in-package :clorb)
 
@@ -862,3 +863,30 @@ This is needed when translating from file:-URLs."
            (subseq (pathname-directory (truename "home:")) 0 2)
            ;; default
            '(:ABSOLUTE)))
+
+
+;;;; Octets to / from characters
+
+;; From: Dmitri Hrapof
+
+(defun string->octets (str)
+  (%SYSDEP
+   "convert string to byte array"
+   #+clisp
+   (ext:convert-string-to-bytes str CUSTOM:*DEFAULT-FILE-ENCODING*)
+   #+sb-unicode
+   (sb-ext:string-to-octets str)
+   (map 'vector #'char-code str)))
+
+(defun octets->string (oct)
+  (%SYSDEP
+   "convert byte array to string"
+   #+clisp
+   (ext:convert-string-from-bytes oct CUSTOM:*DEFAULT-FILE-ENCODING*)
+   #+sb-unicode
+   (sb-ext:octets-to-string (coerce oct '(vector (unsigned-byte 8))))
+   (map 'string #'code-char oct)))
+
+
+
+;; clorb-sysdep.lisp ends here
