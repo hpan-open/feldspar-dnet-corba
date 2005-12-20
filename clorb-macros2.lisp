@@ -1,9 +1,13 @@
 ;;;; clorb-macros2.lisp
 ;; Macros for defining CORBA types, implementing the Lisp mapping.
+;; defina-alias
+;; define-enum
 ;; define-struct
 ;; define-union
 ;; define-user-exception
-;;
+;; define-interface
+;;  define-attribute
+;;  define-operation
 
 (in-package :clorb)
 
@@ -157,7 +161,7 @@
                       :defined_in ',defined_in)))))
 
 
-
+
 ;;;; Stub generation
 
 (defmacro static-call ((op obj) &key output input exceptions no-response)
@@ -189,7 +193,7 @@
             ,obj ,value))
 
 
-
+
 ;;;; Interface
 
 (defmacro define-interface (symbol super &key (id "") proxy (name "")

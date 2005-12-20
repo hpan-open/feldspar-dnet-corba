@@ -112,7 +112,7 @@
 
 
 (defmacro with-out-buffer ((buffer &key (resize 400)) &body body)
-  "Open upp buffer.
+  "Execute BODY with access to internals of buffer.
 In body: 
 - buffer     the buffer,
 - octets     the octet vector,
