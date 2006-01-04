@@ -478,7 +478,7 @@
        (action
          (cond ((equal type "fixed")
                 (unless (idl-fixed-p value)
-                  (error "A a fixed literal needed: ~A" value))
+                  (error "A fixed literal needed: ~A" value))
                 (multiple-value-bind (digits scale number) (idl-fixed-values value)
                   (setq type (op:create_fixed *the-repository* digits scale))
                   (setq value (rationalize number)))))

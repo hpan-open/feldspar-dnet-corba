@@ -4,7 +4,7 @@
 
 
 This example was written to test the valuetype implementation in
-CLORB. Testing a simple concrete valuetype with a couple of memebers
+CLORB. Testing a simple concrete valuetype with a couple of members
 and a boxed valuetype. Demonstrate nil values and preservation of
 identity.
 
