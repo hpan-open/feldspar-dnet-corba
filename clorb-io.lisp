@@ -1,5 +1,5 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.28 2005/05/04 14:57:06 lenst Exp $
+;; $Id: clorb-io.lisp,v 1.29 2006/01/12 15:26:19 lenst Exp $
 
 
 ;; io-reset ()
@@ -497,10 +497,10 @@
 
 
 (defmethod io-system-driver ((system io-system-multiprocess) poll)
-  (declare (ignore poll))
   (io-start-bg-listen)
-  (process-wait-with-timeout "waiting for event" 3600
-                             (lambda () *io-event-queue*)))
+  (unless poll
+    (process-wait-with-timeout "waiting for event" 3600
+                               (lambda () *io-event-queue*))))
 
 
 
