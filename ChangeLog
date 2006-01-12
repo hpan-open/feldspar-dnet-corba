@@ -1,3 +1,38 @@
+2006-01-12  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-sysdep.lisp, devel.lisp: REPL friendliness for SBCL.
+
+	* clorb-io.lisp:
+	io-system-driver io-system-multiprocess, don't wait if polling
+
+2006-01-04  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idlparser.lisp, examples/vtest/README:
+	*** empty log message ***
+
+2005-12-20  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* examples/jacorb/value-server.lisp, examples/vtest/vtest-bridge.lisp:
+	*** empty log message ***
+
+	* clorb-buffer.lisp, clorb-macros2.lisp: Cleanup
+
+	* clorb-marshal.lisp: Use string->octets in marshal-osequence.
+
+	* clorb-sysdep.lisp: octets <-> characters from Dmitri Hrapof
+
+2005-12-19  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* devel.lisp: remove acl special
+
+2005-12-10  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-macros.lisp, clorb-macros2.lisp, clorb-object.lisp, clorb-target.lisp, clorb-value.lisp, gen-package-decl.lisp:
+	Patch from Dmitri Hrapof: remove obsolete clisp read-time
+	conditionals.
+
+	* clorb-iiop.lisp: cleanup
+
 2005-12-10  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-macros.lisp, clorb-macros2.lisp, clorb-object.lisp, clorb-target.lisp, clorb-value.lisp, gen-package-decl.lisp:
