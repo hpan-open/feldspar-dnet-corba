@@ -55,6 +55,53 @@
   (car forms))
 
 
+;;;; SBCL - serve event support
+;; 	From: 	  yavannadil@yahoo.com
+;;	Subject: 	OP:RUN and REPL
+;;	Date: 	30 december 2005 15:45:23 MET
+
+(defvar *repl-friendly* nil)
+
+(defun make-repl-happy ()
+  (%SYSDEP
+   "makes necessary setup to leave REPL free"
+   #+sbcl
+   (handler-bind
+       ((error #'(lambda (c)
+                   (declare (ignore c))
+                   (invoke-restart (find-restart 'continue)))))
+     (setf *repl-friendly* t
+           ;; Automatically remove closed sockets
+           (fdefinition 'sb-impl::handler-descriptors-error)
+           #'(lambda ()
+               (dolist (handler sb-impl::*descriptor-handlers*)
+                 (unless (or (sb-impl::handler-bogus handler)
+                             (sb-unix:unix-fstat
+                              (sb-impl::handler-descriptor handler)))
+                   (setf (sb-impl::handler-bogus handler) t)))
+               (setf sb-impl::*descriptor-handlers*
+                     (delete-if #'sb-impl::handler-bogus
+                                sb-impl::*descriptor-handlers*)))))
+   ;; Default
+   (setf *repl-friendly* t)))
+
+(defun make-repl-friendly (s)
+  (when *repl-friendly*
+    (%SYSDEP
+     "adds callbacks for socket"
+     #+sbcl
+     (sb-sys:add-fd-handler
+      (sb-bsd-sockets:socket-file-descriptor s)
+      :input
+      #'(lambda (fd)
+          (declare (ignore fd))
+          (loop while (op:work_pending *the-orb*)
+             do (op:perform_work *the-orb*))))
+
+     ;; Default - ignore
+     (progn s))))
+
+
 ;;;; TCP/IP sockets implementation glue
 
 #+digitool
@@ -105,6 +152,7 @@
      (setf (sb-bsd-sockets:sockopt-reuse-address s) t)
      (sb-bsd-sockets:socket-bind s #(0 0 0 0) (or port 0))
      (sb-bsd-sockets:socket-listen s 5)
+     (make-repl-friendly s)
      s)
 
    #+digitool
@@ -315,9 +363,10 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
                (let ((k (sb-bsd-sockets:socket-accept socket)))
                  (when k
                    (setf (sb-bsd-sockets:non-blocking-mode k) nil)
-                   (sb-bsd-sockets:socket-make-stream k
-                                                      :element-type '(unsigned-byte 8)
-                                                      :input t :output t ))))
+                   (make-repl-friendly k)
+                   (sb-bsd-sockets:socket-make-stream
+                    k :element-type '(unsigned-byte 8)
+                    :input t :output t ))))
            (sb-bsd-sockets:interrupted-error nil))
        (setf (sb-bsd-sockets:non-blocking-mode socket) before)))
 
@@ -407,6 +456,9 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
    #+clisp 
    (ext:socket-server-close socket)
+
+   #+clorb::sb-bsd-sockets
+   (sb-bsd-sockets:socket-close socket)
 
    ;; default
    (close socket)))

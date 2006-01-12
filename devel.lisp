@@ -31,6 +31,11 @@
 (define-symbol-macro clorb::inpu (in-package :cl-user))
 
 
+;;; SBCL repl support, runs the server parts using add-fd-handler
+#+sbcl
+(clorb::make-repl-happy)
+
+
 ;;; Initiating the ORB
 ;; provide initial references to services on the system
 
