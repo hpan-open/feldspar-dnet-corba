@@ -36,38 +36,40 @@
 
 
 (defmacro define-value (symbol &key id name base_value
-                               is_abstract is_custom is_truncatable
-                               supported_interfaces abstract_base_values members)
+                        is_abstract is_custom is_truncatable
+                        supported_interfaces abstract_base_values members
+                        (tc-constant (tc-constant-name symbol)))
   (let ((value-bases (append (if base_value (list base_value))
                              abstract_base_values)))
-  `(progn
-     (defclass ,symbol
-       (,@(or value-bases (list 'CORBA::ValueBase))
-        ,@supported_interfaces)
-       (,@(loop for (name) in members
-                collect `(,(feature name) :initarg ,(key name)))))
-     (defmethod shared-initialize ((value ,symbol) slot-names &key factory
-                                   create-for-unmarshal  &allow-other-keys)
-       (declare (ignore slot-names create-for-unmarshal))
-       (if factory (raise-system-exception 'CORBA:BAD_PARAM))
-       (call-next-method))
-     (defmethod object-id ((value ,symbol))
-       ,id)
-     ,@(loop for (name nil nil) in members nconc
-             (list `(define-method ,(feature name) ((value ,symbol))
-                      (slot-value value ',(feature name)))
-                   `(define-method (setf ,(feature name)) (new (value ,symbol))
-                      (setf (slot-value value ',(feature name)) new))))
-     (set-symbol-id/typecode
-      ',symbol ,id
-      (create-value-tc ,id ,name
-                       ,(cond (is_abstract corba:vm_abstract)
-                              (is_truncatable corba:vm_truncatable)
-                              (is_custom corba:vm_custom)
-                              (t corba:vm_none ))
-                       ,(if base_value `(symbol-typecode ',base_value))
-                       (list ,@(loop for (name tc access) in members
-                                     collect `(list ,name ,tc ,access))))))))
+    `(progn
+       (defclass ,symbol
+           (,@(or value-bases (list 'CORBA::ValueBase))
+              ,@supported_interfaces)
+         (,@(loop for (name) in members
+               collect `(,(feature name) :initarg ,(key name)))))
+       (defmethod shared-initialize ((value ,symbol) slot-names &key factory
+                                     create-for-unmarshal  &allow-other-keys)
+         (declare (ignore slot-names create-for-unmarshal))
+         (if factory (raise-system-exception 'CORBA:BAD_PARAM))
+         (call-next-method))
+       (defmethod object-id ((value ,symbol))
+         ,id)
+       ,@(loop for (name nil nil) in members nconc
+              (list `(define-method ,(feature name) ((value ,symbol))
+                       (slot-value value ',(feature name)))
+                    `(define-method (setf ,(feature name)) (new (value ,symbol))
+                       (setf (slot-value value ',(feature name)) new))))
+       (set-symbol-id/typecode
+        ',symbol ,id
+        (create-value-tc ,id ,name
+                         ,(cond (is_abstract corba:vm_abstract)
+                                (is_truncatable corba:vm_truncatable)
+                                (is_custom corba:vm_custom)
+                                (t corba:vm_none ))
+                         ,(if base_value `(symbol-typecode ',base_value))
+                         (list ,@(loop for (name tc access) in members
+                                    collect `(list ,name ,tc ,access)))))
+       (defconstant ,tc-constant (symbol-typecode ',symbol)))))
 
 
 
@@ -457,16 +459,18 @@
 (defmethod box-data ((box t))
   box)
 
-(defmacro define-value-box (symbol &key id name version original_type type)
+(defmacro define-value-box (symbol &key id name version original_type type
+                            (tc-constant (tc-constant-name symbol)))
   (declare (ignore version))
   `(progn
      (set-symbol-id/typecode
       ',symbol ,id (create-value-box-tc ,id ,name ,original_type))
+     (defconstant ,tc-constant (symbol-typecode ',symbol))
      ,@(if type
-         `((deftype ,symbol ()
-             ',type))
-         `((defclass ,symbol (value-box) ())
-           (defun ,symbol (value) (make-instance ',symbol :data value))))))
+           `((deftype ,symbol ()
+               ',type))
+           `((defclass ,symbol (value-box) ())
+             (defun ,symbol (value) (make-instance ',symbol :data value))))))
 
 
 (defmethod compute-marshal-function ((tc value_box-typecode))
@@ -517,10 +521,14 @@
   :share named-typecode :shared-params 2)
 
 
-(defmacro define-abstract-interface (symbol super &key (id "") proxy (name "") mixin)
+(defmacro define-abstract-interface (symbol super
+                                     &key (id "") proxy (name "") mixin
+                                     (tc-constant (tc-constant-name symbol)))
   `(progn
-     (set-symbol-id/typecode ',symbol ,id (create-abstract-interface-tc ,id ,name))
+     (set-symbol-id/typecode ',symbol ,id
+                             (create-abstract-interface-tc ,id ,name))
      (setf (get ',symbol 'ifr-bases) ',super)
+     (defconstant ,tc-constant (symbol-typecode ',symbol))
      (defclass ,mixin () ())
      (defclass ,symbol (,mixin ,@super) ())
      ,@(if proxy

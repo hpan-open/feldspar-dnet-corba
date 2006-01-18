@@ -351,6 +351,14 @@ Might destructivley change the original object."
         (t
          (error "Object of wrong type for narrowing"))))
 
+
+;; Comaptibility with LW CORBA
+
+(define-method op::narrow ((class-symbol symbol) proxy)
+  (object-narrow proxy class-symbol))
+
+
+
 (defun auto-narrow (obj)
   ;; Try convert to a type-specific proxy
   (when (eql (class-of obj) (find-class 'CORBA:Proxy))

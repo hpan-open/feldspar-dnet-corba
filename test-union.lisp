@@ -42,10 +42,12 @@
 
   (define-test "Definer macro"
     (let* ((type-sym (gensym "UNION"))
+           (tc-sym (gensym "TC_UNION"))
            (field1 (gensym "A"))
            (field2 (gensym "D"))
            
            (expr `(define-union ,type-sym :name "aunion" :id "IDL:myUnion:1.0"
+                    :tc-constant ,tc-sym
                     :discriminator-type corba:tc_long
                     :members (( 0 corba:tc_short :name ,(symbol-name field1)
                                 :creator ,field1 )
@@ -78,11 +80,13 @@
 
   (define-test "Union marshalling"
     (let* ((type-sym (gensym "UNION"))
-           (expr `(define-union ,type-sym :name "aunion" :id "IDL:myUnion:1.0"
-                    :discriminator-type corba:tc_long
-                    :members (( 0 corba:tc_short :name "a" )
-                              ( 3 corba:tc_short :name "a" )
-                              ( 1 corba:tc_string :name "b" :default t)))))
+           (expr
+            `(define-union ,type-sym :name "aunion" :id "IDL:myUnion:1.0"
+                           :tc-constant ,type-sym
+                           :discriminator-type corba:tc_long
+                           :members (( 0 corba:tc_short :name "a" )
+                                     ( 3 corba:tc_short :name "a" )
+                                     ( 1 corba:tc_string :name "b" :default t)))))
       (eval expr)
       (let ((buffer (get-work-buffer *the-orb*))
             (u1 (funcall type-sym :union-value 12 :union-discriminator 0))
