@@ -1,3 +1,18 @@
+2006-01-18  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-macros2.lisp, clorb-object.lisp, clorb-supp.lisp, clorb-value.lisp, test-union.lisp:
+	Some LW CORBA compatibility: (op:narrow class-symbol proxy) - for
+	narrowing. Type code constants for all named IDL types. Named with a
+	_tc_ prefix as _tc_type_name. These symbols are not yet exported, but
+	should be in the future.
+
+2006-01-12  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-sysdep.lisp, devel.lisp: REPL friendliness for SBCL.
+
+	* clorb-io.lisp:
+	io-system-driver io-system-multiprocess, don't wait if polling
+
 2006-01-12  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-sysdep.lisp, devel.lisp: REPL friendliness for SBCL.
@@ -46,8 +61,6 @@
 	* redpas/Makefile, redpas/parsys.lisp: *** empty log message ***
 
 	* clorb-idlcpp.lisp (parse-numeric-character): spelling
-
-	* ChangeLog: *** empty log message ***
 
 	* redpas/lexer.lisp (alt-error, failed-match):
 	make error parent of the conditions
