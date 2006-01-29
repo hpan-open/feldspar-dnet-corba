@@ -304,7 +304,9 @@
   :shared-params 2
   :params (id name :members)
   :cdr-syntax (complex :tk_string :tk_string (sequence :tk_string))
-  :member-params member_name)
+  :member-params member_name
+  :extra-slots (keywords))
+
 
 
 (defmethod compute-marshal-function ((tc enum-typecode))

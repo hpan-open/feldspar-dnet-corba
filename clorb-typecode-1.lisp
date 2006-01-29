@@ -23,8 +23,8 @@
   ((kind :initarg :kind)
    (params :initarg :params)
    (marshal-func   :initarg :marshal)
-   (unmarshal-func :initarg :unmarshal)
-   (keywords )))
+   (unmarshal-func :initarg :unmarshal)))
+
 
 (defmethod print-object ((tc corba:typecode) stream)
   (cond
@@ -296,8 +296,8 @@
 
 
 (defgeneric unset-extra-slots (tc)
-  (:method ((tc CORBA:TypeCode))
-           (slot-makunbound tc 'keywords)))
+  (:method ((tc CORBA:TypeCode))))
+
 
 
 ;;;; Accessing typecodes of defined types

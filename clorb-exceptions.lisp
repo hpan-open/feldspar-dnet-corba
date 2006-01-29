@@ -24,7 +24,7 @@
   :params (id name :members)
   :member-params (member_name member_type)
   :share named-typecode :shared-params 2
-  :extra-slots (member-types feature-symbols))
+  :extra-slots (keywords member-types feature-symbols))
 
 
 (defun create-exception-tc (id name members)
