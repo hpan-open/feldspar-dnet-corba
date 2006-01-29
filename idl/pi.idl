@@ -13,16 +13,6 @@ module Dynamic {
   typedef CORBA::StringSeq RequestContext;
 };
 
-module IOP_N {
-  typedef sequence<IOP::TaggedComponent> TaggedComponentSeq;
-  typedef short EncodingFormat;
-  const EncodingFormat ENCODING_CDR_ENCAPS = 0;
-  struct Encoding {
-    EncodingFormat format;
-    octet major_version;
-    octet minor_version;
-  };
-};
 
 module PortableInterceptor {
 
@@ -81,7 +71,7 @@ module PortableInterceptor {
     readonly attribute any received_exception;
     readonly attribute CORBA::RepositoryId received_exception_id;
     IOP::TaggedComponent get_effective_component (in IOP::ComponentId id);
-    IOP_N::TaggedComponentSeq get_effective_components (in IOP::ComponentId id);
+    IOP::TaggedComponentSeq get_effective_components (in IOP::ComponentId id);
     CORBA::Policy get_request_policy (in CORBA::PolicyType type);
     void add_request_service_context (in IOP::ServiceContext service_context,
                                       in boolean replace);

@@ -95,6 +95,13 @@
  :members (("tag" (SYMBOL-TYPECODE 'IOP:COMPONENTID))
            ("component_data" (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))))
 
+(DEFINE-ALIAS IOP:TAGGEDCOMPONENTSEQ
+ :id "IDL:omg.org/IOP/TaggedComponentSeq:1.0"
+ :name "TaggedComponentSeq"
+ :type SEQUENCE
+ :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'IOP:TAGGEDCOMPONENT)))
+
+
 (DEFINE-ALIAS IOP:COMPONENTID
  :id "IDL:omg.org/IOP/ComponentId:1.0"
  :name "ComponentId"
@@ -210,4 +217,4 @@
  :DEFINED_IN IOP:CODECFACTORY
  :MEMBERS NIL)
 
-;; (DEFINE-METHOD "CREATE_CODEC" ((OBJ IOP:CODECFACTORY-PROXY) _ENC))
+;; (DEFINE-METHOD "CREATE_CODEC" ((OBJ OBJ IOP:CODECFACTORY-PROXY) _ENC))
