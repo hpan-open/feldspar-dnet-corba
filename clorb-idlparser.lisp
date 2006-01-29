@@ -647,12 +647,15 @@
          type-def)
      (action
        (check-type type-def CORBA:IDLType)
-       (when allow-kind
-         (unless (member (op:kind (op:type type-def)) allow-kind)
-           (warn "Type ~A not allowed, allowed: ~S" type-def allow-kind)))
-       (when disallow-kind
-         (when (member (op:kind (op:type type-def)) disallow-kind)
-           (warn "Type ~A not allowed, forbidden types: ~S" type-def disallow-kind)))
+       (let ((type-def (if (eql (op:def_kind type-def) :dk_alias)
+                         (op:original_type_def type-def)
+                         type-def)))
+         (when allow-kind
+           (unless (member (op:kind (op:type type-def)) allow-kind)
+             (warn "Type ~A not allowed, allowed: ~S" type-def allow-kind)))
+         (when disallow-kind
+           (when (member (op:kind (op:type type-def)) disallow-kind)
+             (warn "Type ~A not allowed, forbidden types: ~S" type-def disallow-kind))))
        type-def))))
 
 (defun <integer_type> nil
