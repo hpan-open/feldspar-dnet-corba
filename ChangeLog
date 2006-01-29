@@ -1,3 +1,21 @@
+2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-iop.lisp, clorb-pi-base.lisp, clorb-pkgdcl.lisp, idl/orb.idl, idl/pi.idl:
+	Remove the IOP_N module and package and add TaggedComponentSeq to IOP.
+	Ref: Issue 3935: IOP_N
+
+	* clorb-idlparser.lisp (<simple_type_spec>): resolve alias types
+	  before checking restrictions
+
+	* clorb-exceptions.lisp, clorb-struct.lisp, clorb-typecode-1.lisp, clorb-typecode-2.lisp:
+	remove keywords slot from base typecode and add it where needed
+	(struct, enum, exception).
+
+2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idlparser.lisp (<simple_type_spec>): resolve alias types
+	  before checking restrictions
+
 2006-01-18  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-macros2.lisp, clorb-object.lisp, clorb-supp.lisp, clorb-value.lisp, test-union.lisp:
@@ -26,9 +44,6 @@
 	*** empty log message ***
 
 2005-12-20  Lennart Staflin  <lenst@lysator.liu.se>
-
-	* examples/jacorb/value-server.lisp, examples/vtest/vtest-bridge.lisp:
-	*** empty log message ***
 
 	* clorb-buffer.lisp, clorb-macros2.lisp: Cleanup
 

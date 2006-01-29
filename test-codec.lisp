@@ -20,9 +20,11 @@
   (define-test "Encode"
     (let ((codec (op:create_codec factory format)))
       (let ((octets (op:encode codec "hello")))
+        (ensure-typep octets '(vector CORBA:Octet))
         (let ((any (unmarshal-encapsulation octets  #'unmarshal-any )))
           (ensure-equalp (any-value any) "hello")))
       (let ((octets (op:encode_value codec "world")))
+        (ensure-typep octets '(vector CORBA:Octet))
         (let ((obj (unmarshal-encapsulation octets #'unmarshal-string)))
           (ensure-equalp obj "world")))))
 
