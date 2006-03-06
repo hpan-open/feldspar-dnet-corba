@@ -3,6 +3,15 @@
 (in-package :clorb)
 
 
+;;;; Accessing Interface Repository ID
+
+(define-method op::id ((type-symbol symbol))
+  (symbol-ifr-id type-symbol))
+
+(define-method op::type ((type-symbol symbol))
+  (symbol-typecode type-symbol))
+
+
 ;;;; Accessing Interface Repositories
 
 (defclass repository-facade (CORBA:Repository)
