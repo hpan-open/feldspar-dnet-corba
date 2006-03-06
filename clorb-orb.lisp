@@ -696,7 +696,16 @@
 
 
 
+
+;;;; Object Narrowing
 
+;; Compatibility with Franz OrbLink
+
+(define-method op::_narrow ((orb clorb-orb) object class-symbol)
+  (object-narrow object class-symbol))
+
+
+
 ;;;; CORBA::Current
 
 
@@ -708,7 +717,7 @@
   :name "Current")
 
 
-
+
 ;;;; Policy
 
 
