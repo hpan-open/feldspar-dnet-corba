@@ -352,7 +352,7 @@ Might destructivley change the original object."
          (error "Object of wrong type for narrowing"))))
 
 
-;; Comaptibility with LW CORBA
+;; Compatibility with LW CORBA
 
 (define-method op::narrow ((class-symbol symbol) proxy)
   (object-narrow proxy class-symbol))
