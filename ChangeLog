@@ -1,3 +1,26 @@
+2006-03-06  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (op:id, op:type): new methods for Accessing
+	  Interface Repository information fot IDL-types.
+
+	* clorb-object.lisp (Module): cleanup
+
+	* clorb-orb.lisp, clorb-pkgdcl.lisp:
+	added franz compatible narrowing: op:_narrow on the orb object.
+
+2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-iop.lisp, clorb-pi-base.lisp, clorb-pkgdcl.lisp, idl/orb.idl, idl/pi.idl:
+	Remove the IOP_N module and package and add TaggedComponentSeq to IOP.
+	Ref: Issue 3935: IOP_N
+
+	* clorb-idlparser.lisp (<simple_type_spec>): resolve alias types
+	  before checking restrictions
+
+	* clorb-exceptions.lisp, clorb-struct.lisp, clorb-typecode-1.lisp, clorb-typecode-2.lisp:
+	remove keywords slot from base typecode and add it where needed
+	(struct, enum, exception).
+
 2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-iop.lisp, clorb-pi-base.lisp, clorb-pkgdcl.lisp, idl/orb.idl, idl/pi.idl:
