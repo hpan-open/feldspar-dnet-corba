@@ -14,7 +14,7 @@
 
 (defgeneric moveto (contained container new-name new-version)
   (:documentation "Move the contained object to the container,
-with new-name and new-version. Checks that the name does not collied 
+with new-name and new-version. Checks that the name does not collide 
 with the contents of container and check the container allows the type 
 of contained."))
 
@@ -896,14 +896,6 @@ of contained."))
   :attributes ((members)))
 
 
-(defmethod moveto :before ((c struct-def) (object contained) new-name new-version)
-  (declare (ignore new-name new-version))
-  (typecase object 
-    ((or Struct-Def Union-Def Enum-Def))
-    (otherwise
-     (raise-system-exception 'CORBA:BAD_PARAM 4))))
-
-
 (defmethod op:members :before ((obj struct-def) &rest x)
   (declare (ignore x))
   (doseq (m (slot-value obj 'members))
@@ -931,12 +923,6 @@ of contained."))
   :attributes ((discriminator_type_def)
                (members)))
 
-(defmethod moveto :before ((c union-def) (object contained) new-name new-version)
-  (declare (ignore new-name new-version))
-  (typecase object 
-    ((or Struct-Def Union-Def Enum-Def))
-    (otherwise
-     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 (define-method discriminator_type ((obj union-def))
   (op:type (op:discriminator_type_def obj)))
@@ -963,7 +949,9 @@ of contained."))
                           (op:members obj)))))
 
 
-;;;; EnumDef
+;;;; interface EnumDef : TypedefDef
+;;;    attribute EnumMemberSeq members;
+
 
 (define-ir-class enum-def (corba:EnumDef typedef-def)
   :def_kind :dk_enum
@@ -981,14 +969,6 @@ of contained."))
                                                    irtypecode-mixin)
   :def_kind :dk_exception
   :attributes ((members)))
-
-
-(defmethod moveto :before ((c exception-def) (object contained) new-name new-version)
-  (declare (ignore new-name new-version))
-  (typecase object 
-    ((or Struct-Def Union-Def Enum-Def))
-    (otherwise
-     (raise-system-exception 'CORBA:BAD_PARAM 4))))
 
 
 (defmethod op:members :before ((obj exception-def) &rest x)
@@ -1014,6 +994,32 @@ of contained."))
    :version (op:version obj)
    ;;  TypeCode type;
    :type (op:type obj)))
+
+;;;; moveto restrictions - for IDL-types union, struct, execption
+
+(defmethod moveto :before ((c union-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
+
+
+(defmethod moveto :before ((c struct-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
+
+
+(defmethod moveto :before ((c exception-def) (object contained) new-name new-version)
+  (declare (ignore new-name new-version))
+  (typecase object 
+    ((or Struct-Def Union-Def Enum-Def))
+    (otherwise
+     (raise-system-exception 'CORBA:BAD_PARAM 4))))
+
 
 
 ;;;; PrimitiveDef
