@@ -5,11 +5,6 @@
 	* clorb-files.lisp (*binary-folder*): include _thread for threaded
 	sbcl as the fasl is incompatible
 
-2006-03-07  Lennart Staflin  <lenst@lysator.liu.se>
-
-	* clorb-files.lisp (*binary-folder*): include _thread for threaded
-	sbcl as the fasl is incompatible
-
 2006-03-06  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (op:id, op:type): new methods for Accessing
