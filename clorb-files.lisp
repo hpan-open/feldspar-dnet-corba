@@ -141,7 +141,7 @@
 
 
 (defvar *binary-folder*
-  (format nil "~(~A_~A~)"
+  (format nil "~(~A_~A~A~)"
           (or #+Digitool "mcl"
               #+CMU "cmucl"
               #+Allegro "acl"
@@ -156,7 +156,9 @@
               (format nil "~A.~A" ccl::*openmcl-major-version*
                       ccl::*openmcl-minor-version*)
               #+allegro   excl::*common-lisp-version-number*
-              (lisp-implementation-version))))
+              (lisp-implementation-version))
+          (or #+(and sbcl sb-thread) "_thread"
+              "")))
 
 
 (defun dir-split (base)
