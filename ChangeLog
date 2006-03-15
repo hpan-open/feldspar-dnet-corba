@@ -1,3 +1,24 @@
+2006-03-15  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-request.lisp (should-retry): New function: retries a
+	  request if suitable TRANSIENT exception.
+	(request-poll): decode system execptions, handle error status
+	  and do retry via should-retry.
+	(request-get-response): No longer decodes system exeptions or
+	  handle error status.
+
+	* clorb-idl.lisp (corba:idl): Bind *defining-repository* while
+	  evaluating generated code.
+
+	* clorb-typecode-1.lisp: 
+	(*defining-repository*): set to a repository object while
+	evaluating IDL files.
+	(add-defining-repository): Called to add link to repository object
+	to symbols for IDL types.
+	(defining-repository): reader for defining repository for IDL type
+	symbol.
+	(set-ifr-info): call add-defining-repository
+
 2006-03-07  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-ifr.lisp: fix ordering of (defmethod moveto :before ..)
