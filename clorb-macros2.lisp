@@ -28,6 +28,7 @@
   `(progn (deftype ,symbol () ',type)
           (set-symbol-id/typecode ',symbol ,id
                                   (create-alias-tc ,id ,name ,typecode))
+          (add-defining-repository ',symbol)
           (defconstant ,tc-constant (symbol-typecode ',symbol))))
 
 
@@ -48,6 +49,7 @@
             (set-symbol-id/typecode ',symbol ,id
                                     (create-enum-tc ,id ,name
                                                    ',(coerce members 'vector)))
+            (add-defining-repository ',symbol)
             (defconstant ,tc-constant (symbol-typecode ',symbol)))))
 
 
@@ -87,6 +89,7 @@
         (create-struct-tc ,id ,name
                           (vector ,@(loop for (name type) in members
                                        collect `(list ,name ,type)))))
+       (add-defining-repository ',symbol)
        (defconstant ,tc-constant (symbol-typecode ',symbol)))))
 
 
@@ -134,6 +137,7 @@
                                (create-union-tc ,id ,name
                                                 ,discriminator-type
                                                 (list ,@(nreverse tc-members))))
+       (add-defining-repository ',symbol)
        (defconstant ,tc-constant (symbol-typecode ',symbol))
        ,@code)))
 
