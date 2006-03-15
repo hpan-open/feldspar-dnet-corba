@@ -378,6 +378,7 @@
 
 (defun set-ifr-info (symbol &key id name typecode version defined_in
                      parameters exceptions result mode type bases)
+  (add-defining-repository symbol)
   (setf (get symbol 'ifr-description) nil)
   (when id 
     (set-symbol-ifr-id symbol id))
@@ -404,3 +405,15 @@
     (setf (get symbol 'ifr-bases) bases)))
 
 
+
+;;;; Defining repository
+;; more unrelated stuff
+
+(defvar *defining-repository* nil)
+
+(defun add-defining-repository (symbol)
+  (when *defining-repository*
+    (setf (get symbol 'defining-repository) *defining-repository*)))
+
+(defun defining-repository (symbol)
+  (get symbol 'defining-repository))
