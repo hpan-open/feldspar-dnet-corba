@@ -32,7 +32,8 @@
              (code (if only
                      (make-progn (mapcar (lambda (name) (target-code (lookup name) target))
                                          (mklist only)))
-                     (target-code repository target))))
+                     (target-code repository target)))
+             (*defining-repository* repository))
         (flet ((execute-code ()
                  (unless (and (consp code) (eq (car code) 'progn))
                    (setq code `(progn code)))
