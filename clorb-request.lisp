@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.17 2005/11/10 14:54:08 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.18 2006/03/15 17:58:17 lenst Exp $
 
 (in-package :clorb)
 
@@ -288,9 +288,22 @@ been decoded."
   (setf (reply-service-context req) service-context))
 
 
+(defun should-retry (req exc)
+  ;; Returns Nil and retries OR returns req.
+  ;;
+  ;; This could be made more complicated. There could be per
+  ;; object or per orb policies for retrying. Limit to the number
+  ;; of retries. Backoff.
+  (if (and (typep exc 'CORBA:TRANSIENT)
+           (eql (system-exception-completed exc) :completed_no))
+      (progn (has-received-other (the-orb req) req)
+             (request-send req)
+             nil)
+      req))
+
 (defun request-poll (req)
   ;; Check if result of request is ready
-  ;; might retransmit request, if redirected
+  ;; might retransmit request, if redirected or transient exception
   (case (request-status req)
     (:location_forward
      (setf (object-forward (request-target req))
@@ -298,8 +311,20 @@ been decoded."
      (has-received-other (the-orb req) req)
      (request-send req)
      nil)
-    
-    ;;FIXME: check for transient and retry if policies allow
+
+    (:system_exception
+     (multiple-value-bind (exc id)
+         (unmarshal-systemexception (request-buffer req))
+       (setf (request-exception-id req) id)
+       (setf (request-exception req) exc)
+       (should-retry req exc)))
+
+    (:error                             ; Communication error
+     (setf (request-status req) :system_exception)
+     (let ((exc (request-exception req)))
+       (setf (request-exception-id req)
+             (exception-id exc))
+       (should-retry req exc)))
 
     (otherwise 
      req)))
@@ -319,11 +344,9 @@ been decoded."
 (defun request-get-response (req)
   (request-wait-response req)
   (let ((buffer (request-buffer req)))
-    (case (request-status req)
-      (:initial (raise-system-exception 'CORBA:BAD_INV_ORDER))
-      (:error                             ; Communication error
-       (setf (request-status req) :system_exception)
-       (request-handle-error req))
+    (ecase (request-status req)
+      (:initial
+       (raise-system-exception 'CORBA:BAD_INV_ORDER))
       (:user_exception
        (let ((id (unmarshal-string buffer)))
          (setf (request-exception-id req) id)
@@ -336,9 +359,7 @@ been decoded."
                         (system-exception 'corba:unknown 1 :completed_yes))))))
        (request-handle-error req))
       (:system_exception
-       (multiple-value-bind (exc id) (unmarshal-systemexception buffer)
-         (setf (request-exception-id req) id)
-         (setf (request-exception req) exc))
+       ;; unmarshalled and ready by request-poll
        (request-handle-error req))
       (:no_exception
        (multiple-value-prog1 (funcall (input-func req) req buffer)
