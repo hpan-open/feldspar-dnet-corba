@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.18 2006/03/15 17:58:17 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.19 2006/03/16 18:18:28 lenst Exp $
 
 (in-package :clorb)
 
@@ -285,11 +285,17 @@ been decoded."
 (defun request-reply (req status buffer service-context)
   (setf (request-status req) status)
   (setf (request-buffer req) buffer)
-  (setf (reply-service-context req) service-context))
+  (setf (reply-service-context req) service-context)
+  (case status
+    (:system_exception
+     (multiple-value-bind (exc id)
+         (unmarshal-systemexception buffer)
+       (setf (request-exception-id req) id)
+       (setf (request-exception req) exc)))))
 
 
 (defun should-retry (req exc)
-  ;; Returns Nil and retries OR returns req.
+  ;; Returns Nil and retries OR returns status.
   ;;
   ;; This could be made more complicated. There could be per
   ;; object or per orb policies for retrying. Limit to the number
@@ -299,7 +305,7 @@ been decoded."
       (progn (has-received-other (the-orb req) req)
              (request-send req)
              nil)
-      req))
+      (request-status req)))
 
 (defun request-poll (req)
   ;; Check if result of request is ready
@@ -313,11 +319,7 @@ been decoded."
      nil)
 
     (:system_exception
-     (multiple-value-bind (exc id)
-         (unmarshal-systemexception (request-buffer req))
-       (setf (request-exception-id req) id)
-       (setf (request-exception req) exc)
-       (should-retry req exc)))
+     (should-retry req (request-exception req)))
 
     (:error                             ; Communication error
      (setf (request-status req) :system_exception)
@@ -327,7 +329,7 @@ been decoded."
        (should-retry req exc)))
 
     (otherwise 
-     req)))
+     (request-status req))))
 
 
 (defun request-wait-response (req)
