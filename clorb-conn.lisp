@@ -142,7 +142,9 @@
 (defun connection-close (conn)
   ;; Called on recipt of a connection close message
   (connection-destroy conn)
+  ;; The server should not have started on any of the outstanding requests.
   (dolist (req (connection-client-requests conn))
+    (assert (null (request-status req))) ; is there a race condition?
     (setf (request-exception req) (system-exception 'CORBA:TRANSIENT 3 :completed_no))
     (setf (request-status req) :error))
   (setf (connection-client-requests conn) nil))
