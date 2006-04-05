@@ -97,7 +97,8 @@
     (princ (op:object_to_string *the-orb* (clorb::get-ns)) out))
   (unless *export-ifr*
     (setq *export-ifr* (corba:idl "clorb:idl;CosNaming.idl" :eval nil))
-    (corba:idl "clorb:idl;interface-repository.idl" :repository *export-ifr* :eval nil))
+    (corba:idl "clorb:idl;interface-repository.idl" :repository *export-ifr* :eval nil)
+    (corba:idl "clorb:examples;hello;hello.idl" :repository *export-ifr* :eval nil))
   (with-open-file (out "SaturnX:private:tmp:InterfaceRepository"
                        :direction :output :if-exists :supersede)
     (princ (op:object_to_string *the-orb* *export-ifr*) out)))
@@ -135,4 +136,4 @@
                           (orb-work *the-orb* t t)
                           (setq *work-pending* nil))))))
   
-;;(ccl:process-run-function "orb" #'bg-driver)
+;;(ccl:process-run-function "orb" #'clorb::bg-driver)

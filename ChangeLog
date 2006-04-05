@@ -1,3 +1,27 @@
+2006-04-05  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-client-request.lisp: better testing for handling of
+	  TRANSIENT.
+
+	* clorb-sysdep.lisp (*clisp-buffered-streams*): experimental
+	(open-active-socket, accept-connection-on-socket): use
+	  *clisp-buffered-streams* to test if buffered streams would work in
+	  clisp (no currently it seems). 
+
+	* clorb-pi-impl.lisp: removing the orb-initializer class, dosen't
+	  make sense. Clients will subclass the
+	  PortableInterceptor:ORBInitializer class.
+
+2006-03-16  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-request.lisp (request-reply): decode system exceptions,
+	  here it will be done once.
+	  (should-retry): return status, or nil
+	  (request-poll): system exceptions already decoded. return status
+	  not request.
+
+	* clorb-conn.lisp (connection-close): just checking
+
 2006-03-15  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-request.lisp (should-retry): New function: retries a
