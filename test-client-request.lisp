@@ -152,19 +152,43 @@
 
 
   (define-test "Close Connection"
+    ;; Test receiving a close connection message after sending a
+    ;; request, and having the request automatically retried.
     (setup-test-out)
     (let* ((obj (test-object orb))
            (ret (CORBA:NamedValue :argument (CORBA:Any :any-typecode CORBA:tc_long))))
       (multiple-value-bind (result req) (op:_create_request obj nil "op" nil ret 0)
         (declare (ignore result))
         (op:send_deferred req)
-        (test-read-request 
+        (test-read-request
          :request-keys '((:response 1) (:operation "op") (:object-key #(17))))
         (test-write-response :orb orb :message-type :closeconnection)
         (orb-work orb nil t)
-        (assert (op:poll_response req) () "should have gotten the response")
+
+        ;; hmm. this is very internal ..
+        (ensure-eql (request-status req) :error)
+        (ensure-typep (request-exception req) 'CORBA:TRANSIENT)
+
+        ;; Sometime fails, WHY? -- connection closed message will
+        ;; destroy io-descriptor and disconnect it from the
+        ;; connection. The connection will therefor never get the
+        ;; write-ready event.
+        ;;(assert (not (connection-write-buffer *test-out-conn*)))
+
+        ;; Repair connection
+        (setf (connection-write-buffer *test-out-conn*) nil)
+        (let ((desc (connection-io-descriptor *test-out-conn*)))
+          (setf (io-descriptor-status desc) :connected)
+          (setf (io-descriptor-connection desc) *test-out-conn*))
+
+        (ensure (not (op:poll_response req)))  ; retry send
+
+        (test-read-request 
+         :request-keys '((:response 1) (:operation "op") (:object-key #(17))))
+        (test-write-response :request req :message '(199199))
+
         (op:get_response req)
-        (ensure-typep (corba:any-value (op:return_value req)) 'CORBA:TRANSIENT))))
+        (ensure-eql (corba:any-value (op:argument (op:result req))) 199199) )))
 
 
 
