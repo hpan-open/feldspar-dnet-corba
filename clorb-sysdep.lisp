@@ -113,6 +113,10 @@
    (stream :initform nil :accessor listener-stream)))
 
 
+#+clisp
+(defvar *clisp-buffered-streams* nil
+  "If connections used buffered streams.")
+
 
 ;; the unconnected socket is returned by OPEN-PASSIVE-SOCKET and used
 ;; in ACCEPT-CONNECTION-ON-PORT and COERCE-TO-WAITABLE-THING
@@ -251,7 +255,8 @@
      (error "Dummy TCP cannot connect")
 
      #+clisp 
-     (ext:socket-connect port host :element-type type :buffered nil) 
+     (ext:socket-connect port host :element-type type
+                         :buffered *clisp-buffered-streams*)
 
      #+clorb::cmucl-sockets
      (system:make-fd-stream (ext:connect-to-inet-socket host port)
@@ -373,7 +378,8 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    #+clisp 
    (when (ext:socket-wait socket (if blocking 10 0))
      (let* ((conn (ext:socket-accept socket 
-                                 :element-type '(unsigned-byte 8) :buffered nil)))
+                                 :element-type '(unsigned-byte 8)
+                                 :buffered *clisp-buffered-streams*)))
        (mess 4 "Accepting connection from ~A"
              (ext:socket-stream-peer conn))
        conn))
