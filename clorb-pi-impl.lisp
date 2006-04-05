@@ -75,17 +75,9 @@
 ;;    void pre_init (in ORBInitInfo info);
 ;;    void post_init (in ORBInitInfo info);
 
-(defclass orb-initializer (PortableInterceptor:ORBInitializer)
-  ())
+;; void register_orb_initializer (in ORBInitializer init); 
 
-(define-method "PRE_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-(define-method "POST_INIT" ((init orb-initializer) info)
-  (declare (ignore info)))
-
-
-(defun portableinterceptor:register_orb_initializer (init)
+(defun PortableInterceptor:register_orb_initializer (init)
   (pushnew init *orb-initializers*))
 
 
