@@ -1,3 +1,44 @@
+2006-04-12  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* examples/vtest/vtest-server.lisp (is_same): implement
+
+	* examples/vtest/vtest.idl: added is_same operation
+
+	* idl/corba-misc.idl: added StringValue and WStringValue
+
+	* clorb-pkgdcl.lisp ("OMG.ORG/CORBA"): added "STRINGVALUE" "WSTRINGVALUE"
+
+	* clorb-misc.lisp (OMG.ORG/CORBA:STRINGVALUE)
+	(OMG.ORG/CORBA:WSTRINGVALUE): added
+
+	* clorb-target.lisp (target-code): corba:valueboxdef - newer
+	  generate the :type
+
+	* clorb-typecode-1.lisp (set-ifr-info): set skel-table property to nil
+
+	* clorb-value.lisp (value-typecode): new slots: keyword-symbols
+	  all-keyword-symbols
+	  (truncatable-value-p): new generic function
+	  (*exact-type-value-marshal-opt*): fixed spelling
+	  (marshal-value): use truncatable-value-p, to better handle boxed
+	  values.
+	  (tc-keyword-symbols): new
+	  (all-keyword-symbols): new
+	  (unmarshal-value-1): use all-keyword-symbols and
+	  all-member-types to better handle boxed values.
+	  (shared-initialize): method for value-box to accept
+	  :create-for-unmarshal key, allowing value-box instances to be
+	  made by normal value unmarshalling.
+	  (all-member-types, all-feature-symbols, all-keyword-symbols):
+	  methods for value_box-typecode.
+	  (define-value-box): always define class. Define object-id method.
+	  (compute-marshal-function, compute-unmarshal-function): method
+	  for value_box-typecode like the value-typecode
+
+	* test-value.lisp ("Value/boxed value"): also test marshaling with
+	  type ValueBase. Change boxing of strings.
+	
+
 2006-04-05  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* test-client-request.lisp: better testing for handling of
