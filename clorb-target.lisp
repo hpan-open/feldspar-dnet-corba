@@ -528,15 +528,12 @@
   nil)
 
 (defmethod target-code ((def corba:valueboxdef) (target stub-target))
-  (let ((original-type (op:original_type_def def)))
-    (let ((lisp-type (target-type original-type target)))
-      `(define-value-box ,(scoped-target-symbol target def)
+  (let* ((original-type (op:original_type_def def)))
+    `(define-value-box ,(scoped-target-symbol target def)
          :id ,(op:id def)
          :name ,(op:name def)
          :version ,(op:version def)
-         :original_type ,(target-typecode original-type target)
-         ,@(unless (subtypep lisp-type '(or number character))
-             `(:type ,lisp-type))))))
+         :original_type ,(target-typecode original-type target))))
 
 
 (defmethod target-code ((def corba:abstractinterfacedef) (target stub-target))
