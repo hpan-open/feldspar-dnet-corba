@@ -145,12 +145,17 @@
   (define-test "boxed value"
     (let ((n1 (test-box-1 123))
           (n2 (test-box-1 99))
+          (n3 (test-box-1 333))
           (tcn (symbol-typecode 'test-box-1))
-          (s1 "Hello World")
-          (s2 "Foo")
+          (s1 (test-box-2 "Hello World"))
+          (s2 (test-box-2 "Foo"))
+          (s3 (test-box-2 "Fie"))
           (tcs (symbol-typecode 'test-box-2)))
       (marshal n1 tcn buffer) (marshal n2 tcn buffer) (marshal n1 tcn buffer)
       (marshal s1 tcs buffer) (marshal s2 tcs buffer) (marshal s1 tcs buffer)
+      ;; Marshal valuebox as a ValueBase
+      (marshal n3 corba:tc_valuebase buffer)
+      (marshal s3 corba:tc_valuebase buffer)
       (let ((r1 (unmarshal tcn buffer))
             (r2 (unmarshal tcn buffer))
             (r3 (unmarshal tcn buffer)))
@@ -160,9 +165,15 @@
       (let ((r1 (unmarshal tcs buffer))
             (r2 (unmarshal tcs buffer))
             (r3 (unmarshal tcs buffer)))
-        (ensure-equalp r1 s1)
-        (ensure-equalp r2 s2)
-        (ensure-equalp r1 r3))))
+        (ensure-equalp (op:data r1) (op:data s1))
+        (ensure-equalp (op:data r2) (op:data s2))
+        (ensure-eql r1 r3))
+      
+      (let ((r1 (unmarshal corba:tc_valuebase buffer)))
+        (ensure-eql (op:data r1) (op:data n3)))
+      (let ((r2 (unmarshal corba:tc_valuebase buffer)))
+        (ensure-equalp (op:data r2) (op:data s3)))))
+
 
   (define-test "chunked"
     (let ((v3 (make-instance 'test-value-3 :name "foo" 
