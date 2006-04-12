@@ -1,6 +1,6 @@
 (in-package :clorb)
 
-
+
 ;;;; Value
 
 
@@ -15,7 +15,8 @@
   :share named-typecode :shared-params 2
   :extra-slots (truncatable-interfaces
                 member-types all-member-types
-                feature-symbols all-feature-symbols ))
+                feature-symbols all-feature-symbols
+                keyword-symbols all-keyword-symbols ))
 
 
 (defun create-value-tc (id name type-modifier concrete-base members)
@@ -83,7 +84,7 @@
       (list (op:id tc)))))
 
 
-
+
 ;;;; Encoding Support
 
 (defconstant min-value-tag #x7fffff00)
@@ -94,7 +95,7 @@
 (defconstant value-flag-chunking #x08)
 
 
-
+
 ;;;; Indirection Support
 
 
@@ -191,7 +192,7 @@
   (unmarshal-record #'unmarshal-string-record-list buffer))
 
 
-
+
 ;;;; Marshall Value
 
 
@@ -255,6 +256,12 @@
         collect (slot-value value feature)))
 
 
+(defgeneric truncatable-value-p (tc)
+  (:method ((tc t)) nil)
+  (:method ((tc value-typecode))
+    (eql corba:vm_truncatable (op:type_modifier tc))))
+
+
 (defun marshal-multiple (values types buffer)
   (loop for val in values
      for tc in types
@@ -277,7 +284,10 @@
          (marshal-multiple values types buffer))))
 
 
-(defparameter *exact-type-value-marshap-opt* t)
+(defparameter *exact-type-value-marshal-opt* t
+  "If true, marshalling a valuetype of the exact type will not include
+a repository ID.")
+
 
 (defun marshal-value (value buffer &optional expected-id)
   (flet ((marshal-value-1 (value buffer)
@@ -287,11 +297,11 @@
                (assert value-class)
                (let ((tc (symbol-typecode value-class)))
                  (let ((truncatable (and (not exact-type)
-                                         (eql corba:vm_truncatable (op:type_modifier tc)))))
+                                         (truncatable-value-p tc))))
                    (let ((chunking (or truncatable (> *chunking-level* 0)))
                          (repoid (cond (truncatable (truncatable-interfaces tc))
                                        ((or (not exact-type)
-                                            (not *exact-type-value-marshap-opt*))
+                                            (not *exact-type-value-marshal-opt*))
                                         id))))
                      (marshal-value-header repoid chunking buffer)
                      (marshal-value-state chunking
@@ -307,7 +317,7 @@
       (marshal-value value buffer id))))
 
 
-
+
 ;;;; Value factory registry
 
 (defvar *value-factory-registry* (make-hash-table :test #'equal))
@@ -317,7 +327,23 @@
 
 
 
+
 ;;;; Unmarshal Value
+
+
+(defmethod tc-keyword-symbols ((tc value-typecode))
+  ;;(with-cache-slot (tc keyword-symbols))
+  (map 'list (lambda (m) (key (car m))) (tc-members tc)))
+
+(defmethod all-keyword-symbols (tc)
+  (declare (ignore tc))
+  '())
+
+(defmethod all-keyword-symbols ((tc value-typecode))
+  (with-cache-slot (tc all-keyword-symbols)
+    (append (all-keyword-symbols (op:concrete_base_type tc))
+            (tc-keyword-symbols tc))))
+
 
 
 (defun unmarshal-value-header (valuetag buffer)
@@ -409,21 +435,12 @@
       (let ((value (make-instance (or (lookup-value-factory (op:id tc)) symbol)
                      :create-for-unmarshal t)))
         (unmarshal-record-register value)
-        (let ((keys nil) (types nil))
-          (let ((tc-stack nil))
-            (do ((base-tc tc (op:concrete_base_type base-tc)))
-                ((typep base-tc 'null-typecode))
-              (push base-tc tc-stack))
-            (dolist (tc tc-stack)
-              (dotimes (i (op:member_count tc))
-                (push (key (op:member_name tc i)) keys)
-                (push (op:member_type tc i) types))))
-          (apply #'reinitialize-instance value
-                 :create-for-unmarshal t
-                 (unmarshal-value-state chunked truncate
-                                        (nreverse keys)
-                                        (nreverse types)
-                                        buffer)))
+        (apply #'reinitialize-instance value
+               :create-for-unmarshal t
+               (unmarshal-value-state chunked truncate
+                                      (all-keyword-symbols tc)
+                                      (all-member-types tc)
+                                      buffer))
         value))))
 
 
@@ -433,7 +450,7 @@
       (unmarshal-value buffer id))))
 
 
-
+
 ;;;; ValueBox
 
 
@@ -448,14 +465,37 @@
 (defclass value-box ()
   ((op::data :initarg :data
              :accessor box-data)))
+
 (define-method data ((box value-box))
   (box-data box))
+
 (define-method (setf data) (new (box value-box))
   (setf (box-data box) new))
+
+
 (defmethod print-object ((box value-box) stream)
   (print-unreadable-object (box stream :type t :identity t)
     (when (slot-boundp box 'op::data)
       (prin1 (box-data box) stream))))
+
+
+(defmethod shared-initialize ((value value-box) slot-names
+                              &key factory create-for-unmarshal
+                              &allow-other-keys)
+  (declare (ignore slot-names create-for-unmarshal))
+  (if factory (raise-system-exception 'CORBA:BAD_PARAM))
+  (call-next-method))
+
+
+(defmethod all-member-types ((tc value_box-typecode))
+  (list (op:content_type tc)))
+
+(defmethod all-feature-symbols ((tc value_box-typecode))
+  '(op::data))
+
+(defmethod all-keyword-symbols ((tc value_box-typecode))
+  '(:data))
+
 
 (defmethod box-data ((box t))
   box)
@@ -468,51 +508,27 @@
       ',symbol ,id (create-value-box-tc ,id ,name ,original_type))
      (add-defining-repository ',symbol)
      (defconstant ,tc-constant (symbol-typecode ',symbol))
-     ,@(if type
+     ,@(if nil ;type
            `((deftype ,symbol ()
                ',type))
            `((defclass ,symbol (value-box) ())
+             (defmethod object-id ((obj ,symbol)) ,id)
              (defun ,symbol (value) (make-instance ',symbol :data value))))))
 
 
 (defmethod compute-marshal-function ((tc value_box-typecode))
-  (let ((id (op:id tc))
-        (el-type (op:content_type tc)))
-    (lambda (box buffer)
-      (marshal-record box
-                      (lambda (box buffer)
-                        (let ((chunking (not (zerop *chunking-level*))))
-                          (end-chunk buffer)
-                          (marshal-value-header id chunking buffer)
-                          (marshal-value-state chunking
-                                               (list (box-data box))
-                                               (list el-type)
-                                               buffer)))
-                      buffer))))
+  (let ((id (op:id tc)))
+    (lambda (value buffer)
+      (marshal-value value buffer id) )))
 
 
 (defmethod compute-unmarshal-function ((tc value_box-typecode))
-  (let ((id (op:id tc))
-        (el-type (op:content_type tc)))
+  (let ((id (op:id tc)))
     (lambda (buffer)
-      (unmarshal-record
-       (lambda (tag)
-         (multiple-value-bind (chunked repoid)
-             (without-chunking (buffer)
-               (unmarshal-value-header tag buffer))
-           (assert (or (null repoid)
-                       (equal (car (mklist repoid)) id)))
-           (let ((initargs (unmarshal-value-state
-                            chunked nil '(:data) (list el-type) buffer)))
-             (typecase (second initargs)
-               ((or number character)
-                (apply #'make-instance (or (ifr-id-symbol id) 'value-box)
-                       initargs))
-               (t (second initargs))))))
-       buffer :chunk-tag))))
+      (unmarshal-value buffer id))))
 
 
-
+
 ;;;; AbstractInterface
 
 
