@@ -23,6 +23,9 @@
         ((or (null box1) (null box2)) "One or both is null")
         (t (format nil "~A and ~A" box1 box2))))
 
+(corba:define-method is_same ((self vtest-impl) v1 v2)
+  (eql v1 v2))
+
 
 (defmethod print-object ((fox clorb_ex:fox) stream)
   (print-unreadable-object (fox stream :type t :identity t)
