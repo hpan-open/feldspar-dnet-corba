@@ -380,6 +380,7 @@
                      parameters exceptions result mode type bases)
   (add-defining-repository symbol)
   (setf (get symbol 'ifr-description) nil)
+  (setf (get symbol 'skel-table) nil)
   (when id 
     (set-symbol-ifr-id symbol id))
   (when name
