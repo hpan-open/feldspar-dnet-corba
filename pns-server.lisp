@@ -306,14 +306,15 @@
   ((bindings :initarg :bindings
 	     :initform nil :accessor bindings)))
 
+(defvar *null-binding* (cosnaming:binding
+                        :binding_name nil
+                        :binding_type :nobject))
+
 (define-method next_one ((bi binding-iterator))
-  (if (zerop (length (bindings bi)))
-      (values nil (cosnaming:binding
-                   :binding_name nil
-                   :binding_type 0))
-    (values t (prog1 (elt (bindings bi) 0)
-                (setf (bindings bi)
-                  (subseq (bindings bi) 1))))))
+  (setf (bindings bi) (coerce (bindings bi) 'list))
+  (if (bindings bi)
+      (values t (pop (bindings bi)))
+    (values nil *null-binding*)))
 
 (define-method next_n ((bi binding-iterator) n)
   (if (zerop (length (bindings bi)))
