@@ -35,7 +35,7 @@
   (call-next-method))
 
 
-;;;; IR Repository Pattern 
+;;;; IR Repository Pattern
 
 (defclass REPOSITORY-PATTERN (pattern)
   ())
@@ -48,7 +48,7 @@
         do (let ((def (op:lookup object name)))
              (cond ((null def) (fail-match object "has no definition named ~S" name))
                    (t
-                    (handler-case 
+                    (handler-case
                       (match pattern def)
                       (match-fail (condition)
                                   (fail-match object "~S ~A" name (match-fail-message condition)))))))))
@@ -117,7 +117,7 @@
 ;;; Mock classes
 
 (defclass test-connection (connection)
-  ((response-func :initarg response-func 
+  ((response-func :initarg response-func
                   :initform nil
                   :accessor response-func)
    (label :initarg :label  :initform "test"
@@ -162,8 +162,6 @@
   (multiple-value-setq (*test-in-conn* *test-request-desc* *test-response-sink*)
     (make-test-connection "test-in"))
   (setup-incoming-connection *test-in-conn*))
-        
-
 
 
 
@@ -187,9 +185,9 @@ Requests sent to this object will end up in *test-sink-stream*."
     (setf (object-connection obj) *test-out-conn*)
     obj))
 
-(defun test-read-request (&key 
+(defun test-read-request (&key
                              (stream *test-sink-stream*)
-                             (orb *the-orb*) buffer 
+                             (orb *the-orb*) buffer
                              request-pattern request-keys
                              args )
   (unless buffer (setq buffer (get-work-buffer orb)))
@@ -215,7 +213,7 @@ Requests sent to this object will end up in *test-sink-stream*."
              (list
               :msgtype msgtype
               :version version
-              :service-context (unmarshal-service-context buffer) 
+              :service-context (unmarshal-service-context buffer)
               :request-id (unmarshal-ulong buffer)
               :response (unmarshal-octet buffer)
               :object-key (unmarshal-osequence buffer)
@@ -230,16 +228,16 @@ Requests sent to this object will end up in *test-sink-stream*."
 
 
 (defun test-write-response (&key (orb *the-orb*)
-                                     request message-type message
+                                     request message-type message (reply-status :no_exception)
                                      fragmented (giop-version giop-1-0))
   (unless orb (setq orb (the-orb request)))
   (setup-outgoing-connection *test-out-conn*)
   (let ((buffer (get-work-buffer orb)))
     (cond (request
            (marshal-giop-header :REPLY buffer giop-version fragmented)
-           (marshal-service-context nil buffer) 
+           (marshal-service-context nil buffer)
            (marshal-ulong (request-id request)  buffer)
-           (marshal :no_exception (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer))
+           (marshal reply-status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer))
           (message-type
            (marshal-giop-header message-type buffer giop-version fragmented))
           (t (break)))
@@ -250,8 +248,18 @@ Requests sent to this object will end up in *test-sink-stream*."
       (io-descriptor-set-write *test-response-desc* octets 0 (length octets)))))
 
 
+(defun test-system-exception-message (exc)
+  "Message for test-write-response needed to encode a system exception."
+  (list (exception-id exc)
+        (corba:any :any-value (op:minor exc)
+                   :any-typecode corba:tc_ulong)
+        (corba:any :any-value (op:completed exc)
+                   :any-typecode corba:tc_completion_status)))
+
+
 (defun enum-integer (enum-tc keyword)
   (position keyword (tc-keywords (if (symbolp enum-tc) (symbol-typecode enum-tc) enum-tc))))
+
 
 (defun test-write-request (&key
                               (desc *test-request-desc*)
@@ -263,15 +271,15 @@ Requests sent to this object will end up in *test-sink-stream*."
   (when (symbolp message-type)
     (setq message-type (enum-integer 'GIOP:MSGTYPE_1_1 message-type)))
   (when message-type
-    (marshal-any-value 
+    (marshal-any-value
      (cond ((eql giop-version giop-1-0)
-            (giop:messageheader_1_0 :magic "GIOP" 
+            (giop:messageheader_1_0 :magic "GIOP"
                                     :giop_version (giop:version :major 1 :minor 0)
                                     :byte_order (buffer-byte-order buffer)
                                     :message_type message-type
                                     :message_size 0))
            ((eql giop-version giop-1-1)
-            (giop:messageheader_1_1 :magic "GIOP" 
+            (giop:messageheader_1_1 :magic "GIOP"
                                     :giop_version (giop:version :major 1 :minor 1)
                                     :flags (logior (buffer-byte-order buffer)
                                                    (if fragmented 2 0))
@@ -286,9 +294,9 @@ Requests sent to this object will end up in *test-sink-stream*."
 
 
 
-(defun test-read-response (&key 
+(defun test-read-response (&key
                               (stream *test-response-sink*)
-                              (orb *the-orb*) buffer 
+                              (orb *the-orb*) buffer
                               message)
   (unless buffer (setq buffer (get-work-buffer orb)))
   (let* ((octets (buffer-octets buffer))
@@ -312,14 +320,18 @@ Requests sent to this object will end up in *test-sink-stream*."
                                pattern)))))
 
 
-(defun test-request-response (&key (orb *the-orb*) 
+(defun test-request-response (&key (orb *the-orb*)
                                        request-type request response)
   (setup-test-in)
-  (let ((request-version 
+  (let ((request-version
          (if (eql (car request) :version)
            (progn (pop request) (pop request))
            giop-1-0)))
-    (test-write-request :orb orb :message request :message-type request-type 
+    (test-write-request :orb orb :message request :message-type request-type
                         :giop-version request-version)
     (orb-work orb nil t)
     (test-read-response :orb orb :message response)))
+
+
+
+;;; support-test.lisp ends here
