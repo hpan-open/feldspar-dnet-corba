@@ -1,5 +1,5 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.19 2006/03/16 18:18:28 lenst Exp $
+;; $Id: clorb-request.lisp,v 1.20 2006/04/13 07:44:10 lenst Exp $
 
 (in-package :clorb)
 
@@ -548,7 +548,10 @@ been decoded."
 
 
 (define-method _non_existent ((obj CORBA:Proxy))
-  (%jit-call CORBA::Object/_non_existent obj))
+  (handler-case
+      (%jit-call CORBA::Object/_non_existent obj)
+    (CORBA:OBJECT_NOT_EXIST ()
+      t)))
 
 
 (define-method _is_a ((obj CORBA:Proxy) interface-id)
