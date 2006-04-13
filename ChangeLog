@@ -37,7 +37,24 @@
 
 	* test-value.lisp ("Value/boxed value"): also test marshaling with
 	  type ValueBase. Change boxing of strings.
-	
+
+2006-04-08  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (op:to_name): new method.
+
+	* support-test.lisp (test-system-exception-message): new func.
+
+	* test-client-request.lisp ("_non_existent"): new test case.
+
+	* clorb-request.lisp (_non_existent): trap CORBA:OBJECT_NOT_EXIST
+	  and convert to a true result.
+
+2006-04-06  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* pns-server.lisp (next_one): bug fix in binding type, coerce to
+	list if this method is used.
+	(*null-binding*): holds a dummy binding returned by next_one when
+	no more bindings.
 
 2006-04-05  Lennart Staflin  <lenst@lysator.liu.se>
 
