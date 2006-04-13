@@ -332,7 +332,3 @@
   (:import-from "CORBA" "DEFINE-METHOD")
   (:export "*NAMING-IOR-FILE*" "*NAMING-BASE-PATH*" "*NAMING-POA*"
            "SETUP-PNS" "SETUP-NAMING-POA"))
-
-(defpackage "NET.CDDR.CLORB.IDLCOMP"
-  (:nicknames "CLORB.IDLCOMP")
-  (:use "COMMON-LISP" "NET.CDDR.CLORB" "NET.CDDR.CLORB.INTERNALS"))

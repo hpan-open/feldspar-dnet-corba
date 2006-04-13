@@ -114,6 +114,7 @@
 
 (defparameter *idlcomp*
   '( ;; IDL Compiler
+    "idlcomp;package"
     "idlcomp;lisp-scanner;scanner-support"
     "idlcomp;idl-compiler-support"
     "idlcomp;idl-scanner-parser"

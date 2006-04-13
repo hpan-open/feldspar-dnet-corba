@@ -1,3 +1,11 @@
+2006-04-13  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* idlcomp/package.lisp: new file
+
+	* clorb-pkgdcl.lisp: remove "NET.CDDR.CLORB.IDLCOMP" package
+
+	* clorb-files.lisp (*idlcomp*): new package file
+
 2006-04-12  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* examples/vtest/vtest-server.lisp (is_same): implement
