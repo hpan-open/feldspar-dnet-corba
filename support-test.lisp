@@ -117,21 +117,31 @@
 ;;; Mock classes
 
 (defclass test-connection (connection)
-  ((response-func :initarg response-func
-                  :initform nil
-                  :accessor response-func)
-   (label :initarg :label  :initform "test"
-          :accessor test-label)))
+  ((response-func       :initarg :response-func
+                        :initform nil
+                        :accessor response-func)
+   (response-func-called
+                        :initform nil
+                        :accessor response-func-called)
+   (label               :initarg :label
+                        :initform "test"
+                        :accessor test-label)))
 
 (defmethod connection-write-ready :after ((conn test-connection))
   (let ((fun (response-func conn))
         (req (first (connection-client-requests conn))))
     (when (and fun req)
-      (funcall fun req))))
+      (setf (response-func-called conn) t)
+      (funcall fun req) )))
 
 (defmethod print-object ((conn test-connection) stream)
   (print-unreadable-object (conn stream :type t :identity t)
     (princ (test-label conn) stream)))
+
+
+(defmethod validate ((conn test-connection))
+  (when (response-func conn)
+    (ensure (response-func-called conn) )))
 
 
 ;;; Setup code

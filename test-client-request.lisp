@@ -122,7 +122,8 @@
                :request-keys '((:operation "_set_at1"))
                :args '("fnord")) 
               (test-write-response :request req)))
-      (%jit-set test-at-1 obj "fnord")))
+      (%jit-set test-at-1 obj "fnord")
+      (validate *test-out-conn*)))
 
 
   (define-test "framgmented reply"

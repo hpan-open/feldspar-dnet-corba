@@ -1,5 +1,10 @@
 2006-04-13  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* support-test.lisp (test-connection): new slot
+	response-func-called to be set when response-func is called.
+	(connection-write-ready): set response-func-called
+	(validate test-connection): check response-func-called
+
 	* idlcomp/package.lisp: new file
 
 	* clorb-pkgdcl.lisp: remove "NET.CDDR.CLORB.IDLCOMP" package
