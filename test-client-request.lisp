@@ -191,5 +191,37 @@
         (ensure-eql (corba:any-value (op:argument (op:result req))) 199199) )))
 
 
+  (define-test "_non_existent"
+    ;; Test that _non_existent doesn't return a OBJECT_NOT_EXIST exception
+    ;; should return T. 
+    (setup-test-out)
+    (let ((obj (test-object orb)))
+      (flet ((test-non_existent (result)
+               ;; simulate calling op:_non_existent and server returning result
+               (setf (response-func *test-out-conn*)
+                     (lambda (req)
+                       (test-read-request
+                        :orb orb
+                        :request-keys `((:operation "_non_existent")) )
+                       (typecase result
+                         (corba:systemexception  
+
+                          (test-write-response
+                           :orb orb :request req
+                           :reply-status :system_exception
+                           :message (test-system-exception-message result)))
+                         (t
+                          (test-write-response
+                           :orb orb :request req
+                           :message (list (CORBA:Any
+                                           :any-value result
+                                           :any-typecode corba:tc_boolean)))))))
+               (op:_non_existent obj)))
+        (ensure-eql (test-non_existent nil) nil)
+        (ensure-eql (test-non_existent t)  t)
+        (ensure-eql (test-non_existent
+                     (system-exception 'CORBA:OBJECT_NOT_EXIST 0 :COMPLETED_NO))
+                    t))))
+  
 
 #| end suite |# )
