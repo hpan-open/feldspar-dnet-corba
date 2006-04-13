@@ -289,6 +289,11 @@ The list free operation is used to free the returned information.
     (nreverse name)))
 
 
+;; Conveninent exported method, similar to op:to_name on NamingContextExt
+;; but works directly on a string.
+(define-method op:to_name ((s string))
+  (ns-name s))
+
 
 (defvar *pre-narrowed-ns* nil)
 (defvar *narrowed-ns* nil)
