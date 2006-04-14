@@ -1,5 +1,4 @@
 ;;;; clorb-supp.lisp
-;; $Id: clorb-supp.lisp,v 1.11 2006/01/18 13:36:38 lenst Exp $
 
 (in-package :clorb)
 

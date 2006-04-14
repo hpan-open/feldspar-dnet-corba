@@ -1,5 +1,4 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
-;; $Id: clorb-io.lisp,v 1.29 2006/01/12 15:26:19 lenst Exp $
 
 
 ;; io-reset ()

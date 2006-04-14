@@ -1,5 +1,4 @@
 ;;; clorb-iiop.lisp --- IIOP implementation
-;; $Id: clorb-iiop.lisp,v 1.47 2005/12/10 13:28:55 lenst Exp $
 
 
 (in-package :clorb)
@@ -12,7 +11,7 @@
 (define-enum GIOP:MsgType_1_0
   :id "IDL:omg.org/GIOP/MsgType_1_0:1.0"
   :name "MsgType_1_0"
-  :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply" 
+  :members ("Request" "Reply" "CancelRequest" "LocateRequest" "LocateReply"
             "CloseConnection" "MessageError"))
 
 (DEFINE-ENUM GIOP:MSGTYPE_1_1
@@ -53,13 +52,13 @@
 
 (define-enum GIOP:LocateStatusType
   :id "IDL:omg.org/GIOP/LocateStatusType:1.0"
-  :name "LocateStatusType" 
+  :name "LocateStatusType"
   :members ("UNKNOWN_OBJECT" "OBJECT_HERE" "OBJECT_FORWARD"))
 
 (DEFINE-STRUCT GIOP:LOCATEREPLYHEADER
  :id "IDL:omg.org/GIOP/LocateReplyHeader:1.0"
  :name "LocateReplyHeader"
- :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID) 
+ :members (("request_id" OMG.ORG/CORBA:TC_ULONG REQUEST_ID)
            ("locate_status" (SYMBOL-TYPECODE 'GIOP:LOCATESTATUSTYPE))))
 
 (DEFINE-STRUCT GIOP:CANCELREQUESTHEADER
@@ -89,7 +88,7 @@
             ("operation" OMG.ORG/CORBA:TC_STRING)
             ("requesting_principal" (SYMBOL-TYPECODE 'OMG.ORG/GIOP:PRINCIPAL))))
 
-(define-enum GIOP:REPLYSTATUSTYPE 
+(define-enum GIOP:REPLYSTATUSTYPE
   :id "IDL:omg.org/GIOP/ReplyStatusType:1.0"
   :name "ReplyStatusType"
   :members ("NO_EXCEPTION" "USER_EXCEPTION" "SYSTEM_EXCEPTION"
@@ -104,7 +103,7 @@
 
 (define-alias GIOP:Principal
   :id "IDL:omg.org/GIOP/Principal:1.0"
-  :name"Principal" 
+  :name"Principal"
   :type sequence
   :typecode (create-sequence-tc 0 OMG.ORG/CORBA:TC_OCTET))
 
@@ -121,14 +120,14 @@
 
 
 (defun marshal-service-context (ctx buffer)
-  (marshal-sequence ctx 
+  (marshal-sequence ctx
                     (lambda (service-context buffer)
                       (marshal-ulong (op:context_id service-context) buffer)
                       (marshal-osequence (op:context_data service-context) buffer))
                     buffer))
 
 (defun unmarshal-service-context (buffer)
-  (unmarshal-sequence-m (buffer) 
+  (unmarshal-sequence-m (buffer)
     (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
 	                :context_data (unmarshal-osequence buffer))))
 
@@ -139,13 +138,13 @@
 (DEFINE-STRUCT IIOP:VERSION
   :ID "IDL:omg.org/IIOP/Version:1.0"
   :NAME "Version"
-  :MEMBERS (("major" OMG.ORG/CORBA:TC_OCTET) 
+  :MEMBERS (("major" OMG.ORG/CORBA:TC_OCTET)
             ("minor" OMG.ORG/CORBA:TC_OCTET)))
 
 (DEFINE-STRUCT IIOP:PROFILEBODY_1_0
   :ID "IDL:omg.org/IIOP/ProfileBody_1_0:1.0"
   :NAME "ProfileBody_1_0"
-  :MEMBERS (("iiop_version" (SYMBOL-TYPECODE 'IIOP:VERSION)) 
+  :MEMBERS (("iiop_version" (SYMBOL-TYPECODE 'IIOP:VERSION))
             ("host" OMG.ORG/CORBA:TC_STRING)
             ("port" OMG.ORG/CORBA:TC_USHORT)
             ("object_key" (CREATE-SEQUENCE-TC 0 OMG.ORG/CORBA:TC_OCTET))))
@@ -164,7 +163,7 @@
 
 (defun make-iiop-version (major minor)
   (or (if (eql major 1)
-        (case minor 
+        (case minor
           (0 '(1 . 0))  (1 '(1 . 1)) (2 '(1 . 2))))
       :iiop_unknown_version))
 
@@ -174,10 +173,10 @@
 
 (defun make-giop-version (major minor)
   (or (if (eql major 1)
-        (case minor 
+        (case minor
           (0 :giop_1_0) (1 :giop_1_1) (2 :giop_1_2)))
       :giop_unknown_version))
-  
+
 (defun giop-version-major (version)
   (if (eql version :giop_unknown_version)
       (error "Unknown version")
@@ -201,7 +200,7 @@
 
 
 (defmethod profile-short-desc ((profile IIOP-PROFILE) stream)
-  (format stream "~A@~A:~A" 
+  (format stream "~A@~A:~A"
           (iiop-profile-version profile)
           (iiop-profile-host profile)
           (iiop-profile-port profile)))
@@ -224,16 +223,16 @@
 
 
 (defun unmarshal-iiop-componets (buffer)
-  ;; Try handle profiles without components such as IIOP 1.0, 
+  ;; Try handle profiles without components such as IIOP 1.0,
   ;; this shouldn't realy be called for those but any way
   (let ((len (if (< (buffer-in-pos buffer) (buffer-length buffer))
                (unmarshal-ulong buffer)
                0)))
-    (loop repeat len collect 
+    (loop repeat len collect
           (let ((tag (unmarshal-ulong buffer)))
             (cond ((= tag IOP:TAG_ORB_TYPE)
                    (cons tag (with-encapsulation buffer (unmarshal-ulong buffer))))
-                  (t 
+                  (t
                    (cons tag (unmarshal-osequence buffer))))))))
 
 
@@ -241,7 +240,7 @@
   (marshal-ulong (length components) buffer)
   (loop for (tag . component) in components do
         (marshal-ulong tag buffer)
-        (cond ((= tag IOP:TAG_ORB_TYPE) 
+        (cond ((= tag IOP:TAG_ORB_TYPE)
                (marshal-add-encapsulation
                 (lambda (buffer) (marshal-ulong component buffer))
                 buffer))
@@ -266,7 +265,7 @@
 (defmethod encode-profile ((profile iiop-profile) orb)
   (IOP:TaggedProfile
    :tag iop:tag_internet_iop
-   :profile_data 
+   :profile_data
    (marshal-make-encapsulation
     (lambda (buffer)
       (let ((version (iiop-profile-version profile)))
@@ -276,7 +275,7 @@
         (marshal-ushort (iiop-profile-port profile) buffer)
         (marshal-osequence (iiop-profile-key profile) buffer)
         (if (> (iiop-version-minor version) 0)
-          (marshal-iiop-components 
+          (marshal-iiop-components
            (iiop-profile-components profile)
            buffer))))
     orb)))
@@ -298,14 +297,14 @@
 (defun connection-start-request (conn req-id service-context response-expected
                                           effective-profile operation)
   (let ((buffer (get-work-buffer (the-orb conn))))
-    (marshal-giop-header :request buffer 
+    (marshal-giop-header :request buffer
                          (if (> (iiop-version-minor (iiop-profile-version effective-profile))
                                 0)
                            giop-1-1 giop-1-0))
     (marshal-service-context service-context buffer)
     (marshal-ulong req-id buffer)
     (marshal-octet (if response-expected 1 0) buffer)
-    (marshal-osequence 
+    (marshal-osequence
      (iiop-profile-key effective-profile)
      buffer)
     (marshal-string operation buffer)
@@ -330,7 +329,7 @@
     (marshal-giop-header reply-type buffer giop-version)
     (ecase reply-type
       (:reply
-       (marshal-service-context service-context buffer) 
+       (marshal-service-context service-context buffer)
        (marshal-ulong request-id buffer)
        (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer))
       (:locatereply
@@ -403,7 +402,7 @@
     (put-octet (cond ((numberp type) type)
                      ((eq type 'request) 0)
                      ((eq type 'reply) 1)
-                     (t 
+                     (t
                       (let ((n (position type message-types)))
                         (or n (error "Message type ~S" type))))))
     ;; Place for message length to be patched in later
@@ -443,7 +442,7 @@
                 (connection-destroy conn)
                 nil)
                ((:fragment)
-                (prog1 
+                (prog1
                     (if fragmented #'get-fragment #'get-fragment-last)
                   (setf fragmented nil))))))
         (when fragmented
@@ -541,7 +540,7 @@ Where host is a string and port an integer.")
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
              (setf (object-forward obj) (unmarshal-object (request-buffer req))))
-            (t 
+            (t
              (return (request-status req)))))))
 
 

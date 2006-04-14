@@ -1,5 +1,4 @@
 ;;;; clorb-request.lisp -- Client Request
-;; $Id: clorb-request.lisp,v 1.20 2006/04/13 07:44:10 lenst Exp $
 
 (in-package :clorb)
 

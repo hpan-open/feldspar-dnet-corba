@@ -1,5 +1,4 @@
 ;;; idef-macros --- interface definition macros
-;; $Id: idef-macros.lisp,v 1.9 2003/09/25 16:49:34 lenst Exp $
 
 (in-package :clorb)
 

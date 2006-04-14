@@ -1,5 +1,4 @@
 ;;;; clorb-srv.lisp --- CORBA server module
-;; $Id: clorb-srv.lisp,v 1.34 2005/05/03 10:53:45 lenst Exp $	
 
 (in-package :clorb)
 

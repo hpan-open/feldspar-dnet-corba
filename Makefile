@@ -9,7 +9,7 @@ clean:
 	$(MAKE) -C redpas clean
 
 clean-fasl:
-	rm -r fasl
+	rm -r fasl; mkdir fasl
 
 
 setmcl:

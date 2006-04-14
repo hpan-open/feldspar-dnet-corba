@@ -1,5 +1,4 @@
 ;;;; clorb-poa.lisp -- Portable Object Adaptor
-;; $Id: clorb-poa.lisp,v 1.41 2005/11/20 10:23:11 lenst Exp $
 
 (in-package :clorb)
 
