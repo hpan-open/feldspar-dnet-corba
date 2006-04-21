@@ -1,5 +1,10 @@
 2006-04-20  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-struct.lisp (compute-marshal-function): use
+	tc-feature-symbols and tc-member-types. Local macro for
+	marshalling n member struct. Special lambdas for 1-6 member
+	structs.
+
 	* ec-test.lisp: import clorb:obj
 
 	* clorb-pkgdcl.lisp ("NET.CDDR.CLORB"): exporting OBJ

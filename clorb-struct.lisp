@@ -153,37 +153,42 @@ of fields can be defaulted (numbers and strings)."
 
 
 (defmethod compute-marshal-function ((tc struct-typecode))
-  (let ((features nil)
-        (marshallers nil)
-        (names (tc-keywords tc)))
-    (loop for i from 0 below (op:member_count tc)
-       do (push (feature (op:member_name tc i)) features)
-       (push (marshal-function (op:member_type tc i)) marshallers))
-    (setf features (mapcar #'fdefinition (nreverse features))
-          marshallers (nreverse marshallers))
-    (case (let ((class-name (typecode-symbol tc)))
-            (if (and class-name (find-class class-name))
-                (length features)
-                :generic))
-      (2 (let ((f1 (first features))
-               (f2 (second features))
-               (m1 (first marshallers))
-               (m2 (second marshallers)))
-           (lambda (struct buffer)
-             (funcall m1 (funcall f1 struct) buffer)
-             (funcall m2 (funcall f2 struct) buffer))))
-      (:generic
-       (lambda (struct buffer)
-         (typecase struct
-           (generic-struct
-            (loop for marshal in marshallers for name across names
-               do (funcall marshal (struct-get struct name) buffer)))
-           (t 
-            (loop for accessor in features and marshal in marshallers
-               do (funcall marshal (funcall accessor struct) buffer))))))
-      (t (lambda (struct buffer)
-           (loop for accessor in features and marshal in marshallers
-              do (funcall marshal (funcall accessor struct) buffer)))))))
+  (let ((features (tc-feature-symbols tc))
+        (marshallers (mapcar #'marshal-function (tc-member-types tc))))
+    ;;(setf features (mapcar #'fdefinition features))
+    (macrolet ((marshaller (n)
+                 (let (code)
+                   `(let (,@(loop for i from 0  repeat n 
+                               for m in '(m1 m2 m3 m4 m5 m6)
+                               for f in '(f1 f2 f3 f4 f5 f6)
+                               collect `(,f (elt features ,i))
+                               collect `(,m (elt marshallers ,i))
+                               collect `(funcall ,m (funcall ,f struct) buffer)
+                               into call-list
+                               finally (setq code call-list)))
+                      (lambda (struct buffer) ,@code)))))
+      (case (let ((class-name (typecode-symbol tc)))
+              (if (and class-name (find-class class-name))
+                  (length features)
+                  :generic))
+        (1 (marshaller 1))
+        (2 (marshaller 2))
+        (3 (marshaller 3))
+        (4 (marshaller 4))
+        (5 (marshaller 5))
+        (6 (marshaller 6))
+        (:generic
+         (lambda (struct buffer)
+           (typecase struct
+             (generic-struct
+              (loop for marshal in marshallers for name across (tc-keywords tc)
+                 do (funcall marshal (struct-get struct name) buffer)))
+             (t 
+              (loop for accessor in features and marshal in marshallers
+                 do (funcall marshal (funcall accessor struct) buffer))))))
+        (t (lambda (struct buffer)
+             (loop for accessor in features and marshal in marshallers
+                do (funcall marshal (funcall accessor struct) buffer))))))))
   
 
 
