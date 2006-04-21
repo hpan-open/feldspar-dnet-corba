@@ -847,7 +847,8 @@ Returns select result to be used in getting status for streams."
    #+cmu
    (ext:run-program "/bin/sh" (list "-c" command) :output stream)
    #+sbcl
-   (sb-ext:run-program "/bin/sh" (list "-c" command) :output stream)
+   (sb-ext:run-program "/bin/sh" (list "-c" command) :output stream
+                       :error *terminal-io*)
    ;; Default
    (error "No implementation for SHELL-TO-STREAM: ~S ~A" command stream)))
 
