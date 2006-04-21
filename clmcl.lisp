@@ -110,11 +110,6 @@
                      :device (pathname-device home))))
 
 
-(defun obj (str &optional type)
-  (let ((proxy (op:string_to_object *the-orb* str)))
-    (if type
-      (net.cddr.clorb::nobject-narrow proxy type)
-      proxy)))
 
 ;; Federate
 ;;(op:bind_context (net.cddr.clorb::get-ns) (op:to_name "main") (obj "corbaloc::/NameService" 'cosnaming:namingcontextext))

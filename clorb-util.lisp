@@ -319,3 +319,19 @@ The list free operation is used to free the returned information.
 
 (defun rebind (objref &rest names)
   (op:rebind (get-ns) (ns-name* names) objref))
+
+
+
+
+;;;; Easy Object Creation
+
+
+(defun obj (str &optional type)
+  (let ((proxy (op:string_to_object *the-orb* str)))
+    (if type
+      (net.cddr.clorb::nobject-narrow proxy type)
+      proxy)))
+
+
+
+;;; clorb-util.lisp ends here

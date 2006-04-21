@@ -312,6 +312,7 @@
   (:export "STRUCT-GET"
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
+           "OBJ"
            ;; Useful internals
            "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
            "*HOST*" )

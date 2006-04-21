@@ -1,3 +1,11 @@
+2006-04-20  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* ec-test.lisp: import clorb:obj
+
+	* clorb-pkgdcl.lisp ("NET.CDDR.CLORB"): exporting OBJ
+
+	* clorb-util.lisp (obj): New convenice function.
+
 2006-04-13  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* Makefile (clean-fasl): recreate the fasl dir
