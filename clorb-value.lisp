@@ -84,6 +84,16 @@
       (list (op:id tc)))))
 
 
+
+;;; Any support
+
+(defmethod corba:any-typecode ((obj CORBA:ValueBase))
+  (symbol-typecode (class-name (class-of obj))))
+
+(defmethod corba:any-value ((obj CORBA:ValueBase))
+  obj)
+
+
 
 ;;;; Encoding Support
 

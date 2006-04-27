@@ -1,3 +1,10 @@
+2006-04-26  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-value.lisp (corba:any-typecode, corba:any-value): methods
+	  for CORBA:ValueBase.
+
+	* test-value.lisp ("Value/any"): new test case for value as any
+
 2006-04-20  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-struct.lisp (compute-marshal-function): use

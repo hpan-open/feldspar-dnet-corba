@@ -124,10 +124,12 @@
           (r3 (unmarshal tc1 buffer)))
       (ensure-eql r1 r3)
       (ensure-equalp (op:name r2) "2")))
+
   (define-test "sharing"
     (marshal v2b tc2 buffer)
     (let ((obj (unmarshal tc2 buffer)))
       (ensure-eql (op:left obj) (op:right obj))))
+
   (define-test "cyclic"
     (setf (op:left v2b) v2b)
     (marshal v2b tc2 buffer)
@@ -224,6 +226,20 @@
         (ensure-pattern* obj 
                          'identity (isa 'test-value-1)
                          'op:name "hx"))))
+
+  (define-test "any"
+    (let ((v3 (make-instance 'test-value-3 :name "foo" 
+                             :next (make-instance 'test-value-3 :name "bar" 
+                                                  :next nil))))
+      (marshal v3 CORBA:tc_any buffer)
+      (ensure-pattern* 
+       (unmarshal corba:tc_any buffer)
+       'identity (isa 'CORBA:Any)
+       'corba:any-value
+       (pattern 'op:name "foo"
+                'op:next (pattern 'identity (isa 'test-value-3)
+                                  'op:name "bar"
+                                  'op:next nil)))))
 
   (define-test "Abstract Interface"
     (let ((ab-tc (symbol-typecode 'test-abint-1))
