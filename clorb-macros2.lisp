@@ -29,7 +29,7 @@
           (set-symbol-id/typecode ',symbol ,id
                                   (create-alias-tc ,id ,name ,typecode))
           (add-defining-repository ',symbol)
-          (defconstant ,tc-constant (symbol-typecode ',symbol))))
+          (defparameter ,tc-constant (symbol-typecode ',symbol))))
 
 
 ;;;; Enum
@@ -50,7 +50,7 @@
                                     (create-enum-tc ,id ,name
                                                    ',(coerce members 'vector)))
             (add-defining-repository ',symbol)
-            (defconstant ,tc-constant (symbol-typecode ',symbol)))))
+            (defparameter ,tc-constant (symbol-typecode ',symbol)))))
 
 
 ;;;; Struct Macrology
@@ -90,7 +90,7 @@
                           (vector ,@(loop for (name type) in members
                                        collect `(list ,name ,type)))))
        (add-defining-repository ',symbol)
-       (defconstant ,tc-constant (symbol-typecode ',symbol)))))
+       (defparameter ,tc-constant (symbol-typecode ',symbol)))))
 
 
 
@@ -138,7 +138,7 @@
                                                 ,discriminator-type
                                                 (list ,@(nreverse tc-members))))
        (add-defining-repository ',symbol)
-       (defconstant ,tc-constant (symbol-typecode ',symbol))
+       (defparameter ,tc-constant (symbol-typecode ',symbol))
        ,@code)))
 
 
@@ -183,7 +183,7 @@
                         :typecode (create-exception-tc ,id ,name (vector ,@tc-members))
                         :version ,version
                         :defined_in ',defined_in)
-          (defconstant ,tc-constant (symbol-typecode ',symbol))))))
+          (defparameter ,tc-constant (symbol-typecode ',symbol))))))
 
 
 
@@ -227,7 +227,7 @@
   `(progn
      (set-ifr-info ',symbol :id ,id :typecode (create-interface-tc ,id ,name)
                    :bases ',super :defined_in ',defined_in :version ,version)
-     (defconstant ,tc-constant (symbol-typecode ',symbol))
+     (defparameter ,tc-constant (symbol-typecode ',symbol))
      (defclass ,symbol ,super ())
      ,@(if proxy
          `((defclass ,(CAR PROXY) ,(cdr proxy) ())

@@ -71,7 +71,7 @@
                          (list ,@(loop for (name tc access) in members
                                     collect `(list ,name ,tc ,access)))))
        (add-defining-repository ',symbol)
-       (defconstant ,tc-constant (symbol-typecode ',symbol)))))
+       (defparameter ,tc-constant (symbol-typecode ',symbol)))))
 
 
 
@@ -517,7 +517,7 @@ a repository ID.")
      (set-symbol-id/typecode
       ',symbol ,id (create-value-box-tc ,id ,name ,original_type))
      (add-defining-repository ',symbol)
-     (defconstant ,tc-constant (symbol-typecode ',symbol))
+     (defparameter ,tc-constant (symbol-typecode ',symbol))
      ,@(if nil ;type
            `((deftype ,symbol ()
                ',type))
@@ -557,7 +557,7 @@ a repository ID.")
                              (create-abstract-interface-tc ,id ,name))
      (setf (get ',symbol 'ifr-bases) ',super)
      (add-defining-repository ',symbol)
-     (defconstant ,tc-constant (symbol-typecode ',symbol))
+     (defparameter ,tc-constant (symbol-typecode ',symbol))
      (defclass ,mixin () ())
      (defclass ,symbol (,mixin ,@super) ())
      ,@(if proxy
