@@ -324,7 +324,7 @@
                         (CORBA:Policy (op:value p))
                         (t (error 'portableserver:poa/invalidpolicy :index i)))))
   (let ((policy-groups
-         '((:retain :non-retain)
+         '((:retain :non_retain)
            (:transient :persistent)
            (:system_id :user_id)
            (:unique_id :multiple_id)

@@ -472,7 +472,7 @@ a repository ID.")
   :shared-params 2)
 
 
-(defclass value-box ()
+(defclass value-box (CORBA:ValueBase)
   ((op::data :initarg :data
              :accessor box-data)))
 
