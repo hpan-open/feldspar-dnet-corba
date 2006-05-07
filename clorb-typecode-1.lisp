@@ -291,8 +291,7 @@
                      collect `(slot-makunbound tc ',name)))))
      ,@(if constant
          `((defparameter ,(if (consp constant) (car constant) constant)
-             (make-typecode ,kind ,@(mapcar #'kwote (if (consp constant)
-                                                      (cdr constant)))))))))
+             (make-typecode ,kind ,@(if (consp constant) (cdr constant))))))))
 
 
 (defgeneric unset-extra-slots (tc)
