@@ -71,6 +71,9 @@
 (defun concatenate-name (name1 name2)
   (concatenate 'string name1 "/" name2))
 
+(defmethod package-prefix ((obj CORBA:IRObject))
+  "")
+
 
 (defgeneric scoped-target-symbol (target obj)
   (:method (target (obj t))
@@ -316,7 +319,7 @@
 
 
 (defmethod target-code-contained ((c CORBA:InterfaceDef) (attr CORBA:AttributeDef) (target ifr-info-target))
-  (let ((desc (op:value (op:describe attr))))
+  (let ((desc (corba:any-value (op:value (op:describe attr)))))
     (make-progn*
      (call-next-method)
      `(define-attribute ,(scoped-target-symbol target attr)
@@ -512,15 +515,18 @@
         :is_abstract ,(op:is_abstract def)
         :is_custom ,(op:is_custom def)
         :is_truncatable ,(op:is_truncatable def)
-        :supported_interfaces ,(mapcar #'scoped-symbol (op:supported_interfaces def))
-        :abstract_base_values ,(mapcar #'scoped-symbol (op:abstract_base_values def))
+        :supported_interfaces
+        ,(map 'list #'scoped-symbol (op:supported_interfaces def))
+        :abstract_base_values
+        ,(map 'list #'scoped-symbol (op:abstract_base_values def))
         ,@(if (not (op:is_abstract def))
             `(:members
-              ,(loop for statedef in (contents def)
-                     when (eq :dk_valuemember (op:def_kind statedef))
-                     collect `(,(op:name statedef)
-                               ,(target-typecode (op:type_def statedef) target)
-                               ,(op:access statedef))))))
+              ,(map 'list
+                    (lambda (statedef)
+                      `(,(op:name statedef)
+                         ,(target-typecode (op:type_def statedef) target)
+                         ,(op:access statedef)))
+                    (op:contents def :dk_valuemember t)))))
      (call-next-method))))
 
 

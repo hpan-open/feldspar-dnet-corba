@@ -1,3 +1,13 @@
+2006-05-06  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-idl.lisp (corba:idl): allow nil file and generate code
+	from given repository.
+
+	* clorb-target.lisp (package-prefix): method for base IRObject
+	(target-code-contained): deref any
+	(target-code): use map to allow non-list sequences in
+	op:supported_interfaces op:abstract_base_values etc.
+
 2006-04-26  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-value.lisp (corba:any-typecode, corba:any-value): methods
