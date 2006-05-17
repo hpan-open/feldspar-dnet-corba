@@ -178,7 +178,7 @@
 
         ;; Repair connection
         (setup-test-out)
-        (setf (object-connection obj) *test-out-conn*)
+        (setf (%object-connection obj) *test-out-conn*)
 
         (ensure (not (op:poll_response req)))  ; retry send
 

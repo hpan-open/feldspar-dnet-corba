@@ -193,7 +193,7 @@ Requests sent to this object will end up in *test-sink-stream*."
                                 :port 9999
                                 :key #(17))))))
     (setf (selected-profile obj) (first (object-profiles obj)))
-    (setf (object-connection obj) *test-out-conn*)
+    (setf (%object-connection obj) *test-out-conn*)
     obj))
 
 (defun test-read-request (&key

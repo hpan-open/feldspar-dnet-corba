@@ -7,7 +7,70 @@
 ;;(defvar *default-trace-connection* nil)
 
 
+;;; Managing connections
+;; defun create-connection (orb host port)
+;; defun make-associated-connection (orb desc)
+;; defun connection-working-p (conn)
+;; defun connection-destroy (conn)
+;; defun connection-shutdown (conn)
 
+
+;;; Sending
+;; defun connection-send-buffer (conn buffer)
+
+;;; Client interface
+;; defmethod next-request-id ((conn Connection))
+;;- defun connection-add-client-request (conn request)
+;;- defun connection-remove-client-request (conn request)
+;; defun connection-send-request (conn buffer req)
+
+
+;;; IIOP interface
+;; defun connection-init-read (conn continue-p n callback)
+;; defun connection-receive-reply (conn request-id buffer status ..)
+;; defun connection-receive-locate-reply (conn request-id buffer status)
+;; -defun find-waiting-client-request (conn request-id)
+;; defun connection-add-fragment (conn buffer header-size)
+;; defun connection-error (conn)
+;; defun connection-close (conn)
+;; defun connection-read-ready (conn)
+;; defmethod connection-write-ready ((conn connection))
+;; defun connection-init-defragmentation (conn handler)
+
+;;; Server interface
+;; defun connection-add-server-request (conn request)
+;; defun connection-remove-server-request (conn request)
+
+;;; Gc-connections (also Managing connections ?)
+;; defun gc-connections (&optional except n)
+;; defun auto-gc-read-handler (q desc)
+
+
+;;; From IIOP
+
+;;new
+;; (defun connection-get-buffer (conn)
+
+
+;;; Sending messages
+;; defun connection-reply (conn giop-version reply-type request-id status
+;; defun connection-message-error (conn &optional (version giop-1-0))
+
+;;; IIOP
+;; defun get-fragment (conn)
+;; defun get-fragment-last (conn)
+;; defun get-response-0 (conn)
+;; defun get-response-reply (conn)
+;; defun get-response-locate-reply (conn &aux (buffer (read-buffer-of conn)))
+;; defun setup-outgoing-connection (conn)
+
+;;; Message Format
+;; defun server-close-connection-msg (conn)
+;; defun marshal-locate-request (buffer req-id profile)
+;; defun marshal-request-message (buffer ..)
+
+
+
 ;;;; Connection Class
 
 
@@ -126,6 +189,14 @@
     (setf (connection-client-requests conn)
           (delete request (connection-client-requests conn)))))
 
+
+
+(defun connection-send-request (conn buffer req)
+  (when req
+    (connection-add-client-request conn req))
+  (connection-send-buffer conn buffer))
+
+
 (defun find-waiting-client-request (conn request-id)
   (with-synchronization conn
     (let ((req-list (connection-client-requests conn)))
@@ -134,6 +205,17 @@
             (setf (connection-client-requests conn) (delete req req-list))
             (mess 4 "Unexpected response with request id ~d" request-id))
         req))))
+
+
+(defun connection-receive-reply (conn request-id buffer status service-context)
+  (let ((req (find-waiting-client-request conn request-id)))
+    (when req
+      (request-reply req status buffer service-context))))
+
+(defun connection-receive-locate-reply (conn request-id buffer status)
+  (let ((req (find-waiting-client-request conn request-id)))
+    (when req
+      (request-locate-reply req status buffer))))
 
 
 (defun connection-add-server-request (conn request)
@@ -202,11 +284,9 @@
 (defun connection-error (conn)
   ;; Called when there is IO error
   (with-synchronization conn
-    (let ((requests (connection-client-requests conn)))
-      (dolist (req requests)
-        (setf (request-exception req) 
-              (system-exception 'CORBA:COMM_FAILURE))
-        (setf (request-status req) :error )))
+    (dolist (req (connection-client-requests conn))
+      (request-reply-exception req :error
+                               (system-exception 'CORBA:COMM_FAILURE)))
     (setf (connection-client-requests conn) nil)
     (connection-destroy conn)))
 

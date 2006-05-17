@@ -155,10 +155,11 @@
 ;;;; CORBA:Proxy
 
 
-(defclass CORBA:PROXY (corba:object)
+(defclass CORBA:PROXY (corba:object synchronized)
   ((id :initform nil :initarg :id :accessor proxy-id)
    (the-orb  :initarg :the-orb  :accessor the-orb)
-   (connection :initform nil :accessor object-connection)
+   ;; Mutable slots
+   (connection :initform nil :accessor %object-connection)
    (raw-profiles  :initarg :raw-profiles  )
    (profiles      :initarg :profiles      )
    (selected-profile :initform nil :accessor selected-profile)
@@ -182,7 +183,7 @@
       (if profile
         (profile-short-desc profile stream)
         (write-string "--" stream))
-      (when-let (conn (object-connection o))
+      (when-let (conn (%object-connection o))
         (if (connection-working-p conn)
             (write-string " bound" stream)
             (write-string " broken-conn" stream))))))
@@ -191,26 +192,36 @@
 (defmethod (setf object-forward) :before (val (proxy CORBA:Proxy))
   (declare (ignore val))
   ;; Forget old connection when forwarding
-  (setf (object-connection proxy) nil))
+  (setf (%object-connection proxy) nil))
 
 
 (defgeneric encode-profile (profile orb))
 
 (defmethod raw-profiles ((obj CORBA:Proxy))
-  (with-cache-slot (obj raw-profiles)
-    (let ((orb (the-orb obj)))
-      (map 'list
-           (lambda (profile) (encode-profile profile orb))
-           (slot-value obj 'profiles)))))
+  (with-synchronization obj
+    (with-cache-slot (obj raw-profiles)
+      (let ((orb (the-orb obj)))
+        (map 'list
+             (lambda (profile) (encode-profile profile orb))
+             (slot-value obj 'profiles))))))
 
 
-(defmethod object-profiles ((obj CORBA:Proxy))
+(defmethod %object-profiles ((obj CORBA:Proxy))
   (with-cache-slot (obj profiles)
     (map 'list
          (lambda (tagged-profile)
            (decode-ior-profile (op:tag tagged-profile)
                                (op:profile_data tagged-profile)))
          (slot-value obj 'raw-profiles))))
+
+(defmethod object-profiles ((obj CORBA:Proxy))
+  (with-synchronization obj
+    (%object-profiles obj)))
+
+
+(defmethod effective-profile ((obj CORBA:Proxy))
+  (with-synchronization obj
+    (selected-profile (or (object-forward obj) obj))))
 
 
 (defmethod marshal-object ((objref CORBA:Proxy) buffer)
@@ -227,37 +238,42 @@
         thereis (profile-component profile tag)))
 
 
+(defun %existing-connection (proxy)
+  (when-let (conn (%object-connection proxy))
+    (if (connection-working-p conn)
+        conn
+        (setf (%object-connection proxy) nil))))
+
+(defun %forward-connection (proxy)
+  (when-let (forward (object-forward proxy))
+    (cond ((setf (%object-connection proxy) (get-object-connection forward))
+           (setf (object-forward-reset proxy) nil)
+           (%object-connection proxy))
+          ((object-forward-reset proxy)
+           (setf (object-forward proxy) nil)
+           (warn "Object forwarding fail")
+           (raise-system-exception 'CORBA:TRANSIENT))
+          (t
+           (setf (object-forward-reset proxy) t)
+           (setf (object-forward proxy) nil)))))
+
+(defun %select-profile-and-connect (proxy)
+  ;; select a profile and create a connection for that profile
+  (dolist (profile (%object-profiles proxy))
+    (let ((conn (profile-connection profile (the-orb proxy))))
+      (when (and conn (connection-working-p conn))
+        (setf (%object-connection proxy) conn)
+        (setf (selected-profile proxy) profile)
+        (return conn)))))
+
 
 (defun get-object-connection (proxy)
-  ;; get the connection to use for a proxy object.
-  (let ((conn (object-connection proxy)))
-    (unless (and conn (connection-working-p conn))
-      (setf (object-connection proxy) nil)
-      (setq conn (connect-object proxy)))
-    conn))
-
-
-(defun connect-object (proxy)
-  ;; select a profile and create a connection for that profile
-  (or
-   (let ((forward (object-forward proxy)))
-     (if forward
-       (cond ((setf (object-connection proxy) (connect-object forward))
-              (setf (object-forward-reset proxy) nil)
-              (object-connection proxy))
-             ((object-forward-reset proxy)
-              (setf (object-forward proxy) nil)
-              (warn "Object forwarding fail")
-              (return-from connect-object nil))
-             (t
-              (setf (object-forward-reset proxy) t)
-              (setf (object-forward proxy) nil)))))
-   (dolist (profile (object-profiles proxy))
-     (let ((conn (profile-connection profile (the-orb proxy))))
-       (when (and conn (connection-working-p conn))
-         (setf (object-connection proxy) conn)
-         (setf (selected-profile proxy) profile)
-         (return conn))))))
+  "Get the connection to use for a proxy object.
+Should be called with proxy unlocked."
+  (with-synchronization proxy
+    (or (%existing-connection proxy)
+        (%forward-connection proxy)
+        (%select-profile-and-connect proxy))))
 
 
 (defgeneric profile-equal (profile1 profile2)

@@ -109,7 +109,52 @@
 
 
 
+;;;; GIOP Versions
+
+
+(defun make-giop-version (major minor)
+  (or (if (eql major 1)
+        (case minor
+          (0 :giop_1_0) (1 :giop_1_1) (2 :giop_1_2)))
+      :giop_unknown_version))
+
+(defun giop-version-major (version)
+  (if (eql version :giop_unknown_version)
+      (error "Unknown version")
+      1))
+(defun giop-version-minor (version)
+  (case version (:giop_1_0 0) (:giop_1_1 1) (:giop_1_2 2) (otherwise 9999)))
+
+(defconstant giop-1-0 :giop_1_0)
+(defconstant giop-1-1 :giop_1_1)
+
+
+
 ;;;; GIOP (un)marshal extras
+
+
+(define-symbol-macro message-types
+  '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
+              :CLOSECONNECTION :MESSAGEERROR :FRAGMENT))
+
+
+(defun marshal-giop-header (type buffer &optional (version giop-1-0) fragmented)
+  (with-out-buffer (buffer)
+    #.(cons 'progn (loop for c across "GIOP"
+                      collect `(put-octet ,(char-code c))))
+    (put-octet (giop-version-major version))
+    (put-octet (giop-version-minor version))
+    (put-octet (logior 1 		;byte-order
+                       (if fragmented 2 0)))
+    (put-octet (cond ((numberp type) type)
+                     ((eq type 'request) 0)
+                     ((eq type 'reply) 1)
+                     (t
+                      (let ((n (position type message-types)))
+                        (or n (error "Message type ~S" type))))))
+    ;; Place for message length to be patched in later
+    (incf pos 4)))
+
 
 (defun marshal-giop-set-message-length (buffer)
   (with-out-buffer (buffer)
@@ -130,6 +175,7 @@
   (unmarshal-sequence-m (buffer)
     (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
 	                :context_data (unmarshal-osequence buffer))))
+
 
 
 ;;;; IIOP Module
@@ -171,21 +217,6 @@
 (defun iiop-version-minor (version) (cdr version))
 
 
-(defun make-giop-version (major minor)
-  (or (if (eql major 1)
-        (case minor
-          (0 :giop_1_0) (1 :giop_1_1) (2 :giop_1_2)))
-      :giop_unknown_version))
-
-(defun giop-version-major (version)
-  (if (eql version :giop_unknown_version)
-      (error "Unknown version")
-      1))
-(defun giop-version-minor (version)
-  (case version (:giop_1_0 0) (:giop_1_1 1) (:giop_1_2 2) (otherwise 9999)))
-
-(defconstant giop-1-0 :giop_1_0)
-(defconstant giop-1-1 :giop_1_1)
 
 
 ;;;; IIOP - Profiles
@@ -281,19 +312,49 @@
     orb)))
 
 
+;;; IIOP->GIOP support
+
+(defmethod profile-giop-version ((profile iiop-profile))
+  (if (> (iiop-version-minor (iiop-profile-version profile)) 0)
+      giop-1-1 giop-1-0))
+
+(defmethod profile-giop-key ((profile iiop-profile))
+  (iiop-profile-key profile))
+
+
+
+;;;; GIOP/IIOP message marshalling
+
+
+(defun marshal-locate-request (buffer req-id profile)
+  (marshal-giop-header :locaterequest buffer)
+  (marshal-ulong req-id buffer)
+  (marshal-osequence (iiop-profile-key profile) buffer)
+  (marshal-giop-set-message-length buffer))
+
+
+(defun marshal-request-message (buffer req-id service-context
+                                response-expected effective-profile
+                                operation output-func output-arg)
+  (marshal-giop-header :request buffer
+                       (profile-giop-version effective-profile))
+  (marshal-service-context service-context buffer)
+  (marshal-ulong req-id buffer)
+  (marshal-octet (if response-expected 1 0) buffer)
+  (marshal-osequence (profile-giop-key effective-profile) buffer)
+  (marshal-string operation buffer)
+  (marshal-osequence *principal* buffer)
+  (funcall output-func output-arg buffer) 
+  (marshal-giop-set-message-length buffer))
+
 
 
 ;;;; IIOP - Connection request preparation
 
+(defun connection-get-buffer (conn)
+  (get-work-buffer (the-orb conn)))
 
-(defun connection-start-locate-request (conn req-id profile)
-  (let ((buffer (get-work-buffer (the-orb conn))))
-    (marshal-giop-header :locaterequest buffer)
-    (marshal-ulong req-id buffer)
-    (marshal-osequence (iiop-profile-key profile) buffer)
-    buffer))
-
-
+#+unused-functions
 (defun connection-start-request (conn req-id service-context response-expected
                                           effective-profile operation)
   (let ((buffer (get-work-buffer (the-orb conn))))
@@ -312,13 +373,7 @@
     buffer))
 
 
-(defun connection-send-request (conn buffer req)
-  (marshal-giop-set-message-length buffer)
-  (when req
-    (connection-add-client-request conn req))
-  (connection-send-buffer conn buffer))
-
-
+
 ;;;; Connection Reply Handling
 
 (defun connection-reply (conn giop-version reply-type request-id status
@@ -364,10 +419,6 @@
 
 ;;;; IIOP - Response handling
 
-(define-symbol-macro message-types
-  '#(:REQUEST :REPLY :CANCELREQUEST :LOCATEREQUEST :LOCATEREPLY
-              :CLOSECONNECTION :MESSAGEERROR :FRAGMENT))
-
 
 (defun unmarshal-giop-header (buffer)
   (with-in-buffer (buffer)
@@ -384,25 +435,10 @@
                 (if (> minor 0)
                   (logbitp 1 flags))
                 (make-giop-version major minor)))
-      (progn (warn "Not a GIOP message: ~/net.cddr.clorb::stroid/" octets)
+      (progn (warn "Not a GIOP message: ~/net.cddr.clorb::stroid/..." 
+                   (subseq octets 0 (min 10 (length octets))))
              (values :unknown)))))
 
-
-(defun marshal-giop-header (type buffer &optional (version giop-1-0) fragmented)
-  (with-out-buffer (buffer)
-    #.(cons 'progn (loop for c across "GIOP" collect `(put-octet ,(char-code c))))
-    (put-octet (giop-version-major version))
-    (put-octet (giop-version-minor version))
-    (put-octet (logior 1 		;byte-order
-                       (if fragmented 2 0)))
-    (put-octet (cond ((numberp type) type)
-                     ((eq type 'request) 0)
-                     ((eq type 'reply) 1)
-                     (t
-                      (let ((n (position type message-types)))
-                        (or n (error "Message type ~S" type))))))
-    ;; Place for message length to be patched in later
-    (incf pos 4)))
 
 
 (defun get-fragment (conn)
@@ -453,33 +489,25 @@
 (defun get-response-reply (conn)
   (let* ((buffer (read-buffer-of conn))
          (service-context (unmarshal-service-context buffer))
-         (request-id (let ((id (unmarshal-ulong buffer)))
-                       ;;(break "id=~d" id)
-                       id ))
-         (req (find-waiting-client-request conn request-id))
-         (status (%jit-unmarshal (symbol-typecode 'GIOP:ReplyStatusType) buffer)))
+         (request-id (unmarshal-ulong buffer))
+         (status (%jit-unmarshal 'GIOP:ReplyStatusType buffer)))
     (setup-outgoing-connection conn)
-    (when req
-      (request-reply req status buffer service-context))))
+    (connection-receive-reply
+     conn request-id buffer status service-context)))
 
 
-(defun get-response-locate-reply (conn &aux (buffer (read-buffer-of conn)))
-  (setup-outgoing-connection conn)
-  (let* ((request-id (unmarshal-ulong buffer))
-         (status (%jit-unmarshal (symbol-typecode 'giop:locatestatustype) buffer))
-         (req (find-waiting-client-request conn request-id)))
-    (when req
-      (request-locate-reply req status buffer))))
+(defun get-response-locate-reply (conn)
+  (let* ((buffer (read-buffer-of conn))
+         (request-id (unmarshal-ulong buffer))
+         (status (%jit-unmarshal 'GIOP:LocateStatusType buffer)))
+    (setup-outgoing-connection conn)
+    (connection-receive-locate-reply
+     conn request-id buffer status)))
 
 
 
 ;;;; IIOP - Manage outgoing connections
 
-(defvar *iiop-connections* nil
-  "All active client sockets.
-Organized as two levels of a-lists:
-  ( (host . ((port . socket) ...)) ...)
-Where host is a string and port an integer.")
 
 
 (defun setup-outgoing-connection (conn)
@@ -487,30 +515,88 @@ Where host is a string and port an integer.")
     (connection-init-read conn nil +iiop-header-size+ #'get-response-0)))
 
 
-(defun get-iiop-connection-holder (host port)
+
+;;; Connection pool
+
+
+(defclass connection-pool (synchronized)
+  ((host-table
+    :initform nil
+    :accessor %host-table
+    :documentation   "All active client sockets.
+Organized as two levels of a-lists:
+  ( (host . ((port . socket) ...)) ...)
+Where host is a string and port an integer.")))
+
+
+(defun %get-iiop-connection-holder (connection-pool host port)
   ;; a cons cell where cdr is for connection
   (let* ((host-list				; A host-ports pair
-	  (assoc host *iiop-connections* :test #'equal))
+	  (assoc host (%host-table connection-pool) :test #'equal))
 	 (holder				; A port-socket pair
 	  (assoc port (cdr host-list))))
     (unless holder
       (unless host-list
         (setq host-list (cons host nil))
-	(push host-list *iiop-connections*))
+	(push host-list (%host-table connection-pool)))
       (setq holder (cons port nil))
       (push holder (cdr host-list)))
     holder))
 
 
+(defun get-connection-from-pool (pool host port
+                                 validate-connection
+                                 new-connection)
+  (let ((holder nil)
+        (conn nil)
+        (status nil))
+    (labels
+        ((wait-for-holder ()
+           (loop while (eql (cdr holder) :connecting)
+              do (synch-locked-wait pool))
+           (setq conn (cdr holder)))
+         (set-connecting ()
+           (setf (cdr holder) (setq status :connecting)))
+         (get-holder ()
+           (with-synchronization pool
+             (setq holder (%get-iiop-connection-holder pool host port))
+             (wait-for-holder)
+             (setq conn (cdr holder))
+             (unless conn
+               (set-connecting))))
+         (release-holder ()
+           (with-synchronization pool
+             (setf (cdr holder) conn)
+             (synch-notify pool)))
+         (validate ()
+           (loop while (and conn (not (funcall validate-connection conn)))
+              do (with-synchronization pool
+                   (let ((old-conn conn))
+                     (wait-for-holder)
+                     (when (or (null conn) (eql conn old-conn))
+                       (setq conn nil)
+                       (set-connecting)))))))
+    (unwind-protect
+         (progn (get-holder) (validate)
+                (or conn
+                    (setq conn (funcall new-connection host port))))
+      (when (eql status :connecting)
+        (release-holder))))))
+  
+
+
+(defvar *iiop-connections* (make-instance 'connection-pool))
+
+
 (defun get-iiop-connection (orb host port)
-  (let* ((holder (get-iiop-connection-holder host port))
-         (conn   (cdr holder)))
-    (unless (and conn (connection-working-p conn))
-      (when conn (connection-destroy conn))
-      (setq conn (create-connection orb host port))
-      (when conn (setup-outgoing-connection conn))
-      (setf (cdr holder) conn))
-    conn))
+  (get-connection-from-pool
+   *iiop-connections* host port
+   #'connection-working-p
+   (lambda (host port)
+     (when-let (conn (create-connection orb host port))
+       (setup-outgoing-connection conn)
+       conn))))
+
 
 (defmethod profile-connection ((profile iiop-profile) orb)
   (let ((host (iiop-profile-host profile))
@@ -529,11 +615,10 @@ Where host is a string and port an integer.")
   (let ((req (create-client-request (the-orb obj)
                                     :target obj :operation 'locate)))
     (loop
-      (multiple-value-bind (conn req-id)
-                           (request-start-request req)
-        (let ((buffer (connection-start-locate-request conn req-id
-                                                       (request-effective-profile req))))
-          (connection-send-request conn buffer req)))
+      (multiple-value-bind (conn req-id buffer) (request-start-request req)
+        (marshal-locate-request buffer req-id
+                                (request-effective-profile req))
+        (connection-send-request conn buffer req))
       (request-wait-response req)
       (cond ((eql (request-status req) :object_forward)
              (setf (object-forward obj) (unmarshal-object (request-buffer req))))

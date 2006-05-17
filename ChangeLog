@@ -1,3 +1,45 @@
+2006-05-16  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-client-request.lisp ("Client Request"): new accesor name
+
+	* support-test.lisp (test-object): new accesor name
+
+	* clorb-typecode-1.lisp (unmarshal-function-cache): handle symbol
+	  and corece it to typecode
+
+	* clorb-request.lisp (request-start-request): added buffer as
+	  return value
+	(request-send): use marshal-request-message
+	(request-locate-reply): added synchronization
+
+	* clorb-object.lisp (CORBA:PROXY): added synchronized
+	(CORBA:PROXY): renamed accessor %object-connection
+	(raw-profiles): added synchronization
+	(%object-profiles): new uncsync method
+	(object-profiles): now with synchronization
+	(effective-profile): new
+	(get-object-connection): refactored and added synchronization
+
+	* clorb-iiop.lisp (profile-giop-version): new
+	(profile-giop-key): new
+	(marshal-locate-request): new
+	(marshal-request-message): new
+	(connection-get-buffer): new
+	(connection-pool): new class
+	(%get-iiop-connection-holder): renamed (internal)
+	(get-connection-from-pool): new
+	(*iiop-connections*): now an instance of connection-pool
+	(get-iiop-connection): use get-connection-from-pool
+
+	* clorb-conn.lisp (connection-send-request): moved
+	(connection-error): call request-reply-exception
+
+	* clorb-iiop.lisp (get-response-reply): call connection-receive-reply
+	(get-response-locate-reply): call connection-receive-locate-reply
+
+	* clorb-conn.lisp (connection-receive-reply): new
+	(connection-receive-locate-reply): new
+
 2006-05-13  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* support-test.lisp (connection-write-ready test-connection):

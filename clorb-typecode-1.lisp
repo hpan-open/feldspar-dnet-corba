@@ -149,6 +149,8 @@
 
 
 (defun unmarshal-function-cache (tc)
+  (when (symbolp tc)
+    (setq tc (symbol-typecode tc)))
   (let ((cache (list nil)))
     (setf (car cache)
           (lambda (buffer)

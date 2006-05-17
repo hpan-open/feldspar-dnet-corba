@@ -189,7 +189,8 @@ been decoded."
 
 
 (defun request-start-request (req)
-  "Connect REQ target, assing request-id and return connection"
+  "Prepare for marshalling and sending a request.
+Returns: connection, request-id, buffer"
   (setf (request-status req) nil)
   (let ((object (request-target req)))
     (let ((conn (get-object-connection object)))
@@ -198,9 +199,8 @@ been decoded."
       (setf (request-connection req) conn)
       (let ((req-id (next-request-id conn)))
         (setf (request-id req) req-id)
-        (setf (request-effective-profile req)
-              (selected-profile (or (object-forward object) object)))
-        (values conn req-id)))))
+        (setf (request-effective-profile req) (effective-profile object))
+        (values conn req-id (connection-get-buffer conn))))))
 
 
 (defun static-error-handler (condition)
@@ -236,17 +236,17 @@ been decoded."
 
 
 (defun request-send (req)
-  (multiple-value-bind (connection request-id)
-                       (request-start-request req)
+  (multiple-value-bind (connection request-id buffer)
+      (request-start-request req)
     (setf (service-context-list req) nil)
     (will-send-request (the-orb req) req)
-    (let ((buffer
-           (connection-start-request connection request-id (service-context-list req)
-                                     (response-expected req) (request-effective-profile req)
-                                     (request-operation req))))
-      (funcall (output-func req) req buffer) 
-      (connection-send-request connection buffer
-                               (if (response-expected req) req)))))
+    (marshal-request-message buffer request-id (service-context-list req)
+                             (response-expected req)
+                             (request-effective-profile req)
+                             (request-operation req)
+                             (output-func req) req)
+    (connection-send-request connection buffer
+                             (if (response-expected req) req))))
 
 
 ;;; void send_oneway ()
@@ -277,8 +277,10 @@ been decoded."
 
 
 (defun request-locate-reply (req status buffer)
-  (setf (request-status req) status)
-  (setf (request-buffer req) buffer))
+  (with-synchronization req
+    (setf (request-status req) status)
+    (setf (request-buffer req) buffer)
+    (synch-notify req)))
 
 
 (defun request-reply (req status buffer service-context)
@@ -297,6 +299,7 @@ been decoded."
 
 
 (defun request-reply-exception (req status exception)
+  ;; Connection close ..
   (with-synchronization req
     (unless (request-status req)
       (setf (request-status req) status)
