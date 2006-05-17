@@ -66,7 +66,7 @@
                            (op:_create_request obj nil "op" args ret 0)
         (declare (ignore result))
         (op:send_deferred req)
-        (test-read-request 
+        (test-read-request
          :request-keys '((:response 1) (:operation "op") (:object-key #(17)))
          :args (list a1))
         (test-write-response :request req  :message '(224412))
@@ -177,10 +177,8 @@
         ;;(assert (not (write-buffer-of *test-out-conn*)))
 
         ;; Repair connection
-        (setf (write-buffer-of *test-out-conn*) nil)
-        (let ((desc (connection-io-descriptor *test-out-conn*)))
-          (setf (io-descriptor-status desc) :connected)
-          (setf (io-descriptor-connection desc) *test-out-conn*))
+        (setup-test-out)
+        (setf (object-connection obj) *test-out-conn*)
 
         (ensure (not (op:poll_response req)))  ; retry send
 

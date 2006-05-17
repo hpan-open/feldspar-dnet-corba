@@ -345,16 +345,12 @@
     (connection-send-buffer conn buffer)))
 
 
-(defun server-close-connection (conn)
+(defun server-close-connection-msg (conn)
   ;; Do a server side close connection
-  (unless (write-buffer-of conn)
-    ;; No pending send, send a close connection message
-    (let* ((orb (the-orb conn))
-           (buffer (get-work-buffer orb)))
-      (marshal-giop-header :closeconnection buffer)
-      (marshal-giop-set-message-length buffer)
-      (connection-send-buffer conn buffer))
-    (connection-destroy conn)))
+  (let ((buffer (get-work-buffer (the-orb conn))))
+    (marshal-giop-header :CLOSECONNECTION buffer)
+    (marshal-giop-set-message-length buffer)))
+
 
 (defun connection-message-error (conn &optional (version giop-1-0))
   (let* ((orb (the-orb conn))
@@ -487,7 +483,8 @@ Where host is a string and port an integer.")
 
 
 (defun setup-outgoing-connection (conn)
-  (connection-init-read conn nil +iiop-header-size+ #'get-response-0))
+  (when (connection-working-p conn)
+    (connection-init-read conn nil +iiop-header-size+ #'get-response-0)))
 
 
 (defun get-iiop-connection-holder (host port)

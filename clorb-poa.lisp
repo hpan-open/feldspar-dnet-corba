@@ -465,7 +465,7 @@ individual call (some callers may choose to block, while others may not).
                  (map-activations aom #'etherealize-activation t)))))
       (if wait-for-completion
           (do-etherealize)
-          (enqueu-work (the-orb poa) #'do-etherealize)))))
+          (enqueue-work (the-orb poa) #'do-etherealize)))))
 
 
 

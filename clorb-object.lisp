@@ -181,7 +181,11 @@
                                              (first (object-profiles x)))))))
       (if profile
         (profile-short-desc profile stream)
-        (write-string "--" stream)))))
+        (write-string "--" stream))
+      (when-let (conn (object-connection o))
+        (if (connection-working-p conn)
+            (write-string " bound" stream)
+            (write-string " broken-conn" stream))))))
 
 
 (defmethod (setf object-forward) :before (val (proxy CORBA:Proxy))

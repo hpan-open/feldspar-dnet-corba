@@ -12,7 +12,7 @@
   'string)
 
 
-
+
 ;;;;  interface ORB {				// PIDL
 
 (defclass CORBA:TYPECODEFACTORY ()
@@ -21,7 +21,7 @@
 (defclass CORBA:ORB ()
   ())
 
-(defclass clorb-orb (CORBA:ORB CORBA:TypeCodeFactory)
+(defclass clorb-orb (CORBA:ORB CORBA:TypeCodeFactory synchronized)
   ((adaptor :initarg :adaptor :initform nil  :accessor adaptor)
    (active  :initarg :active  :initform nil  :accessor orb-active)
    (host    :initarg :host    :initform nil  :accessor orb-host)
@@ -37,8 +37,7 @@
    (work-queue  :initform nil  :accessor work-queue)))
 
 
-
-
+
 ;;;; Internal orb interface
 
 
@@ -67,7 +66,7 @@
 
 ;;; Work Queue
 
-(defmethod enqueu-work ((orb clorb-orb) thunk)
+(defmethod enqueue-work ((orb clorb-orb) thunk)
   (setf (work-queue orb)
         (nconc (work-queue orb) (list thunk))))
 
@@ -269,6 +268,23 @@
         (loop while (orb-active orb)
               do (orb-work orb t nil)))
       (setq *running-orb* old))))
+
+
+;;; Non-standard: bg-run
+
+(defun bg-run ()
+  "Setup the ORB for background processing.
+This is a replacement for op:run. It will return directly and the
+ORB will coninue processing in the background.
+Requires that a multi-threaded IO-system is configured."
+  (assert (typep *io-system* 'io-system-mt-base))
+  (setq *running-orb* nil)
+  (flet ((bg-run-event-handler (event)
+           (process-event event)
+           t))
+    (setf (event-handler *io-system*) #'bg-run-event-handler))
+  (io-start-bg-listen *io-system*))
+
 
 
 

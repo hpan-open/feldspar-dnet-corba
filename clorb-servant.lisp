@@ -225,7 +225,7 @@ been decoded."
               (not (typep condition 'CORBA:OBJECT_NOT_EXIST)))
          (warn "A system exception in a locate request: ~A" condition)
          (setf (request-state req) :finished)
-         (server-close-connection (request-connection req)))
+         (connection-shutdown (request-connection req)))
         (t
          (set-request-exception req condition)
          (server-request-respond req))))

@@ -46,6 +46,7 @@
     ("clorb-queue" t)
     #+openmcl "clorb-openmcl"
     "clorb-sysdep"
+    "clorb-mt"
     "clorb-basetypes"
     "clorb-typecode-1"
     ("clorb-buffer" t)
@@ -160,6 +161,7 @@
               #+allegro   excl::*common-lisp-version-number*
               (lisp-implementation-version))
           (or #+(and sbcl sb-thread) "_thread"
+              #+openmcl (format nil "_~a" ccl::fasl-version)
               "")))
 
 

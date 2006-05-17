@@ -11,7 +11,7 @@
 ;;;; Connection Class
 
 
-(defclass Connection ()
+(defclass Connection (synchronized)
   ((the-orb         :initarg :orb                          :accessor the-orb)
    (read-buffer     :initarg :read-buffer                  :accessor read-buffer-of)
    (read-callback   :initarg :read-callback                :accessor connection-read-callback)
@@ -19,7 +19,10 @@
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
    (server-requests                          :initform nil :accessor connection-server-requests)
+   (activity        :initarg :activity       :initform t   :accessor activity)
    (server-p        :initarg :server-p       :initform nil :accessor server-p)
+   (shutdown-status   :initform nil  :accessor shutdown-status
+                      :documentation "State of shutdown nil, :sent, :closed")
    ;; Defrag support
    (assembled-handler  :initform nil  :accessor assembled-handler)
    (fragment-buffer    :initform nil  :accessor fragment-buffer)))
@@ -32,8 +35,9 @@
 
 
 
-
+
 ;;;; Connection Methods
+
 
 (defmethod next-request-id ((conn Connection))
   (incf *request-id-seq*))
@@ -46,9 +50,11 @@
     (io-descriptor-associate-connection desc conn)
     conn))
 
+
 (defun connection-destroy (conn)
-  (let ((desc (connection-io-descriptor conn)))
-    (io-descriptor-destroy desc)))
+  (when-let (desc (connection-io-descriptor conn))
+    (io-descriptor-destroy desc))
+  (setf (connection-io-descriptor conn) nil))
 
 
 (defun create-connection (orb host port)
@@ -65,7 +71,8 @@
 
 
 (defun connection-working-p (conn)
-  (io-descriptor-working-p (connection-io-descriptor conn)))
+  (when-let (desc (connection-io-descriptor conn))
+    (io-descriptor-working-p desc)))
 
 
 (defun connection-init-read (conn continue-p n callback)
@@ -84,38 +91,59 @@
       (io-descriptor-set-read desc octets start n))))
 
 
+(defun connection-shutdown (conn)
+  (case (shutdown-status conn)
+    ((nil) (prog1 (setf (shutdown-status conn) :sent)
+             (connection-send-buffer conn (server-close-connection-msg conn))))
+    ((:sent) nil)
+    ((:closed)
+     (connection-destroy conn)
+     :destroyed)))
+
+
 (defun connection-send-buffer (conn buffer)
-  (when (write-buffer-of conn)
-    (orb-wait (lambda (conn) (not (write-buffer-of conn))) conn))
-  (setf (write-buffer-of conn) buffer)
-  (let ((desc (connection-io-descriptor conn))
-        (octets (buffer-octets buffer)))
-    (if (io-descriptor-set-write desc octets 0 (length octets))
-        (connection-write-ready conn))))
+  (flet ((write-free-p (conn)
+           (not (write-buffer-of conn))))
+    (loop
+       (with-synchronization conn
+         (when (write-free-p conn)
+           (setf (write-buffer-of conn) buffer)
+           (return)))
+       (orb-condition-wait conn #'write-free-p conn))
+    (let ((desc (connection-io-descriptor conn))
+          (octets (buffer-octets buffer)))
+      (if (io-descriptor-set-write desc octets 0 (length octets))
+          (connection-write-ready conn)))))
 
 
 (defun connection-add-client-request (conn request)
-  (push request (connection-client-requests conn)))
+  (with-synchronization conn
+    (push request (connection-client-requests conn))))
 
 (defun connection-remove-client-request (conn request)
-  (setf (connection-client-requests conn)
-        (delete request (connection-client-requests conn))))
+  (with-synchronization conn
+    (setf (activity conn) t)
+    (setf (connection-client-requests conn)
+          (delete request (connection-client-requests conn)))))
 
 (defun find-waiting-client-request (conn request-id)
-  (let ((req-list (connection-client-requests conn)))
-    (let ((req (find request-id req-list :key #'request-id)))
-      (if req
-        (setf (connection-client-requests conn) (delete req req-list))
-        (mess 4 "Unexpected response with request id ~d" request-id))
-      req)))
+  (with-synchronization conn
+    (let ((req-list (connection-client-requests conn)))
+      (let ((req (find request-id req-list :key #'request-id)))
+        (if req
+            (setf (connection-client-requests conn) (delete req req-list))
+            (mess 4 "Unexpected response with request id ~d" request-id))
+        req))))
 
 
 (defun connection-add-server-request (conn request)
-  (push request (connection-server-requests conn)))
+  (with-synchronization conn
+    (push request (connection-server-requests conn))))
 
 (defun connection-remove-server-request (conn request)
-  (setf (connection-server-requests conn)
-        (delete request (connection-server-requests conn))))
+  (with-synchronization conn
+    (setf (connection-server-requests conn)
+          (delete request (connection-server-requests conn)))))
 
 
 (defun connection-add-fragment (conn buffer header-size)
@@ -127,6 +155,45 @@
                          (subseq (buffer-octets buffer) header-size))))
     (setf fragment-buffer buffer)))
 
+
+;;;; Cleaning and Garbing Connections
+
+
+(defun gc-connections (&optional except n)
+  (dolist (desc *io-descriptions*)
+    (let ((conn (io-descriptor-connection desc)))
+      (unless (or (null conn) (member desc except)
+                  (io-descriptor-shortcut-p desc)
+                  (write-buffer-of conn)
+                  (connection-client-requests conn)
+                  (connection-server-requests conn))
+        (if (activity conn)
+            (setf (activity conn) nil)
+            (progn
+              (if (server-p conn)
+                  (connection-shutdown conn)
+                  (io-descriptor-destroy desc))
+              (if (numberp n)
+                  (if (< (decf n) 1)
+                      (return)))))))))
+
+
+(defun auto-gc-read-handler (q desc)
+  ;;(declare (ignore q))
+  ;; max-processes handler for read queue
+  ;; Does a gc-connections and then allow new process any way!
+  ;;
+  (ignore-errors
+    (gc-connections (list desc) 1))
+  (unless (< (process-count q) (max-processes q))
+    (ignore-errors
+      (gc-connections (list desc) 1)))
+  t)
+
+;;(setf (max-handler (read-queue *io-system*)) 'auto-gc-read-handler)
+
+(setq *io-mt-read-queue-garb* 'auto-gc-read-handler)
+
 
 
 ;;;; Connection events
@@ -134,23 +201,25 @@
 
 (defun connection-error (conn)
   ;; Called when there is IO error
-  (let ((requests (connection-client-requests conn)))
-    (dolist (req requests)
-      (setf (request-exception req) 
-            (system-exception 'CORBA:COMM_FAILURE))
-      (setf (request-status req) :error )))
-  (setf (connection-client-requests conn) nil))
+  (with-synchronization conn
+    (let ((requests (connection-client-requests conn)))
+      (dolist (req requests)
+        (setf (request-exception req) 
+              (system-exception 'CORBA:COMM_FAILURE))
+        (setf (request-status req) :error )))
+    (setf (connection-client-requests conn) nil)
+    (connection-destroy conn)))
 
 
 (defun connection-close (conn)
   ;; Called on recipt of a connection close message
-  (connection-destroy conn)
-  ;; The server should not have started on any of the outstanding requests.
-  (dolist (req (connection-client-requests conn))
-    (assert (null (request-status req))) ; is there a race condition?
-    (setf (request-exception req) (system-exception 'CORBA:TRANSIENT 3 :completed_no))
-    (setf (request-status req) :error))
-  (setf (connection-client-requests conn) nil))
+  (with-synchronization conn
+    (connection-destroy conn)
+    ;; The server should not have started on any of the outstanding requests.
+    (dolist (req (connection-client-requests conn))
+      (request-reply-exception req :error
+                               (system-exception 'CORBA:TRANSIENT 3 :completed_no)))
+    (setf (connection-client-requests conn) nil)))
 
 
 (defun connection-read-ready (conn)
@@ -158,7 +227,14 @@
 
 
 (defmethod connection-write-ready ((conn connection))
-  (setf (write-buffer-of conn) nil))
+  (with-synchronization conn
+    (setf (activity conn) t)
+    (setf (write-buffer-of conn) nil)
+    (when (eql (shutdown-status conn) :sent)
+      (io-descriptor-shutdown (connection-io-descriptor conn))
+      (setf (shutdown-status conn) :closed))
+    (synch-notify conn)))
+
 
 (defun connection-init-defragmentation (conn handler)
   (cond ((assembled-handler conn)
@@ -169,6 +245,8 @@
          (setf (assembled-handler conn) handler)
          (setf (fragment-buffer conn) nil)
          t)))
+
+
 
 ;;;; Event loop (orb-wait)
 
@@ -189,36 +267,53 @@ Can be set to true globally for singel-process / development.")
     (apply #'process-wait "orb-wait" wait-func wait-args)))
 
 
+(defun orb-condition-wait (obj wait-func &rest wait-args)
+  "Wait for (wait-func . wait-args) to be true.
+Use the syncronization of obj, expect obj not to be locked when called.
+Obj should be synch-notify when the condition is possibly changed."
+  (if *running-orb*
+      ;; Also handle server stuff
+      (loop until (apply wait-func wait-args) do (orb-work *the-orb* t nil))      
+      ;; No server stuff
+      (apply #'synch-wait-on-condition obj wait-func wait-args)))
+
+
 (defun orb-run-queue (orb)
   (loop while (work-queue orb)
      do (funcall (pop (work-queue orb)))))
 
+
+(defun process-event (event)
+  (let* ((desc (second event))
+         (conn (io-descriptor-connection desc)))
+    (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
+    (case (car event)
+      (:read-ready
+       (when conn (connection-read-ready conn)))
+      (:write-ready
+       (io-descriptor-set-write desc nil 0 0)
+       (when conn (connection-write-ready conn)))
+      (:new
+       (funcall *new-connection-callback* desc))
+      (:connected
+       ;; Not implemented yet..; for outgoing connections setup
+       nil)
+      (:error
+       (mess 4 "Error: ~A" (io-descriptor-error desc))
+       (if conn
+           (connection-error conn)
+           (io-descriptor-destroy desc))))))
+
+
 (defun orb-work (orb run-queue poll)
   (when run-queue
     (orb-run-queue orb))
-  (let ((event-processed nil))
-    (loop for event = (io-get-event)
-          while event
-          do (setq event-processed t)
-          (let* ((desc (second event))
-                 (conn (io-descriptor-connection desc)))
-            (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
-            (case (car event)
-              (:read-ready
-               (when conn (connection-read-ready conn)))
-              (:write-ready
-               (io-descriptor-set-write desc nil 0 0)
-               (when conn (connection-write-ready conn)))
-              (:new
-               (funcall *new-connection-callback* desc))
-              (:connected
-               ;; Not implemented yet..; for outgoing connections setup
-               nil)
-              (:error
-               (mess 4 "Error: ~A" (io-descriptor-error desc))
-               (io-descriptor-destroy desc)
-               (when conn (connection-error conn))))))
-    (unless event-processed
-      (io-driver poll))))
+  (when poll
+    (io-driver poll))
+  (loop for event = (io-get-event poll)
+     while event
+     do (process-event event)
+       (setq poll t)))
+
   
 

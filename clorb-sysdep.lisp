@@ -304,7 +304,7 @@
          (acl-socket:ipaddr-to-dotted (acl-socket:remote-host conn)))
      (acl-socket:remote-port conn))
     #+openmcl
-    (values (let ((host (openmcl-socket:remote-host conn)))
+    (values (let ((host (ignore-errors (openmcl-socket:remote-host conn))))
               (and host
                    (or (ignore-errors
                          (openmcl-socket:ipaddr-to-hostname host))
@@ -456,7 +456,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    ;; Default
    (listen stream))) 
 
-(defun socket-close (socket)
+(defun listener-close (socket)
   (%SYSDEP
    "close a listener socket"
 
@@ -468,6 +468,17 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
    ;; default
    (close socket)))
+
+
+(defun socket-shutdown (stream)
+  (%SYSDEP
+   "Close the writing end of a tcp stream"
+   
+   #+openmcl
+   (openmcl-socket:shutdown stream :direction :output)
+
+   (progn stream)))
+
 
 
 ;;;; HTTP GET
@@ -846,8 +857,9 @@ Returns when all the data has been written."
 
 (defun process-running-p (process)
   (%SYSDEP "check if process is running"
-           #+openmcl (member process (ccl:all-processes))
-           #+mcl (ccl:process-active-p process)
+           #+openmcl (ccl::process-active-p process)
+           ;; (member process (ccl:all-processes))
+           #+mcl (ccl::process-active-p process)
            ;; (ccl::process-exhausted-p ??)
            #+sb-thread (sb-thread:thread-alive-p process)
            #+acl-compat
@@ -902,188 +914,92 @@ Returns when all the data has been written."
    `(progn ,@body)))
 
 
-
-;;;; Execution Queue
-
-
-(defclass execution-queue ()
-  ((max-processes :initarg :max-processes :initform 10   :accessor max-processes)
-   (max-idle      :initarg :max-idle      :initform nil  :accessor max-idle)
-   (queue                                 :initform nil  :accessor eq-queue)
-   (idle-count                            :initform 0    :accessor idle-count)
-   (idle-list     :initarg :idle-list     :initform nil  :accessor idle-list)
-   (process-list  :initarg :process-list  :initform nil  :accessor process-list)
-   (process-count :initarg :process-count :initform 0    :accessor process-count)
-   (eq-lock        :initform (make-lock "eq-lock")       :reader eq-lock)
-   (executor      :initarg :executor  :initform 'eq-exec :accessor executor)
-   (name-template :initarg :name-template :initform "eq" :accessor name-template)
-   (name-count    :initarg :name-count    :initform 0    :accessor name-count)
-   #+OpenMCL
-   (semaphore      :initform (ccl:make-semaphore)        :reader semaphore)
-   #+sb-thread
-   (waitqueue      :initform (sb-thread:make-waitqueue)  :reader waitqueue)))
-
-
-(defmacro with-execution-queue (q &body body)
-  `(with-accessors ((max-processes max-processes) (max-idle max-idle)
-                    (queue eq-queue) (idle-count idle-count)
-                    (process-list process-list) (process-count process-count)
-                    (lock eq-lock) (executor executor) (name-template name-template)
-                    (name-count name-count) (idle-list idle-list)
-                    #+OpenMCL (semaphore semaphore)
-                    #+sb-thread (waitqueue waitqueue))
-                   ,q
-     ,@body))
-
-
-(defmethod next-process-name ((q execution-queue))
-  (with-execution-queue q
-    (format nil "~A ~D" name-template (incf name-count))))
-
-
 #+Digitool
-(defun eq-main (q obj)
-  (with-execution-queue q
-    (loop
-      (funcall executor obj)
-      (ccl:with-lock-grabbed (lock)
-        (cond (queue
-               (setq obj (pop queue)))
-              ((or (null max-idle) (< idle-count max-idle))
-               (incf idle-count)
-               (push ccl:*current-process* idle-list)
-               (return))
-              (t
-               (decf process-count)
-               (setq process-list (delete ccl:*current-process* process-list))
-               (ccl:process-kill ccl:*current-process*)
-               (return)))))))
-
-#+OpenMCL
-(defun eq-main (q obj)
-  (with-execution-queue q
-    (let ((idle nil))
-      (loop
-         (cond (idle
-                (ccl:wait-on-semaphore semaphore)
-                (ccl:with-lock-grabbed (lock)
-                  (when queue
-                    (setq idle nil
-                          obj (pop queue))
-                    (decf idle-count)
-                    (deletef (current-process) idle-list))))
-               (t
-                (handler-case
-                    (funcall executor obj)
-                  (serious-condition (condition)
-                    (mess 4 "Thread fails: ~A" condition)
-                    (ccl:with-lock-grabbed (lock)
-                      (decf process-count)
-                      (deletef (current-process) process-list)
-                      (return))))
-                (ccl:with-lock-grabbed (lock)
-                  (let ((process (current-process)))
-                    (cond (queue
-                           (setq obj (pop queue)))
-                          ((or (null max-idle) (< idle-count max-idle))
-                           (incf idle-count)
-                           (setq idle t)
-                           (push process idle-list))
-                          (t
-                           (decf process-count)
-                           (deletef process process-list)
-                           (end-process process)
-                           (return)))))))))))
+(defclass mcl-waitqueue ()
+  ((waiting  :initform nil  :accessor waiting)))
 
 
-#+sb-thread
-(defun eq-main (q obj)
-  (with-execution-queue q
-    (let ((idle nil))
-      (loop
-         (cond (idle
-                (with-lock lock
-                  (sb-thread:condition-wait waitqueue lock)
-                  (when queue
-                    (setq idle nil
-                          obj (pop queue))
-                    (decf idle-count)
-                    (deletef (current-process) idle-list))))
-               (t
-                (handler-case
-                    (funcall executor obj)
-                  (serious-condition (condition)
-                    (mess 4 "Thread fails: ~A" condition)
-                    (with-lock lock
-                      (decf process-count)
-                      (deletef (current-process) process-list))
-                    (return)))
-                (with-lock lock
-                  (let ((process (current-process)))
-                    (cond (queue
-                           (setq obj (pop queue)))
-                          ((or (null max-idle) (< idle-count max-idle))
-                           (incf idle-count)
-                           (setq idle t)
-                           (push process idle-list))
-                          (t
-                           (decf process-count)
-                           (deletef process process-list)
-                           (return)))))))))))
+(defun make-waitqueue ()
+  (%SYSDEP
+   "Make a condition variable"
+   #+sb-thread (sb-thread:make-waitqueue)
+   #+openmcl (ccl::make-semaphore)
+   #+digitool (make-instance 'mcl-waitqueue)
+   nil))
 
 
-(defun eq-exec (obj)
-  (etypecase obj
-    (function (funcall obj))
-    (cons (apply (car obj) (cdr obj)))))
+(defun wq-locked-wait (wq lock)
+  "Wait on a waitqueue, called with lock held."
+  (%SYSDEP
+   "wq-locked-wait"
+   #+sb-thread (sb-thread:condition-wait wq lock)
+   #+openmcl (progn
+               (ccl:release-lock lock)
+               (unwind-protect
+                    (ccl:wait-on-semaphore wq)
+                 (ccl:grab-lock lock)))
+   #+digitool (progn
+                (enqf (waiting wq) (current-process))
+                (ccl:process-unlock lock)
+                (ccl:process-block (current-process) "wq-locked-wait")
+                (ccl:process-lock lock))
+   ;; default
+   (progn wq lock)))
 
 
-#+Digitool
-(defmethod enqueue ((q execution-queue) obj)
-  (with-execution-queue q
-    (ccl:with-lock-grabbed (lock)
-      (cond ((not (zerop idle-count))
-             (let ((p (pop idle-list)))
-               (ccl:process-preset p #'eq-main q obj)
-               (decf idle-count)
-               (ccl:process-enable p)
-               t))
-            ((< process-count max-processes)
-             (let ((p (ccl:make-process (next-process-name q))))
-               (ccl:process-preset p #'eq-main q obj)
-               (push p process-list)
-               (incf process-count)
-               (ccl:process-enable p)
-               t))
-            (t 
-             (setf queue (nconc queue (list obj)))
-             nil)))))
+(defun wq-unlocked-wait (wq lock)
+  "Wait on a waitqueue, called without lock held."
+  (declare (ignorable lock))
+  (%SYSDEP
+   "wq-unlocked-wait"
+   #+sb-thread (with-lock lock
+                 (sb-thread:condition-wait wq lock))
+   #+openmcl (ccl:wait-on-semaphore wq)
+   #+digitool (with-lock lock
+                (wq-locked-wait wq lock))
+   (progn wq lock)))
 
-#+(or OpenMCL sb-thread)
-(defmethod enqueue ((q execution-queue) obj)
-  (with-execution-queue q
-    (with-lock lock
-      (cond ((and (zerop idle-count) (< process-count max-processes))
-             (let ((p (start-process (next-process-name q) #'eq-main q obj)))
-               (push p process-list)
-               (incf process-count)
-               t))
-            (t 
-             (setf queue (nconc queue (list obj)))
-             #+openmcl (ccl:signal-semaphore semaphore)
-             #+sb-thread (sb-thread:condition-notify waitqueue)
-             nil)))))
 
-#+(or OpenMCL sb-thread)
-(defun garb-threads (q)
-  (with-execution-queue q
-    (with-lock lock
-      (setq process-list
-            (remove-if (lambda (p)
-                         (unless (process-running-p p)
-                           (decf process-count)
-                           t))
-                       process-list)))))
+(defun wq-notify (wq)
+  (%SYSDEP
+   "wq-notify"
+   #+sb-thread (sb-thread:condition-notify wq)
+   #+openmcl (ccl:signal-semaphore wq)
+   #+digitool (progn                    ; FIXME: is this safe?
+                (let ((process (deqf (waiting wq))))
+                  (when process
+                    (ccl:process-unblock process))))
+   nil))
+
+
+(defun wq-unlocked-wait-on-condition (wq lock func &rest args)
+  #-(or openmcl sb-thread digitool)
+  (declare (ignore wq lock))
+  (%SYSDEP
+   "Wait for (func args) to be true, check when obj is notified"
+
+   #+(or openmcl sb-thread digitool)
+   (loop until (apply func args)
+        do (wq-unlocked-wait wq lock))
+
+   ;; Default
+   (loop until (apply func args)
+        do (sleep 0.01))))
+
+
+(defun wq-locked-wait-on-condition (wq lock func &rest args)
+  #-(or openmcl sb-thread digitool)
+  (declare (ignore wq lock))
+  (%SYSDEP
+   "Wait for (func args) to be true, check when obj is notified"
+
+   #+(or openmcl sb-thread digitool)
+   (loop until (apply func args)
+        do (wq-locked-wait wq lock))
+   
+   ;; Default
+   (loop until (apply func args)
+        do (sleep 0.01))))
 
 
 

@@ -313,6 +313,7 @@
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
            "OBJ"
+           "BG-RUN"
            ;; Config
            #:*io-system-default-class*
            #:io-system-select
@@ -320,8 +321,7 @@
            #:io-system-multiprocess
            #:io-system-mt-blocking-write
            ;; Useful internals
-           "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
-           "*HOST*" )
+           "*RUNNING-ORB*" "ROOT-POA" )
   (:import-from "OMG.ORG/PORTABLESERVER"
                 "POA" "STRING-TO-OID" "OID-TO-STRING")
   (:import-from "OMG.ORG/CORBA"

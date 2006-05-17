@@ -224,4 +224,14 @@
 
 
 
+;;;; When-let et.al.
+
+
+(defmacro when-let ((var expr) &body body)
+  `(let ((,var ,expr))
+     (when ,var
+       ,@body)))
+
+
+
 ;;; clorb-macros.lisp ends here

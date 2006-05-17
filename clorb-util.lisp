@@ -317,6 +317,9 @@ The list free operation is used to free the returned information.
 (defun resolve (&rest names)
   (op:resolve (get-ns) (ns-name* names)))
 
+(define-method op:resolve ((name string))
+  (resolve name))
+
 (defun rebind (objref &rest names)
   (op:rebind (get-ns) (ns-name* names) objref))
 
@@ -336,23 +339,24 @@ The list free operation is used to free the returned information.
 
 ;;;; Cleaning
 
-
-(defun gc-connections ()
+(defun dump-connections ()
+  (format t "DID Con Srv Act #Rq desc~%")
   (dolist (desc *io-descriptions*)
     (let ((conn (io-descriptor-connection desc)))
-      (unless (or (null conn)
-                  (io-descriptor-shortcut-p desc)
-                  (write-buffer-of conn)
-                  (connection-client-requests conn)
-                  (connection-server-requests conn))
-        (if (server-p conn)
-          (let ((buffer (get-work-buffer (the-orb conn))))
-            (marshal-giop-header :CLOSECONNECTION buffer)
-            (marshal-giop-set-message-length buffer)
-            (connection-send-buffer conn buffer))
-          (io-descriptor-destroy desc))))))
+      (format t "~3A ~3A ~3A ~3A ~3A ~A~%"
+              (io-descriptor-id desc)
+              (not (null conn))
+              (if conn (server-p conn))
+              (if conn (activity conn))
+              (if conn (length (if (server-p conn)
+                                   (connection-server-requests conn)
+                                   (connection-client-requests conn))))
+              (io-describe-descriptor desc)))))
 
-
+(defun /desc (id)
+  (find id *io-descriptions* :key #'io-descriptor-id))
+(defun /con (id)
+  (io-descriptor-connection (/desc id)))
 
 
 ;;; clorb-util.lisp ends here

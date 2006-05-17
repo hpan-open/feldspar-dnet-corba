@@ -13,7 +13,7 @@
 
 ;;;; Client-Request 
 
-(defclass client-request (CORBA:Request)
+(defclass client-request (CORBA:Request synchronized)
   ((the-orb
     :initarg :the-orb
     :reader the-orb)
@@ -282,15 +282,26 @@ been decoded."
 
 
 (defun request-reply (req status buffer service-context)
-  (setf (request-status req) status)
-  (setf (request-buffer req) buffer)
-  (setf (reply-service-context req) service-context)
-  (case status
-    (:system_exception
-     (multiple-value-bind (exc id)
-         (unmarshal-systemexception buffer)
-       (setf (request-exception-id req) id)
-       (setf (request-exception req) exc)))))
+  ;; Callback from reading and decoding reply message
+  (with-synchronization req
+    (setf (request-status req) status)
+    (setf (request-buffer req) buffer)
+    (setf (reply-service-context req) service-context)
+    (case status
+      (:system_exception
+       (multiple-value-bind (exc id)
+           (unmarshal-systemexception buffer)
+         (setf (request-exception-id req) id)
+         (setf (request-exception req) exc))))
+    (synch-notify req)))
+
+
+(defun request-reply-exception (req status exception)
+  (with-synchronization req
+    (unless (request-status req)
+      (setf (request-status req) status)
+      (setf (request-exception req) exception)
+      (synch-notify req))))
 
 
 (defun should-retry (req exc)
@@ -332,8 +343,13 @@ been decoded."
 
 
 (defun request-wait-response (req)
-  (loop do (orb-wait #'request-status req)
-        until (request-poll req)))
+  (loop
+     ;; First wait till we have a (non-nil) status, then it is no
+     ;; longer being read
+     do (orb-condition-wait req #'request-status req)
+     ;; Call request-poll to check if status requires immediate
+     ;; action and retry
+     until (request-poll req)))
 
 
 (defun request-handle-error (req)
