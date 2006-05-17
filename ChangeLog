@@ -1,5 +1,15 @@
 2006-05-09  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-sysdep.lisp: removed unix-select to clorb-openmcl
+
+	* clorb.asd (asdfsystem :clorb): new file clorb-openmcl
+	conditional on feature :openmcl
+
+	* clorb-files.lisp (*base-files*): new file clorb-openmcl
+	conditional on feature :openmcl
+
+	* clorb-openmcl.lisp (unix-select): moved to new file
+
 	* clorb-srv.lisp: renaming accessors for read-buffer
 	and write-buffer to read-buffer-of write-buffer-of.
 

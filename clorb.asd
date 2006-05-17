@@ -19,6 +19,7 @@
    (:file "clorb-supp")
    (:file "clorb-macros")
    (:file "clorb-queue")
+   #+openmcl (:file "clorb-openmcl")
    (:file "clorb-sysdep")
    (:file "clorb-basetypes")
    (:file "clorb-typecode-1")

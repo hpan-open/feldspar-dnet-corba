@@ -44,6 +44,7 @@
     "clorb-supp"
     ("clorb-macros" t)
     ("clorb-queue" t)
+    #+openmcl "clorb-openmcl"
     "clorb-sysdep"
     "clorb-basetypes"
     "clorb-typecode-1"
