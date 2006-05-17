@@ -263,7 +263,8 @@
 
 (defun all-feature-values (tc value)
   (loop for feature in (all-feature-symbols tc)
-        collect (slot-value value feature)))
+        collect ;(slot-value value feature)
+       (funcall feature value)))
 
 
 (defgeneric truncatable-value-p (tc)

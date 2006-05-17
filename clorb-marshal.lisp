@@ -2,6 +2,9 @@
 
 (in-package :clorb)
 
+(eval-when (:compile-toplevel :load-toplevel :execute) 
+  (pushnew 'more-safe *features*))
+
 
 (defun marshal-void (x buffer)
   (declare (ignore x buffer))
@@ -36,22 +39,22 @@
 
 (defun marshal-short (n buffer)
   (declare (type CORBA:short n)
-           (optimize speed))
+           (optimize speed #+clorb::more-safe safety))
   (%marshal-number n 2 buffer))
 
 (defun marshal-ushort (n buffer)
   (declare (type (or CORBA:ushort CORBA:short) n)
-           (optimize speed))
+           (optimize speed #+clorb::more-safe safety))
   (%marshal-number n 2 buffer))
 
 (defun marshal-ulong (n buffer)
   (declare (type CORBA:ulong n)
-           (optimize speed))
+           (optimize speed #+clorb::more-safe safety))
   (%marshal-number n 4 buffer))
 
 (defun marshal-long (n buffer)
   (declare (type CORBA:long n)
-           (optimize speed))
+           (optimize speed #+clorb::more-safe safety))
   (%marshal-number n 4 buffer))
 
 (defun marshal-longlong (arg buffer)
