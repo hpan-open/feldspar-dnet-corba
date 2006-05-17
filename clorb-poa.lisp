@@ -285,32 +285,23 @@
 
 ;;;; POA Registry
 
-(defvar *root-poa* nil)
+;; handled by root-adapter - delegate
 
-(defvar *last-poaid* 0)
+(defmethod adapter ((self poa))
+  (adapter (the-orb self)))
 
-(defvar *poa-map*
-  (make-hash-table :test #'eql))
+(defgeneric next-poaid (adapter)
+  (:method ((self POA))
+    (next-poaid (adapter self)))
+  (:method ((self clorb-orb))
+    (next-poaid (adapter self))))
 
 (defun register-poa (poa)
-  (setf (gethash (poa-poaid poa) *poa-map*) poa))
+  (adapter-register-poa (adapter poa) poa))
 
 (defun unregister-poa (poa)
-  (remhash (poa-poaid poa) *poa-map*))
+  (adapter-unregister-poa (adapter poa) poa))
 
-#+unused-function
-(defun decode-object-key-poa (objkey)
-  (multiple-value-bind (type poaid oid)
-      (decode-object-key objkey)
-    (let (poa)
-      (if (numberp poaid)
-          (setq poa (gethash poaid *poa-map*))
-          (progn
-            (setq poa *root-POA*)
-            (loop for n in poaid 
-                  while poa
-                  do (setq poa (find-requested-poa poa n t t)))))
-      (values type poa oid))))
 
 
 ;;;; Create, find and destroy 
@@ -354,7 +345,7 @@
            :the_parent poa
            :the_poamanager manager
            :policies policies
-           :poaid (or poaid (incf *last-poaid*))
+           :poaid (or poaid (next-poaid orb))
            :orb orb)))
     (add-poa manager newpoa)
     (when poa
@@ -671,7 +662,9 @@ individual call (some callers may choose to block, while others may not).
     (multiple-value-bind (ref-type poa-spec oid)
                          (decode-object-key (iiop-profile-key (first profiles)))
       (declare (ignore ref-type))
-      (let ((refpoa (poa-locate *root-poa* poa-spec)))
+      (let* ((root-adapter (adapter poa))
+             (root-poa (root-poa-of root-adapter))
+             (refpoa (poa-locate root-adapter root-poa poa-spec)))
         (unless (eql refpoa poa)
           (error 'PortableServer:poa/wrongadapter)))
       oid)))
@@ -821,9 +814,9 @@ individual call (some callers may choose to block, while others may not).
       
 
 
-(defun poa-locate (poa poa-spec &optional (check-poa-status t))
+(defun poa-locate (root-adapter poa poa-spec &optional (check-poa-status t))
   (cond ((numberp poa-spec)
-         (values (gethash poa-spec *poa-map*)))
+         (values (poa-by-id root-adapter poa-spec)))
         ((null poa-spec)
          poa)
         (t
@@ -833,12 +826,14 @@ individual call (some callers may choose to block, while others may not).
                  ((null next-poa)
                   (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 2 :completed_no))
                  (t
-                  (poa-locate next-poa (cdr poa-spec))))))))
+                  (poa-locate root-adapter next-poa (cdr poa-spec))))))))
 
 
 (defun poa-dispatch-1 (poa req poa-spec)
   (when poa-spec
-    (multiple-value-setq (poa poa-spec) (poa-locate poa poa-spec))
+    (let ((root-adapter (adapter poa)))
+      (multiple-value-setq (poa poa-spec)
+        (poa-locate root-adapter poa poa-spec)))
     (setf (poa-spec req) poa-spec))
   (unless poa
     (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no))
@@ -858,17 +853,6 @@ individual call (some callers may choose to block, while others may not).
     (poa-dispatch-1 poa req (poa-spec req))
     (CORBA:SystemException (exc)
                            (server-request-systemexception-reply req exc))))
-
-
-(defun dispatch-request (orb req objkey)
-  (multiple-value-bind (type poa-spec object-id)
-                       (decode-object-key objkey)
-    (declare (ignore type))
-    (setf (request-object-id req) object-id)
-    (setf (poa-spec req) poa-spec)
-    (poa-dispatch *root-poa* req)))
-
-
 
 
 

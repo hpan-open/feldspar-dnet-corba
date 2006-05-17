@@ -5,48 +5,148 @@
 
 ;;;; Default POA (boot objects)
 
-(defvar *default-poa* nil)
-
-(defvar *boot-objects*
-  (make-hash-table :test #'equal))
 
 (defclass BOOT-OBJECT-MANAGER (portableserver:servantactivator)
-  ())
+  ((boot-objects  :initform (make-hash-table :test #'equal)
+                  :reader boot-objects-of)))
 
-(defun setup-default-poa (orb)
-  (setq *default-poa* 
-        (create-POA nil "_default_" (op:the_POAManager (root-poa)) 
-                    '(:use_servant_manager :user_id)
-                    orb
-                    :poaid 0))
-  (op:set_servant_manager *default-poa* (make-instance 'boot-object-manager)))
+(defun create-default-poa (orb root-poa)
+  (let ((poa
+         (create-POA nil "_default_" (op:the_POAManager root-poa) 
+              '(:use_servant_manager :user_id)
+              orb
+              :poaid 0)))
+    (op:set_servant_manager poa (make-instance 'boot-object-manager))
+    poa))
 
 (define-method incarnate ((self boot-object-manager) oid adapter)
   (declare (ignore adapter))
   (let ((name (oid-to-string oid)))
-    (let ((obj (gethash name *boot-objects*)))
+    (let ((obj (gethash name (boot-objects-of self))))
       (cond (obj
-             (signal (omg.org/portableserver:forwardrequest
+             (signal (PortableServer:ForwardRequest
                       :forward_reference obj)))
             (t
-             (raise-system-exception 'corba:object_not_exist 0 :completed_no))))))
+             (raise-system-exception 'CORBA:OBJECT_NOT_EXIST
+                                     0 :completed_no))))))
 
 
+(defmethod set-boot-object ((self BOOT-OBJECT-MANAGER) name objref)
+  (setf (gethash name (boot-objects-of self)) objref))
 
+
+
+;;;; Root Adapter
+
+
+(defclass root-adapter ()
+  ((the-orb   :initarg :orb       :accessor the-orb)
+   (root-poa  :initarg :root-poa  :accessor root-poa-of)
+   (boot-poa  :initarg :boot-poa  :accessor boot-poa-of)
+   ;; request dispatching
+   (request-dispatcher :initarg :request-dispatcher
+                       :initform #'default-dispatch-request
+                       :accessor request-dispatcher)
+   (dispatch-queue   :initform (make-instance 'shared-queue)
+                     :accessor dispatch-queue-of)
+   (dispatch-process :initform nil
+                     :accessor dispatch-process-of)
+   ;; registry
+   (last-poaid :initform 0  :accessor last-poaid-of)
+   (poa-map    :initform (make-hash-table :test #'eql) :accessor poa-map-of)))
+
+
+(defmethod set-boot-object ((self root-adapter) name objref)
+  (set-boot-object (op:get_servant_manager (boot-poa-of self)) name objref))
+
+(defmethod set-boot-object ((self clorb-orb) name objref)
+  (set-boot-object (adapter self) name objref))
+
+
+(defun create-root-adapter (orb)
+  (let ((adapter 
+         (make-instance 'root-adapter
+                        :orb orb)))
+    (setf (adapter orb) adapter)
+    (setf (root-poa-of adapter) (create-POA nil "root" nil nil orb))
+    (setf (boot-poa-of adapter) (create-default-poa orb (root-poa-of adapter)))
+    adapter))
+
+
+(defmethod root-poa-of ((poa POA))
+  (root-poa-of (the-orb poa)))
+(defmethod root-poa-of ((orb clorb-orb))
+  (root-poa-of (adapter orb)))
+
+
+(defmethod next-poaid ((self root-adapter))
+  (incf (last-poaid-of self)))
+
+(defmethod adapter-register-poa ((adapter root-adapter) poa)
+  (setf (gethash (poa-poaid poa) (poa-map-of adapter)) poa))
+
+(defmethod adapter-unregister-poa ((adapter root-adapter) poa)
+  (remhash (poa-poaid poa) (poa-map-of adapter)))
+
+(defmethod poa-by-id ((adapter root-adapter) poaid)
+  (gethash poaid (poa-map-of adapter)))
+
+
+
+;;;; Request Dispatcher
+
+
+(defun default-dispatch-request (root-adapter req objkey)
+  (multiple-value-bind (type poa-spec object-id)
+                       (decode-object-key objkey)
+    (declare (ignore type))
+    (setf (request-object-id req) object-id)
+    (setf (poa-spec req) poa-spec)
+    (poa-dispatch (root-poa-of root-adapter) req)))
+
+
+(defun dispatch-request (orb req objkey)
+  (let ((root-adapter (adapter orb)))
+    (funcall (request-dispatcher root-adapter)
+             root-adapter req objkey)))
+
+
+(defun queued-dispatch (adapter req objkey)
+  (enqueue (dispatch-queue-of adapter) (list req objkey)))
+
+(defun bg-dispatcher (adapter)
+  (loop
+     (destructuring-bind (req objkey)
+         (dequeue (dispatch-queue-of adapter))
+       (default-dispatch-request adapter req objkey))))
+
+(defun start-dispatcher-process (adapter)
+  (unless (dispatch-process-of adapter)
+    (setf (request-dispatcher adapter)
+          #'queued-dispatch)
+    (setf (dispatch-process-of adapter)
+          (start-process "clorb dispatcher"
+                         'bg-dispatcher adapter))))
+
+
+
 ;;;; Server proper
 
 
 (defun setup-server (&optional (orb (CORBA:ORB_init)))
   (multiple-value-bind (port host)
       (io-create-listener (orb-port orb))
-    (setf (adaptor orb) t)
     (setf (orb-port orb) port)
     (unless (orb-host orb)
       (setf (orb-host orb) host))
     (setup-shortcut))
-  (unless *root-POA*
-    (setq *root-poa* (create-POA nil "root" nil nil orb)))
-  (setup-default-poa orb))
+  (create-root-adapter orb))
+
+
+(defun root-poa (&optional (orb (CORBA:ORB_init)))
+  (unless (adapter orb)
+    (setup-server orb))
+  (root-poa-of (adapter orb)))
 
 
 (defun setup-incoming-connection (conn)
@@ -117,25 +217,32 @@
 (defun poa-request-handler (conn)
   (let ((buffer (read-buffer-of conn)))
     (setup-incoming-connection conn)
-    (let* ((orb (the-orb conn)) 
-           (service-context (unmarshal-service-context buffer))
-           (req-id (unmarshal-ulong buffer))
-           (response (unmarshal-octet buffer))
-           (object-key (unmarshal-osequence buffer))
-           (operation (unmarshal-string buffer))
-           (principal (unmarshal-osequence buffer))
-           (request (create-server-request
-                     orb :connection conn
-                     :request-id req-id :operation operation
-                     :service-context service-context :input buffer 
-                     :giop-version (buffer-giop-version buffer)
-                     :state :wait :response-flags response)))
-      (connection-add-server-request conn request)
-      (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
-            req-id operation object-key principal)
-      (has-received-request-header orb request)
-      (dispatch-request orb request object-key))))
+    (let ((service-context (unmarshal-service-context buffer))
+          (req-id (unmarshal-ulong buffer))
+          (response (unmarshal-octet buffer))
+          (object-key (unmarshal-osequence buffer))
+          (operation (unmarshal-string buffer))
+          (principal (unmarshal-osequence buffer)))
+      (connection-receive-request conn req-id buffer
+                                  service-context response
+                                  object-key operation principal) )))
 
+
+(defun connection-receive-request (conn req-id buffer
+                                   service-context response object-key
+                                   operation principal)
+  (let* ((orb (the-orb conn))
+         (request (create-server-request
+                   orb :connection conn
+                   :request-id req-id :operation operation
+                   :service-context service-context :input buffer 
+                   :giop-version (buffer-giop-version buffer)
+                   :state :wait :response-flags response)))
+    (connection-add-server-request conn request)
+    (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
+          req-id operation object-key principal)
+    (has-received-request-header orb request)
+    (dispatch-request orb request object-key) ))
 
 
 (defun poa-cancelrequest-handler (conn)
@@ -178,11 +285,6 @@
   ;;FIXME:
   (error "NYI"))
 
-
-(defun root-poa (&optional (orb (CORBA:ORB_init)))
-  (unless (adaptor orb)
-    (setup-server orb))
-  *root-POA*)
 
 (defun initialize-poa (orb)
   (set-initial-reference orb "RootPOA" #'root-POA)

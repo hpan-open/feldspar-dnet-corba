@@ -91,11 +91,11 @@
 
 (define-test-suite "POA Test"
   (variables
-   (orb (make-instance 'clorb-orb :host "localhost" :port 9999 :active t :adaptor t))
-   (*log-level* 4)
-   (*last-poaid* 0)
-   (*poa-map* (make-hash-table :test #'eql))
-   (root-poa (create-POA nil "root" nil nil orb)))
+   (orb (make-instance 'clorb-orb :host "localhost" :port 9999 :active t))
+   (root-adapter (create-root-adapter orb))
+   (root-poa (root-poa-of root-adapter))
+   (*poa-map* (poa-map-of root-adapter))
+   (*log-level* 4))
 
   (define-test "poa-invoke"
     (let ((servant (make-instance 'null-servant))

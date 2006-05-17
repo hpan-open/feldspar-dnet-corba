@@ -321,7 +321,8 @@
            #:io-system-multiprocess
            #:io-system-mt-blocking-write
            ;; Useful internals
-           "*RUNNING-ORB*" "ROOT-POA" )
+           "*RUNNING-ORB*" "ROOT-POA" 
+           #:set-boot-object)
   (:import-from "OMG.ORG/PORTABLESERVER"
                 "POA" "STRING-TO-OID" "OID-TO-STRING")
   (:import-from "OMG.ORG/CORBA"

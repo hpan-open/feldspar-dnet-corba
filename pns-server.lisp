@@ -375,7 +375,7 @@
              (portableserver:string-to-oid "root")
              (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
     (when export
-      (setf (gethash "NameService" clorb::*boot-objects*) *root-context*))
+      (clorb:set-boot-object orb "NameService" *root-context*))
     (when *naming-ior-file*
       (with-open-file (out *naming-ior-file*
                            :direction :output :if-exists :supersede)

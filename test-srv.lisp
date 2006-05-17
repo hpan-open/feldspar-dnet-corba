@@ -3,11 +3,11 @@
 (in-package :clorb)
 
 
-(setup-default-poa *the-orb*)
 (ignore-errors
- (op:activate_object_with_id
-  *default-poa* (string-to-oid "_TEST_")
-  (make-instance 'null-servant)))
+  (op:activate_object_with_id
+   (boot-poa-of (adapter (CORBA:ORB_init)))
+   (string-to-oid "_TEST_")
+   (make-instance 'null-servant)))
 
 
 (define-test-suite "Server Request Processing"

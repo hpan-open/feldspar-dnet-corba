@@ -22,7 +22,7 @@
   ())
 
 (defclass clorb-orb (CORBA:ORB CORBA:TypeCodeFactory synchronized)
-  ((adaptor :initarg :adaptor :initform nil  :accessor adaptor)
+  ((adapter :initarg :adapter :initform nil  :accessor adapter)
    (active  :initarg :active  :initform nil  :accessor orb-active)
    (host    :initarg :host    :initform nil  :accessor orb-host)
    (port    :initarg :port    :initform nil  :accessor orb-port)
@@ -279,6 +279,7 @@ ORB will coninue processing in the background.
 Requires that a multi-threaded IO-system is configured."
   (assert (typep *io-system* 'io-system-mt-base))
   (setq *running-orb* nil)
+  (start-dispatcher-process (adapter *the-orb*))
   (flet ((bg-run-event-handler (event)
            (process-event event)
            t))

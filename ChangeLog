@@ -1,5 +1,38 @@
 2006-05-16  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* pns-server.lisp (setup-pns): use new set-boot-object
+
+	* clorb-srv.lisp (BOOT-OBJECT-MANAGER): added boot-objects slot
+	  and removed global var.
+	(create-default-poa): new fun
+	(set-boot-object): new gf; method for BOOT-OBJECT-MANAGER
+	  root-adapter clorb-orb
+	(root-adapter): new class, to be referenced from orb class
+	(create-root-adapter): new fun
+	(root-poa-of): new fun
+	(adapter-register-poa, adapter-unregister-poa): new poa registry
+	  in root-adapter object.
+	(poa-by-id): lookup poa in root-adapter
+	(default-dispatch-request): new fun
+	(dispatch-request): moved here, use pluggable function in
+	  root-adapter
+	(queued-dispatch): new fun
+	(bg-dispatcher): new fun
+	(start-dispatcher-process): new fun
+	(setup-server): setup new root-adapter
+	(connection-receive-request): new fun
+	(poa-request-handler): factored out connection-receive-request
+
+	* clorb-poa.lisp (next-poaid): new. moved some globals to slots in
+	  root-adapter. 
+	(register-poa, unregister-poa): dispatch to root-adapter
+	(poa-locate): added root-adapter as parameter
+
+	* clorb-pkgdcl.lisp ("NET.CDDR.CLORB"): export set-boot-object
+
+	* clorb-orb.lisp (clorb-orb): rename slot adaptor to adapter
+	(bg-run): call start-dispatcher-process
+
 	* test-client-request.lisp ("Client Request"): new accesor name
 
 	* support-test.lisp (test-object): new accesor name
