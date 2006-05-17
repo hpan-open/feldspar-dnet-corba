@@ -72,13 +72,13 @@
 
 
 (defun get-fragment-request (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (connection-add-fragment conn buffer +iiop-header-size+)
     (setup-incoming-connection conn)))
 
 
 (defun poa-message-handler (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (multiple-value-bind (msgtype fragmented version)
                          (unmarshal-giop-header buffer)
       (setf (buffer-giop-version buffer) version)
@@ -115,7 +115,7 @@
 
 
 (defun poa-request-handler (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (setup-incoming-connection conn)
     (let* ((orb (the-orb conn)) 
            (service-context (unmarshal-service-context buffer))
@@ -139,7 +139,7 @@
 
 
 (defun poa-cancelrequest-handler (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (setup-incoming-connection conn)
     (let* ((req-id (unmarshal-ulong buffer)))
       (mess 3 "#~D cancel" req-id)
@@ -153,7 +153,7 @@
 
 
 (defun poa-locaterequest-handler (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (setup-incoming-connection conn)
     (let* ((orb (the-orb conn))
            (req-id (unmarshal-ulong buffer))

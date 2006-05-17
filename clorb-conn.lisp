@@ -13,9 +13,9 @@
 
 (defclass Connection ()
   ((the-orb         :initarg :orb                          :accessor the-orb)
-   (read-buffer     :initarg :read-buffer                  :accessor connection-read-buffer)
+   (read-buffer     :initarg :read-buffer                  :accessor read-buffer-of)
    (read-callback   :initarg :read-callback                :accessor connection-read-callback)
-   (write-buffer    :initarg :write-buffer   :initform nil :accessor connection-write-buffer)
+   (write-buffer    :initarg :write-buffer   :initform nil :accessor write-buffer-of)
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
    (server-requests                          :initform nil :accessor connection-server-requests)
@@ -29,6 +29,7 @@
   (print-unreadable-object (conn stream :identity t :type t)
     (let ((desc (connection-io-descriptor conn)))
       (when desc (write-string (io-describe-descriptor desc) stream)))))
+
 
 
 
@@ -71,12 +72,12 @@
   (setf (connection-read-callback conn) callback)
   (let ((desc (connection-io-descriptor conn)))
     (let* ((buffer (if continue-p
-                     (connection-read-buffer conn)
+                     (read-buffer-of conn)
                      (get-work-buffer (the-orb conn))))
            (octets (buffer-octets buffer))
            (start (fill-pointer octets)))
       (unless continue-p
-        (setf (connection-read-buffer conn) buffer))
+        (setf (read-buffer-of conn) buffer))
       (when (< (array-total-size octets) n)
         (adjust-array octets n))
       (setf (fill-pointer octets) n)
@@ -84,12 +85,13 @@
 
 
 (defun connection-send-buffer (conn buffer)
-  (when (connection-write-buffer conn)
-    (orb-wait (lambda (conn) (not (connection-write-buffer conn))) conn))
-  (setf (connection-write-buffer conn) buffer)
+  (when (write-buffer-of conn)
+    (orb-wait (lambda (conn) (not (write-buffer-of conn))) conn))
+  (setf (write-buffer-of conn) buffer)
   (let ((desc (connection-io-descriptor conn))
         (octets (buffer-octets buffer)))
-    (io-descriptor-set-write desc octets 0 (length octets))))
+    (if (io-descriptor-set-write desc octets 0 (length octets))
+        (connection-write-ready conn))))
 
 
 (defun connection-add-client-request (conn request)
@@ -156,7 +158,7 @@
 
 
 (defmethod connection-write-ready ((conn connection))
-  (setf (connection-write-buffer conn) nil))
+  (setf (write-buffer-of conn) nil))
 
 (defun connection-init-defragmentation (conn handler)
   (cond ((assembled-handler conn)

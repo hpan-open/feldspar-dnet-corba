@@ -314,9 +314,9 @@
 
 (defun connection-send-request (conn buffer req)
   (marshal-giop-set-message-length buffer)
-  (connection-send-buffer conn buffer)
   (when req
-    (connection-add-client-request conn req)))
+    (connection-add-client-request conn req))
+  (connection-send-buffer conn buffer))
 
 
 ;;;; Connection Reply Handling
@@ -347,7 +347,7 @@
 
 (defun server-close-connection (conn)
   ;; Do a server side close connection
-  (unless (connection-write-buffer conn)
+  (unless (write-buffer-of conn)
     ;; No pending send, send a close connection message
     (let* ((orb (the-orb conn))
            (buffer (get-work-buffer orb)))
@@ -410,12 +410,12 @@
 
 
 (defun get-fragment (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (connection-add-fragment conn buffer +iiop-header-size+)
     (setup-outgoing-connection conn)))
 
 (defun get-fragment-last (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (connection-add-fragment conn buffer +iiop-header-size+)
     (let ((handler (assembled-handler conn)))
       (setf (assembled-handler conn) nil)
@@ -424,7 +424,7 @@
 
 
 (defun get-response-0 (conn)
-  (let ((buffer (connection-read-buffer conn)))
+  (let ((buffer (read-buffer-of conn)))
     (multiple-value-bind (msgtype fragmented)
         (unmarshal-giop-header buffer)
       (let ((size (+ (unmarshal-ulong buffer) +iiop-header-size+))
@@ -455,7 +455,7 @@
 
 
 (defun get-response-reply (conn)
-  (let* ((buffer (connection-read-buffer conn))
+  (let* ((buffer (read-buffer-of conn))
          (service-context (unmarshal-service-context buffer))
          (request-id (let ((id (unmarshal-ulong buffer)))
                        ;;(break "id=~d" id)
@@ -467,7 +467,7 @@
       (request-reply req status buffer service-context))))
 
 
-(defun get-response-locate-reply (conn &aux (buffer (connection-read-buffer conn)))
+(defun get-response-locate-reply (conn &aux (buffer (read-buffer-of conn)))
   (setup-outgoing-connection conn)
   (let* ((request-id (unmarshal-ulong buffer))
          (status (%jit-unmarshal (symbol-typecode 'giop:locatestatustype) buffer))

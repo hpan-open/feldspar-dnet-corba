@@ -130,6 +130,7 @@
 (defmethod connection-write-ready :after ((conn test-connection))
   (let ((fun (response-func conn))
         (req (first (connection-client-requests conn))))
+    (mess 1 "connection-write-ready fun=~A req=~a" fun req)
     (when (and fun req)
       (setf (response-func-called conn) t)
       (funcall fun req) )))

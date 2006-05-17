@@ -161,9 +161,11 @@
 (defgeneric io-ready-for-write (system desc)
   (:documentation
    "Do the policy specific thing to initiate writing of the write buffer
-stored in descriptor.")
+stored in descriptor. Should return true if written and no event generated and
+return false if event will be generated for completion.")
   (:method ((system io-system) desc)
-           (declare (ignore desc))))
+    (declare (ignore desc))
+    nil))
 
 
 (defgeneric io-system-reset (system)
@@ -311,7 +313,10 @@ port should use loopback." )
 
 (defun io-descriptor-set-write (desc buf start end)
   "Initiate writing of buffer.
-Only the part between START and END (exlusive) is written."
+Only the part between START and END (exlusive) is written. Returns
+true if write has been completed and no :write-ready event will be
+generated. Otherwise a :write-ready event will signal the completion
+of this write."
   (setf (io-descriptor-write-buffer desc) buf
         (io-descriptor-write-pos desc) start
         (io-descriptor-write-limit desc) end)
@@ -349,7 +354,7 @@ Only the part between START and END (exlusive) is written."
                                   (io-descriptor-write-pos from)
                                   (io-descriptor-write-limit from))
                (setf (io-descriptor-write-pos from) (io-descriptor-write-limit from))
-               (io-queue-event :write-ready from)
+               ;;(io-queue-event :write-ready from)
                (setq result t)))
            (in (to)
              (when (and (io-descriptor-read-ready to)
@@ -362,12 +367,15 @@ Only the part between START and END (exlusive) is written."
                (setq result t))))
       (case io
         (:read (in desc))
-        (:write (out desc) 
-                (in (io-descriptor-shortcut-p desc)))
+        (:write (out desc)
+                (let ((save-result result))
+                  (in (io-descriptor-shortcut-p desc))
+                  (setq result save-result)))
         (t (out desc) (in desc)))
       result)))
 
 
+#+unused-functions
 (defun io-driver-shortcut ()
   (let ((result nil))
     (dolist (desc *io-descriptions*)
@@ -376,6 +384,34 @@ Only the part between START and END (exlusive) is written."
           (setq result t))))
     result))
 
+
+
+
+;;;; Blocking Write Mixin
+
+
+(defclass io-system-blocking-write ()
+  ())
+
+
+(defmethod io-ready-for-write ((system io-system-blocking-write) desc)
+  "This method does the actual writing."
+  (cond ((io-descriptor-shortcut-p desc)
+         (io-poll-shortcut desc :write))
+        (t
+         (handler-case
+           (progn
+             (with-slots (stream write-buffer write-pos write-limit) desc
+               (write-octets write-buffer write-pos write-limit stream)
+               (setf write-pos write-limit))
+             ;;(io-queue-event :write-ready desc)
+             t)
+           (stream-error
+            (e)
+            (setf (io-descriptor-status desc) :broken)
+            (setf (io-descriptor-error desc)  e)
+            (io-queue-event :error desc)
+            nil)))))
 
 
 
@@ -456,24 +492,13 @@ Only the part between START and END (exlusive) is written."
 ;;;; Select with Blocking Writes Driver
 
 
-(defclass io-system-select-blocking-write (io-system-select)
+(defclass io-system-select-blocking-write (io-system-blocking-write
+                                           io-system-select)
   ())
 
 
 (defmethod io-system-driver ((system io-system-select-blocking-write) poll)
   (io-poll-select poll t))
-
-
-(defmethod io-ready-for-write ((system io-system-select-blocking-write) desc)
-  "This method does the actual writing."
-  (cond ((io-descriptor-shortcut-p desc)
-         (io-poll-shortcut desc :write))
-        (t
-         (with-slots (stream write-buffer write-pos write-limit) desc
-           (write-octets write-buffer write-pos write-limit stream)
-           (setf write-pos write-limit))
-         (io-queue-event :write-ready desc)
-         t)))
 
 
 
@@ -531,14 +556,17 @@ Only the part between START and END (exlusive) is written."
      (io-queue-event :error desc))))
 
 
-(defun io-desc-write (desc)
+(defun io-desc-write (desc &optional no-event)
   (handler-case
     (progn
       (write-octets (io-descriptor-write-buffer desc)
                     (io-descriptor-write-pos desc) (io-descriptor-write-limit desc)
                     (io-descriptor-stream desc))
       (setf (io-descriptor-write-pos desc) (io-descriptor-write-limit desc))
-      (io-queue-event :write-ready desc))
+      (if no-event
+          t
+          (progn (io-queue-event :write-ready desc)
+                 nil)))
     (stream-error
      (e)
      (setf (io-descriptor-status desc) :broken)
@@ -570,7 +598,7 @@ Only the part between START and END (exlusive) is written."
            *io-background-write-treshold*)
       (setf (io-descriptor-write-process desc)
             (start-process "CORBA write" #'io-desc-write desc))
-      (io-desc-write desc))))
+      (io-desc-write desc t))))
 
 
 (defmethod io-system-driver ((system io-system-multiprocess) poll)
@@ -586,7 +614,8 @@ Only the part between START and END (exlusive) is written."
 ;;;; Multi-threaded system with blocking writes
 
 
-(defclass io-system-mt-blocking-write (io-system-mt-base)
+(defclass io-system-mt-blocking-write (io-system-blocking-write
+                                       io-system-mt-base)
   ((read-queue 
     :reader read-queue
     :initform (make-instance 'execution-queue
@@ -618,26 +647,6 @@ Only the part between START and END (exlusive) is written."
   (if (io-descriptor-shortcut-p desc)
     (io-poll-shortcut desc :read)
     (enqueue (read-queue system) desc)))
-
-
-(defmethod io-ready-for-write ((system io-system-mt-blocking-write) desc)
-  "This method does the actual writing."
-  (cond ((io-descriptor-shortcut-p desc)
-         (io-poll-shortcut desc :write))
-        (t
-         (handler-case
-           (progn
-             (with-slots (stream write-buffer write-pos write-limit) desc
-               (write-octets write-buffer write-pos write-limit stream)
-               (setf write-pos write-limit))
-             (io-queue-event :write-ready desc)
-             nil)
-           (stream-error
-            (e)
-            (setf (io-descriptor-status desc) :broken)
-            (setf (io-descriptor-error desc)  e)
-            (io-queue-event :error desc)
-            nil)))))
 
 
 (defmethod io-system-driver ((system io-system-mt-blocking-write) poll)

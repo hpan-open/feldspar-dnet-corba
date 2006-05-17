@@ -174,10 +174,10 @@
         ;; destroy io-descriptor and disconnect it from the
         ;; connection. The connection will therefor never get the
         ;; write-ready event.
-        ;;(assert (not (connection-write-buffer *test-out-conn*)))
+        ;;(assert (not (write-buffer-of *test-out-conn*)))
 
         ;; Repair connection
-        (setf (connection-write-buffer *test-out-conn*) nil)
+        (setf (write-buffer-of *test-out-conn*) nil)
         (let ((desc (connection-io-descriptor *test-out-conn*)))
           (setf (io-descriptor-status desc) :connected)
           (setf (io-descriptor-connection desc) *test-out-conn*))

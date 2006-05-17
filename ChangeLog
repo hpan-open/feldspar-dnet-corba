@@ -1,5 +1,24 @@
 2006-05-09  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-srv.lisp: renaming accessors for read-buffer
+	and write-buffer to read-buffer-of write-buffer-of.
+
+	* clorb-iiop.lisp: renaming accessors for read-buffer
+	and write-buffer to read-buffer-of write-buffer-of.
+	(connection-send-request): reorder connection-add-client-request
+	and connection-send-buffer
+
+	* clorb-io.lisp (io-system-blocking-write): new mixin class
+	(io-ready-for-write): method for io-system-blocking-write
+	(io-system-select-blocking-write): use io-system-blocking-write
+	(io-desc-write): option to not generate event
+	(io-system-mt-blocking-write): use io-system-blocking-write
+
+	* clorb-conn.lisp (Connection): renaming accessors for read-buffer
+	and write-buffer to read-buffer-of write-buffer-of.
+	(connection-send-buffer): handle connection-write-ready if
+	io-descriptor-set-write returns true.
+
 	* clorb-io.lisp (io-system-queue-event): new gf
 	(io-system-event-waiting-p): new gf
 	(io-system-get-event): new gf
