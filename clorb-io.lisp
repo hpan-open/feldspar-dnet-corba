@@ -1,6 +1,6 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
 
-;; io-init
+;; io-init ()
 ;; io-create-listener (&optional port)
 ;; io-create-descriptor () => desc
 ;; io-descriptor-destroy (desc)
@@ -14,6 +14,7 @@
 ;; io-driver ()
 ;; io-describe-descriptor (desc)
 ;; io-get-event () => event, desc
+;; io-event-waiting-p () => boolean
 
 ;; io-descriptor-shortcut-connect (desc)
 ;; io-fix-broken ()
@@ -29,37 +30,30 @@
 
 (defvar *io-system* nil)
 
-(defvar *io-event-queue* nil)
-
 (defvar *io-listener* nil
   "listener socket (or similar). Producer of connections.")
-(defvar *io-listener-process* nil)
 
 (defvar *io-descriptions* nil
   "List of all io-descriptors that we will do I/O on.")
 
-(defvar *io-work-pending* nil)
 
 
 ;;;; Event Queue
 
-(defvar *ql* (make-lock "io-queue"))
+(defgeneric io-system-queue-event (system event))
+(defgeneric io-system-event-waiting-p (system))
+(defgeneric io-system-get-event (system))
+
 
 (defun io-queue-event (type desc)
-  (with-lock *ql*
-    (push (list type desc) *io-event-queue*))
-  #+(or)
-  (mess 3 "io-q-e ~a ~a = ~s"
-        type (io-describe-descriptor desc)
-        (mapcar #'car *io-event-queue*)))
+  (io-system-queue-event *io-system* (list type desc)))
 
-(defun io-work-pending-p ()
-  (or *io-work-pending* *io-event-queue*))
 
 
 ;;;; IO-DESCRIPTOR
 
 (defstruct io-descriptor
+  id
   status
   error
   connection
@@ -80,7 +74,7 @@
 ;; ~ status member nil :connected :broken
 
 
-
+
 ;;;; Shortcut stream
 
 
@@ -136,50 +130,23 @@
       (setf (io-descriptor-shortcut-p desc) other))))
 
 
-
-;;;; Recovery
-
-(defun io-fix-broken ()
-  (setq *io-descriptions*
-        (loop for desc in *io-descriptions*
-              if (eq :broken (io-descriptor-status desc))
-              do (unless (io-descriptor-shortcut-p desc)
-                   (close (io-descriptor-stream desc)))
-              else collect desc)))
-
-
-(defvar *last-io-port* nil)
-
-(defun io-reset (&key (listener nil))
-  (end-process (shiftf *io-listener-process* nil))
-  (when (and listener *io-listener*)
-    (ignore-errors
-     (socket-close *io-listener*))
-    (setq *io-listener* (io-create-listener *last-io-port*)))
-  (setq *io-event-queue* nil)
-  (dolist (desc *io-descriptions*)
-    (end-process (shiftf (io-descriptor-read-process desc) nil))
-    (end-process (shiftf (io-descriptor-write-process desc) nil))
-    (ignore-errors
-     (close (io-descriptor-stream desc)))
-    (setf (io-descriptor-status desc) :broken))
-  (setq *io-descriptions* nil))
-
-
-
+
 ;;;; IO-System
 
 (defclass io-system ()
-  ())
+  ((event-queue
+    :initform nil
+    :accessor event-queue)))
 
-(defclass io-system-select (io-system)
-  ())
 
-(defclass io-system-select-blocking-write (io-system-select)
-  ())
+(defmethod io-system-queue-event ((sys io-system) event)
+  (enqf (event-queue sys) event))
 
-(defclass io-system-multiprocess (io-system)
-  ((read-ready :initform nil  :accessor io-read-ready)))
+(defmethod io-system-get-event ((system io-system))
+  (deqf (event-queue system)))
+
+(defmethod io-system-event-waiting-p ((system io-system))
+  (not (queue-empty-p (event-queue system))))
 
 
 (defun io-system-switch (new-class)
@@ -199,8 +166,43 @@ stored in descriptor.")
            (declare (ignore desc))))
 
 
+(defgeneric io-system-reset (system)
+  (:documentation
+   "IO-System specific reset handling.")
+  (:method ((system io-system))
+    (setf (event-queue system) nil)))
 
 
+
+;;;; Recovery
+
+(defun io-fix-broken ()
+  (setq *io-descriptions*
+        (loop for desc in *io-descriptions*
+              if (eq :broken (io-descriptor-status desc))
+              do (unless (io-descriptor-shortcut-p desc)
+                   (close (io-descriptor-stream desc)))
+              else collect desc)))
+
+
+(defvar *last-io-port* nil)
+
+(defun io-reset (&key (listener nil))
+  (when (and listener *io-listener*)
+    (ignore-errors
+     (socket-close *io-listener*))
+    (setq *io-listener* (io-create-listener *last-io-port*)))
+  (io-system-reset *io-system*)
+  (dolist (desc *io-descriptions*)
+    (end-process (shiftf (io-descriptor-read-process desc) nil))
+    (end-process (shiftf (io-descriptor-write-process desc) nil))
+    (ignore-errors
+     (close (io-descriptor-stream desc)))
+    (setf (io-descriptor-status desc) :broken))
+  (setq *io-descriptions* nil))
+
+
+
 ;;;; Creating io-descriptors
 
 
@@ -242,13 +244,17 @@ stored in descriptor.")
 
 
 
-
+
 ;;;; Making connections
 
 
-(defvar *host-translations* '())
+(defvar *host-translations* '()
+  "Association list mapping hostnames as found in IORs to some
+other hostname or IP-number.")
 
-(defvar *io-loopback-p* nil)
+(defvar *io-loopback-p* nil
+  "Function called with host and port and answers if connection to this host
+port should use loopback." )
 
 
 (defun io-descriptor-connect (desc host port)
@@ -272,7 +278,7 @@ stored in descriptor.")
 
 
 
-
+
 ;;;; Reading 
 
 
@@ -293,6 +299,7 @@ stored in descriptor.")
 
 
 
+
 ;;;; Writing 
 
 
@@ -312,7 +319,7 @@ Only the part between START and END (exlusive) is written."
     (io-ready-for-write *io-system* desc)))
 
 
-
+
 ;;;; Listening
 
 
@@ -329,13 +336,7 @@ Only the part between START and END (exlusive) is written."
   (loop (io-listen t)))
 
 
-(defun io-start-bg-listen ()
-  (unless (and *io-listener-process* (process-running-p *io-listener-process*))
-    (setf *io-listener-process*
-          (start-process "CORBA listen" #'io-bg-listen))))
-
-
-
+
 ;;;; Shortcut driver
 
 
@@ -377,8 +378,13 @@ Only the part between START and END (exlusive) is written."
 
 
 
+
+;;;; Select based IO system
 
-;;;; Select Driver 
+
+(defclass io-system-select (io-system)
+  ())
+
 
 (defun io-poll-desc (desc status)
   (with-slots (stream read-buffer read-limit read-pos
@@ -433,18 +439,15 @@ Only the part between START and END (exlusive) is written."
 
 
 (defmethod io-system-driver ((system io-system-select) poll)
-  (setq *io-work-pending* nil)
   (io-poll-select poll nil))
 
 
 (defmethod io-ready-for-write ((system io-system-select) desc)
-  (setq *io-work-pending* t)
   (if (io-descriptor-shortcut-p desc)
     (io-poll-shortcut desc :write)))
 
 
 (defmethod io-ready-for-read ((system io-system-select) desc)
-  (setq *io-work-pending* t)
   (if (io-descriptor-shortcut-p desc)
     (io-poll-shortcut desc :read)))
 
@@ -453,8 +456,11 @@ Only the part between START and END (exlusive) is written."
 ;;;; Select with Blocking Writes Driver
 
 
+(defclass io-system-select-blocking-write (io-system-select)
+  ())
+
+
 (defmethod io-system-driver ((system io-system-select-blocking-write) poll)
-  (setq *io-work-pending* nil)
   (io-poll-select poll t))
 
 
@@ -471,8 +477,39 @@ Only the part between START and END (exlusive) is written."
 
 
 
+;;;; Multi-threaded System Base
+
+
+(defclass io-system-mt-base (io-system)
+  ((lock   :initform (make-lock "system")  :reader lock)
+   (listener-process  :initform nil  :accessor listener-process)))
+
+
+(defmethod io-system-queue-event ((system io-system-mt-base) event)
+  (with-lock (lock system)
+    (enqf (event-queue system) event)))
+
+(defmethod io-system-get-event ((system io-system-mt-base))
+  (with-lock (lock system)
+    (deqf (event-queue system))))
+
+
+(defmethod io-system-reset ((system io-system-mt-base))
+  (call-next-method)
+  (end-process (shiftf (listener-process system) nil)))
+
+
+(defmethod io-start-bg-listen ((system io-system-mt-base))
+  (unless (listener-process system)
+    (setf (listener-process system)
+          (start-process "CORBA listen" #'io-bg-listen))))
+
+
+
 ;;;; Multiprocess System 
 
+(defclass io-system-multiprocess (io-system-mt-base)
+  ((read-ready :initform nil  :accessor io-read-ready)))
 
 #+digitool
 (defun io-desc-read (desc)
@@ -537,18 +574,19 @@ Only the part between START and END (exlusive) is written."
 
 
 (defmethod io-system-driver ((system io-system-multiprocess) poll)
-  (io-start-bg-listen)
+  (io-start-bg-listen system)
   (unless poll
-    (process-wait-with-timeout "waiting for event" 3600
-                               (lambda () *io-event-queue*))))
+    (process-wait-with-timeout
+     "waiting for event" 3600
+     #'io-system-event-waiting-p system)))
 
 
 
-
+
 ;;;; Multi-threaded system with blocking writes
 
 
-(defclass io-system-mt-blocking-write (io-system)
+(defclass io-system-mt-blocking-write (io-system-mt-base)
   ((read-queue 
     :reader read-queue
     :initform (make-instance 'execution-queue
@@ -603,12 +641,14 @@ Only the part between START and END (exlusive) is written."
 
 
 (defmethod io-system-driver ((system io-system-mt-blocking-write) poll)
-  (io-start-bg-listen)
+  (io-start-bg-listen system)
   (unless poll
-    (process-wait-with-timeout "waiting for event" 3600
-                               (lambda () *io-event-queue*))))
+    (process-wait-with-timeout
+     "waiting for event" 3600
+     #'io-system-event-waiting-p system)))
 
 
+
 ;;;; Init
 
 
@@ -617,16 +657,19 @@ Only the part between START and END (exlusive) is written."
     (setq *io-system* (make-instance *io-system-default-class*))))
 
 
+
 ;;;; Driver
 
 
 (defun io-event-waiting-p ()
-  *io-event-queue*)
+  (io-system-event-waiting-p *io-system*))
 
 (defun io-get-event ()
-  (with-lock *ql*
-    (pop *io-event-queue*) ))
+  (io-system-get-event *io-system*))
 
 (defun io-driver (poll)
   (io-system-driver *io-system* poll))
 
+
+
+;;; clorb-io.lisp ends here

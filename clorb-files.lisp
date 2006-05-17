@@ -43,6 +43,7 @@
     "clorb-options"
     "clorb-supp"
     ("clorb-macros" t)
+    ("clorb-queue" t)
     "clorb-sysdep"
     "clorb-basetypes"
     "clorb-typecode-1"
@@ -79,7 +80,6 @@
     "clorb-trie"
     "clorb-aom"
     "clorb-poa-base"
-    ("clorb-queue" t)
     "clorb-poa"
     "clorb-srv"
     "clorb-ifr-info"))

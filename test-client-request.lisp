@@ -23,6 +23,9 @@
   :type CORBA:tc_string)
 
 
+(defmacro with-hidden-events (&body body)
+  `(progn ,@body))
+
 
 (define-test-suite "Client Request"
   (variables
@@ -32,7 +35,7 @@
     (setup-test-out)
     (let ((obj (test-object orb (make-iiop-version 1 0)))
           (n -129988))
-      (let ((*io-event-queue* nil))
+      (with-hidden-events
         (static-call ("foo" obj)
                      :output ((buffer) (marshal-any-value n buffer))
                      :no-response t))
@@ -44,7 +47,7 @@
     (setup-test-out)
     (let ((obj (test-object orb (make-iiop-version 1 1)))
           (n -129988))
-      (let ((*io-event-queue* nil))
+      (with-hidden-events
         (static-call ("foo" obj)
                      :output ((buffer) (marshal-any-value n buffer))
                      :no-response t))
@@ -85,8 +88,7 @@
 
   (define-test "jit-call oneway"
     (setup-test-out)
-    (let* ((obj (test-object orb))
-           (*io-event-queue* nil))
+    (let* ((obj (test-object orb)))
       (%jit-call test-op-1 obj "hej")
       (test-read-request
        :request-keys '((:response 0) (:operation "op1") (:object-key #(17)))
@@ -95,8 +97,7 @@
 
   (define-test "jit-call normal"
     (setup-test-out)
-    (let* ((obj (test-object orb))
-           (*io-event-queue* nil))
+    (let* ((obj (test-object orb)))
       (setf (response-func *test-out-conn*)
             (lambda (req)
               (test-read-request :args '("hej"))
@@ -108,8 +109,7 @@
 
   (define-test "jit attr"
     (setup-test-out)
-    (let* ((obj (test-object orb))
-           (*io-event-queue* nil))
+    (let* ((obj (test-object orb)))
       (setf (response-func *test-out-conn*)
             (lambda (req)
               (test-read-request :request-keys '((:operation "_get_at1")))

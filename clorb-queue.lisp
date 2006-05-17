@@ -41,3 +41,7 @@
                (setq pos (cdr pos))
                (when (eql pos queue)
                  (return nil))))))
+
+
+(defun queue-empty-p (queue)
+  (null queue))

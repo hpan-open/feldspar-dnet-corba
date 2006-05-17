@@ -1,3 +1,29 @@
+2006-05-09  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-io.lisp (io-system-queue-event): new gf
+	(io-system-event-waiting-p): new gf
+	(io-system-get-event): new gf
+	(io-queue-event): dispatch to io-system-queue-event
+	(io-system): moved the event queue to a slot on io-system
+	(io-system-reset): new gf - allow io-system classes to do
+	additional reset actions
+	(io-reset): call io-system-reset
+	(io-system-mt-base): new base class - provides a lock an slot for
+	listener process.
+	(io-system-queue-event): synchronized method for io-system-mt-base
+	(io-system-get-event): synchronized method for io-system-mt-base
+	(io-system-reset): method for io-system-mt-base to kill listener
+	process
+	(io-start-bg-listen): start listener process if not already started
+	(io-system-multiprocess): subclass io-system-mt-base
+	(io-system-mt-blocking-write): subclass io-system-mt-base
+	(io-event-waiting-p): dispatch to io-system-event-waiting-p
+	(io-get-event): dispatch to io-system-get-event
+
+	* clorb-files.lisp (*base-files*): moved clorb-queue to base files
+
+	* clorb-queue.lisp (queue-empty-p): new func
+
 2006-05-08  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (gc-connections): new func
