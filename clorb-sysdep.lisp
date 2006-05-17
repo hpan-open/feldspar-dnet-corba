@@ -504,7 +504,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 (%SYSDEP
  "make select obj"
 
- #+(or sbcl cmu18 cmu19)
+ #+(or sbcl cmu18 cmu19 openmcl)
  (defstruct SELECT
    (fds  nil)
    (cookies nil)
@@ -520,7 +520,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
    (writepending nil))
  )
 
-#+(or sbcl cmu18 cmu19)
+#+(or sbcl cmu18 cmu19 openmcl)
 (defmacro %add-fd (select-obj fd-number set)
   (let ((sobj '#:sobj)
         (fd   '#:fd))
@@ -531,26 +531,58 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
        (max (select-maxn ,sobj) ,fd))
       (setf (,set ,sobj) (logior (,set ,sobj) (ash 1 ,fd))))))
 
-#+(or sbcl cmu18 cmu19)
+#+(or sbcl cmu18 cmu19 openmcl)
 (defmacro %socket-file-descriptor (socket)
   (%SYSDEP
    "file descriptor for listener socket"
    #+clorb::db-sockets `(sockets:socket-file-descriptor ,socket)
    #+clorb::sb-bsd-sockets `(sb-bsd-sockets:socket-file-descriptor ,socket)
-   #+(or cmu18 cmu19) socket))
+   #+(or cmu18 cmu19) socket
+   #+openmcl `(ccl::socket-device ,socket)))
 
-#+(or sbcl cmu18 cmu19)
+#+(or sbcl cmu18 cmu19 openmcl)
 (defmacro %stream-fd (stream)
   (%SYSDEP
    "file descriptor for stream"
    #+(or cmu18 cmu19) `(system:fd-stream-fd ,stream)
-   #+sbcl  `(sb-sys:fd-stream-fd ,stream)))
+   #+sbcl  `(sb-sys:fd-stream-fd ,stream)
+   #+openmcl `(ccl::socket-device ,stream)))
 
-#+(or sbcl cmu18 cmu19)
+#+(or sbcl cmu18 cmu19 openmcl)
 (defmacro %unix-select (maxn rset wset xset timeout)
   `(#+sbcl sb-unix:unix-select #+(or cmu18 cmu19) unix:unix-select
+           #+openmcl unix-select
            ,maxn ,rset ,wset ,xset ,timeout))
 
+#+openmcl
+(defun unix-select (maxn rset wset xset timeout-sec &optional (to-usecs 0))
+  (ccl::rletZ ((tv :timeval))
+    (when timeout-sec
+      (setf (ccl:pref tv :timeval.tv_sec) timeout-sec
+            (ccl:pref tv :timeval.tv_usec) to-usecs))
+    (ccl::%stack-block ((outfds ccl::*fd-set-size*)
+                        (inpfds ccl::*fd-set-size*)
+                        (errfds ccl::*fd-set-size*))
+      (ccl::fd-zero outfds)
+      (ccl::fd-zero inpfds)
+      (ccl::fd-zero errfds)
+      (loop for fd from 0 to maxn 
+           when (logbitp fd wset) do (ccl::fd-set fd outfds)
+           when (logbitp fd rset) do (ccl::fd-set fd inpfds)
+           when (logbitp fd xset) do (ccl::fd-set fd errfds))
+      (let* ((res (#_select maxn inpfds outfds errfds
+			    (if timeout-sec tv (ccl::%null-ptr)))))
+        (setq wset 0 rset 0 xset 0)
+        (when (> res 0)
+          (loop for fd from 0 to maxn 
+               do (when (ccl::fd-is-set fd inpfds)
+                    (setf rset (logior rset (ash 1 fd))))
+               do (when (ccl::fd-is-set fd outfds)
+                    (setf wset (logior wset (ash 1 fd))))
+               do (when (ccl::fd-is-set fd errfds) 
+                    (setf xset (logior xset (ash 1 fd))))))
+        (values res rset wset xset)))))
+  
 
 (defun select-add-listener (select socket)
   (declare (ignorable select socket))
@@ -562,7 +594,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
      (push socket (select-value select))
      (push nil (select-cookies select)))
 
-   #+(or sbcl cmu18 cmu19)
+   #+(or sbcl cmu18 cmu19 openmcl)
    (%add-fd select (%socket-file-descriptor socket) select-rset)
 
    #+allegro
@@ -577,7 +609,7 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
   (%SYSDEP
    "listener ready in select result"
 
-   #+(or sbcl cmu18 cmu19)
+   #+(or sbcl cmu18 cmu19 openmcl)
    (and (not (select-direct-input select))
         (logbitp (%socket-file-descriptor socket)
                  (select-rset select)))
@@ -605,7 +637,7 @@ status for stream."
       (select-value select))
      (push cookie (select-cookies select)))
 
-   #+(or cmu18 cmu19 sbcl)
+   #+(or cmu18 cmu19 sbcl openmcl)
    (let ((fd (%stream-fd stream)))
      (declare (fixnum fd))
      (when input
@@ -665,7 +697,7 @@ Returns select result to be used in getting status for streams."
             :whostate "wating for CORBA input"))
      select)
 
-   #+(or cmu18 cmu19 sbcl)
+   #+(or cmu18 cmu19 sbcl openmcl)
    (progn
      (unless (select-direct-input select)
        (mess 2 "Enter select ~A ~A"
@@ -707,7 +739,7 @@ Returns select result to be used in getting status for streams."
                     (if (member stream (select-value select))
                         :io :output)))
 
-   #+(or sbcl cmu18 cmu19)
+   #+(or sbcl cmu18 cmu19 openmcl)
    (if (select-direct-input select)
        (loop for cookie in (select-direct-input select)
             do (funcall func cookie :input))
@@ -760,6 +792,13 @@ Returns select result to be used in getting status for streams."
        (if (and (= read-pos start)
                 (eql :eof (ext:read-byte-lookahead stream )))
            (error 'end-of-file :stream stream)))
+
+     #+openmcl
+     (loop ;; assume at least first byte should be readable
+        do (setf (aref seq read-pos) (read-byte stream))
+          (incf read-pos)
+        until (or (= read-pos end)
+                  (not (socket-stream-listen stream))))
 
      ;; Default
      (loop while (socket-stream-listen stream)

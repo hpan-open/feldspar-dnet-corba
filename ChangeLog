@@ -1,3 +1,9 @@
+2006-05-07  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-sysdep.lisp: openmcl support for select. Similar to
+	SBCL/CMUCL support. 
+	(unix-select): OpenMCL implementation.
+
 2006-05-06  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-idl.lisp (corba:idl): allow nil file and generate code
