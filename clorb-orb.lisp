@@ -249,6 +249,13 @@
     (orb-work orb t t)))
 
 
+;; for interactive use
+(defun poll (&optional (orb *the-orb*))
+  (loop repeat 10
+       while (op:work_pending orb)
+       do (op:perform_work orb)))
+
+
 ;;;    void run();
 
 (define-method run ((orb orb))
@@ -403,6 +410,7 @@
           ((not (typep *the-orb* *orb-class*))
            (change-class *the-orb* *orb-class*)))
     (setq args (process-orb-args *the-orb* args))
+    (io-init)
     (setf (orb-active *the-orb*) t)
     (when info
       (dolist (fn *orb-initializers*)

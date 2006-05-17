@@ -1,7 +1,6 @@
 ;;;; clorb-io.lisp  --  a reactive IO layer for CLORB
 
-
-;; io-reset ()
+;; io-init
 ;; io-create-listener (&optional port)
 ;; io-create-descriptor () => desc
 ;; io-descriptor-destroy (desc)
@@ -12,8 +11,9 @@
 ;; io-descriptor-status (desc) => status
 ;; io-descriptor-error (desc) => condition or nil
 ;; io-descriptor-read-buffer (desc) => buffer
-;; io-driver () => event, desc
+;; io-driver ()
 ;; io-describe-descriptor (desc)
+;; io-get-event () => event, desc
 
 ;; io-descriptor-shortcut-connect (desc)
 ;; io-fix-broken ()
@@ -25,9 +25,13 @@
 
 (defparameter *io-background-write-treshold* 200)
 
+(defvar *io-system-default-class* 'io-system-select-blocking-write)
+
+(defvar *io-system* nil)
+
 (defvar *io-event-queue* nil)
 
-(defvar *io-socket* nil
+(defvar *io-listener* nil
   "listener socket (or similar). Producer of connections.")
 (defvar *io-listener-process* nil)
 
@@ -136,13 +140,16 @@
                    (close (io-descriptor-stream desc)))
               else collect desc)))
 
+
+(defvar *last-io-port* nil)
+
 (defun io-reset (&key (listener nil))
-  (when (and listener *io-socket*)
-    (ignore-errors
-     (socket-close *io-socket*))
-    (setq *io-socket* nil))
-  (setq *io-event-queue* nil)
   (end-process (shiftf *io-listener-process* nil))
+  (when (and listener *io-listener*)
+    (ignore-errors
+     (socket-close *io-listener*))
+    (setq *io-listener* (io-create-listener *last-io-port*)))
+  (setq *io-event-queue* nil)
   (dolist (desc *io-descriptions*)
     (end-process (shiftf (io-descriptor-read-process desc) nil))
     (end-process (shiftf (io-descriptor-write-process desc) nil))
@@ -161,12 +168,12 @@
 (defclass io-system-select (io-system)
   ())
 
+(defclass io-system-select-blocking-write (io-system-select)
+  ())
+
 (defclass io-system-multiprocess (io-system)
   ((read-ready :initform nil  :accessor io-read-ready)))
 
-
-(defvar *io-system*
-  (make-instance 'io-system-select))
 
 (defun io-system-switch (new-class)
   (io-reset)
@@ -178,6 +185,9 @@
            (declare (ignore desc))))
 
 (defgeneric io-ready-for-write (system desc)
+  (:documentation
+   "Do the policy specific thing to initiate writing of the write buffer
+stored in descriptor.")
   (:method ((system io-system) desc)
            (declare (ignore desc))))
 
@@ -186,11 +196,13 @@
 
 ;;;; Creating io-descriptors
 
+
 (defun io-create-listener (&optional port)
-  (setq *io-socket* (open-passive-socket port))
-  (setq port (or port (passive-socket-port *io-socket*)))
+  (setq *last-io-port* port)
+  (setq *io-listener* (open-passive-socket port))
+  (setq port (or port (passive-socket-port *io-listener*)))
   (mess 3 "listener created on ~A" port)
-  (values port (passive-socket-host *io-socket*)))
+  (values port (passive-socket-host *io-listener*)))
 
 
 (defun io-create-descriptor (&optional conn)
@@ -205,7 +217,11 @@
   (setf (io-descriptor-status desc) :broken)
   (ignore-errors
     (close (io-descriptor-stream desc)))
-  (setf (io-descriptor-connection desc) nil)
+  (end-process (shiftf (io-descriptor-read-process desc) nil))
+  (end-process (shiftf (io-descriptor-write-process desc) nil))
+  (setf (io-descriptor-connection desc) nil
+        (io-descriptor-read-buffer desc) nil
+        (io-descriptor-write-buffer desc) nil)
   (setq *io-descriptions* (delete desc *io-descriptions*)))
 
 
@@ -280,6 +296,8 @@
 
 
 (defun io-descriptor-set-write (desc buf start end)
+  "Initiate writing of buffer.
+Only the part between START and END (exlusive) is written."
   (setf (io-descriptor-write-buffer desc) buf
         (io-descriptor-write-pos desc) start
         (io-descriptor-write-limit desc) end)
@@ -292,7 +310,7 @@
 
 
 (defun io-listen (blocking)
-  (let ((new (accept-connection-on-socket *io-socket* blocking)))
+  (let ((new (accept-connection-on-socket *io-listener* blocking)))
     (when new
       (let ((desc (io-create-descriptor)))
         (setf (io-descriptor-stream desc) new)
@@ -305,7 +323,7 @@
 
 
 (defun io-start-bg-listen ()
-  (unless *io-listener-process*
+  (unless (and *io-listener-process* (process-running-p *io-listener-process*))
     (setf *io-listener-process*
           (start-process "CORBA listen" #'io-bg-listen))))
 
@@ -388,27 +406,28 @@
                (io-queue-event :error desc)))))))
 
 
-(defun io-poll-select (poll)
+(defun io-poll-select (poll no-write)
   (let ((select (make-select)))
     (dolist (desc *io-descriptions*)
       (unless (io-descriptor-shortcut-p desc)
         (let ((stream (io-descriptor-stream desc)))
           (when stream
             (let ((input (io-descriptor-read-ready desc))
-                  (output (io-descriptor-write-ready desc)))
+                  (output (if no-write nil
+                              (io-descriptor-write-ready desc))))
               (when (or input output)
                 (select-add-stream select stream input output desc) ))))))
-    (when *io-socket*
-      (select-add-listener select *io-socket*))
+    (when *io-listener*
+      (select-add-listener select *io-listener*))
     (setq select (select-wait select poll))
     (select-do-result select #'io-poll-desc)
-    (when *io-socket*
-      (io-listen (select-listener select *io-socket*)))))
+    (when *io-listener*
+      (io-listen (select-listener select *io-listener*)))))
 
 
 (defmethod io-system-driver ((system io-system-select) poll)
   (setq *io-work-pending* nil)
-  (io-poll-select poll))
+  (io-poll-select poll nil))
 
 
 (defmethod io-ready-for-write ((system io-system-select) desc)
@@ -423,8 +442,28 @@
     (io-poll-shortcut desc :read)))
 
 
+
+;;;; Select with Blocking Writes Driver
 
 
+(defmethod io-system-driver ((system io-system-select-blocking-write) poll)
+  (setq *io-work-pending* nil)
+  (io-poll-select poll t))
+
+
+(defmethod io-ready-for-write ((system io-system-select-blocking-write) desc)
+  "This method does the actual writing."
+  (cond ((io-descriptor-shortcut-p desc)
+         (io-poll-shortcut desc :write))
+        (t
+         (with-slots (stream write-buffer write-pos write-limit) desc
+           (write-octets write-buffer write-pos write-limit stream)
+           (setf write-pos write-limit))
+         (io-queue-event :write-ready desc)
+         t)))
+
+
+
 ;;;; Multiprocess System 
 
 
@@ -433,14 +472,9 @@
   (handler-case
     (loop
       (mess 1 "io-desc-read loop")
-      (let ((stream (io-descriptor-stream desc)))
-        (unless (socket-stream-listen stream)
-          (process-wait-with-timeout "wait for input" nil
-                                     #'socket-stream-listen stream))
-        (read-octets (io-descriptor-read-buffer desc)
-                     (io-descriptor-read-pos desc) (io-descriptor-read-limit desc)
-                     stream)
-        (setf (io-descriptor-read-pos desc) (io-descriptor-read-limit desc))
+      (with-slots (stream read-buffer read-pos read-limit read-process) desc
+        (read-octets read-buffer read-pos read-limit stream)
+        (setf read-pos read-limit)
         (mess 1 "Enqueue event read-ready")
         (io-queue-event :read-ready desc))
       (mess 1 "Disable process ~A" (current-process))
@@ -504,6 +538,78 @@
 
 
 
+;;;; Multi-threaded system with blocking writes
+
+
+(defclass io-system-mt-blocking-write (io-system)
+  ((read-queue 
+    :reader read-queue
+    :initform (make-instance 'execution-queue
+                :max-idle 4 :max-processes 20
+                :name-template "CLORB Reader"
+                :executor 'io-mt-read))))
+
+
+(defun io-mt-read (desc)
+  (handler-case
+    (with-slots (stream read-buffer read-pos read-limit read-process) desc
+      (assert (null read-process))
+      (unwind-protect
+        (progn
+          (setf read-process (current-process))
+          (read-octets read-buffer read-pos read-limit stream)
+          (setf read-pos read-limit)
+          (mess 1 "io-mt-read read ready")
+          (io-queue-event :read-ready desc))
+        (setf read-process nil)))
+    (stream-error
+     (e)
+     (setf (io-descriptor-status desc) :broken)
+     (setf (io-descriptor-error desc)  e)
+     (io-queue-event :error desc))))
+
+
+(defmethod io-ready-for-read ((system io-system-mt-blocking-write) desc)
+  (if (io-descriptor-shortcut-p desc)
+    (io-poll-shortcut desc :read)
+    (enqueue (read-queue system) desc)))
+
+
+(defmethod io-ready-for-write ((system io-system-mt-blocking-write) desc)
+  "This method does the actual writing."
+  (cond ((io-descriptor-shortcut-p desc)
+         (io-poll-shortcut desc :write))
+        (t
+         (handler-case
+           (progn
+             (with-slots (stream write-buffer write-pos write-limit) desc
+               (write-octets write-buffer write-pos write-limit stream)
+               (setf write-pos write-limit))
+             (io-queue-event :write-ready desc)
+             nil)
+           (stream-error
+            (e)
+            (setf (io-descriptor-status desc) :broken)
+            (setf (io-descriptor-error desc)  e)
+            (io-queue-event :error desc)
+            nil)))))
+
+
+(defmethod io-system-driver ((system io-system-mt-blocking-write) poll)
+  (io-start-bg-listen)
+  (unless poll
+    (process-wait-with-timeout "waiting for event" 3600
+                               (lambda () *io-event-queue*))))
+
+
+;;;; Init
+
+
+(defun io-init ()
+  (unless *io-system*
+    (setq *io-system* (make-instance *io-system-default-class*))))
+
+
 ;;;; Driver
 
 
@@ -514,7 +620,5 @@
   (pop *io-event-queue*))
 
 (defun io-driver (poll)
-  (if poll
-    (io-system-driver *io-system* t)
-    (loop repeat 10 until *io-event-queue* do (io-system-driver *io-system* nil))))
+  (io-system-driver *io-system* poll))
 

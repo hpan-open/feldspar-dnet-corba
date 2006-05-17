@@ -313,6 +313,12 @@
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
            "OBJ"
+           ;; Config
+           #:*io-system-default-class*
+           #:io-system-select
+           #:io-system-select-blocking-write
+           #:io-system-multiprocess
+           #:io-system-mt-blocking-write
            ;; Useful internals
            "LOAD-IR" "*RUNNING-ORB*" "ROOT-POA"
            "*HOST*" )

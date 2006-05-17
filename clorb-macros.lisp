@@ -207,5 +207,21 @@
          (slot-value ,objvar ',slot)
          (setf (slot-value ,objvar ',slot) (progn ,@body))))))
 
+
+
+
+;;;; Deletef
+
+(defmacro deletef (object place &rest keys &environment env)
+  (multiple-value-bind (vars vals store-vars writer-form reader-form)
+      (get-setf-expansion place env)
+    (if (cdr store-vars) (error "Can't expand this"))
+    `(let* (,@(mapcar #'list vars vals)
+            (,(car store-vars) ,reader-form))
+       (setf ,(car store-vars)
+             (delete ,object ,(car store-vars) ,@keys))
+       ,writer-form)))
+
+
 
 ;;; clorb-macros.lisp ends here

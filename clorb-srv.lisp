@@ -67,6 +67,7 @@
 
 (defun poa-connection-handler (desc)
   (let ((conn (make-associated-connection *the-orb* desc)))
+    (setf (server-p conn) t)
     (setup-incoming-connection conn)))
 
 

@@ -794,16 +794,6 @@ individual call (some callers may choose to block, while others may not).
            (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no)))))
 
 
-(defmacro deletef (object place &rest keys &environment env)
-  (multiple-value-bind (vars vals store-vars writer-form reader-form)
-      (get-setf-expansion place env)
-    (if (cdr store-vars) (error "Can't expand this"))
-    `(let* (,@(mapcar #'list vars vals)
-            (,(car store-vars) ,reader-form))
-       (setf ,(car store-vars)
-             (delete ,object ,(car store-vars) ,@keys))
-       ,writer-form)))
-
 (defun poa-invoke (poa request)
   (let ((oid (request-object-id request))
         (operation (request-operation request))

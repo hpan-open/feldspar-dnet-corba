@@ -19,6 +19,7 @@
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
    (server-requests                          :initform nil :accessor connection-server-requests)
+   (server-p        :initarg :server-p       :initform nil :accessor server-p)
    ;; Defrag support
    (assembled-handler  :initform nil  :accessor assembled-handler)
    (fragment-buffer    :initform nil  :accessor fragment-buffer)))

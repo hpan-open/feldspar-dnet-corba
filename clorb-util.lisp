@@ -334,4 +334,25 @@ The list free operation is used to free the returned information.
 
 
 
+;;;; Cleaning
+
+
+(defun gc-connections ()
+  (dolist (desc *io-descriptions*)
+    (let ((conn (io-descriptor-connection desc)))
+      (unless (or (null conn)
+                  (io-descriptor-shortcut-p desc)
+                  (write-buffer-of conn)
+                  (connection-client-requests conn)
+                  (connection-server-requests conn))
+        (if (server-p conn)
+          (let ((buffer (get-work-buffer (the-orb conn))))
+            (marshal-giop-header :CLOSECONNECTION buffer)
+            (marshal-giop-set-message-length buffer)
+            (connection-send-buffer conn buffer))
+          (io-descriptor-destroy desc))))))
+
+
+
+
 ;;; clorb-util.lisp ends here

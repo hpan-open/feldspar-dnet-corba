@@ -36,6 +36,12 @@
 (clorb::make-repl-happy)
 
 
+;;; IO Policy
+
+(setq clorb:*io-system-default-class*
+      (or #+(or mcl openmcl) 'clorb:io-system-mt-blocking-write
+          'clorb:io-system-select-blocking-write))
+
 ;;; Initiating the ORB
 ;; provide initial references to services on the system
 

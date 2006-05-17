@@ -1,5 +1,36 @@
 2006-05-08  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-util.lisp (gc-connections): new func
+
+	* clorb-sysdep.lisp (read-octets): +Digitool wait for input before
+	  read
+	(current-process): +openmcl
+	(start-process): +openmcl
+	(end-process): +openmcl
+	(process-running-p): +openmcl
+	(process-wait): +openmcl
+	(make-lock): new func
+	(execution-queue): new class
+
+	* clorb-srv.lisp (poa-connection-handler): set server-p for
+	  connection
+
+	* clorb-io.lisp (*io-system-default-class*): new var
+	(*io-listener*): renamed
+	(io-system-select-blocking-write): new io-system class
+	(io-poll-select): parameter no-write to ignore writing descriptors
+	(io-ready-for-write): method for io-system-select-blocking-write
+	that does a direct write
+	(io-system-mt-blocking-write): new io-system class
+	(io-mt-read): function used in read queue
+	(io-ready-for-read): method for io-system-mt-blocking-write, queue
+	descriptor
+	(io-ready-for-write): method for io-system-mt-blocking-write that
+	does a direct write
+	(io-init): new function to be called from ORB initialization
+
+	* clorb-conn.lisp (Connection): new slot sever-p
+
 	* clorb-value.lisp (all-feature-values): use accessor instead of
 	  slot-value
 

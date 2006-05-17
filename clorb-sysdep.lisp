@@ -309,7 +309,7 @@
                    (or (ignore-errors
                          (openmcl-socket:ipaddr-to-hostname host))
                        (openmcl-socket:ipaddr-to-dotted host))))
-            (openmcl-socket:remote-port conn))
+            (ignore-errors (openmcl-socket:remote-port conn)))
     #+Digitool
     (values (let ((host (ccl::stream-remote-host conn)))
               (ccl::tcp-addr-to-str host)
@@ -769,6 +769,12 @@ Returns select result to be used in getting status for streams."
   (declare (optimize speed)
            (type octets seq)
            (type index start end))
+  #+Digitool
+  (unless (socket-stream-listen stream)
+    ;; Don't start reading until input is available, becuase MCL
+    ;; can't do read and write on the same stream due to a locking issue.
+    (process-wait-with-timeout "wait for input" nil
+                               #'socket-stream-listen stream))
   (let ((n (read-sequence seq stream :start start :end end)))
     (when (< n (- end start))
       (error 'end-of-file :stream stream))))
@@ -811,10 +817,13 @@ Returns select result to be used in getting status for streams."
 
 
 (defun write-octets (seq start end stream)
+  "Write octets from SEQ between START and END to the STREAM.
+Returns when all the data has been written."
   (declare (type octets seq)
            (type index start end))
   (write-sequence seq stream :start start :end end)
   (force-output stream))
+
 
 (defun write-octets-no-hang (seq start end stream)
   "returns number of octets written"
@@ -834,15 +843,17 @@ Returns select result to be used in getting status for streams."
 (defun current-process ()
   (%SYSDEP
    "return the current process"
-   #+ccl ccl:*current-process*
+   #+(or mcl openmcl) ccl:*current-process*
    :current-process))
 
 (defun start-process (options proc &rest args)
   (declare (ignorable options))
   (%SYSDEP
    "start a process"
-   #+mcl (apply #'ccl:process-run-function options proc args)
-
+   #+(or mcl openmcl)
+   (apply #'ccl:process-run-function options proc args)
+   #+acl-compat
+   (apply #'acl-compat.mp:process-run-function name func args)
    ;; Default: just do it
    (progn (apply proc args)
           nil)))
@@ -850,8 +861,22 @@ Returns select result to be used in getting status for streams."
 (defun end-process (process)
   (and process
        (%SYSDEP "end process"
+                #+openmcl
+                (ccl:process-kill process)
                 #+mcl (ccl:process-reset process nil :kill)
+                #+acl-compat
+                (acl-compat.mp:process-kill process)
                 nil)))
+
+(defun process-running-p (process)
+  (%SYSDEP "check if process is running"
+           #+openmcl (member process (ccl:all-processes))
+           #+mcl (ccl:process-active-p process)
+           ;; (ccl::process-exhausted-p ??)
+           #+acl-compat
+           (acl-compat.mp:process-active-p process)
+           nil))
+
 
 (defun process-wait-with-timeout (whostate timeout wait-func &rest args)
   (declare (ignorable whostate timeout wait-func args))
@@ -867,12 +892,167 @@ Returns select result to be used in getting status for streams."
   (declare (ignorable whostate))
   (%SYSDEP
    "wait for condition to come true"
-   #+CCL 
+   #+(or mcl openmcl) 
    (apply #'ccl:process-wait whostate wait-func args)
 
    ;; Default
    (loop until (apply wait-func args)
          do (sleep 0.1))))
+
+
+(defun make-lock (name)
+  (%SYSDEP "make synchronization lock"
+           #+(or mcl openmcl)
+           (ccl:make-lock name)
+           #+acl-compat
+           (acl-compat.mp:make-process-lock :name name)
+           ;; Default
+           `(:lock , name)))
+
+
+
+;;;; Execution Queue
+
+
+(defclass execution-queue ()
+  ((max-processes :initarg :max-processes :initform 10   :accessor max-processes)
+   (max-idle      :initarg :max-idle      :initform nil  :accessor max-idle)
+   (queue                                 :initform nil  :accessor eq-queue)
+   (idle-count                            :initform 0    :accessor idle-count)
+   (idle-list     :initarg :idle-list     :initform nil  :accessor idle-list)
+   (process-list  :initarg :process-list  :initform nil  :accessor process-list)
+   (process-count :initarg :process-count :initform 0    :accessor process-count)
+   (eq-lock        :initform (make-lock "eq-lock")       :reader eq-lock)
+   (executor      :initarg :executor  :initform 'eq-exec :accessor executor)
+   (name-template :initarg :name-template :initform "eq" :accessor name-template)
+   (name-count    :initarg :name-count    :initform 0    :accessor name-count)
+   #+OpenMCL
+   (semaphore      :initform (ccl:make-semaphore)        :reader semaphore)))
+
+
+(defmacro with-execution-queue (q &body body)
+  `(with-accessors ((max-processes max-processes) (max-idle max-idle)
+                    (queue eq-queue) (idle-count idle-count)
+                    (process-list process-list) (process-count process-count)
+                    (lock eq-lock) (executor executor) (name-template name-template)
+                    (name-count name-count) (idle-list idle-list)
+                    #+OpenMCL (semaphore semaphore))
+                   ,q
+     ,@body))
+
+
+(defmethod next-process-name ((q execution-queue))
+  (with-execution-queue q
+    (format nil "~A ~D" name-template (incf name-count))))
+
+
+#+Digitool
+(defun eq-main (q obj)
+  (with-execution-queue q
+    (loop
+      (funcall executor obj)
+      (ccl:with-lock-grabbed (lock)
+        (cond (queue
+               (setq obj (pop queue)))
+              ((or (null max-idle) (< idle-count max-idle))
+               (incf idle-count)
+               (push ccl:*current-process* idle-list)
+               (return))
+              (t
+               (decf process-count)
+               (setq process-list (delete ccl:*current-process* process-list))
+               (ccl:process-kill ccl:*current-process*)
+               (return)))))))
+
+#+OpenMCL
+(defun eq-main (q obj)
+  (with-execution-queue q
+    (let ((idle nil))
+      (loop
+         (cond (idle
+                (ccl:wait-on-semaphore semaphore)
+                (ccl:with-lock-grabbed (lock)
+                  (when queue
+                    (setq idle nil
+                          obj (pop queue))
+                    (decf idle-count)
+                    (deletef (current-process) idle-list))))
+               (t
+                (handler-case
+                    (funcall executor obj)
+                  (serious-condition (condition)
+                    (mess 4 "Thread fails: ~A" condition)
+                    (ccl:with-lock-grabbed (lock)
+                      (decf process-count)
+                      (deletef (current-process) process-list)
+                      (return))))
+                (ccl:with-lock-grabbed (lock)
+                  (let ((process (current-process)))
+                    (cond (queue
+                           (setq obj (pop queue)))
+                          ((or (null max-idle) (< idle-count max-idle))
+                           (incf idle-count)
+                           (setq idle t)
+                           (push process idle-list))
+                          (t
+                           (decf process-count)
+                           (deletef process process-list)
+                           (end-process process)
+                           (return)))))))))))
+
+
+(defun eq-exec (obj)
+  (etypecase obj
+    (function (funcall obj))
+    (cons (apply (car obj) (cdr obj)))))
+
+
+#+Digitool
+(defmethod enqueue ((q execution-queue) obj)
+  (with-execution-queue q
+    (ccl:with-lock-grabbed (lock)
+      (cond ((not (zerop idle-count))
+             (let ((p (pop idle-list)))
+               (ccl:process-preset p #'eq-main q obj)
+               (decf idle-count)
+               (ccl:process-enable p)
+               t))
+            ((< process-count max-processes)
+             (let ((p (ccl:make-process (next-process-name q))))
+               (ccl:process-preset p #'eq-main q obj)
+               (push p process-list)
+               (incf process-count)
+               (ccl:process-enable p)
+               t))
+            (t 
+             (setf queue (nconc queue (list obj)))
+             nil)))))
+
+#+OpenMCL
+(defmethod enqueue ((q execution-queue) obj)
+  (with-execution-queue q
+    (ccl:with-lock-grabbed (lock)
+      (cond ((and (zerop idle-count) (< process-count max-processes))
+             (let ((p (start-process (next-process-name q) #'eq-main q obj)))
+               (push p process-list)
+               (incf process-count)
+               t))
+            (t 
+             (setf queue (nconc queue (list obj)))
+             (ccl:signal-semaphore semaphore)
+             nil)))))
+
+#+OpenMCL
+(defun garb-threads (q)
+  (with-execution-queue q
+    (ccl:with-lock-grabbed (lock)
+      (setq process-list
+            (remove-if (lambda (p)
+                         (unless (process-running-p p)
+                           (decf process-count)
+                           t))
+                       process-list)))))
+
 
 
 
