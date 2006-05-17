@@ -644,6 +644,7 @@ status for stream."
        ;; there is buffering in the stream, need to empty the buffer
        ;; before doing a real select
        (when (socket-stream-listen stream)
+         ;; FIXME: listen can signal error!
          (push cookie (select-direct-input select)))
        (%add-fd select fd select-rset))
      (when output
@@ -844,6 +845,7 @@ Returns when all the data has been written."
   (%SYSDEP
    "return the current process"
    #+(or mcl openmcl) ccl:*current-process*
+   #+sb-thread sb-thread:*current-thread*
    :current-process))
 
 (defun start-process (options proc &rest args)
@@ -852,6 +854,8 @@ Returns when all the data has been written."
    "start a process"
    #+(or mcl openmcl)
    (apply #'ccl:process-run-function options proc args)
+   #+sb-thread
+   (sb-thread:make-thread (lambda () (apply proc args)) :name options)
    #+acl-compat
    (apply #'acl-compat.mp:process-run-function name func args)
    ;; Default: just do it
@@ -864,6 +868,7 @@ Returns when all the data has been written."
                 #+openmcl
                 (ccl:process-kill process)
                 #+mcl (ccl:process-reset process nil :kill)
+                #+sb-thread (sb-thread:terminate-thread process)
                 #+acl-compat
                 (acl-compat.mp:process-kill process)
                 nil)))
@@ -873,6 +878,7 @@ Returns when all the data has been written."
            #+openmcl (member process (ccl:all-processes))
            #+mcl (ccl:process-active-p process)
            ;; (ccl::process-exhausted-p ??)
+           #+sb-thread (sb-thread:thread-alive-p process)
            #+acl-compat
            (acl-compat.mp:process-active-p process)
            nil))
@@ -904,10 +910,24 @@ Returns when all the data has been written."
   (%SYSDEP "make synchronization lock"
            #+(or mcl openmcl)
            (ccl:make-lock name)
+           #+sb-thread
+           (sb-thread:make-mutex :name name)
            #+acl-compat
            (acl-compat.mp:make-process-lock :name name)
            ;; Default
            `(:lock , name)))
+
+
+(defmacro with-lock (lock &body body)
+  "Execute body with lock held"
+  (%SYSDEP
+   "execute body with lock held"
+   #+(or mcl openmcl)
+   `(ccl:with-lock-grabbed (,lock) ,@body)
+   #+sb-thread
+   `(sb-thread:with-mutex (,lock) ,@body)
+   ;; Default
+   `(progn ,@body)))
 
 
 
@@ -927,7 +947,9 @@ Returns when all the data has been written."
    (name-template :initarg :name-template :initform "eq" :accessor name-template)
    (name-count    :initarg :name-count    :initform 0    :accessor name-count)
    #+OpenMCL
-   (semaphore      :initform (ccl:make-semaphore)        :reader semaphore)))
+   (semaphore      :initform (ccl:make-semaphore)        :reader semaphore)
+   #+sb-thread
+   (waitqueue      :initform (sb-thread:make-waitqueue)  :reader waitqueue)))
 
 
 (defmacro with-execution-queue (q &body body)
@@ -936,7 +958,8 @@ Returns when all the data has been written."
                     (process-list process-list) (process-count process-count)
                     (lock eq-lock) (executor executor) (name-template name-template)
                     (name-count name-count) (idle-list idle-list)
-                    #+OpenMCL (semaphore semaphore))
+                    #+OpenMCL (semaphore semaphore)
+                    #+sb-thread (waitqueue waitqueue))
                    ,q
      ,@body))
 
@@ -1001,6 +1024,42 @@ Returns when all the data has been written."
                            (return)))))))))))
 
 
+#+sb-thread
+(defun eq-main (q obj)
+  (with-execution-queue q
+    (let ((idle nil))
+      (loop
+         (cond (idle
+                (with-lock lock
+                  (sb-thread:condition-wait waitqueue lock)
+                  (when queue
+                    (setq idle nil
+                          obj (pop queue))
+                    (decf idle-count)
+                    (deletef (current-process) idle-list))))
+               (t
+                (handler-case
+                    (funcall executor obj)
+                  (serious-condition (condition)
+                    (mess 4 "Thread fails: ~A" condition)
+                    (with-lock lock
+                      (decf process-count)
+                      (deletef (current-process) process-list))
+                    (return)))
+                (with-lock lock
+                  (let ((process (current-process)))
+                    (cond (queue
+                           (setq obj (pop queue)))
+                          ((or (null max-idle) (< idle-count max-idle))
+                           (incf idle-count)
+                           (setq idle t)
+                           (push process idle-list))
+                          (t
+                           (decf process-count)
+                           (deletef process process-list)
+                           (return)))))))))))
+
+
 (defun eq-exec (obj)
   (etypecase obj
     (function (funcall obj))
@@ -1028,10 +1087,10 @@ Returns when all the data has been written."
              (setf queue (nconc queue (list obj)))
              nil)))))
 
-#+OpenMCL
+#+(or OpenMCL sb-thread)
 (defmethod enqueue ((q execution-queue) obj)
   (with-execution-queue q
-    (ccl:with-lock-grabbed (lock)
+    (with-lock lock
       (cond ((and (zerop idle-count) (< process-count max-processes))
              (let ((p (start-process (next-process-name q) #'eq-main q obj)))
                (push p process-list)
@@ -1039,13 +1098,14 @@ Returns when all the data has been written."
                t))
             (t 
              (setf queue (nconc queue (list obj)))
-             (ccl:signal-semaphore semaphore)
+             #+openmcl (ccl:signal-semaphore semaphore)
+             #+sb-thread (sb-thread:condition-notify waitqueue)
              nil)))))
 
-#+OpenMCL
+#+(or OpenMCL sb-thread)
 (defun garb-threads (q)
   (with-execution-queue q
-    (ccl:with-lock-grabbed (lock)
+    (with-lock lock
       (setq process-list
             (remove-if (lambda (p)
                          (unless (process-running-p p)

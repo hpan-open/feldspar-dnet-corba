@@ -43,8 +43,15 @@
 
 ;;;; Event Queue
 
+(defvar *ql* (make-lock "io-queue"))
+
 (defun io-queue-event (type desc)
-  (push (list type desc) *io-event-queue*))
+  (with-lock *ql*
+    (push (list type desc) *io-event-queue*))
+  #+(or)
+  (mess 3 "io-q-e ~a ~a = ~s"
+        type (io-describe-descriptor desc)
+        (mapcar #'car *io-event-queue*)))
 
 (defun io-work-pending-p ()
   (or *io-work-pending* *io-event-queue*))
@@ -617,7 +624,8 @@ Only the part between START and END (exlusive) is written."
   *io-event-queue*)
 
 (defun io-get-event ()
-  (pop *io-event-queue*))
+  (with-lock *ql*
+    (pop *io-event-queue*) ))
 
 (defun io-driver (poll)
   (io-system-driver *io-system* poll))
