@@ -1,5 +1,7 @@
 2006-05-19  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-io.lisp (io-descriptor-connected-p): spelling
+
 	* clorb-srv.lisp (poa-connection-handler): use new :server-p arg
 
 	* clorb-conn.lisp (make-associated-connection): added &key server-p

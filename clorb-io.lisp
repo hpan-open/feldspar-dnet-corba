@@ -316,7 +316,7 @@ return false if event will be generated for completion.")
   (socket-shutdown (io-descriptor-stream desc)))
 
 
-(defun io-desciptor-connected-p (desc)
+(defun io-descriptor-connected-p (desc)
   (and (eql (io-descriptor-status desc) :connected)
        (io-descriptor-stream desc)))
 
@@ -467,7 +467,7 @@ of this write."
 (defun io-broken-descriptor (desc error &optional activity)
   (with-synchronization desc
     (let ((do-close
-              (or (not (io-desciptor-connected-p desc))
+              (or (not (io-descriptor-connected-p desc))
                   (not (case activity
                          ((:write) (io-descriptor-read-process desc))
                          ((:read)  (io-descriptor-write-process desc)))))))
@@ -500,7 +500,7 @@ of this write."
              (with-slots (stream write-buffer write-pos write-limit
                                  write-process) desc
                (with-synchronization desc
-                 (unless (io-desciptor-connected-p desc)
+                 (unless (io-descriptor-connected-p desc)
                    (return-from io-ready-for-write nil))
                  (setf write-process (current-process)))
                (write-octets write-buffer write-pos write-limit stream)
@@ -677,7 +677,7 @@ Called from read-queue max-handler." )
       (assert (null read-process))
       (loop
          (with-synchronization desc
-           (unless (io-desciptor-connected-p desc)
+           (unless (io-descriptor-connected-p desc)
              (return-from io-mt-read nil))
            (setf read-process (current-process)))
          (assert read-buffer nil
@@ -718,7 +718,7 @@ Called from read-queue max-handler." )
       (with-slots (stream write-buffer write-pos write-limit write-process) desc
         (assert (null write-process))
         (with-synchronization desc
-          (unless (io-desciptor-connected-p desc)
+          (unless (io-descriptor-connected-p desc)
             (return-from io-mt-write nil))
           (setf write-process (current-process)))
         (write-octets write-buffer write-pos write-limit stream)
