@@ -319,7 +319,7 @@
     #+clisp
     (values (ext:socket-stream-host conn)
             (ext:socket-stream-port conn))
-   
+
    ;; Default
    nil ))
 
@@ -468,6 +468,15 @@ with the new connection.  Do not block unless BLOCKING is non-NIL"
 
    ;; default
    (close socket)))
+
+
+(defun socket-close (socket)
+  (%SYSDEP
+   "close a socket stream"
+
+   ;; Usualy a normal stream
+   (when (open-stream-p socket)
+     (close socket))))
 
 
 (defun socket-shutdown (stream)

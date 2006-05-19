@@ -76,9 +76,11 @@
 
 (defclass Connection (synchronized)
   ((the-orb         :initarg :orb                          :accessor the-orb)
-   (read-buffer     :initarg :read-buffer                  :accessor read-buffer-of)
-   (read-callback   :initarg :read-callback                :accessor connection-read-callback)
-   (write-buffer    :initarg :write-buffer   :initform nil :accessor write-buffer-of)
+   (read-buffer                                            :accessor read-buffer-of)
+   (read-callback                                          :accessor connection-read-callback)
+   (write-buffer                             :initform nil :accessor write-buffer-of)
+   (write-request                            :initform nil :accessor write-request-of)
+   (write-count                              :initform 0   :accessor write-count-of )
    (io-descriptor   :initarg :io-descriptor  :initform nil :accessor connection-io-descriptor)
    (client-requests                          :initform nil :accessor connection-client-requests)
    (server-requests                          :initform nil :accessor connection-server-requests)
@@ -108,16 +110,17 @@
 
 ;;(defvar *desc-conn* (make-hash-table))
 
-(defun make-associated-connection (orb desc)
-  (let* ((conn (make-instance 'Connection :orb orb :io-descriptor desc)))
+(defun make-associated-connection (orb desc &key server-p)
+  (let* ((conn (make-instance 'Connection :orb orb :io-descriptor desc
+                              :server-p server-p)))
     (io-descriptor-associate-connection desc conn)
     conn))
 
 
 (defun connection-destroy (conn)
-  (when-let (desc (connection-io-descriptor conn))
-    (io-descriptor-destroy desc))
-  (setf (connection-io-descriptor conn) nil))
+  (with-synchronization conn
+    (when-let (desc (connection-io-descriptor conn))
+      (io-descriptor-destroy desc t))))
 
 
 (defun create-connection (orb host port)
@@ -155,46 +158,49 @@
 
 
 (defun connection-shutdown (conn)
-  (case (shutdown-status conn)
-    ((nil) (prog1 (setf (shutdown-status conn) :sent)
-             (connection-send-buffer conn (server-close-connection-msg conn))))
-    ((:sent) nil)
-    ((:closed)
-     (connection-destroy conn)
-     :destroyed)))
+  (let ((status nil) (action nil))
+    (with-synchronization conn
+      (case (setq status (shutdown-status conn))
+        ((nil)
+         (setf action :send)
+         (setq status :sent)
+         (setf (shutdown-status conn) status))
+        ((:sent) nil)
+        ((:closed)
+         (setq action :destroy)
+         (setf status :destroyed))))
+    (case action
+      ((:send)
+       (connection-send-buffer conn (server-close-connection-msg conn)))
+      ((:destroy)
+       (connection-destroy conn)))
+    status))
 
 
-(defun connection-send-buffer (conn buffer)
+(defun %add-client-request (conn request)
+  (push request (connection-client-requests conn)))
+
+
+(defun connection-send-buffer (conn buffer &optional request)
   (flet ((write-free-p (conn)
            (not (write-buffer-of conn))))
     (loop
        (with-synchronization conn
          (when (write-free-p conn)
-           (setf (write-buffer-of conn) buffer)
+           (setf (write-buffer-of conn) buffer
+                 (write-request-of conn) request)
+           (when request
+             (%add-client-request conn request))
            (return)))
        (orb-condition-wait conn #'write-free-p conn))
     (let ((desc (connection-io-descriptor conn))
           (octets (buffer-octets buffer)))
-      (if (io-descriptor-set-write desc octets 0 (length octets))
-          (connection-write-ready conn)))))
-
-
-(defun connection-add-client-request (conn request)
-  (with-synchronization conn
-    (push request (connection-client-requests conn))))
-
-(defun connection-remove-client-request (conn request)
-  (with-synchronization conn
-    (setf (activity conn) t)
-    (setf (connection-client-requests conn)
-          (delete request (connection-client-requests conn)))))
-
+      (cond ((io-descriptor-set-write desc octets 0 (length octets))
+             (connection-write-ready conn))))))
 
 
 (defun connection-send-request (conn buffer req)
-  (when req
-    (connection-add-client-request conn req))
-  (connection-send-buffer conn buffer))
+  (connection-send-buffer conn buffer req))
 
 
 (defun find-waiting-client-request (conn request-id)
@@ -242,7 +248,7 @@
 
 
 (defun gc-connections (&optional except n)
-  (dolist (desc *io-descriptions*)
+  (dolist (desc (io-descriptions-of *io-system*))
     (let ((conn (io-descriptor-connection desc)))
       (unless (or (null conn) (member desc except)
                   (io-descriptor-shortcut-p desc)
@@ -254,7 +260,7 @@
             (progn
               (if (server-p conn)
                   (connection-shutdown conn)
-                  (io-descriptor-destroy desc))
+                  (io-descriptor-destroy desc t))
               (if (numberp n)
                   (if (< (decf n) 1)
                       (return)))))))))
@@ -287,14 +293,13 @@
     (dolist (req (connection-client-requests conn))
       (request-reply-exception req :error
                                (system-exception 'CORBA:COMM_FAILURE)))
-    (setf (connection-client-requests conn) nil)
-    (connection-destroy conn)))
+    (setf (connection-client-requests conn) nil)))
 
 
 (defun connection-close (conn)
   ;; Called on recipt of a connection close message
   (with-synchronization conn
-    (connection-destroy conn)
+    (io-descriptor-close (connection-io-descriptor conn))
     ;; The server should not have started on any of the outstanding requests.
     (dolist (req (connection-client-requests conn))
       (request-reply-exception req :error
@@ -309,10 +314,25 @@
 (defmethod connection-write-ready ((conn connection))
   (with-synchronization conn
     (setf (activity conn) t)
-    (setf (write-buffer-of conn) nil)
+    (incf (write-count-of conn))
+    (setf (write-buffer-of conn) nil
+          (write-request-of conn) nil)
     (when (eql (shutdown-status conn) :sent)
       (io-descriptor-shutdown (connection-io-descriptor conn))
       (setf (shutdown-status conn) :closed))
+    (synch-notify conn)))
+
+
+(defun connection-no-write (conn)
+  (with-synchronization conn
+    (when-let (req (write-request-of conn))
+      (when (connection-client-requests conn)
+        ;; if (connection-client-requests conn) is nil then there must
+        ;; have been a read error
+        (request-no-write req)
+        (deletef req (connection-client-requests conn))))
+    (setf (write-buffer-of conn) nil
+          (write-request-of conn) nil)
     (synch-notify conn)))
 
 
@@ -373,6 +393,9 @@ Obj should be synch-notify when the condition is possibly changed."
       (:write-ready
        (io-descriptor-set-write desc nil 0 0)
        (when conn (connection-write-ready conn)))
+      (:no-write
+       (io-descriptor-set-write desc nil 0 0)
+       (when conn (connection-no-write conn)))
       (:new
        (funcall *new-connection-callback* desc))
       (:connected

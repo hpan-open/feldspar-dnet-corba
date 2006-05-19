@@ -33,9 +33,6 @@
 (defvar *io-listener* nil
   "listener socket (or similar). Producer of connections.")
 
-(defvar *io-descriptions* nil
-  "List of all io-descriptors that we will do I/O on.")
-
 
 
 ;;;; Event Queue
@@ -72,7 +69,7 @@
 
 ;; FIXME: define and document status codes
 ;; - define what error contain (e.g. a condition)
-;; ~ status member nil :connected :broken
+;; ~ status member nil :connected :broken :destroyed
 
 
 (defmethod lock ((obj io-descriptor))
@@ -173,7 +170,11 @@
 (defclass io-system ()
   ((event-queue
     :initform nil
-    :accessor event-queue)))
+    :accessor event-queue)
+   (io-descriptions
+    :initform nil
+    :accessor io-descriptions-of
+    :documentation "List of all io-descriptors that we will do I/O on.")))
 
 
 (defmethod io-system-queue-event ((sys io-system) event)
@@ -212,20 +213,32 @@ return false if event will be generated for completion.")
   (:documentation
    "IO-System specific reset handling.")
   (:method ((system io-system))
-    (setf (event-queue system) nil)))
+    (setf (event-queue system) nil)
+    (flet ((kill (maybe-thread)
+           (unless (symbolp maybe-thread)
+             (end-process maybe-thread))))
+    (dolist (desc (io-descriptions-of system))
+      (kill (shiftf (io-descriptor-read-process desc) nil))
+      (kill (shiftf (io-descriptor-write-process desc) nil))
+      (ignore-errors
+        (close (io-descriptor-stream desc)))
+      (setf (io-descriptor-status desc) :broken)))
+    (setf (io-descriptions-of system) nil)))
+
+(defgeneric io-system-add-descriptor (system desc)
+  (:documentation
+   "Add a io-descriptor to the system.")
+  (:method ((system io-system) desc)
+    (push desc (io-descriptions-of system))))
+
+(defgeneric io-system-delete-descriptor (system desc)
+  (:method ((system io-system) desc)
+    (deletef desc (io-descriptions-of system))))
+
 
 
 
 ;;;; Recovery
-
-(defun io-fix-broken ()
-  (setq *io-descriptions*
-        (loop for desc in *io-descriptions*
-              if (eq :broken (io-descriptor-status desc))
-              do (unless (io-descriptor-shortcut-p desc)
-                   (close (io-descriptor-stream desc)))
-              else collect desc)))
-
 
 (defvar *last-io-port* nil)
 
@@ -234,17 +247,7 @@ return false if event will be generated for completion.")
     (ignore-errors
       (listener-close *io-listener*))
     (setq *io-listener* (io-create-listener *last-io-port*)))
-  (io-system-reset *io-system*)
-  (flet ((kill (maybe-thread)
-           (unless (symbolp maybe-thread)
-             (end-process maybe-thread))))
-    (dolist (desc *io-descriptions*)
-      (kill (shiftf (io-descriptor-read-process desc) nil))
-      (kill (shiftf (io-descriptor-write-process desc) nil))
-      (ignore-errors
-        (close (io-descriptor-stream desc)))
-      (setf (io-descriptor-status desc) :broken)))
-  (setq *io-descriptions* nil))
+  (io-system-reset *io-system*))
 
 
 
@@ -269,19 +272,27 @@ return false if event will be generated for completion.")
                :shortcut-p shortcut-p
                :stream stream
                :lock (make-lock "desc"))))
-    (push desc *io-descriptions*)
+    (io-system-add-descriptor *io-system* desc)
     desc))
 
 (defun io-descriptor-associate-connection (desc conn)
   (setf (io-descriptor-connection desc) conn))
 
-(defun io-descriptor-destroy (desc)
+
+(defun %io-descriptor-close (desc)
+  (when-let (socket (io-descriptor-stream desc))
+    (ignore-errors (socket-close socket))
+    (setf (io-descriptor-stream desc) nil))
+  (io-system-delete-descriptor *io-system* desc))
+
+
+(defun io-descriptor-destroy (desc &optional soft)
   (with-synchronization desc
-    (unless (eql (io-descriptor-status desc) :destroyed)
+    (unless (or (eql (io-descriptor-status desc) :destroyed)
+                (if soft
+                    (io-descriptor-write-process desc)))
       (setf (io-descriptor-status desc) :destroyed)
-      (ignore-errors
-        (when (open-stream-p (io-descriptor-stream desc))
-          (close (io-descriptor-stream desc))))
+      (%io-descriptor-close desc)
       (flet ((kill (maybe-thread)
                (unless (or (symbolp maybe-thread)
                            (eql maybe-thread (current-process)))
@@ -290,13 +301,25 @@ return false if event will be generated for completion.")
         (kill (shiftf (io-descriptor-write-process desc) nil)))
       (setf (io-descriptor-connection desc) nil
             (io-descriptor-read-buffer desc) nil
-            (io-descriptor-write-buffer desc) nil)
-      (setq *io-descriptions* (delete desc *io-descriptions*)))
+            (io-descriptor-write-buffer desc) nil))
     nil))
+
+
+(defun io-descriptor-close (desc)
+  (with-synchronization desc
+    (setf (io-descriptor-status desc) :broken)
+    (%io-descriptor-close desc)))
+
 
 (defun io-descriptor-shutdown (desc)
   "Close the writing end of the socket."
   (socket-shutdown (io-descriptor-stream desc)))
+
+
+(defun io-desciptor-connected-p (desc)
+  (and (eql (io-descriptor-status desc) :connected)
+       (io-descriptor-stream desc)))
+
 
 
 ;;;; Making connections
@@ -375,8 +398,11 @@ of this write."
     (setf (io-descriptor-write-buffer desc) buf
           (io-descriptor-write-pos desc) start
           (io-descriptor-write-limit desc) end))
-  (when (and buf (> end start))
-    (io-ready-for-write *io-system* desc)))
+  (cond ((null buf))
+        ((not (io-descriptor-working-p desc))
+         (io-queue-event :no-write desc))
+        (t
+         (io-ready-for-write *io-system* desc))))
 
 
 
@@ -430,17 +456,6 @@ of this write."
       result)))
 
 
-#+unused-functions
-(defun io-driver-shortcut ()
-  (let ((result nil))
-    (dolist (desc *io-descriptions*)
-      (when (io-descriptor-shortcut-p desc)
-        (when (io-poll-shortcut desc)
-          (setq result t))))
-    result))
-
-
-
 
 ;;;; Blocking Write Mixin
 
@@ -449,11 +464,31 @@ of this write."
   ())
 
 
-(defun io-broken-descriptor (desc error)
+(defun io-broken-descriptor (desc error &optional activity)
   (with-synchronization desc
+    (let ((do-close
+              (or (not (io-desciptor-connected-p desc))
+                  (not (case activity
+                         ((:write) (io-descriptor-read-process desc))
+                         ((:read)  (io-descriptor-write-process desc)))))))
     (setf (io-descriptor-status desc) :broken)
-    (setf (io-descriptor-error desc)  error))
+    (unless (io-descriptor-error desc)
+      (setf (io-descriptor-error desc)  error))
+    (case activity
+      ((:write) (setf (io-descriptor-write-process desc) nil))
+      ((:read)  (setf (io-descriptor-read-process desc) nil)))
+    (when do-close
+      (%io-descriptor-close desc)))))
+
+
+(defun io-read-broken-descriptor (desc error)
+  (io-broken-descriptor desc error :read)
   (io-queue-event :error desc))
+
+
+(defun io-write-broken-descriptor (desc error)
+  (io-broken-descriptor desc error :write)
+  (io-queue-event :write-ready desc))
 
 
 (defmethod io-ready-for-write ((system io-system-blocking-write) desc)
@@ -462,12 +497,17 @@ of this write."
          (io-poll-shortcut desc :write))
         (t
          (handler-case
-             (with-slots (stream write-buffer write-pos write-limit) desc
+             (with-slots (stream write-buffer write-pos write-limit
+                                 write-process) desc
+               (with-synchronization desc
+                 (unless (io-desciptor-connected-p desc)
+                   (return-from io-ready-for-write nil))
+                 (setf write-process (current-process)))
                (write-octets write-buffer write-pos write-limit stream)
                (setf write-pos write-limit)
-               t)
-           (stream-error (e) (io-broken-descriptor desc e)
-                         nil)))))
+               (setf write-process nil))
+           (stream-error (e) (io-broken-descriptor desc e :write)))
+         t)))
 
 
 
@@ -485,32 +525,38 @@ of this write."
                    read-buffer write-buffer)
              (type buffer-index read-limit read-pos
                    write-limit write-pos))
-
-    (cond ((eq status :error)
-           (io-queue-event :error desc))
-          (status
-           (handler-case
-               (progn 
-                 (when (and (not (eql status :output))
-                            (io-descriptor-read-ready desc))
-                   (let ((n (read-octets-no-hang read-buffer read-pos
+    (let ((writing nil))
+      (cond ((eq status :error)
+             (io-read-broken-descriptor desc nil)
+             (when (io-descriptor-write-ready desc)
+               (io-queue-event :write-ready desc)))
+            (status
+             (handler-case
+                 (progn
+                   (when (and (not (eql status :output))
+                              (io-descriptor-read-ready desc))
+                     (let ((n (read-octets-no-hang read-buffer read-pos
                                                    read-limit stream)))
                        (incf read-pos n)
                        (if (>= read-pos read-limit)
                            (io-queue-event :read-ready desc)))) 
-                 (when (and (member status '(:output :io :append))
-                            (io-descriptor-write-ready desc))
-                   (let ((n (write-octets-no-hang write-buffer write-pos
-                                                  write-limit stream)))
-                     (incf write-pos n)
-                     (if (>= write-pos write-limit)
-                         (io-queue-event :write-ready desc)))))
-             (stream-error (e) (io-broken-descriptor desc e)))))))
+                   (when (and (member status '(:output :io :append))
+                              (io-descriptor-write-ready desc))
+                     (setq writing t)
+                     (let ((n (write-octets-no-hang write-buffer write-pos
+                                                    write-limit stream)))
+                       (incf write-pos n)
+                       (if (>= write-pos write-limit)
+                           (io-queue-event :write-ready desc)))))
+               (stream-error (e)
+                 (if writing
+                     (io-write-broken-descriptor desc e)
+                     (io-read-broken-descriptor desc e)))))))))
 
 
-(defun io-poll-select (poll no-write)
+(defun io-poll-select (system poll no-write)
   (let ((select (make-select)))
-    (dolist (desc *io-descriptions*)
+    (dolist (desc (io-descriptions-of system))
       (unless (io-descriptor-shortcut-p desc)
         (let ((stream (io-descriptor-stream desc)))
           (when stream
@@ -528,7 +574,7 @@ of this write."
 
 
 (defmethod io-system-driver ((system io-system-select) poll)
-  (io-poll-select poll nil))
+  (io-poll-select system poll nil))
 
 
 (defmethod io-ready-for-write ((system io-system-select) desc)
@@ -551,7 +597,7 @@ of this write."
 
 
 (defmethod io-system-driver ((system io-system-select-blocking-write) poll)
-  (io-poll-select poll t))
+  (io-poll-select system poll t))
 
 
 
@@ -591,82 +637,18 @@ of this write."
 
 
 (defmethod io-system-reset ((system io-system-mt-base))
-  (end-process (shiftf (listener-process system) nil)))
+  (with-lock (lock system)
+    (end-process (shiftf (listener-process system) nil))
+    (call-next-method)))
 
 
-
-;;;; Multiprocess System 
+(defmethod io-system-add-descriptor ((system io-system-mt-base) desc)
+  (with-lock (lock system)
+    (call-next-method)))
 
-(defclass io-system-multiprocess (io-system-mt-base)
-  ((read-ready :initform nil  :accessor io-read-ready)))
-
-#+digitool
-(defun io-desc-read (desc)
-  (handler-case
-    (loop
-      (mess 1 "io-desc-read loop")
-      (with-slots (stream read-buffer read-pos read-limit read-process) desc
-        (read-octets read-buffer read-pos read-limit stream)
-        (setf read-pos read-limit)
-        (mess 1 "Enqueue event read-ready")
-        (io-queue-event :read-ready desc))
-      (mess 1 "Disable process ~A" (current-process))
-      (ccl:process-disable (current-process))
-      (ccl:process-allow-schedule))
-    (stream-error
-     (e)
-     (setf (io-descriptor-status desc) :broken)
-     (setf (io-descriptor-error desc)  e)
-     (io-queue-event :error desc))))
-
-
-(defun io-desc-write (desc &optional no-event)
-  (handler-case
-    (progn
-      (write-octets (io-descriptor-write-buffer desc)
-                    (io-descriptor-write-pos desc) (io-descriptor-write-limit desc)
-                    (io-descriptor-stream desc))
-      (setf (io-descriptor-write-pos desc) (io-descriptor-write-limit desc))
-      (if no-event
-          t
-          (progn (io-queue-event :write-ready desc)
-                 nil)))
-    (stream-error
-     (e)
-     (setf (io-descriptor-status desc) :broken)
-     (setf (io-descriptor-error desc)  e)
-     (io-queue-event :error desc) ))
-  (setf (io-descriptor-write-process desc) nil))
-
-
-#+digitool
-(defmethod io-ready-for-read ((system io-system-multiprocess) desc)
-  (if (io-descriptor-shortcut-p desc)
-    (io-poll-shortcut desc :read)
-    (let ((old-process (io-descriptor-read-process desc)))
-      (cond (old-process
-             (mess 1 "Old process= ~A" old-process)
-             ;;(ccl:process-reset-and-enable old-process)
-             (ccl:process-enable old-process)
-             (mess 1 "reset: ~A" old-process))
-            (t
-             (let ((new (start-process "CORBA read" #'io-desc-read desc)))
-               (mess 1 "New process= ~A" new)
-               (setf (io-descriptor-read-process desc) new)))))))
-
-
-(defmethod io-ready-for-write ((system io-system-multiprocess) desc)
-  (if (io-descriptor-shortcut-p desc)
-    (io-poll-shortcut desc :write)
-    (if (> (- (io-descriptor-write-limit desc) (io-descriptor-write-pos desc)) 
-           *io-background-write-treshold*)
-      (progn (setf (io-descriptor-write-process desc)
-                   (start-process "CORBA write" #'io-desc-write desc))
-             ;; return nil - event will be generated when write completed
-             nil)
-      (progn (io-desc-write desc t)
-             ;; return t - write completed, no event
-             t))))
+(defmethod io-system-delete-descriptor ((system io-system-mt-base) desc)
+  (with-lock (lock system)
+    (call-next-method)))
 
 
 
@@ -694,7 +676,12 @@ Called from read-queue max-handler." )
     (with-slots (stream read-buffer read-pos read-limit read-process) desc
       (assert (null read-process))
       (loop
-         (setf read-process (current-process))
+         (with-synchronization desc
+           (unless (io-desciptor-connected-p desc)
+             (return-from io-mt-read nil))
+           (setf read-process (current-process)))
+         (assert read-buffer nil
+                 "read-buffer is set")
          (read-octets read-buffer read-pos read-limit stream)
          (setf read-pos read-limit)
          (io-queue-event :read-ready desc)
@@ -702,7 +689,7 @@ Called from read-queue max-handler." )
            (unless (eql read-process :continue)
              (setf read-process nil)
              (return)))))
-    (stream-error (e) (io-broken-descriptor desc e))))
+    (error (e) (io-read-broken-descriptor desc e))))
 
 
 (defmethod io-ready-for-read ((system io-system-mt-blocking-write) desc)
@@ -730,14 +717,15 @@ Called from read-queue max-handler." )
   (handler-case
       (with-slots (stream write-buffer write-pos write-limit write-process) desc
         (assert (null write-process))
-        (unwind-protect
-             (progn
-               (setf write-process (current-process))
-               (write-octets write-buffer write-pos write-limit stream)
-               (setf write-pos write-limit))
-          (setf write-process nil))
-        (io-queue-event :write-ready desc))
-    (stream-error (e) (io-broken-descriptor desc e))))
+        (with-synchronization desc
+          (unless (io-desciptor-connected-p desc)
+            (return-from io-mt-write nil))
+          (setf write-process (current-process)))
+        (write-octets write-buffer write-pos write-limit stream)
+        (setf write-pos write-limit)
+        (setf write-process nil))
+    (error (e) (io-broken-descriptor desc e)))
+  (io-queue-event :write-ready desc))
 
 
 (defmethod io-ready-for-write ((system io-system-mt-non-blocking-write) desc)

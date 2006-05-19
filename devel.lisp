@@ -39,7 +39,7 @@
 ;;; IO Policy
 
 (setq clorb:*io-system-default-class*
-      (or #+(or mcl openmcl) 'clorb:io-system-mt-blocking-write
+      (or #+(or mcl openmcl sb-thread) 'clorb:io-system-mt-blocking-write
           'clorb:io-system-select-blocking-write))
 
 ;;; Initiating the ORB

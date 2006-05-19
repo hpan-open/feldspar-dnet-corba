@@ -94,7 +94,7 @@
    (orb (make-instance 'clorb-orb :host "localhost" :port 9999 :active t))
    (root-adapter (create-root-adapter orb))
    (root-poa (root-poa-of root-adapter))
-   (*poa-map* (poa-map-of root-adapter))
+   (poa-map (poa-map-of root-adapter))
    (*log-level* 4))
 
   (define-test "poa-invoke"
@@ -170,8 +170,8 @@
            (id1 (poa-poaid poa1))
            (poa2 (op:create_poa poa1 "p2" nil nil))
            (id2 (poa-poaid poa2)))
-      (ensure-eql (gethash id1 *poa-map*) poa1)
-      (ensure-eql (gethash id2 *poa-map*) poa2)
+      (ensure-eql (gethash id1 poa-map) poa1)
+      (ensure-eql (gethash id2 poa-map) poa2)
       ;; Following method tests what happens if we call create_POA during
       ;; destruction, before the destruction is "apparent".
       (define-method op:destroy :before ((poa (eql poa2)) f1 f2)
@@ -184,8 +184,8 @@
         (progn (op:find_POA root-poa "p1" nil)
                (ensure nil))
         (PORTABLESERVER:POA/ADAPTERNONEXISTENT ()))
-      (ensure-eql (gethash id1 *poa-map*) nil)
-      (ensure-eql (gethash id2 *poa-map*) nil)
+      (ensure-eql (gethash id1 poa-map) nil)
+      (ensure-eql (gethash id2 poa-map) nil)
       (ensure (not (member poa1 (managed-poas (op:the_poamanager poa1))))
               "UnRegistered with the manger")
       (ensure-exception

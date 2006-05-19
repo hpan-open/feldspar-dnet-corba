@@ -131,7 +131,7 @@
     (setup-outgoing-connection *test-out-conn*)
     (let ((req (create-client-request
                 orb :request-id 1)))
-      (connection-add-client-request *test-out-conn* req)
+      (%add-client-request *test-out-conn* req)
       (let ((buffer (get-work-buffer orb)))
         (marshal-giop-header :REPLY buffer giop-1-1 t)
         (marshal-service-context nil buffer) 

@@ -166,8 +166,7 @@
 
 
 (defun poa-connection-handler (desc)
-  (let ((conn (make-associated-connection *the-orb* desc)))
-    (setf (server-p conn) t)
+  (let ((conn (make-associated-connection *the-orb* desc :server-p t)))
     (setup-incoming-connection conn)))
 
 
@@ -231,18 +230,22 @@
 (defun connection-receive-request (conn req-id buffer
                                    service-context response object-key
                                    operation principal)
-  (let* ((orb (the-orb conn))
-         (request (create-server-request
-                   orb :connection conn
-                   :request-id req-id :operation operation
-                   :service-context service-context :input buffer 
-                   :giop-version (buffer-giop-version buffer)
-                   :state :wait :response-flags response)))
-    (connection-add-server-request conn request)
-    (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
-          req-id operation object-key principal)
-    (has-received-request-header orb request)
-    (dispatch-request orb request object-key) ))
+  (cond ((shutdown-status conn)
+         (mess 4 "Receive request after shutdown on ~A"
+               conn))
+        (t
+         (let* ((orb (the-orb conn))
+                (request (create-server-request
+                          orb :connection conn
+                          :request-id req-id :operation operation
+                          :service-context service-context :input buffer 
+                          :giop-version (buffer-giop-version buffer)
+                          :state :wait :response-flags response)))
+           (connection-add-server-request conn request)
+           (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
+                 req-id operation object-key principal)
+           (has-received-request-header orb request)
+           (dispatch-request orb request object-key) ))))
 
 
 (defun poa-cancelrequest-handler (conn)

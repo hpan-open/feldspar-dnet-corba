@@ -1,3 +1,53 @@
+2006-05-19  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-srv.lisp (poa-connection-handler): use new :server-p arg
+
+	* clorb-conn.lisp (make-associated-connection): added &key server-p
+
+	* clorb-io.lisp: removed *io-descriptions*, io-fix-broken,
+	class io-system-multiprocess and related methods
+	(io-system): added slot io-descriptions
+	(io-system-reset io-system): does the kill processes and close
+	streams stuff.
+	(io-system-add-descriptor): new
+	(io-system-delete-descriptor): new
+	(io-descriptor-destroy): added &optional soft - to check that no
+	writer is using the descriptor
+	(io-desciptor-connected-p): new
+	(io-broken-descriptor): added &optional activity to close the
+	socket if possible
+
+2006-05-18  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-sysdep.lisp (socket-close): new
+
+	* clorb-srv.lisp (connection-receive-request): check
+	shutdown-status, and ingnore request if connection is shuting down
+
+	* clorb-request.lisp (request-no-write): new
+
+	* clorb-io.lisp (io-descriptor-destroy): use socket-close
+	(%io-descriptor-close): new
+	(io-descriptor-close): new
+	(io-descriptor-set-write): if descriptor broken generate a :no-write event
+	(io-broken-descriptor): send no event
+	(io-write-broken-descriptor): new
+	(io-read-broken-descriptor): new
+	(io-poll-desc): use io-write-broken-descriptor or io-read-broken-descriptor
+	(io-desc-write): generate :write-ready event even if error
+	(io-mt-write): generate :write-ready event even if error
+
+	* clorb-iiop.lisp (server-close-connection-msg): return buffer
+	(connection-message-error): don't destroy descriptor
+
+	* clorb-conn.lisp (Connection): new slots write-request write-count
+	(connection-destroy): only close descriptor
+	(connection-shutdown): synchronization
+	(%add-client-request): new
+	(connection-send-buffer): take optional request
+	(connection-no-write): new
+	(process-event): new event :no-write
+
 2006-05-16  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* pns-server.lisp (setup-pns): use new set-boot-object

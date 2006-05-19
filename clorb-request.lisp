@@ -307,6 +307,11 @@ Returns: connection, request-id, buffer"
       (synch-notify req))))
 
 
+(defun request-no-write (req)
+  (request-reply-exception req :error
+                           (system-exception 'CORBA:TRANSIENT 0 :completed_no)))
+
+
 (defun should-retry (req exc)
   ;; Returns Nil and retries OR returns status.
   ;;

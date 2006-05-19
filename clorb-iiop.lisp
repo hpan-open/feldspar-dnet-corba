@@ -404,7 +404,8 @@
   ;; Do a server side close connection
   (let ((buffer (get-work-buffer (the-orb conn))))
     (marshal-giop-header :CLOSECONNECTION buffer)
-    (marshal-giop-set-message-length buffer)))
+    (marshal-giop-set-message-length buffer)
+    buffer))
 
 
 (defun connection-message-error (conn &optional (version giop-1-0))
@@ -413,8 +414,8 @@
     (marshal-giop-header :messageerror buffer version)
     (marshal-giop-set-message-length buffer)
     (connection-send-buffer conn buffer))
-  (connection-error conn)
-  (connection-destroy conn))
+  (connection-error conn))
+
 
 
 ;;;; IIOP - Response handling
@@ -471,7 +472,6 @@
                ((:messageerror)
                 (mess 6 "CORBA: Message error")
                 (connection-error conn)
-                (connection-destroy conn)
                 nil)
                ((:fragment)
                 (prog1

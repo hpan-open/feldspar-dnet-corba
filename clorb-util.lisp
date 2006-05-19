@@ -340,21 +340,22 @@ The list free operation is used to free the returned information.
 ;;;; Cleaning
 
 (defun dump-connections ()
-  (format t "DID Con Srv Act #Rq desc~%")
-  (dolist (desc *io-descriptions*)
+  (format t "DID Con Srv Act #Write #Rq desc~%")
+  (dolist (desc (io-descriptions-of *io-system*))
     (let ((conn (io-descriptor-connection desc)))
-      (format t "~3A ~3A ~3A ~3A ~3A ~A~%"
+      (format t "~3A ~3A ~3A ~3A ~6@A ~3@A ~A~%"
               (io-descriptor-id desc)
               (not (null conn))
               (if conn (server-p conn))
               (if conn (activity conn))
+              (if conn (write-count-of conn))
               (if conn (length (if (server-p conn)
                                    (connection-server-requests conn)
                                    (connection-client-requests conn))))
               (io-describe-descriptor desc)))))
 
 (defun /desc (id)
-  (find id *io-descriptions* :key #'io-descriptor-id))
+  (find id (io-descriptions-of *io-system*) :key #'io-descriptor-id))
 (defun /con (id)
   (io-descriptor-connection (/desc id)))
 
