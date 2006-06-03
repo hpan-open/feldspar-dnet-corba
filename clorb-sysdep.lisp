@@ -925,7 +925,7 @@ Returns when all the data has been written."
 
 #+Digitool
 (defclass mcl-waitqueue ()
-  ((waiting  :initform nil  :accessor waiting)))
+  ((notify   :initform nil  :accessor mcl-notify)))
 
 
 (defun make-waitqueue ()
@@ -948,52 +948,24 @@ Returns when all the data has been written."
                     (ccl:wait-on-semaphore wq)
                  (ccl:grab-lock lock)))
    #+digitool (progn
-                (enqf (waiting wq) (current-process))
+                (setf (mcl-notify wq) nil)
                 (ccl:process-unlock lock)
-                (ccl:process-block (current-process) "wq-locked-wait")
-                (ccl:process-lock lock))
+                (unwind-protect
+                  (ccl:process-wait "wq-wait" #'mcl-notify wq)
+                  (ccl:process-lock lock)))
    ;; default
    (progn wq lock)))
 
 
-(defun wq-unlocked-wait (wq lock)
-  "Wait on a waitqueue, called without lock held."
-  (declare (ignorable lock))
-  (%SYSDEP
-   "wq-unlocked-wait"
-   #+sb-thread (with-lock lock
-                 (sb-thread:condition-wait wq lock))
-   #+openmcl (ccl:wait-on-semaphore wq)
-   #+digitool (with-lock lock
-                (wq-locked-wait wq lock))
-   (progn wq lock)))
-
-
 (defun wq-notify (wq)
+  "Notify waitqueue, wake at least one process waiting on the waitqueue.
+Should me called with corresponding lock held."
   (%SYSDEP
    "wq-notify"
    #+sb-thread (sb-thread:condition-notify wq)
    #+openmcl (ccl:signal-semaphore wq)
-   #+digitool (progn                    ; FIXME: is this safe?
-                (let ((process (deqf (waiting wq))))
-                  (when process
-                    (ccl:process-unblock process))))
+   #+digitool (setf (mcl-notify wq) t)
    nil))
-
-
-(defun wq-unlocked-wait-on-condition (wq lock func &rest args)
-  #-(or openmcl sb-thread digitool)
-  (declare (ignore wq lock))
-  (%SYSDEP
-   "Wait for (func args) to be true, check when obj is notified"
-
-   #+(or openmcl sb-thread digitool)
-   (loop until (apply func args)
-        do (wq-unlocked-wait wq lock))
-
-   ;; Default
-   (loop until (apply func args)
-        do (sleep 0.01))))
 
 
 (defun wq-locked-wait-on-condition (wq lock func &rest args)

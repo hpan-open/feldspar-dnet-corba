@@ -1,7 +1,12 @@
 (in-package :clorb)
 
-;; (enqf qplace object)
-;; (deqf qplace)
+;; (enqf qplace object)  =>  object
+;; (deqf qplace)   =>  item, flag
+;;   If queue emppty: item = nil, flag = nil
+;;         otherwise: item = first queue elem, flag = T
+;; (queue-memeber-p queue item)  =>  boolean
+;; (queue-empty-p queue)  =>  boolean
+
 
 (defmacro deqf (place &environment env)
   (multiple-value-bind (vars vals store-vars writer-form reader-form)

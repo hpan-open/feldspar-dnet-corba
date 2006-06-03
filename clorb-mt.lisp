@@ -18,14 +18,9 @@
 
 
 (defmacro with-synchronization (obj &body body)
+"Execute body with the synchronized object's lock held."
   `(with-lock (lock ,obj)
      ,@body))
-
-
-(defun synch-wait (obj)
-  "Synchronize wait on unlocked object. 
-Object should have (lock _) and (waitqueue _)"
-  (wq-unlocked-wait (waitqueue obj) (lock obj)))
 
 
 (defun synch-locked-wait (obj)
@@ -35,6 +30,8 @@ Object should have (lock _) and (waitqueue _)"
 
 
 (defun synch-notify (obj)
+  "Notify object's waitqueue, wake at least one process waiting on the waitqueue.
+Should me called with object lock held."
   (wq-notify (waitqueue obj)))
 
 
@@ -66,7 +63,7 @@ Object should have (lock _) and (waitqueue _)"
         (deqf (queue q))
         (loop
            (if (queue-empty-p (queue q))
-               (wq-locked-wait (waitqueue q) (lock q))
+               (synch-locked-wait q)
                (return (deqf (queue q))))))))
 
 
@@ -75,17 +72,16 @@ Object should have (lock _) and (waitqueue _)"
 
 
 (defclass execution-queue (synchronized)
-  ((max-processes :initarg :max-processes :initform 10   :accessor max-processes)
+  ((executor      :initarg :executor  :initform 'eq-exec :accessor executor)
+   (name-template :initarg :name-template :initform "eq" :accessor name-template)  
+   (max-processes :initarg :max-processes :initform 10   :accessor max-processes)
    (max-handler   :initarg :max-handler   :initform nil  :accessor max-handler)
    (max-idle      :initarg :max-idle      :initform nil  :accessor max-idle)
-   (queue                                 :initform nil  :accessor eq-queue)
-   (idle-count                            :initform 0    :accessor idle-count)
-   (idle-list     :initarg :idle-list     :initform nil  :accessor idle-list)
-   (process-list  :initarg :process-list  :initform nil  :accessor process-list)
-   (process-count :initarg :process-count :initform 0    :accessor process-count)
-   (executor      :initarg :executor  :initform 'eq-exec :accessor executor)
-   (name-template :initarg :name-template :initform "eq" :accessor name-template)
-   (name-count    :initarg :name-count    :initform 0    :accessor name-count)))
+   (queue                               :initform nil :accessor eq-queue)
+   (idle-count                          :initform 0   :accessor idle-count)
+   (process-count                       :initform 0   :accessor process-count)
+   (process-table                       :initform nil :accessor process-table)
+   (name-count                          :initform 0   :accessor name-count)))
 
 
 (defmacro with-execution-queue (q &body body)
@@ -93,9 +89,9 @@ Object should have (lock _) and (waitqueue _)"
                     (max-handler max-handler)
                     (max-idle max-idle)
                     (queue eq-queue) (idle-count idle-count)
-                    (process-list process-list) (process-count process-count)
+                    (process-table process-table) (process-count process-count)
                     (executor executor) (name-template name-template)
-                    (name-count name-count) (idle-list idle-list))
+                    (name-count name-count))
                    ,q
      ,@body))
 
@@ -105,29 +101,32 @@ Object should have (lock _) and (waitqueue _)"
     (format nil "~A ~D" name-template (incf name-count))))
 
 
-(defun eq-main (q obj)
+(defun eq-main (q obj entry)
   (with-execution-queue q
-    (let ((process (current-process)))
+    (let* ((process (current-process)))
+      (setf (car entry) process)
       (loop
-        (flet ((exit ()
-                 (decf process-count)
-                 (deletef process process-list)
-                 (return))
-               (idle ()
-                 (incf idle-count)
-                 (push process idle-list)
-                 (loop
-                    (synch-locked-wait q)
-                    (unless (queue-empty-p queue)
-                      (decf idle-count)
-                      (deletef (current-process) idle-list)
-                      (return)))))
-          (handler-case
-            (funcall executor obj)
-            (serious-condition (condition)
-                               (mess 4 "Thread fails: ~A thr ~A"
-                                     condition (current-process))
-                               (with-synchronization q (exit))))
+        (labels 
+          ((exit ()
+             (decf process-count)
+             (deletef entry process-table)
+             (return))
+           (set-status (status &optional obj)
+             (let ((x (cdr entry)))
+               (setf (car x) status)
+               (setf (cdr x) obj)))
+           (idle ()
+             (incf idle-count)
+             (set-status :idle)
+             (do () ((not (queue-empty-p queue)))
+               (synch-locked-wait q))
+             (decf idle-count))
+           (broken (condition)
+             (warn "Thread fails: ~A thr ~A" condition (current-process))
+             (with-synchronization q (exit))))
+          (set-status :working obj)
+          (handler-case (funcall executor obj)
+            (serious-condition (condition) (broken condition)))
           (with-synchronization q
             (when (and (queue-empty-p queue)
                        (or (null max-idle) (< idle-count max-idle)))
@@ -144,7 +143,6 @@ Object should have (lock _) and (waitqueue _)"
     (cons (apply (car obj) (cdr obj)))))
 
 
-
 (defmethod enqueue ((q execution-queue) obj)
   (with-execution-queue q
     (with-synchronization q
@@ -153,10 +151,10 @@ Object should have (lock _) and (waitqueue _)"
                    (if max-handler
                      (funcall max-handler q obj)))))
         (cond ((and (zerop idle-count) (ok-make-more-processes))
-               (let ((p (start-process (next-process-name q) #'eq-main q obj)))
-                 (push p process-list)
-                 (incf process-count)
-                 t))
+               (incf process-count)
+               (let ((entry (list nil nil)))
+                 (push entry process-table)
+                 (start-process (next-process-name q) #'eq-main q obj entry)))
               (t 
                (enqf queue obj)
                (synch-notify q)
@@ -166,9 +164,12 @@ Object should have (lock _) and (waitqueue _)"
 (defun garb-threads (q)
   (with-execution-queue q
     (with-synchronization q
-      (setq process-list
-            (remove-if (lambda (p)
-                         (unless (process-running-p p)
-                           (decf process-count)
-                           t))
-                       process-list)))))
+      (setq process-table
+            (remove-if (lambda (entry)
+                         (let ((p (car entry)))
+                           (unless (process-running-p p)
+                             (decf process-count)
+                             (when (eql (cadr entry) :idle)
+                               (decf idle-count))
+                             t)))
+                       process-table)))))
