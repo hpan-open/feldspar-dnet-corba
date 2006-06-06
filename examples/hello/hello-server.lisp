@@ -34,7 +34,8 @@
         (clorb:rebind object name))
       object)))
 
-(defun run-hello (&rest args)
+(defun run-hello (&rest args &key file name)
+  (declare (ignore file name))
   (let ((orb (CORBA:ORB_init)))
     (when args (apply #'setup-hello args))
     (op:run orb)))
