@@ -16,6 +16,14 @@
   ((lock       :initform (make-lock "syn")   :reader lock)
    (waitqueue  :initform (make-waitqueue)    :reader waitqueue)))
 
+(defclass synchronized-lazy (synchronized)
+  ((waitqueue  :initform nil  )))
+
+(defmethod waitqueue ((obj synchronized-lazy))
+  (or (slot-value obj 'waitqueue)
+      (setf (slot-value obj 'waitqueue)
+            (make-waitqueue))))
+
 
 (defmacro with-synchronization (obj &body body)
 "Execute body with the synchronized object's lock held."
@@ -37,9 +45,10 @@ Should me called with object lock held."
 
 (defun synch-wait-on-condition (obj wait-func &rest wait-args)
   (with-synchronization obj
-    (apply #'wq-locked-wait-on-condition
-           (waitqueue obj) (lock obj)
-           wait-func wait-args)))
+    (unless (apply wait-func wait-args)
+      (apply #'wq-locked-wait-on-condition
+             (waitqueue obj) (lock obj)
+             wait-func wait-args))))
 
 
 

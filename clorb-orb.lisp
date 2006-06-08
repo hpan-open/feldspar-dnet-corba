@@ -279,7 +279,8 @@ ORB will coninue processing in the background.
 Requires that a multi-threaded IO-system is configured."
   (assert (typep *io-system* 'io-system-mt-base))
   (setq *running-orb* nil)
-  (start-dispatcher-process (adapter *the-orb*))
+  (when-let (adapter (adapter *the-orb*))
+    (start-dispatcher-process adapter))
   (flet ((bg-run-event-handler (event)
            (process-event event)
            t))

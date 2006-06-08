@@ -1,3 +1,19 @@
+2006-06-08  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (object-create-request): use static-error-handler
+
+	* clorb-request.lisp (client-request): use lazy synchronization
+	(client-request): added slot status-notify-callback
+	(status-notify): new generic function, and method for client-request
+	(*send-hook*): new hook
+	(request-funcall): corba:funcall will now use input-func that
+	returns result
+	(dii-input-func): return values
+
+	* clorb-orb.lisp (bg-run): handle case of missing adapter
+
+	* clorb-mt.lisp (synchronized-lazy): new class
+
 2006-05-19  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-io.lisp (io-descriptor-connected-p): spelling

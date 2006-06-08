@@ -252,7 +252,9 @@ The list free operation is used to free the returned information.
                          :argument (CORBA:Any :any-typecode result)
                          :arg_modes ARG_OUT)
                         paramlist)
-       :exceptions raises))))
+       :exceptions raises
+       :error-handler 'static-error-handler))))
+
 
 
 ;;;; Easy name service access

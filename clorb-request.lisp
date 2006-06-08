@@ -13,7 +13,7 @@
 
 ;;;; Client-Request 
 
-(defclass client-request (CORBA:Request synchronized)
+(defclass client-request (CORBA:Request synchronized-lazy)
   ((the-orb
     :initarg :the-orb
     :reader the-orb)
@@ -47,6 +47,9 @@
    (status
     :initarg :status                :initform :initial
     :accessor request-status)
+   (status-notify-callback
+    :initarg status-notify-callback :initform 'synch-notify
+    :accessor status-notify-callback)
    (buffer
     :initarg :buffer                :initform nil
     :accessor request-buffer)
@@ -83,6 +86,10 @@
                                         &key (the-orb nil orb-p))
   (declare (ignore the-orb))
   (unless orb-p (error ":the-orb not supplied to client-request")))
+
+
+(defmethod status-notify ((req client-request))
+  (funcall (status-notify-callback req) req))
 
 
 (defgeneric create-client-request (orb &rest initargs))
@@ -235,10 +242,13 @@ Returns: connection, request-id, buffer"
   (request-get-response req))
 
 
+(defvar *send-hook* nil)
+
 (defun request-send (req)
   (multiple-value-bind (connection request-id buffer)
       (request-start-request req)
     (setf (service-context-list req) nil)
+    (when *send-hook* (funcall *send-hook* req))
     (will-send-request (the-orb req) req)
     (marshal-request-message buffer request-id (service-context-list req)
                              (response-expected req)
@@ -280,7 +290,7 @@ Returns: connection, request-id, buffer"
   (with-synchronization req
     (setf (request-status req) status)
     (setf (request-buffer req) buffer)
-    (synch-notify req)))
+    (status-notify req)))
 
 
 (defun request-reply (req status buffer service-context)
@@ -295,7 +305,7 @@ Returns: connection, request-id, buffer"
            (unmarshal-systemexception buffer)
          (setf (request-exception-id req) id)
          (setf (request-exception req) exc))))
-    (synch-notify req)))
+    (status-notify req)))
 
 
 (defun request-reply-exception (req status exception)
@@ -304,7 +314,7 @@ Returns: connection, request-id, buffer"
     (unless (request-status req)
       (setf (request-status req) status)
       (setf (request-exception req) exception)
-      (synch-notify req))))
+      (status-notify req))))
 
 
 (defun request-no-write (req)
@@ -448,21 +458,11 @@ Returns: connection, request-id, buffer"
 
 
 (defun request-funcall (req)
-  (op:invoke req)
-  (let ((retval (any-value (op:return_value req))))
-    (cond ((typep retval 'corba:exception)
-           ;;(signal retval)
-           (cerror "Ignore" retval)
-           ;; or error
-           retval)
-          (t
-           (values-list 
-            (loop for nv in (request-paramlist req)
-                  when (and (/= 0 (logand ARG_OUT (op:arg_modes nv)))
-                            (not (eql :tk_void 
-                                      (typecode-kind 
-                                       (any-typecode (op:argument nv))))))
-                  collect (any-value (op:argument nv))))))))
+  (request-send req)
+  (if *call-hook* 
+      (funcall *call-hook* req)
+      (when (response-expected req)
+        (request-get-response req))))
 
 
 (defun dii-output-func (req buffer)
@@ -475,10 +475,18 @@ Returns: connection, request-id, buffer"
 
 
 (defun dii-input-func (req buffer)
-  (loop for nv in (request-paramlist req)
-        when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
-        do (let ((any (op:argument nv)))
-             (setf (any-value any) (unmarshal (any-typecode any) buffer)))))
+  (let* ((paramlist (request-paramlist req))
+         (results
+          (loop for nv in paramlist
+             when (/= 0 (logand ARG_OUT (op:arg_modes nv)))
+             collect
+             (let ((any (op:argument nv)))
+               (setf (any-value any)
+                     (unmarshal (any-typecode any) buffer)))))
+         (result-type (any-typecode (op:argument (first paramlist)))))
+    (values-list
+     (if (eql :tk_void (typecode-kind result-type))
+         (cdr results) results))))
 
 
 (defun dii-error-handler (condition)
