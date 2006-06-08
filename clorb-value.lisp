@@ -10,7 +10,7 @@
                        (sequence (:tk_string :tk_typecode :tk_short)))
   :params (id name type_modifier concrete_base_type :members)
   :member-params (member_name member_type member_visibility)
-  :constant (corba::TC_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
+  :constant (CORBA:tc_ValueBase "IDL:omg.org/CORBA/ValueBase:1.0" "ValueBase"
                                  CORBA::VM_NONE nil ())
   :share named-typecode :shared-params 2
   :extra-slots (truncatable-interfaces
