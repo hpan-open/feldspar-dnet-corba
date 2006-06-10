@@ -39,50 +39,6 @@
  :type CORBA:ULONG
  :typecode CORBA:TC_ULONG)
 
-(defconstant iop:tag_dce_sec_mech (quote 103))
-
-(defconstant iop:tag_dce_no_pipes (quote 102))
-
-(defconstant iop:tag_dce_binding_name (quote 101))
-
-(defconstant iop:tag_dce_string_binding (quote 100))
-
-(defconstant iop:tag_location_policy (quote 12))
-
-(defconstant iop:tag_endpoint_id_position (quote 6))
-
-(defconstant iop:tag_complete_object_key (quote 5))
-
-(defconstant iop:tag_java_codebase (quote 25))
-
-(defconstant iop:tag_generic_sec_mech (quote 22))
-
-(defconstant iop:tag_csi_ecma_public_sec_mech (quote 21))
-
-(defconstant iop:tag_ssl_sec_trans (quote 20))
-
-(defconstant iop:tag_csi_ecma_hybrid_sec_mech (quote 19))
-
-(defconstant iop:tag_csi_ecma_secret_sec_mech (quote 18))
-
-(defconstant iop:tag_kerberosv5_sec_mech (quote 17))
-
-(defconstant iop:tag_spkm_2_sec_mech (quote 16))
-
-(defconstant iop:tag_spkm_1_sec_mech (quote 15))
-
-(defconstant iop:tag_sec_name (quote 14))
-
-(defconstant iop:tag_association_options (quote 13))
-
-(defconstant iop:tag_alternate_iiop_address (quote 3))
-
-(defconstant iop:tag_policies (quote 2))
-
-(defconstant iop:tag_code_sets (quote 1))
-
-(defconstant iop:tag_orb_type (quote 0))
-
 (DEFINE-ALIAS IOP:MULTIPLECOMPONENTPROFILE
  :id "IDL:omg.org/IOP/MultipleComponentProfile:1.0"
  :name "MultipleComponentProfile"

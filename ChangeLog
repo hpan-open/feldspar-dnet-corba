@@ -1,3 +1,7 @@
+2006-06-09  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* Version 0.7
+
 2006-06-08  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (object-create-request): use static-error-handler
@@ -561,11 +565,6 @@
 	* clorb-io.lisp:
 	io-system-driver io-system-multiprocess, don't wait if polling
 
-2006-01-04  Lennart Staflin  <lenst@lysator.liu.se>
-
-	* clorb-idlparser.lisp, examples/vtest/README:
-	*** empty log message ***
-
 2005-12-20  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-buffer.lisp, clorb-macros2.lisp: Cleanup
@@ -596,16 +595,12 @@
 
 2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
 
-	* redpas/Makefile, redpas/parsys.lisp: *** empty log message ***
-
 	* clorb-idlcpp.lisp (parse-numeric-character): spelling
 
 	* redpas/lexer.lisp (alt-error, failed-match):
 	make error parent of the conditions
 
 	* clorb-sysdep.lisp (cpp-command-string): add -w -undef to cpp call
-
-	* clorb-poa.lisp: *** empty log message ***
 
 2005-11-20  Lennart Staflin  <lenst@lysator.liu.se>
 

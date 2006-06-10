@@ -42,13 +42,18 @@
 (defun use-jacorb ()
   (CORBA:ORB_init '("-ORBInitRef NameService=http://localhost/~lenst/NS_ref")))
 
-
+(defun use-lapps ()
+  (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::localhost:2047/NameService")))
 
 (defun run ()
   (persistent-naming:setup-pns :export t)
   (op:run *the-orb*))
 
 (setq clorb::*log-level* 3)
+
+(use-lapps)
+(clorb::bg-run)
+
 
 ;; http://www.random.org/Random.ior
 (defparameter *random-ior*
@@ -86,6 +91,8 @@
 
 
 (op:string_to_object *the-orb* "corbaloc::10.0.1.2:4711/NameService")
+
+(CORBA:IDL "phome:src;lisp;net;cddr;podcatch;pod.idl")
 
 |#
 
