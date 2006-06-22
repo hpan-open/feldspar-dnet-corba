@@ -258,6 +258,23 @@ const fixed u3 = 3.1d * 2.2d;
                                               'op:name "s"
                                               'op:type CORBA:tc_string))))
 
+  (define-idl-test "recursive struct"
+      "struct ServerTree; typedef sequence<ServerTree> ServerTreeSeq;
+       struct ServerTree { ServerTreeSeq children; };
+       struct ServerTree2 { sequence<ServerTree2> children; }; "
+    "ServerTree" (def-pattern :dk_Struct
+                     'op:members
+                   (sequence-pattern
+                    (pattern
+                     'struct-class-name 'CORBA:StructMember
+                     'op:type_def 
+                     (def-pattern :dk_alias
+                         'op:original_type_def
+                       (def-pattern :dk_sequence
+                           'op:element_type_def
+                         (op:lookup repository "ServerTree"))))))
+    "ServerTree2" (def-pattern :dk_Struct 'op:members
+                    (sequence-pattern (pattern))))
 
   (define-idl-test "union 1"
     "union u switch(boolean) {
@@ -293,6 +310,28 @@ const fixed u3 = 3.1d * 2.2d;
                                        'op:label (pattern 'any-typecode CORBA:tc_octet
                                                           'any-value 0)
                                        'op:type omg.org/corba:tc_boolean))))
+
+
+  (define-idl-test "recursive union"
+      "union Bar; // Forward declaration
+    typedef sequence<Bar> BarSeq;
+    union Bar switch(long) { // Define incomplete union
+    case 0: long l_mem;
+    case 1: struct Foo {
+      double d_mem;
+      BarSeq nested; // OK, recurse on enclosing incomplete type
+      } s_mem;
+    };"
+    "Bar" (def-pattern :dk_union)
+    "Bar::Foo" (def-pattern :dk_struct 'op:members
+                 (sequence-pattern
+                  (pattern)
+                  (pattern 'op:name "nested"
+                           'op:type_def (def-pattern :dk_alias
+                                            'op:original_type_def
+                                          (def-pattern :dk_sequence
+                                              'op:element_type_def
+                                            (op:lookup repository "Bar")))))))
 
 
   (define-idl-test "enum"
@@ -388,7 +427,10 @@ const fixed u3 = 3.1d * 2.2d;
 
   (define-idl-test "valuetype"
     "valuetype Foo {public long n; void inc();
-       factory init (in string x);};"
+       factory init (in string x);};
+    valuetype Bar;
+    valuetype Fie { public Bar x; };
+    valuetype Bar { public long v; public Fie y;}; "
     "Foo" (def-pattern :dk_value
             'op:name "Foo" 'op:id "IDL:Foo:1.0"
             'op:is_abstract nil
@@ -403,7 +445,10 @@ const fixed u3 = 3.1d * 2.2d;
     "Foo::n" (def-pattern :dk_valuemember
                'op:access omg.org/corba:public_member
                'op:type CORBA:tc_long)
-    "Foo::inc" (def-pattern :dk_operation))
+    "Foo::inc" (def-pattern :dk_operation)
+    "Fie::x" (def-pattern :dk_valuemember
+                 'op:type_def (op:lookup repository "Bar")))
+
 
 
   (define-idl-test "valuetype2"
@@ -427,7 +472,6 @@ valuetype bx : cx, ax {};
 
 
   ;; TODO:
-  ;; forward struct, union,..
   ;; preprocessing ifdef..
   ;; identifiers starting with _
 
@@ -471,6 +515,6 @@ module Bar { interface Fum { exception Ouch {}; }; };"
                                     'symbol-package
                                     (pattern 'package-name "FOO-BAR"))
                           &any-rest))))
-
+  
   #|end|# ) ; end test suite
 

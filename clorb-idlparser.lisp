@@ -367,9 +367,13 @@
 (defun <struct_type> nil
   (let (name members)
     (seq "struct" (-> (<identifier>) name)
-         "{"  (-> (parse-list (<member>)) members)  "}"
-         (action (named-create *container* #'op:create_struct name
-                               (apply #'nconc members))))))
+         (let  ((*container*
+                 (or (op:lookup *container* name)
+                     (named-create *container* #'op:create_struct name nil))))
+           (assert (typep *container* 'CORBA:StructDef))
+           (opt "{"  (-> (parse-list (<member>)) members)  "}"
+                (action
+                  (setf (op:members *container*) (apply #'nconc members))))))))
 
 (defun <member> (&aux type dlist)
   (seq (-> (<type_spec>) type)
@@ -387,10 +391,18 @@
 (defun <union_type> nil
   (let (name discriminator_type members)
     (seq "union" (-> (<identifier>) name)
-         "switch" "(" (-> (<switch_type_spec>) discriminator_type) ")"
-         "{" (-> (<switch_body> (op:type discriminator_type)) members) "}"
-         (action (named-create *container* #'op:create_union name
-                               discriminator_type members )))))
+         (let  ((*container*
+                 (or (op:lookup *container* name)
+                     (named-create *container* #'op:create_union name
+                                   (op:get_primitive *the-repository* :pk_void)
+                                   nil))))
+           (assert (typep *container* 'CORBA:UnionDef))
+           (opt
+            "switch" "(" (-> (<switch_type_spec>) discriminator_type) ")"
+            "{" (-> (<switch_body> (op:type discriminator_type)) members) "}"
+            (action
+              (setf (op:discriminator_type_def *container*) discriminator_type
+                    (op:members *container*) members)))))))
 
 
 (defun <switch_type_spec> nil
