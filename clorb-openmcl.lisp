@@ -5,6 +5,9 @@
 
 ;; unix-select -- similar to same named function in sbcl
 
+;; FIXME: should I duplicate the error behavious of sbcl unix-select?
+;;  if so return (values nil (get-errno)) on error
+
 #+openmcl
 (defun unix-select (maxn rset wset xset timeout-sec &optional (to-usecs 0))
   (ccl::rletZ ((tv :timeval))

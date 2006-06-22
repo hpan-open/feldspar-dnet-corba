@@ -702,10 +702,14 @@ Returns select result to be used in getting status for streams."
          (declare (ignorable xset))
          ;;FIXME: should perhaps use xset
          (mess 2 "Select return ~A ~A ~A ~A" result rset wset xset)
-         (setf (select-rset select) rset)
-         (setf (select-wset select) wset)))
+         (cond (result
+                (setf (select-rset select) rset)
+                (setf (select-wset select) wset))
+               (t
+                ;; select error
+                (setf (select-rset select) 0)
+                (setf (select-wset select) 0)))))
      select)
-
 
    ;; Default
    (progn
