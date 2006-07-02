@@ -2,7 +2,8 @@
 
 (in-package :clorb)
 
-
+
+
 ;;;; Generic functions used by the POA implementation
 
 (defgeneric servant-invoke (servant operation input handler)
@@ -19,7 +20,7 @@
 
 
 
-
+
 ;;;; server-request class
 
 (defclass server-request (CORBA:ServerRequest)
@@ -35,7 +36,10 @@
    (giop-version    :initarg :giop-version    :accessor giop-version)
    (object-id       :initarg :object-id       :accessor request-object-id)
    (poa-spec        :initarg :poa-spec        :accessor poa-spec)
-   (kind            :initarg :kind  :initform :normal  :accessor request-kind)
+   (kind            :initarg :kind            :accessor request-kind
+                    :initform :normal)
+   (postinvoke      :initarg :postinvoke      :accessor request-postinvoke
+                    :initform nil)
    ;; Static skel
    (args            :initarg :args            :accessor request-args )
    (params          :initarg :params          :accessor request-params)
@@ -49,8 +53,7 @@
    (reply-service-context :initform nil       :accessor reply-service-context)
    (exception             :initform nil       :accessor request-exception  )
    (reply-status          :initform nil       :accessor reply-status)
-   (reply-buffer          :initform nil       :accessor reply-buffer)
-   (forward               :initform nil       :accessor reply-forward)))
+   (reply-buffer          :initform nil       :accessor reply-buffer)))
 
 ;; Request states:
 ;; - :wait  -- not yet started executing servant code
@@ -65,20 +68,14 @@
          :the-orb orb initargs))
 
 
-(defun set-request-args (sreq args params exc-list)
+(defun set-request-args (sreq args params exc-list result-type marshal-funs)
   (setf (request-args sreq) args
         (request-params sreq) params
-        (request-exceptions sreq) exc-list)
+        (request-exceptions sreq) exc-list
+        (request-result-type sreq) result-type
+        (request-out-funs sreq) marshal-funs)
   (has-received-request (the-orb sreq) sreq))
 
-(defun set-request-result (sreq results result-type marshal-funs)
-  (setf (request-result sreq) results
-        (request-result-type sreq) result-type
-        (request-out-funs sreq) marshal-funs))
-
-(defun set-request-forward (req obj)
-  (mess 3 "forwarding to ~A" obj)
-  (setf (reply-forward req) obj))
 
 
 (defun dsi-request-p (sreq)
@@ -89,9 +86,6 @@
 
 (defun exception-set-p (self)
   (request-exception self))
-
-(defmethod set-request-exception ((req server-request) exc)
-  (setf (request-exception req) exc))
 
 (defmethod response-expected ((req server-request))
   (logbitp 0 (response-flags req)))
@@ -122,6 +116,7 @@ been decoded."
         (t (raise-system-exception 'CORBA:no_resources))))
 
 
+;; For interceptors
 (defmethod dynamic-result ((req server-request))
   (cond ((not (slot-boundp req 'result))
          (raise-system-exception 'corba:no_resources))
@@ -134,49 +129,19 @@ been decoded."
                                    (first (request-result req))))))))
 
 
-#+unused-function
-(defun get-request-response (request status)
-  (let* ((orb (the-orb request))
-         (buffer (get-work-buffer orb)))
-    (setf (reply-buffer request) buffer)
-    (setf (reply-status request) status)
-    (case status
-      (:no_exception
-       (will-send-reply orb request))
-      (:user_exception
-       (will-send-exception orb request))
-      (:location_forward
-       (will-send-other orb request))
-      (:system_exception
-       (will-send-exception orb request)))
-    (marshal-giop-header :reply buffer)
-    (marshal-service-context (reply-service-context request) buffer)
-    (marshal-ulong (request-id request) buffer)
-    (%jit-marshal status (symbol-typecode 'GIOP:REPLYSTATUSTYPE) buffer)
-    buffer))
 
-
-(defun compute-result-marshal (req)
+(defun request-result-marshal (req buffer)
   (cond ((dsi-request-p req)
-         (lambda (req buffer)
-           (let ((res (request-result req)))
-             (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
-               (marshal-any-value res buffer)))
-           (loop for param in (request-arguments req)
-                 unless (zerop (logand ARG_OUT (op:arg_modes param)))
-                 do (marshal-any-value (op:argument param) buffer))))
+         (let ((res (request-result req)))
+           (when (and res (not (eq :tk_void (op:kind (any-typecode res)))))
+             (marshal-any-value res buffer)))
+         (loop for param in (request-arguments req)
+            unless (zerop (logand ARG_OUT (op:arg_modes param)))
+            do (marshal-any-value (op:argument param) buffer)))
         (t
-         (lambda (req buffer)
-           (loop for v in (request-result req)
-                 for m in (request-out-funs req)
-                 do (funcall m v buffer))))))
-
-
-(defun check-valid-exception (req exception)
-  (when (slot-boundp req 'exceptions)
-    (unless (find (exception-id exception) (request-exceptions req)
-                  :key #'op:id :test #'equal)
-      (raise-system-exception 'CORBA:UNKNOWN 0 :completed_yes))))
+         (loop for v in (request-result req)
+            for m in (request-out-funs req)
+            do (funcall m v buffer)))))
 
 
 (defun marshal-systemexception (condition buffer)
@@ -185,58 +150,93 @@ been decoded."
   (%jit-marshal (system-exception-completed condition) CORBA::TC_completion_status buffer))
 
 
-(defun server-request-respond (req)
+(defun request-respond (req)
   (let ((orb (the-orb req))
         (conn (request-connection req))
         (exception (request-exception req))
-        (forward (reply-forward req))
-        (kind (request-kind req)))
-    (labels ((send-reply (reply-type status result-func result-arg)
-               (connection-reply conn (giop-version req) reply-type
-                                 (request-id req) status (reply-service-context req)
-                                 result-func result-arg)
-               (setf (request-state req) :finished)
-               (connection-remove-server-request conn req))
-             (reply (status notifier result-func result-arg)
-               (setf (reply-status req) status)
-               (funcall notifier orb req)
-               (send-reply :reply status result-func result-arg))
-             (locate-reply (status &optional result-func result-arg)
-               (send-reply :locatereply status result-func result-arg)))
+        (forward nil)
+        (kind (request-kind req))
+        (postinvoke (request-postinvoke req)))
+    (when postinvoke
+      (funcall postinvoke))
+    (when (typep exception 'PortableServer:ForwardRequest)
+      (setq forward (op:forward_reference exception)
+            exception nil))
+    (labels
+        ((send-reply (reply-type status result-func result-arg)
+           (connection-reply conn (giop-version req) reply-type
+                             (request-id req) status (reply-service-context req)
+                             result-func result-arg)
+           (setf (request-state req) :finished)
+           (connection-remove-server-request conn req))
+         (reply (status notifier result-func result-arg)
+           (setf (reply-status req) status)
+           (funcall notifier orb req)
+           (send-reply :reply status result-func result-arg))
+         (locate-reply (status &optional result-func result-arg)
+           (send-reply :locatereply status result-func result-arg))
+         (valid-exception-p (exception)
+           (when (slot-boundp req 'exceptions)
+             (find (exception-id exception) (request-exceptions req)
+                   :key #'op:id :test #'equal)))
+         (reply-exception (exception)
+           (typecase exception
+             (systemexception
+              (reply :system_exception #'will-send-exception
+                     #'marshal-systemexception exception))
+             (t
+              (if (valid-exception-p exception)
+                  (reply :user_exception #'will-send-exception
+                         #'marshal-any-value exception)
+                  (reply-exception
+                   (system-exception 'CORBA:UNKNOWN 0 :completed_yes))))))
+         (locate-system-exception ()
+           (warn "A system exception in a locate request: ~A" exception)
+           (setf (request-state req) :finished)
+           (connection-shutdown (request-connection req))))
       (cond ((eql kind :locate)
-             (cond (exception (locate-reply :unknown_object))
-                   (forward   (locate-reply :object_forward #'marshal-object forward))
+             (cond (exception 
+                    (if (typep exception 'CORBA:OBJECT_NOT_EXIST)
+                        (locate-reply :unknown_object)
+                        (locate-system-exception)))
+                   (forward   (locate-reply :object_forward
+                                            #'marshal-object forward))
                    (t         (locate-reply :object_here))))
             (forward
-             (reply :location_forward #'will-send-other #'marshal-object forward))
+             (reply :location_forward #'will-send-other
+                    #'marshal-object forward))
             (exception
-             (typecase exception
-               (userexception
-                (check-valid-exception req exception)
-                (reply :user_exception #'will-send-exception #'marshal-any-value exception))
-               (systemexception
-                (reply :system_exception #'will-send-exception #'marshal-systemexception exception))))
+             (reply-exception exception))
             (t
-             (reply :no_exception #'will-send-reply (compute-result-marshal req) req))))))
+             (reply :no_exception #'will-send-reply
+                    #'request-result-marshal req))))))
 
 
-(defun server-request-systemexception-reply (req condition)
-  (cond ((and (eql (request-kind req) :locate)
-              (not (typep condition 'CORBA:OBJECT_NOT_EXIST)))
-         (warn "A system exception in a locate request: ~A" condition)
-         (setf (request-state req) :finished)
-         (connection-shutdown (request-connection req)))
-        (t
-         (set-request-exception req condition)
-         (server-request-respond req))))
+(defun set-request-result-list (sreq results)
+  (setf (request-result sreq) results)
+  (when (< (length results) (length (request-out-funs sreq)))
+    (raise-system-exception 'CORBA:MARSHAL 999 :completed_yes))
+  (request-respond sreq))
+
+
+(defmethod set-request-exception ((req server-request) exc)
+  (setf (request-exception req) exc)
+  (request-respond req))
+
+
+(defmacro with-request-errors ((request) &body body)
+  `(handler-case
+       (progn ,@body)
+     (serious-condition (exc)
+       (set-request-exception ,request exc))))
 
 
 (defun discard-request (req)
-  (server-request-systemexception-reply
+  (set-request-exception
    req (system-exception 'CORBA:TRANSIENT 1 :completed_no)))
 
 
-
+
 ;;;; Standard ServerRequest interface
 #|
       interface ServerRequest { // PIDL
@@ -320,14 +320,9 @@ been decoded."
     (lambda (servant sreq buffer)
       (let ((args (loop for ufun in in-funs
                         collect (funcall ufun buffer))))
-        (set-request-args sreq args params exc-list)
-        (handler-case
-          (let ((res-list
-                 (multiple-value-list (apply operation servant args))))
-            (when (< (length res-list) (length out-funs))
-              (raise-system-exception 'CORBA:MARSHAL 999 :completed_yes))
-            (set-request-result sreq res-list result out-funs))
-          (CORBA:UserException (exc) (set-request-exception sreq exc)))))))
+        (set-request-args sreq args params exc-list result out-funs)
+        (set-request-result-list
+         sreq (multiple-value-list (apply operation servant args)))))))
 
 
 (defun compute-skel-get-attribute (name type)
@@ -335,9 +330,9 @@ been decoded."
         (mfun (marshal-function type)))
     (lambda (servant sreq buffer)
       (declare (ignore buffer))
-      (set-request-args sreq nil nil nil)
-      (let ((val (funcall operation servant)))
-        (set-request-result sreq (list val) type (list mfun))))))
+      (set-request-args sreq nil nil nil type (list mfun))
+      (set-request-result-list
+       sreq (list (funcall operation servant))))))
 
 
 (defun compute-skel-set-attribute (name type)
@@ -346,34 +341,24 @@ been decoded."
         (params (list (list "v" :param_in type))))
     (lambda (servant sreq buffer)
       (let ((val (funcall ufun buffer)))
-        (set-request-args sreq (list ufun) params nil)
+        (set-request-args sreq (list ufun) params nil CORBA:Tc_void nil)
         (funcall operation val servant)
-        (set-request-result sreq nil CORBA:Tc_void nil)))))
+        (set-request-result-list sreq nil)))))
 
 
 (defun standard-skel-operations (table)
-  (setf (gethash "_locate" table)
-        (lambda (servant sreq buffer)
-          (declare (ignore servant sreq buffer))))
-  #+(or)
-  (setf (gethash "_is_a" table)
-        (let ((params (list (list "id" :param_in CORBA:Tc_string))))
-          (lambda (servant sreq buffer)
-            (let ((id (unmarshal-string buffer)))
-              (set-request-args sreq (list id) params nil)
-              (set-request-result sreq (list (op:_is_a servant id)) CORBA:TC_Boolean '(marshal-bool))))))
-  #+(or)
-  (setf (gethash "_non_existent" table)
-        (lambda (servant sreq buffer)
-          (declare (ignore buffer))
-          (set-request-args sreq nil nil nil)
-          (set-request-result sreq (list (op:_non_existent servant)) corba:tc_boolean '(marshal-bool))))
-  (setf (gethash "_get_interface" table)
-        (setf (gethash "_interface" table)
-              (lambda (servant sreq buffer)
-                (declare (ignore buffer))
-                (set-request-args sreq nil nil nil)
-                (set-request-result sreq (list (op:_get_interface servant)) corba:tc_object '(marshal-object))))))
+  (setf
+   (gethash "_locate" table)
+   (lambda (servant sreq buffer)
+     (declare (ignore servant buffer))
+     (set-request-args sreq nil nil nil corba:tc_boolean nil)
+     (set-request-result-list sreq nil))
+   (gethash "_get_interface" table)
+   (lambda (servant sreq buffer)
+     (declare (ignore buffer))
+     (set-request-args sreq nil nil nil corba:tc_object '(marshal-object))
+     (set-request-result-list sreq (list (op:_get_interface servant)))))
+  (setf (gethash "_interface" table) (gethash "_get_interface" table)))
 
 
 (defun compute-iface-skel (isym &optional (table (make-hash-table :test #'equal)))
@@ -463,7 +448,8 @@ been decoded."
 (defmethod servant-invoke ((servant portableserver:dynamicimplementation) operation input req)
   (let ((fun (gethash operation (get-skel-table 'CORBA:Object))))
     (cond (fun (funcall fun servant req input))
-          (t   (op:invoke servant req)))))
+          (t   (op:invoke servant req)
+               (request-respond req)))))
 
 (defmethod primary-interface ((servant portableserver:dynamicimplementation) oid poa)
   (op:primary_interface servant oid poa))

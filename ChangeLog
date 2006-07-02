@@ -1,3 +1,24 @@
+2006-07-02  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* test-poa.lisp (mock-dsi-servant): new plug-invoke slot
+	(mock-dsi-default-invoke): new
+	(invoke): use new plug-invoke slot
+	("POA Test"): new "Async Servant" test
+
+	* clorb-servant.lisp (request-respond): changed name from
+	server-request-respond
+	(request-respond): exception handling fixed
+
+	* clorb-poa.lisp (make-poa-current): capture request and servant instead
+	(poa-current-request): new
+	(current-request): new, for easy access
+	(poa-invoke): set the poa slot
+	(poa-invoke): new make-poa-current interface
+
+	* clorb-io.lisp (io-system-add-descriptor, io-system-delete-descriptor): 
+	added ignore desc
+	
+
 2006-06-09  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* Version 0.7

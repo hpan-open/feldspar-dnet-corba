@@ -643,10 +643,12 @@ of this write."
 
 
 (defmethod io-system-add-descriptor ((system io-system-mt-base) desc)
+  (declare (ignore desc))
   (with-lock (lock system)
     (call-next-method)))
 
 (defmethod io-system-delete-descriptor ((system io-system-mt-base) desc)
+  (declare (ignore desc))
   (with-lock (lock system)
     (call-next-method)))
 

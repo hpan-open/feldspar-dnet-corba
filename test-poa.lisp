@@ -62,27 +62,34 @@
 ;; ==========================================================================
 
 (defclass mock-dsi-servant (portableserver:dynamicimplementation)
-  ((plug-op :initform #'identity
-            :initarg :plug-op
-            :accessor plug-op)))
+  ((plug-op     :initarg :plug-op       :accessor plug-op
+                :initform #'identity )
+   (plug-invoke :initarg :plug-invoke   :accessor plug-invoke-of
+                :initform 'mock-dsi-default-invoke)))
+
+(defun mock-dsi-default-invoke (req servant)
+  (let* ((params (list (corba:namedvalue
+                        :name "x"
+                        :argument (CORBA:Any :any-typecode CORBA:tc_string)
+                        :arg_modes ARG_IN)))
+         (args (op:arguments req params))
+         (value (funcall (plug-op servant)
+                         (any-value (op:argument (first args)))))
+         (result (corba:any :any-typecode corba:tc_string
+                            :any-value value)))
+    (op:set_result req result)))
+
 
 (define-method invoke ((servant mock-dsi-servant) req)
   (let ((op (op:operation req)))
     (cond ((equal op "op")
-           (let ((args (op:arguments req
-                                     (list (corba:namedvalue
-                                            :name "x"
-                                            :argument (CORBA:Any :any-typecode CORBA:tc_string)
-                                            :arg_modes ARG_IN)))))
-             (op:set_result req
-                            (corba:any :any-typecode corba:tc_string
-                                       :any-value (funcall (plug-op servant)
-                                                           (any-value (op:argument (first args))))))))
+           (funcall (plug-invoke-of servant) req servant))
           (t
            (error 'corba:bad_operation)))))
 
 
 ;; ==========================================================================
+
 
 (corba:orb_init)
 (unless (orb-host *the-orb*)
@@ -356,7 +363,7 @@
 
   (define-test "Recursive call to :single_thread_model"
     (setup-test-in)
-    (let* ((poa (op:create_poa root-poa "single" 
+    (let* ((poa (op:create_poa root-poa "single"
                                (op:the_poamanager root-poa)
                                (list (op:create_thread_policy root-poa :single_thread_model))))
            (oid #(1))
@@ -372,7 +379,7 @@
                 (when (equal x "again")
                   (call-it "stop")
                   (test-read-response :orb orb
-                                      :message 
+                                      :message
                                       (list :message-type :reply
                                             'giop:replyheader
                                             (pattern 'op:reply_status :system_exception)
@@ -387,7 +394,37 @@
                                   (pattern 'op:reply_status :no_exception)
                                   corba:tc_string
                                   "foo")))))
-    
-    
-    
+
+
+  (define-test "Async Servant"
+    (setup-test-in)
+    (let* ((servant (make-instance 'mock-dsi-servant))
+           oid req)
+      (flet ((async-invoke (areq servant)
+               (declare (ignore servant))
+               (op:arguments areq nil)
+               (setq req areq)
+               (throw 'defer nil)))
+        (setf (plug-invoke-of servant) #'async-invoke)
+        (op:activate (op:the_poamanager root-poa))
+        (setq oid (op:activate_object root-poa servant))
+        (test-poa-invoke root-poa :oid oid :operation "op" :args '("foo"))
+        ;; Should now be defered
+        (ensure req "Request invoked and defered")
+        (ensure-eql (request-state req) :exec)
+        ;; Async result
+        (with-request-errors (req)
+          (op:set_result req
+                         (corba:any :any-typecode CORBA:tc_String
+                                    :any-value "Holla" ))
+          (request-respond req))
+        (ensure-eql (request-state req) :finished)
+        (test-read-response :orb orb
+                            :message
+                            (list :message-type :reply
+                                  'giop:replyheader
+                                  (pattern 'op:reply_status :no_exception)
+                                  corba:tc_string
+                                  "Holla")))))
+
     #| end suite |# )

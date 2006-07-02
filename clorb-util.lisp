@@ -95,6 +95,19 @@
 ;;;| InterfaceDef get_interface ();
 ;;; Strange that the lisp mapping does not rename this.
 
+
+(define-operation CORBA::Object/_get_interface
+    :id "IDL:omg.org/CORBA/Object/_get_interface:1.0"
+    :NAME "_get_interface"
+    :DEFINED_IN CORBA:OBJECT
+    :VERSION "1.0"
+    :RESULT CORBA::_tc_InterfaceDef
+    :MODE :OP_NORMAL
+    :CONTEXTS ()
+    :PARAMETERS ()
+    :EXCEPTIONS ())
+
+
 (define-method _get_interface ((obj CORBA:Object))
   (or (op:lookup_id *internal-interface-repository* (object-id obj))
       (raise-system-exception 'CORBA:intf_repos)))
