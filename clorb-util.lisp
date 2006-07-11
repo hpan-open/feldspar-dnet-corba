@@ -338,6 +338,11 @@ The list free operation is used to free the returned information.
 (defun rebind (objref &rest names)
   (op:rebind (get-ns) (ns-name* names) objref))
 
+(define-method op:bind ((name string) objref)
+  (op:bind (get-ns) (ns-name name) objref))
+
+(define-method op:rebind ((name string) objref)
+  (op:rebind (get-ns) (ns-name name) objref))
 
 
 

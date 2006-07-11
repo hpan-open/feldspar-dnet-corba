@@ -176,7 +176,8 @@ been decoded."
          (locate-reply (status &optional result-func result-arg)
            (send-reply :locatereply status result-func result-arg))
          (valid-exception-p (exception)
-           (when (slot-boundp req 'exceptions)
+           (when (and (typep exception 'corba:userexception)
+                      (slot-boundp req 'exceptions))
              (find (exception-id exception) (request-exceptions req)
                    :key #'op:id :test #'equal)))
          (reply-exception (exception)
@@ -220,6 +221,7 @@ been decoded."
 
 
 (defmethod set-request-exception ((req server-request) exc)
+  (warn "Exception in request: ~a" exc)
   (setf (request-exception req) exc)
   (request-respond req))
 

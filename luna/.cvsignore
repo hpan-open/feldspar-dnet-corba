@@ -1,4 +1,5 @@
-*.fasl
 *.fas
+*.fasl
 *.lib
 orig
+tests.lisp
