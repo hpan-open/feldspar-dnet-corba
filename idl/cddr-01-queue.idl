@@ -1,0 +1,16 @@
+
+module CDDR_01 {
+
+  interface SimpleQueue {
+
+    void enqueue (in string msg);
+    string dequeue (in boolean non_blocking, out boolean flag);
+    
+    long alloc_id (in long n);
+    boolean put (in long id, in string msg);
+    string get (in long id);
+    void ack (in long id);
+    
+  };
+
+};
