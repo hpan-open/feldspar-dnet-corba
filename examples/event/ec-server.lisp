@@ -8,7 +8,16 @@
 (defun delete-swap (list object)
   (delete object list))
 
-(define-modify-macro deletef (object) delete-swap  )
+(define-modify-macro purge (object) delete-swap  )
+
+
+(defmacro with-cache-slot ((object slot) &body body)
+  (let ((objvar (gensym)))
+    `(let ((,objvar ,object))
+       (if (slot-boundp ,objvar ',slot)
+         (slot-value ,objvar ',slot)
+         (setf (slot-value ,objvar ',slot) (progn ,@body))))))
+
 
 
 ;;;; EVENT-CHANNEL CLASS ---------------------------------------------------
@@ -16,27 +25,28 @@
 ;;;  ------------------------------------------------- event-channel -------
 
 (defclass EVENT-CHANNEL (CosEventChannelAdmin:EventChannel-servant)
-  ((consumers  :initform '() :accessor consumers)
-   (suppliers  :initform '() :accessor suppliers)
-   (consumer-admin :initform nil :accessor consumer-admin)
-   (supplier-admin :initform nil :accessor supplier-admin)))
+  ((consumers           :initform '()   :accessor consumers-of)
+   (suppliers           :initform '()   :accessor suppliers-of)
+   (consumer-admin  )
+   (supplier-admin  )))
 
 (define-method for_consumers ((servant event-channel))
-  (or (consumer-admin servant)
-      (setf (consumer-admin servant) 
-        (make-instance 'consumer-admin :channel servant))))
+  (with-cache-slot (servant consumer-admin)
+    (make-instance 'consumer-admin :channel servant)))
 
 (define-method for_suppliers ((servant event-channel))
-  (or (supplier-admin servant)
-      (setf (supplier-admin servant)
-        (make-instance 'supplier-admin :channel servant))))
+  (with-cache-slot (servant supplier-admin)
+    (make-instance 'supplier-admin :channel servant)))
 
 (define-method destroy ((servant event-channel))
   (values))
 
+
+(defgeneric add-event (recipient event))
+
 (defmethod add-event ((ch event-channel) event)
   (mapc (lambda (subs) (add-event subs event))
-        (consumers ch)))
+        (consumers-of ch)))
 
 
 
@@ -68,28 +78,29 @@
 
 (defclass SUPPLIER () 
   ((channel :initarg :channel :accessor channel)
-   (consumer :initform nil  :accessor consumer)))
+   (consumer :initform nil  :accessor consumer-of)))
 
 (defmethod connect-consumer ((self supplier) consumer)
-  (when (consumer self)
+  (when (consumer-of self)
     (error (coseventchanneladmin:alreadyconnected)))
-  (setf (consumer self) consumer)
-  (pushnew self (consumers (channel self))))
+  (setf (consumer-of self) consumer)
+  (pushnew self (consumers-of (channel self))))
 
 (defmethod disconnect ((self supplier))
-  (setf (consumer self) nil)
-  (deletef (consumers (channel self)) self)
+  (setf (consumer-of self) nil)
+  (purge (consumers-of (channel self)) self)
   (op:deactivate_object (op:_poa self) (op:_object_id self)))
 
 
 ;;;; ------------------------------------------------- push-supplier -------
 
-(defclass PUSH-SUPPLIER (supplier coseventcomm:pushsupplier-servant)
+(defclass PUSH-SUPPLIER (supplier
+                         CosEventChannelAdmin:ProxyPushSupplier-servant)
   ())
 
 (defmethod add-event ((self push-supplier) event)
   (ignore-errors
-   (op:push (consumer self) event)))
+   (op:push (consumer-of self) event)))
 
 (define-method connect_push_consumer ((self push-supplier) push-consumer)
   (connect-consumer self push-consumer))
@@ -100,7 +111,8 @@
 
 ;;;; --------------------------------------------------pull-supplier -------
 
-(defclass PULL-SUPPLIER (supplier CosEventComm:PullSupplier-servant)
+(defclass PULL-SUPPLIER (supplier
+                         CosEventChannelAdmin:ProxyPullSupplier-servant)
   ((pending-pull :initform nil  :accessor pending-pull)
    (events       :initform '()  :accessor events)))
 
@@ -108,19 +120,20 @@
   (let ((sreq (pending-pull self)))
     (if sreq
         (progn (setf (pending-pull self) nil)
-               (set-request-result sreq (list event))
-               (send-response sreq))
-      (push event (events self)))))
+               (clorb::set-request-result-list sreq (list event))
+               (clorb::request-respond sreq))
+        (setf (events self)
+              (nconc (events self) (list event))))))
 
 
 (define-method pull ((self pull-supplier))
   (if (events self)
       (pop (events self))
-    (progn (setf (pending-pull self) *current-server-request*)
-           'defer)))
+    (progn (setf (pending-pull self) (clorb::current-request))
+           (throw 'clorb::defer nil))))
 
 (define-method try_pull ((self pull-supplier))
-  (let ((res (CORBA:Any :any-typecode CORBA:tc_null))
+  (let ((res (load-time-value (CORBA:Any :any-typecode CORBA:tc_null)))
         (has-event nil))
     (when (events self)
       (setq res (pop (events self)))
@@ -138,25 +151,24 @@
 
 (defclass CONSUMER ()
   ((state :initarg :channel :accessor channel)
-   (supplier :accessor supplier)))
+   (supplier :accessor supplier-of)))
 
 (defmethod connect-supplier ((self consumer) supplier)
   (when (slot-boundp self 'supplier)
-    (error 'userexception :id +already-connected-id+))
-  (push self (suppliers (channel self)))
-  (setf (supplier self) supplier))
+    (error (coseventchanneladmin:alreadyconnected)))
+  (push self (suppliers-of (channel self)))
+  (setf (supplier-of self) supplier))
 
 (defmethod disconnect ((self consumer))
   (slot-makunbound self 'supplier)
-  (deletef (suppliers (channel self)) self)
-  (when *poa-current*
-    (op:deactivate_object (poa-current-POA *poa-current*)
-                       (poa-current-object-id *poa-current*))))
+  (purge (suppliers-of (channel self)) self)
+  (op:deactivate_object (op:_poa self) (op:_object_id self)))
 
 
 ;;;; ------------------------------------------------- push-consumer -------
 
-(defclass PUSH-CONSUMER (consumer push-consumer-servant)
+(defclass PUSH-CONSUMER (consumer
+                         CosEventChannelAdmin:ProxyPushConsumer-servant)
   ())
 
 (define-method push ((self push-consumer) any)
@@ -173,7 +185,8 @@
 
 ;;;; ------------------------------------------------- pull-consumer -------
 
-(defclass PULL-CONSUMER (consumer pull-consumer-servant)
+(defclass PULL-CONSUMER (consumer
+                         CosEventChannelAdmin:ProxyPullConsumer-servant)
   ())
 
 (define-method connect_pull_supplier ((self pull-consumer) supplier)
@@ -181,7 +194,7 @@
   (connect-supplier self supplier))
 
 (defun do-pull (pull-consumer)
-  (let ((event (op:pull (supplier pull-consumer))))
+  (let ((event (op:pull (supplier-of pull-consumer))))
     (add-event (channel pull-consumer) event)))
 
 (define-method disconnect_pull_consumer ((self pull-consumer))
@@ -203,41 +216,39 @@
 (defun setup-ec ()
   (unless *my-ch*
     (setq *my-ch* (make-instance 'event-channel)))
-  (rebind *my-ch* "ch1")
-  ;;(rebind *my-pus* "ch1b")
-  (rebind (make-instance 'push-consumer :channel *my-ch*) "ch1pc")
-  (rebind (make-instance 'push-supplier :channel *my-ch*) "ch1ps"))
+  (clorb:rebind *my-ch* "ch1")
+  ;;(clorb:rebind *my-pus* "ch1b")
+  (clorb:rebind (make-instance 'push-consumer :channel *my-ch*) "ch1pc")
+  (clorb:rebind (make-instance 'push-supplier :channel *my-ch*) "ch1ps"))
 
 (defun test-ec ()
   (let ((consumer (make-instance 'push-trace))
-        (ch (resolve "ch1")))
-    (let ((in-adm (invoke ch "for_suppliers"))
-          (out-adm (invoke ch "for_consumers")))
-      (let ((in (invoke in-adm "obtain_push_consumer"))
-            (out (invoke out-adm "obtain_push_supplier")))
-        ;; ? (invoke in "connect_push_supplier" ?)
-        (invoke out "connect_push_consumer" consumer)
-        (invoke in "push" "Tjolla hoppsan")
-        (invoke in "push" 345)
-        (invoke in "push" '("how" "do"))
-        (invoke out "disconnect_push_supplier")))))
+        (ch (op:resolve "ch1")))
+    (let ((in-adm (op:for_suppliers ch))
+          (out-adm (op:for_consumers ch)))
+      (let ((in (op:obtain_push_consumer in-adm))
+            (out (op:obtain_push_supplier out-adm)))
+        (op:connect_push_consumer out consumer)
+        (op:push in "Tjolla hoppsan")
+        (op:push in 345)
+        (op:push in '("how" "do"))
+        (op:disconnect_push_supplier out)))))
 
 (defun test-ec-1 ()
-  (let ((ch (resolve "ch1")))
-    (let ((in-adm (invoke ch "for_suppliers")))
-      (let ((in (invoke in-adm "obtain_push_consumer")))
-        ;; ? (invoke in "connect_push_supplier" ?)
-        (invoke in "push" "Tjolla hoppsan")
-        (invoke in "push" 345)
-        (invoke in "push" '("how" "do"))
-        ))))
+  (let ((ch (op:resolve "ch1")))
+    (let ((in-adm (op:for_suppliers ch)))
+      (let ((in (op:obtain_push_consumer in-adm)))
+        ;; ? (op:connect_push_supplier in ?)
+        (op:push in "Tjolla hoppsan")
+        (op:push in 345)
+        (op:push in '("how" "do")) ))))
 
 (defun test-ec-2 ()
   (let ((consumer (make-instance 'push-trace))
-        (ch (resolve "ch1")))
-    (let ((out-adm (invoke ch "for_consumers")))
-      (let ((out (invoke out-adm "obtain_push_supplier")))
-        (invoke out "connect_push_consumer" consumer)
+        (ch (op:resolve "ch1")))
+    (let ((out-adm (op:for_consumers ch)))
+      (let ((out (op:obtain_push_supplier out-adm)))
+        (op:connect_push_consumer out consumer)
         (unwind-protect
              (op:run (corba:orb_init))
-          (invoke out "disconnect_push_supplier"))))))
+          (op:disconnect_push_supplier out))))))
