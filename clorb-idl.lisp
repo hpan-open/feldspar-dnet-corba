@@ -1,6 +1,7 @@
-;; clorb-idl
+;;;; clorb-idl.lisp -- CORBA:IDL interface to the IDL-compiler
 
 (in-package :clorb)
+
 
 (defclass IDL-COMPILER () 
   ((include-directories :initform *default-include-directories*
@@ -41,7 +42,7 @@
              (*defining-repository* repository))
         (flet ((execute-code ()
                  (unless (and (consp code) (eq (car code) 'progn))
-                   (setq code `(progn code)))
+                   (setq code `(progn ,code)))
                  (dolist (x (cdr code))
                    (when x
                      (when print (terpri) (pprint x))
