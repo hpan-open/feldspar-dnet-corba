@@ -65,7 +65,7 @@
 
 (defun opname-helper (name)
   ;; opname => symbol setf-from-p expr
-  (let ((opkg  "OMG.ORG/FEATURES")
+  (let ((opkg  "OMG.ORG/FEATURE")
         setf-form)
     (when (consp name)
       (assert (eq (first name) 'setf))

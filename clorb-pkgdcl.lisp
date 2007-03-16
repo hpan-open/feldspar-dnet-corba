@@ -142,9 +142,9 @@
   (:export
    "PROFILEBODY_1_0" "PROFILEBODY_1_1" "VERSION"))
 
-(defpackage "OMG.ORG/FEATURES"
+(defpackage "OMG.ORG/FEATURE"
   (:use)
-  (:nicknames "OP")
+  (:nicknames "OP" "OMG.ORG/FEATURES")
   (:export
    "ABSOLUTE_NAME" "ABSTRACT_BASE_VALUES" "ACCESS" "ACTIVATE"
    "ACTIVATE_OBJECT" "ACTIVATE_OBJECT_WITH_ID" "ADAPTER_ID"

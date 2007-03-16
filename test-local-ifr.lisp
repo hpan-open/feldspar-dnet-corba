@@ -538,7 +538,7 @@
       
       ;; Setting supported interfaces
       (let ((i1 (op:create_interface repository "IDL:my/Interface:1.1" "Interface" "1.1" '()))
-            (i2 (omg.org/features:create_abstract_interface repository "IDL:my/Interface2:1.1" "IDL:my/Interface2:1.1" "Interface2" '()))
+            (i2 (op:create_abstract_interface repository "IDL:my/Interface2:1.1" "IDL:my/Interface2:1.1" "Interface2" '()))
             (i3 (op:create_interface repository "IDL:my/Interface3:1.0" "Interface2" "1.0" '())))
         (setf (op:supported_interfaces val) (list i1 i2))
         ;; Only one non-abstract interface

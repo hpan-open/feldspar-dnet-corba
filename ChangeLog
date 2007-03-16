@@ -1,3 +1,10 @@
+2007-02-27  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-macros.lisp (opname-helper): ORG/FEATURE typo fix.
+
+	* clorb-pkgdcl.lisp ("OMG.ORG/FEATURE"): renames from ORG/FEATURES
+	(typo).
+
 2006-07-11  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-util.lisp (op:bind): new
