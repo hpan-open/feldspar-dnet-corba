@@ -47,7 +47,7 @@
            (lambda ()
              (let ((r (current-request)))
                (labels ((retry ()
-                          (deq (lambda (result)
+                          (deq (lambda (&rest result)
                                  (set-request-result-list r result))
                                #'defer))
                         (defer ()
@@ -71,6 +71,7 @@
     (multiple-value-bind (old-obj flg) (gethash id (memory-of self))
       (declare (ignore old-obj))
       (unless flg
+        (setf (gethash id (memory-of self)) msg)
         (%enqueue self msg)
         t))))
 
