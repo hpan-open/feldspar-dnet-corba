@@ -184,17 +184,15 @@ Members on form: (name TypeCode)"
 
 (defmethod compute-unmarshal-function ((typecode except-typecode))
   (let* ((id (op:id typecode))
-         (constructor (typecode-symbol typecode))
+         (constructor (or (typecode-symbol typecode)
+                          (lambda (&rest initargs)
+                            ;; FIXME: alt (system-exception 'corba:no_implement)
+                            (make-condition 'unknown-user-exception
+                                            :id id :values initargs))))
          (keys (tc-keywords typecode))
          (unmarshallers
           (mapcar #'unmarshal-function (tc-member-types typecode))))
     (declare (simple-vector keys))
-    (unless constructor
-      (setq constructor
-            (lambda (&rest initargs)
-              ;; FIXME: alt (system-exception 'corba:no_implement)
-              (make-condition 'unknown-user-exception
-                              :id id :values initargs))))
     (lambda (buffer)
       (apply constructor
              (loop for key across keys and fun in unmarshallers
