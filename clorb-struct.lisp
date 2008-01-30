@@ -105,10 +105,10 @@ of fields can be defaulted (numbers and strings)."
          (let ((fields (raw-fields obj)))
            (pprint-logical-block (stream fields
                                          :prefix "#<" :suffix ">")
-             (pprint-indent :block 4)
              (typecase obj
                (generic-struct (princ (type-id obj) stream))
                (t (princ (type-of obj) stream)))
+             (pprint-indent :block 4 stream)
              (format stream "~{ ~_~W ~W~}" fields) )))
         (t
          (print-unreadable-object (obj stream :type t)
