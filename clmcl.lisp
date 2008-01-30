@@ -43,7 +43,8 @@
   (CORBA:ORB_init '("-ORBInitRef NameService=http://localhost/~lenst/NS_ref")))
 
 (defun use-lapps ()
-  (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc::localhost:2047/NameService")))
+  (CORBA:ORB_init
+   '("-ORBInitRef NameService=corbaloc::localhost:4720/NameService")))
 
 (defun run ()
   (persistent-naming:setup-pns :export t)

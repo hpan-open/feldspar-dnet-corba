@@ -112,7 +112,7 @@ of fields can be defaulted (numbers and strings)."
              (format stream "~{ ~_~W ~W~}" fields) )))
         (t
          (print-unreadable-object (obj stream :type t)
-           (format stream "~{~S~^ ~}" (raw-fields obj))))))
+           (format stream "~{~S~^ ~}" (raw-fields obj)) ))))
 
 
 (defun map-struct (fn struct)

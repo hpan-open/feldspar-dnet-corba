@@ -737,8 +737,8 @@ Requires that a multi-threaded IO-system is configured."
 
 (define-corba-class CORBA:Current ())
 #+(or)
-(DEFINE-INTERFACE OMG.ORG/CORBA:CURRENT (OBJECT)
-  :proxy (OMG.ORG/CORBA:CURRENT-PROXY OMG.ORG/CORBA:CURRENT OMG.ORG/CORBA:PROXY)
+(DEFINE-INTERFACE CORBA:CURRENT (OBJECT)
+  :proxy (CORBA:CURRENT-PROXY CORBA:CURRENT CORBA:PROXY)
   :id "IDL:omg.org/CORBA/Current:1.0"
   :name "Current")
 
@@ -747,18 +747,18 @@ Requires that a multi-threaded IO-system is configured."
 ;;;; Policy
 
 
-(DEFINE-ALIAS OMG.ORG/CORBA:POLICYTYPE
+(DEFINE-ALIAS CORBA:POLICYTYPE
   :id "IDL:omg.org/CORBA/PolicyType:1.0"
   :name "PolicyType"
-  :type OMG.ORG/CORBA:ULONG
-  :typecode OMG.ORG/CORBA:TC_ULONG)
+  :type CORBA:ULONG
+  :typecode CORBA:TC_ULONG)
 
-(DEFINE-INTERFACE OMG.ORG/CORBA:POLICY (OBJECT)
-  :proxy (OMG.ORG/CORBA:POLICY-PROXY OMG.ORG/CORBA:POLICY OMG.ORG/CORBA:PROXY)
+(DEFINE-INTERFACE CORBA:POLICY (OBJECT)
+  :proxy (CORBA:POLICY-PROXY CORBA:POLICY CORBA:PROXY)
   :id "IDL:omg.org/CORBA/Policy:1.0"
   :name "Policy")
 
-(define-corba-class policy-impl (OMG.ORG/CORBA:POLICY)
+(define-corba-class policy-impl (CORBA:POLICY)
   :attributes ((policy_type :readonly)) )
 
 (define-method "DESTROY" ((OBJ policy-impl)))
@@ -767,42 +767,42 @@ Requires that a multi-threaded IO-system is configured."
   obj )
 
 
-(DEFINE-METHOD "DESTROY" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
+(DEFINE-METHOD "DESTROY" ((OBJ CORBA:POLICY-PROXY))
   (STATIC-CALL ("destroy" OBJ) :output ((OUTPUT)) :input ((INPUT)) :exceptions NIL))
 
-(DEFINE-METHOD "COPY" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
+(DEFINE-METHOD "COPY" ((OBJ CORBA:POLICY-PROXY))
   (STATIC-CALL ("copy" OBJ)
                :output ((OUTPUT))
-               :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY) INPUT))
+               :input ((INPUT) (UNMARSHAL (SYMBOL-TYPECODE 'CORBA:POLICY) INPUT))
                :exceptions NIL))
 
-(DEFINE-METHOD "POLICY_TYPE" ((OBJ OMG.ORG/CORBA:POLICY-PROXY))
-  (GET-ATTRIBUTE OBJ "_get_policy_type" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICYTYPE)))
+(DEFINE-METHOD "POLICY_TYPE" ((OBJ CORBA:POLICY-PROXY))
+  (GET-ATTRIBUTE OBJ "_get_policy_type" (SYMBOL-TYPECODE 'CORBA:POLICYTYPE)))
 
 
-(DEFINE-ALIAS OMG.ORG/CORBA:POLICYLIST
+(DEFINE-ALIAS CORBA:POLICYLIST
   :id "IDL:omg.org/CORBA/PolicyList:1.0"
   :name "PolicyList"
   :type SEQUENCE
-  :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICY)))
+  :typecode (create-sequence-tc 0 (SYMBOL-TYPECODE 'CORBA:POLICY)))
 
-(defconstant omg.org/corba:secconstruction (quote 11))
-(defconstant omg.org/corba:unsupported_policy_value (quote 4))
-(defconstant omg.org/corba:bad_policy_value (quote 3))
-(defconstant omg.org/corba:bad_policy_type (quote 2))
-(defconstant omg.org/corba:unsupported_policy (quote 1))
-(defconstant omg.org/corba:bad_policy (quote 0))
+(defconstant corba:secconstruction (quote 11))
+(defconstant corba:unsupported_policy_value (quote 4))
+(defconstant corba:bad_policy_value (quote 3))
+(defconstant corba:bad_policy_type (quote 2))
+(defconstant corba:unsupported_policy (quote 1))
+(defconstant corba:bad_policy (quote 0))
 
-(DEFINE-ALIAS OMG.ORG/CORBA:POLICYERRORCODE
+(DEFINE-ALIAS CORBA:POLICYERRORCODE
   :id "IDL:omg.org/CORBA/PolicyErrorCode:1.0"
   :name "PolicyErrorCode"
-  :type OMG.ORG/CORBA:SHORT
-  :typecode OMG.ORG/CORBA:TC_SHORT)
+  :type CORBA:SHORT
+  :typecode CORBA:TC_SHORT)
 
-(DEFINE-USER-EXCEPTION OMG.ORG/CORBA:POLICYERROR
+(DEFINE-USER-EXCEPTION CORBA:POLICYERROR
   :id "IDL:omg.org/CORBA/PolicyError:1.0"
   :name "PolicyError"
-  :members (("reason" (SYMBOL-TYPECODE 'OMG.ORG/CORBA:POLICYERRORCODE))))
+  :members (("reason" (SYMBOL-TYPECODE 'CORBA:POLICYERRORCODE))))
 
 
 (defgeneric create-policy (type value))
@@ -812,7 +812,7 @@ Requires that a multi-threaded IO-system is configured."
 
 (defmethod create-policy ((type t) value)
   (declare (ignore value))
-  (error (OMG.ORG/CORBA:POLICYERROR :reason OMG.ORG/CORBA:BAD_POLICY)))
+  (error (CORBA:POLICYERROR :reason CORBA:BAD_POLICY)))
 
 
 
@@ -976,11 +976,11 @@ Should have form '<format>:<string>"
   (check-tc-content-type boxed_type)
   (fix-recursive-tc (create-value-box-tc id name boxed_type)))
 
-(DEFINE-ALIAS OMG.ORG/CORBA:VALUEMODIFIER
+(DEFINE-ALIAS CORBA:VALUEMODIFIER
   :ID "IDL:omg.org/CORBA/ValueModifier:1.0"
   :NAME "ValueModifier"
-  :TYPE OMG.ORG/CORBA:SHORT
-  :TYPECODE OMG.ORG/CORBA:TC_SHORT)
+  :TYPE CORBA:SHORT
+  :TYPECODE CORBA:TC_SHORT)
 
 (define-method "CREATE_VALUE_TC" ((OBJ CORBA:TYPECODEFACTORY)
                                       id name type_modifier concrete_base members)

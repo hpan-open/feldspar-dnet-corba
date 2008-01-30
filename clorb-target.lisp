@@ -407,8 +407,8 @@
     (make-progn*
      (call-next-method)
      (if (eq (op:mode attr) :attr_normal)
-       `(define-method (setf ,lisp-name) (newval (obj ,class))
-          (%jit-set ,symbol obj newval)))
+         `(define-method (setf ,lisp-name) (newval (obj ,class))
+            (%jit-set ,symbol obj newval)))
      `(define-method ,lisp-name ((obj ,class))
         (%jit-get ,symbol obj)))))
 

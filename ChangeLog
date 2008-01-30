@@ -31,9 +31,9 @@
 	(poa-invoke): set the poa slot
 	(poa-invoke): new make-poa-current interface
 
-	* clorb-io.lisp (io-system-add-descriptor, io-system-delete-descriptor): 
+	* clorb-io.lisp (io-system-add-descriptor, io-system-delete-descriptor):
 	added ignore desc
-	
+
 
 2006-06-09  Lennart Staflin  <lenst@lysator.liu.se>
 
@@ -133,7 +133,7 @@
 	(poa-request-handler): factored out connection-receive-request
 
 	* clorb-poa.lisp (next-poaid): new. moved some globals to slots in
-	  root-adapter. 
+	  root-adapter.
 	(register-poa, unregister-poa): dispatch to root-adapter
 	(poa-locate): added root-adapter as parameter
 
@@ -198,7 +198,7 @@
 	  orb-condition-wait outside with-synchronization
 	(connection-write-ready): back to be the only function no
 	  %connection-write-ready.
-	
+
 
 2006-05-12  Lennart Staflin  <lenst@lysator.liu.se>
 
@@ -281,7 +281,6 @@
 	  to io descriptors
 	(initialize-instance io-system-mt-base): set event-queue to a
 	  shared-queue
-	
 
 	* clorb-conn.lisp (process-event): new func. factored from orb-work
 
@@ -561,24 +560,6 @@
 	* clorb-exceptions.lisp, clorb-struct.lisp, clorb-typecode-1.lisp, clorb-typecode-2.lisp:
 	remove keywords slot from base typecode and add it where needed
 	(struct, enum, exception).
-
-2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
-
-	* clorb-iop.lisp, clorb-pi-base.lisp, clorb-pkgdcl.lisp, idl/orb.idl, idl/pi.idl:
-	Remove the IOP_N module and package and add TaggedComponentSeq to IOP.
-	Ref: Issue 3935: IOP_N
-
-	* clorb-idlparser.lisp (<simple_type_spec>): resolve alias types
-	  before checking restrictions
-
-	* clorb-exceptions.lisp, clorb-struct.lisp, clorb-typecode-1.lisp, clorb-typecode-2.lisp:
-	remove keywords slot from base typecode and add it where needed
-	(struct, enum, exception).
-
-2006-01-29  Lennart Staflin  <lenst@lysator.liu.se>
-
-	* clorb-idlparser.lisp (<simple_type_spec>): resolve alias types
-	  before checking restrictions
 
 2006-01-18  Lennart Staflin  <lenst@lysator.liu.se>
 
