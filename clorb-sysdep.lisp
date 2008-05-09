@@ -998,9 +998,23 @@ Should me called with corresponding lock held."
    (ccl:run-program "/bin/bash" (list "-c" command) :output stream)
    #+cmu
    (ext:run-program "/bin/sh" (list "-c" command) :output stream)
-   #+sbcl
+   #+(and sbcl (not win32))
    (sb-ext:run-program "/bin/sh" (list "-c" command) :output stream
                        :error *terminal-io*)
+   #+(and sbcl win32)
+   ;; on win32 SBCL cannot redirect output of spawned task.
+   ;; we have to redirect output by means of OS and use a temporary file.
+   (let* ((out-file-name "/shell.command.result")
+          (proc (sb-ext:run-program (sb-ext:posix-getenv "ComSpec")
+				    (list "/c" command ">" out-file-name)
+				    :output t)))
+     (with-open-file (res out-file-name :direction :input :if-does-not-exist :error)
+		     (loop for line = (read-line res nil :eof)
+			   until (eq line :eof)
+			   do (write-line (remove #\Return line :start (1- (length line)))
+                              stream))
+		     (delete-file res))
+     proc)
    ;; Default
    (error "No implementation for SHELL-TO-STREAM: ~S ~A" command stream)))
 
@@ -1056,6 +1070,17 @@ Should me called with corresponding lock held."
 
 
 (defun cpp-command-string (file include-directories &optional defines)
+  ;; using Microsoft Visual C Compiler preprocessor :
+  ;;       /E saves line number directives,
+  ;;       /EP removes line number directives.
+  #+win32
+  (format nil
+          "cl.exe /nologo /E /w /u~{ /I~A~}~{ /D~A~} ~A"
+          (mapcar #'external-namestring include-directories)
+          defines
+          (external-namestring file))
+  ;; default
+  #-win32
   (format nil
           #-(or Darwin Digitool) 
 	  "cpp -w -undef~{ -I'~A'~}~{ -D'~A'~} '~A'"

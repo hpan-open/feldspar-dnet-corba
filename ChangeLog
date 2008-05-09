@@ -1,3 +1,13 @@
+2008-05-09  Lennart Staflin  <lenst@lysator.liu.se>
+
+	Patch from Ilya Zvyagin:
+
+	* clorb-sysdep.lisp (shell-to-stream): support for win32 SBCL
+	(cpp-command-string): use Microsoft Visual C Compiler preprocessor
+	on win32.
+
+	* clorb-idlcpp.lisp (parse-cpp-line): Microsoft VC C/C++ compiler support
+
 2007-02-27  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-macros.lisp (opname-helper): ORG/FEATURE typo fix.

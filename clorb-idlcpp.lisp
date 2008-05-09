@@ -177,8 +177,10 @@
                  (loop until (or (whitespacep) (eql char #\Null)) do (next))
                  (subseq line start pos))))
       (next) (skip-ws)
-      (cond ((digit-char-p char)
+      (cond ((or (and (match "line") (skip-ws) nil) ; Microsoft VC C/C++ compiler support
+		 (digit-char-p char))
              ;; EX: # 1 "working.idl"
+             ;; on Win32:    #line 1 "working.idl"
              (multiple-value-bind (n newpos) (parse-integer line :start pos :junk-allowed t)
                (set-pos newpos)
                (let ((file (string-literal)))
