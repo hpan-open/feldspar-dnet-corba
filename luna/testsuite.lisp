@@ -107,34 +107,49 @@
         (tc-report "Should raise ~A. Got: ~A" ',exception exc))))
 
 
+(defun test-suite-header (test-result)
+  (format t "~&;;; >>>>>>>>>>>>> Suite '~A' <<<<<<<<<<<<<<<<<~%"
+          (result-suite test-result)))
+
+
+(defun do-test-case (name thunk)
+  (block nil
+    (handler-bind ((serious-condition
+                    (lambda (exc) 
+                      (tc-report "Exception ~A" exc)
+                      (unless *test-suite-debug*
+                        (return)))))
+      (let ((*tc-current* name)
+            (*tc-current-sub* nil))
+        (start-test-case *test-suite-result* name)
+        (funcall thunk)
+        (end-test-case *test-suite-result*)))))
+
+
+(defun do-test-suite (name thunk)
+  (let ((*test-suite-result* (make-instance 'test-result
+                                            :suite name
+                                            :parent *test-suite-result*))
+        (*tc-current* nil)
+        (*tc-current-sub* nil))
+    (test-suite-header *test-suite-result*)
+    (funcall thunk)
+    (print-result *test-suite-result*)))
+
+
 (defmacro define-test-suite (name &body body)
   (let ((vars nil))
     (when (and (consp (first body))
                (eq 'variables (car (first body))))
       (setq vars (cdr (pop body))))
     `(eval-when (:load-toplevel :execute)
-       (let ((*test-suite-result* (make-instance 'test-result
-                                    :suite ,name
-                                    :parent *test-suite-result*))
-             (*tc-current* nil)
-             (*tc-current-sub* nil))
-  
-         (macrolet ((define-test (name &body body)
-                      `(let* ,',vars
-                         (declare (ignorable . ,',(mapcar #'car vars)))
-                         (block nil
-                           (handler-bind ((serious-condition
-                                           (lambda (exc) 
-                                             (tc-report "Exception ~A" exc)
-                                             (unless *test-suite-debug*
-                                               (return)))))
-                             (let ((*tc-current* ,(string name))
-                                   (*tc-current-sub* nil))
-                               (start-test-case *test-suite-result* ,(string name))
-                               ,@body
-                               (end-test-case *test-suite-result*)))))))
-           ,@body
-           (print-result *test-suite-result*))))))
+       (do-test-suite ,name
+         (lambda ()
+           (macrolet ((define-test (name &body body)
+                        `(let* ,',vars
+                           (declare (ignorable . ,',(mapcar #'car vars)))
+                           (do-test-case ,(string name) (lambda () ,@body)))))
+             ,@body))))))
 
 
 (defmacro with-sub-test ((name) &body body)
