@@ -1057,9 +1057,11 @@ Should me called with corresponding lock held."
 
 (defun cpp-command-string (file include-directories &optional defines)
   (format nil
-          #-MCL "cpp -w -undef~{ -I'~A'~}~{ -D'~A'~} '~A'"
+          #-(or Darwin Digitool) 
+	  "cpp -w -undef~{ -I'~A'~}~{ -D'~A'~} '~A'"
           ;; apples /usr/bin/cpp is buggy
-          #+MCL "cpp -w -undef~{ -I\"'~A'\"~}~{ -D'~A'~} \"'~A'\""
+          #+(or Darwin Digitool)
+	  "cpp -w -undef~{ -I\"'~A'\"~}~{ -D'~A'~} \"'~A'\""
           (mapcar #'external-namestring include-directories)
           defines
           (external-namestring file)))
