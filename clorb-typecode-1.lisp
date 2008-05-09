@@ -144,7 +144,7 @@
     cache))
 
 (defmacro %jit-marshal (v tc buffer)
-  `(funcall (car ,(list 'load-time-value `(marshal-function-cache ,tc)))
+  `(funcall (car (load-time-value (marshal-function-cache ,tc)))
             ,v ,buffer))
 
 

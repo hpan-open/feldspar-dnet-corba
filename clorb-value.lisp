@@ -513,7 +513,7 @@ a repository ID.")
 
 (defmacro define-value-box (symbol &key id name version original_type type
                             (tc-constant (tc-constant-name symbol)))
-  (declare (ignore version))
+  (declare (ignore version type))
   `(progn
      (set-symbol-id/typecode
       ',symbol ,id (create-value-box-tc ,id ,name ,original_type))
