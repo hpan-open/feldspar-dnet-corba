@@ -11,7 +11,7 @@
 
 
 
-;;;; Client-Request 
+;;;; Client-Request
 
 (defclass client-request (CORBA:Request synchronized-lazy)
   ((the-orb
@@ -24,9 +24,9 @@
     :initarg :operation
     :reader request-operation)
    (paramlist
-    :initarg :paramlist             :initform nil 
+    :initarg :paramlist             :initform nil
     :accessor request-paramlist
-    :documentation "result + arguments") 
+    :documentation "result + arguments")
    (request-id
     :initarg :request-id
     :accessor request-id)
@@ -69,11 +69,11 @@
     :initarg :error-handler         :initform 'dii-error-handler
     :accessor error-handler)
    (exception-id
-    :initarg :exception-id          :initform nil 
+    :initarg :exception-id          :initform nil
     :accessor request-exception-id
     :documentation "Reply exception repository ID")
    (exception
-    :initarg :exception             :initform nil 
+    :initarg :exception             :initform nil
     :accessor request-exception
     :documentation "Reply exception")
    (exceptions
@@ -127,7 +127,7 @@
 
 (defmethod dynamic-arguments ((req client-request))
   "Arguments for the request.
-List of (any . mode) for every argument. Only valid after arguments have 
+List of (any . mode) for every argument. Only valid after arguments have
 been decoded."
   (cond ((request-paramlist req)        ; DII arguments
          (map 'list (lambda (nv) (cons (op:argument nv) (op:mode nv)))
@@ -152,7 +152,7 @@ been decoded."
   (let ((arg (CORBA:Any :any-typecode typecode
                         :any-value value)))
     (setf (request-paramlist req)
-      (nconc (request-paramlist req) 
+      (nconc (request-paramlist req)
              (list (CORBA:NamedValue
                     :name name
                     :argument arg
@@ -226,12 +226,12 @@ Returns: connection, request-id, buffer"
               :response-expected response-expected
               :exceptions exceptions
               :output-func output-func
-              :input-func input-func 
+              :input-func input-func
               :args args
               :params params
               :error-handler #'static-error-handler)))
     (request-send req)
-    (if *call-hook* 
+    (if *call-hook*
       (funcall *call-hook* req)
       (when response-expected
         (request-get-response req)))))
@@ -356,7 +356,7 @@ Returns: connection, request-id, buffer"
              (exception-id exc))
        (should-retry req exc)))
 
-    (otherwise 
+    (otherwise
      (request-status req))))
 
 
@@ -387,7 +387,7 @@ Returns: connection, request-id, buffer"
          (setf (request-exception-id req) id)
          (let ((tc (find id (request-exceptions req)
                          :key #'op:id :test #'equal)))
-           (setf (request-exception req) 
+           (setf (request-exception req)
                  (cond (tc (unmarshal tc buffer))
                        (t
                         (setf (request-status req) :system_exception)
@@ -459,7 +459,7 @@ Returns: connection, request-id, buffer"
 
 (defun request-funcall (req)
   (request-send req)
-  (if *call-hook* 
+  (if *call-hook*
       (funcall *call-hook* req)
       (when (response-expected req)
         (request-get-response req))))
@@ -529,7 +529,7 @@ Returns: connection, request-id, buffer"
                   (lambda (req buffer)
                     (declare (ignore req))
                     (values-list (loop for u in ufuns collect (funcall u buffer))))))
-          (setq output-func 
+          (setq output-func
                 (let ((mfuns (loop for (nil pmode tc) in params
                                    unless (eql pmode :param_out) collect (marshal-function tc))))
                   (lambda (req buffer)

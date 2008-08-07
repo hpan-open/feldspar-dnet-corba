@@ -41,6 +41,7 @@
   ((adapter  :initarg :adapter)
    (expected-oid  :initarg :expected-oid)
    (created-servant)
+   (hook :initarg :hook :initform nil)
    (etheralize-verifier :initarg :etheralize-verifier  :initform nil)
    (etheralize-called   :initform 0)))
 
@@ -49,6 +50,8 @@
   (ensure (slot-boundp s 'expected-oid) "unexpected incarnate")
   (ensure-eql adapter (slot-value s 'adapter))
   (ensure-equalp oid (slot-value s 'expected-oid))
+  (when-let (hook (slot-value s 'hook))
+    (funcall hook s oid adapter))
   (setf (slot-value s 'created-servant) (make-instance 'null-servant)))
 
 (define-method etherealize ((s mock-activator) oid adapter servant cleanup-in-progress reamining-activations)
@@ -56,7 +59,6 @@
   (ensure-pattern
    (list oid adapter servant cleanup-in-progress reamining-activations)
    (slot-value s 'etheralize-verifier)))
-
 
 
 ;; ==========================================================================
@@ -360,6 +362,40 @@
                                          corba:tc_string
                                          "HELLO"))
       (ensure (not (executing-requests root-poa)))))
+
+  (define-test "Executing request recorded in POA - with Servant Activator"
+    (let* ((poa (op:create_POA root-poa "p" nil
+                               (list (op:create_request_processing_policy root-poa :use_servant_manager)
+                                     (op:create_servant_retention_policy root-poa :retain) )))
+           (my-oid '(18))
+           (activator (make-instance 'mock-activator
+                                     :adapter poa
+                                     :expected-oid my-oid ))
+           (random-obj (op:create_reference root-poa "123")))
+      (setup-test-in)
+      (op:set_servant_manager poa activator)
+      (op:activate (op:the_poamanager poa))
+      (with-sub-test ("simple call")
+        ;; simple call
+        (ensure-pattern*
+         (test-poa-invoke poa :operation "_non_existent" :oid my-oid)
+         'reply-status :no_exception
+         'request-result '(nil))
+        (ensure (not (executing-requests poa))))
+      (with-sub-test ("forward")
+        (flet ((activation-hook (s oid adapter)
+                 (declare (ignore s oid adapter))
+                 (signal (PortableServer:ForwardRequest
+                          :forward_reference random-obj))))
+          (setq my-oid '(19))
+          (setf (slot-value activator 'expected-oid) my-oid
+                (slot-value activator 'created-servant) nil
+                (slot-value activator 'hook) #'activation-hook)
+          (ensure-pattern*
+           (test-poa-invoke poa :operation "_non_existent" :oid my-oid)
+           'reply-status :location_forward)
+          (ensure (not (executing-requests poa)))))))
+  
 
   (define-test "Recursive call to :single_thread_model"
     (setup-test-in)

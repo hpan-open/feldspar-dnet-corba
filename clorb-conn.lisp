@@ -303,7 +303,8 @@
     ;; The server should not have started on any of the outstanding requests.
     (dolist (req (connection-client-requests conn))
       (request-reply-exception req :error
-                               (system-exception 'CORBA:TRANSIENT 3 :completed_no)))
+                               (system-exception 'CORBA:TRANSIENT 3
+                                                 :completed_no)))
     (setf (connection-client-requests conn) nil)))
 
 
@@ -373,7 +374,7 @@ Use the syncronization of obj, expect obj not to be locked when called.
 Obj should be synch-notify when the condition is possibly changed."
   (if *running-orb*
       ;; Also handle server stuff
-      (loop until (apply wait-func wait-args) do (orb-work *the-orb* t nil))      
+      (loop until (apply wait-func wait-args) do (orb-work *the-orb* t nil))
       ;; No server stuff
       (apply #'synch-wait-on-condition obj wait-func wait-args)))
 
@@ -384,6 +385,9 @@ Obj should be synch-notify when the condition is possibly changed."
 
 
 (defun process-event (event)
+  ;; Handles events from the IO layer.
+  ;; event = (type io-descriptor)
+  ;; type in { :read-ready :write-ready :no-write :new :connected :error }
   (let* ((desc (second event))
          (conn (io-descriptor-connection desc)))
     (mess 1 "io-event: ~S ~A ~A" (car event) (io-descriptor-stream desc) conn)
@@ -418,5 +422,5 @@ Obj should be synch-notify when the condition is possibly changed."
      do (process-event event)
        (setq poll t)))
 
-  
+
 

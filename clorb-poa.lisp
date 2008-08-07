@@ -807,6 +807,8 @@ individual call (some callers may choose to block, while others may not).
                  (executing-requests poa))
         (raise-system-exception 'CORBA:TRANSIENT 1 :completed_no))
       (push request (executing-requests poa))
+      (setf (request-postinvoke request)
+            (lambda () (deletef request (executing-requests poa))))
       (setf (request-state request) :exec)
       (multiple-value-bind (servant postinvoke)
           (get-servant poa oid operation)
