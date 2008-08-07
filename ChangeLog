@@ -1,3 +1,23 @@
+2008-07-25  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (send): new func
+	(results): new func
+	(poll): new func
+	(op::send_deferred, op::send_oneway): methods for string op as
+	first arg
+	(op::send_deferred, op::send_oneway): methods typecode as first arg
+
+2008-07-13  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-orb.lisp (pull): renamed from poll
+
+2008-07-12  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (create-request): renamed from object-create-request
+	(create-request): change arg order, support new request-arglist
+	(create-request-noir): new func
+	(create-request-ir): new func
+
 2008-05-09  Lennart Staflin  <lenst@lysator.liu.se>
 
 	Patch from Ilya Zvyagin:

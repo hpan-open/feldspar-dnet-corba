@@ -249,7 +249,7 @@
 
 
 ;; for interactive use
-(defun poll (&optional (orb *the-orb*))
+(defun pull (&optional (orb *the-orb*))
   (loop repeat 10
        while (op:work_pending orb)
        do (op:perform_work orb)))

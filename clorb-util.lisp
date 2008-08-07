@@ -66,10 +66,43 @@
 
 (defun corba:funcall (op obj &rest args)
   (request-funcall
-   (object-create-request obj op args)))
+   (apply #'create-request op obj args)))
 
 (defun invoke (obj op &rest args)
   (apply #'corba:funcall op obj args))
+
+
+;; CLORB extension
+
+(defun send (&rest request-args)
+  (let ((oneway (if (eq (car request-args) :oneway) (pop request-args)))
+        (req (apply 'create-request request-args)))
+    (when oneway
+      (setf (response-expected req) nil))
+    (request-send req)
+    (when (response-expected req)
+      (add-pending-client-request (the-orb req) req))
+    req))
+
+
+(defmethod results ((req client-request))
+  (request-get-response req))
+
+(defmethod poll ((req client-request))
+  (op:poll_response req))
+
+
+(define-method op::send_deferred ((op string) obj &rest args)
+  (apply #'send op obj args))
+
+(define-method op::send_deferred ((op corba:typecode) &rest args)
+  (apply #'send op args))
+
+(define-method op::send_oneway ((op string) obj &rest args)
+  (apply #'send :oneway op obj args))
+
+(define-method op::send_oneway ((op corba:typecode) &rest args)
+  (apply #'send :oneway op args))
 
 
 (defun object-interface (obj)
@@ -222,7 +255,8 @@ The list free operation is used to free the returned information.
         (lookup-in-interface-def id (lookup-idef-in-rir (the-orb object) id) name))))
 
 
-(defun object-create-request (object operation args)
+(defun create-request-ir (operation object &rest args)
+  "Create a request using interface repository information"
   (let* ((orb (the-orb object))
          (result CORBA:tc_void)
          (paramlist nil)
@@ -267,6 +301,54 @@ The list free operation is used to free the returned information.
                         paramlist)
        :exceptions raises
        :error-handler 'static-error-handler))))
+
+
+(defun create-request-noir (result-type operation object &rest args)
+  "Create a request using only given info.
+args: (result-type operation object {:in type value | :inout type value | :out type}*
+        [:raises exc-list])"
+  (let ((orb (the-orb object))
+        (paramlist nil)
+        (raises nil))
+    (loop while args do
+         (let ((mode (pop args)))
+           (if (eq mode :raises)
+               (setq raises (pop args))
+               (let ((type (pop args)))
+                 (push (CORBA:NamedValue
+                        :argument (CORBA:Any :any-typecode type
+                                             :any-value (unless (eq mode :out)
+                                                          (pop args)))
+                        :arg_modes (ecase mode
+                                     (:in ARG_IN)
+                                     (:out ARG_OUT)
+                                     (:inout ARG_INOUT)))
+                       paramlist)))))
+    (create-client-request
+     orb
+     :target object
+     :operation operation
+     :paramlist (cons (CORBA:NamedValue
+                       :argument (CORBA:Any :any-typecode result-type)
+                       :arg_modes ARG_OUT)
+                      (nreverse paramlist))
+     :exceptions raises
+     :error-handler 'static-error-handler)))
+
+
+(defun create-request (operation object &rest args)
+  "Create a request.
+1. (operation object args..)
+2. (result-type operation object {:in type value | :inout type value | :out type}*
+      [:raises exc-list])
+3. Internal: (locate object) where locate = 'locate "
+  (cond ((eq 'locate operation)
+         (create-client-request
+          (the-orb object) :target object :operation operation))
+        ((stringp operation)
+         (apply 'create-request-ir operation object args))
+        (t
+         (apply 'create-request-noir operation object args))))
 
 
 

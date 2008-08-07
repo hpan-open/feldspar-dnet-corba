@@ -312,7 +312,7 @@
   (:export "STRUCT-GET"
            ;; Utilities
            "INVOKE" "RESOLVE" "REBIND" "PATHNAME-URL"
-           "OBJ"
+           "OBJ" "SEND" "RESULTS" "POLL"
            "BG-RUN"
            ;; Config
            #:*io-system-default-class*
