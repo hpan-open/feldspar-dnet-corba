@@ -196,6 +196,7 @@
                (lambda (next name) (op:bind next name obj))))
 
 (define-method rebind ((self naming-context) n obj)
+  (clorb::mess 2 "rebind obj=~a" obj)
   (pns-step-do self n
                (lambda () (pns-bind self n obj :nobject t))
                (lambda (next name) (op:rebind next name obj))))

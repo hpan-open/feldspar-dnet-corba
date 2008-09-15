@@ -221,7 +221,8 @@ been decoded."
 
 
 (defmethod set-request-exception ((req server-request) exc)
-  (warn "Exception in request: ~a" exc)
+  (unless (typep exc 'portableserver:forwardrequest)
+    (warn "Exception in request: ~a" exc))
   (setf (request-exception req) exc)
   (request-respond req))
 

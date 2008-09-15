@@ -274,6 +274,7 @@
              orb :operation operation :request-id req-id :kind :locate
              :response-flags 1 :giop-version (buffer-giop-version buffer)
              :input buffer :connection conn)))
+      (mess 3 "#~D op ~A on '~/clorb:stroid/'" req-id operation object-key)
       (dispatch-request orb request object-key))))
 
 
