@@ -11,11 +11,17 @@
 (defgeneric any-value (obj))
 
 
-(defun corba:any (&key any-typecode any-value)
+(defun create-any (any-typecode any-value)
   (check-type any-typecode (or NULL CORBA:TypeCode))
   (make-instance 'CORBA:Any
    :typecode (or any-typecode (any-typecode any-value))
    :value any-value))
+
+(defun corba:any (&key any-typecode any-value)
+  (create-any any-typecode any-value))
+
+(define-compiler-macro corba:any (&key any-typecode any-value)
+  `(create-any ,any-typecode ,any-value))
 
 
 (defmethod initialize-instance :after ((any corba:any) &key &allow-other-keys)
