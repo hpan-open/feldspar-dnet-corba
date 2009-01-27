@@ -249,12 +249,17 @@ Returns: connection, request-id, buffer"
       (request-start-request req)
     (setf (service-context-list req) nil)
     (when *send-hook* (funcall *send-hook* req))
-    (will-send-request (the-orb req) req)
-    (marshal-request-message buffer request-id (service-context-list req)
-                             (response-expected req)
-                             (request-effective-profile req)
-                             (request-operation req)
-                             (output-func req) req)
+    (cond ((eq 'locate (request-operation req))
+           (marshal-locate-request buffer request-id
+                                   (request-effective-profile req)))
+          (t
+           (will-send-request (the-orb req) req)
+           (marshal-request-message buffer request-id (service-context-list req)
+                                    (response-expected req)
+                                    (request-effective-profile req)
+                                    (request-operation req)
+                                    (output-func req) req)))
+
     (connection-send-request connection buffer
                              (if (response-expected req) req))))
 
@@ -346,6 +351,12 @@ Returns: connection, request-id, buffer"
      (request-send req)
      nil)
 
+    (:object_forward                    ; LocateReply
+     (setf (object-forward (request-target req))
+           (unmarshal-object (request-buffer req)))
+     (request-send req)
+     nil)
+
     (:system_exception
      (should-retry req (request-exception req)))
 
@@ -399,7 +410,10 @@ Returns: connection, request-id, buffer"
       (:no_exception
        (multiple-value-prog1 (funcall (input-func req) req buffer)
          (has-received-reply (the-orb req) req)
-         (setf (request-status req) :returned))))))
+         (setf (request-status req) :returned)))
+      ((:object_here :unknown_object)
+       (request-status req)))))
+
 
 
 ;;; void get_response () raises (WrongTransaction);

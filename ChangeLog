@@ -1,5 +1,18 @@
 2008-07-25  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-request.lisp (request-send): also send locate-request if
+	op is locate
+	(request-poll): handle object_forward for locate-reply
+	(request-get-response): handle respons from locate-reply
+
+	* clorb-iiop.lisp (connection-reply): use object_forward not
+	location_forward for locatereply
+	(locate): shouldn't be used
+
+	* clorb-any.lisp (create-any): new func
+	(corba:any): use new func
+	(corba:any): compiler-macro
+
 	* clorb-util.lisp (send): new func
 	(results): new func
 	(poll): new func

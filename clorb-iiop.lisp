@@ -392,7 +392,8 @@
        (marshal-ulong (ecase status
                         (:unknown_object 0)
                         (:object_here 1)
-                        (:location_forward 2))
+                        ;; FIX  :location_forward old bug check not used
+                        ((:object_forward :location_forward) 2))
                       buffer)))
     (when result-func (funcall result-func result-arg buffer))
     (mess 3 "#~D send ~S ~S" request-id reply-type status)
@@ -609,9 +610,11 @@ Where host is a string and port an integer.")))
   nil)
 
 
+
 ;;;; Locate
 
 (defun locate (obj)
+  (error "Old")
   (let ((req (create-client-request (the-orb obj)
                                     :target obj :operation 'locate)))
     (loop
