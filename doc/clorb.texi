@@ -1,0 +1,229 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename clorb.info
+@settitle Common Lisp ORB
+@c %**end of header
+@copying
+A CORBA implementation for Common Lisp.
+
+Copyright @copyright{} 2008  Cons unlimited
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, and no Cover Texts.  A copy of the license is
+included in the section entitled ``GNU Free Documentation License.''
+
+A copy of the license is also available from the Free Software
+Foundation Web site at @url{http://www.gnu.org/licenses/fdl.html}.
+
+@end quotation
+
+The document was typeset with
+@uref{http://www.texinfo.org/, GNU Texinfo}.
+
+@end copying
+
+@titlepage
+@title Common Lisp ORB
+@subtitle A CORBA implementation for Common Lisp
+@author Cons unlimited <lenst@lysator.liu.se>
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@c Output the table of the contents at the beginning.
+@contents
+
+@ifnottex
+@node Top, Chapter One, (dir), (dir)
+@top Common Lisp ORB
+
+@insertcopying
+@end ifnottex
+
+@c Generate the nodes for this menu with `C-c C-u C-m'.
+@menu
+* Chapter One::                 
+* Copying This Manual::         
+* Index::                       
+@end menu
+
+@c Update all node entries with `C-c C-u C-n'.
+@c Insert new nodes with `C-c C-c n'.
+@node Chapter One, Copying This Manual, Top, Top
+@chapter Chapter One
+
+@deftp {Arglist} request-arglist 
+A @dfn{request-arglist} describes a request to a remote object.
+The first form is for the case when type information is available. The
+second case is usable even without other type information (i.e. DII).
+
+@enumerate
+@item
+@var{operation} @var{object} @var{arg}@dots{}
+
+Where @var{operation} is a operation defined for the interface of the
+object, @code{_get_@var{name}} for attribute @var{name} of interface,
+or @code{_set_@var{name}} for settable attributes.
+@var{object} is a CORBA proxy, and @var{arg}@dots{} are the arguments
+for the operation. For @code{_get_@var{name}} there is no arguments
+and for @code{_set_@var{name}} there is one argument of the same type
+as the attribute.
+
+@item
+@var{result} @var{operation} @var{object}
+@{ @code{:in} @var{arg-type} @var{value} | @code{:inout} @var{arg-type} @var{value}
+| @code{:out} @var{arg-type} @}* [@code{:raises} @var{exception-list}] 
+
+Where @var{operation} and @var{object} is as above. 
+@var{result} is the typecode for the result. Then follows the
+arguments marked by mode (one of @code{:in}, @code{:inout},
+@code{:out}). @var{arg-type} is the typecode for the parameter type,
+and @var{value} is the value. 
+
+@var{exception-list}
+
+Using this form of request-arglist to call ``resolve_str'' on a naming
+context (ns) to resolve ``hello.world'':
+
+@example
+(corba:funcall corba:tc_object "resolve_str" ns
+  :in corba:tc_string "hello.world")
+@end example
+
+@end enumerate
+@end deftp
+
+
+@defun corba:funcall request-arglist
+Send a request and wait for reply. Returns the result of the
+operation as multiple values. First value is result, and then the
+inout and out parameters.
+@end defun
+
+
+@defun clorb:send [:oneway] @{ request | request-arglist @}
+Send a request, returning the created request object. If the argument
+is a request, that request will be sent. If a request-arglist is used
+a request will be created and sent.
+
+If @code{:oneway} is specified, no reply is expected.
+@end defun
+
+
+@defun clorb:create-request request-arglist
+Returns a request object.
+@end defun
+
+
+@defun clorb:poll request
+Returns true if a reply has arrived for the reqeust.
+@end defun
+
+
+@defun clorb:results request
+Return results of request. Waits for reply if necessary.
+@end defun
+
+
+@defun clorb:obj string &optional type
+Create a proxy object from a stringified object reference. Optionally
+narrowing the result to @var{type} (a scoped-symbol). The string can be an @samp{IOR:},
+@samp{corbaloc:}, @samp{corbaname:}, @samp{file:} or @samp{http:} type
+of string.
+
+@example
+(clorb:obj "corbaloc::localhost:4720/NameService" 'cosnaming:namingcontextext)
+  @result{} #<NAMINGCONTEXTEXT-PROXY (1 . 1)@@localhost:4720 bound>
+@end example
+@end defun
+
+
+@c op::narrow ((class-symbol symbol) proxy)
+@defun op:narrow class-symbol proxy
+Narrow the type of a proxy object @var{proxy} to the interface
+indentified by the scoped-symbol @var{class-symbol}.
+Returns new proxy.
+
+This extension is compatible with LispWorks CORBA.
+@end defun
+
+
+@defun op:id scoped-symbol
+Returns interface repostitory ID for IDL construct name by the
+scoped-symbol.
+
+@example
+(op:id 'cosnaming:namecomponent) 
+  @result{} "IDL:omg.org/CosNaming/NameComponent:1.0"
+@end example
+@end defun
+
+
+@defun op:type scoped-symbol
+Returns typecode for IDL construct named by the scoped-symbol.
+
+@example
+(op:type 'cosnaming:name)
+  @result{} #<ALIAS-TYPECODE "Name" #x9A098D6>
+@end example
+@end defun
+
+
+@defun op:resolve name
+Lookup @var{name} (a string) in the name service. Returns a proxy
+object or nil.
+
+The name have syntax as specified by the extended naming service.
+
+The name service initial reference must be configured.
+@end defun
+
+
+@defun op:bind name objref
+@defunx op:rebind name objref
+Binds string @var{name} to proxy or servant @var{objref} in the name
+service. @code{op:bind} will signal
+@var{cosnaming:namingcontext/alreadybound} if the name is already
+bound in the name service.
+
+@code{op:rebind} like above, but does not signal error if already
+bound, but replaces biding with new object.
+
+The name service initial reference must be configured.
+@end defun
+
+
+@defun op:to_name string
+Returns a name service name translated from a string.
+
+@example
+(op:to_name "foo/bar.fum")
+  @result{} (#<NAMECOMPONENT :ID "foo" :KIND ""> #<NAMECOMPONENT :ID "bar" :KIND "fum">)
+@end example
+@end defun
+
+
+@c ----------------------------------------------------------------------
+
+@node Copying This Manual, Index, Chapter One, Top
+@appendix Copying This Manual
+
+@menu
+@c * GNU Free Documentation License::  License for copying this manual.
+@end menu
+
+@c Get fdl.texi from http://www.gnu.org/licenses/fdl.html
+@c @include fdl.texi
+
+@node Index,  , Copying This Manual, Top
+@unnumbered Index
+
+@printindex cp
+
+@bye
+
+@c clorb.texi ends here
