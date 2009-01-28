@@ -596,7 +596,7 @@ Requires that a multi-threaded IO-system is configured."
 
 (defun corbaname-to-object (orb rest)
   (let ((name-pos (position #\# rest))
-        (name-part ""))
+        (name-part nil))
     (when name-pos
       (setq name-part (decode-objkey-string (subseq rest (1+ name-pos))))
       (setq rest (subseq rest 0 name-pos)))

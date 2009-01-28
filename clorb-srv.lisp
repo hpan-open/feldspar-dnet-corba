@@ -242,8 +242,8 @@
                           :giop-version (buffer-giop-version buffer)
                           :state :wait :response-flags response)))
            (connection-add-server-request conn request)
-           (mess 3 "#~D op ~A on '~/clorb:stroid/' from '~/clorb:stroid/'"
-                 req-id operation object-key principal)
+           (mess 3 "#~D op ~A on '~/clorb:stroid/'"
+                 req-id operation object-key)
            (has-received-request-header orb request)
            (dispatch-request orb request object-key) ))))
 

@@ -407,8 +407,10 @@ args: (result-type operation object {:in type value | :inout type value | :out t
 
 ;;; To support corbaname: URLs
 (defmethod orb-resolve ((orb clorb-orb) namecontext namestr)
-  (op:resolve_str (object-narrow namecontext 'CosNaming:NamingContextExt)
-                  namestr))
+  (let ((ns (object-narrow namecontext 'CosNaming:NamingContextExt)))
+    (if namestr
+        (op:resolve_str ns namestr)
+        ns)))
 
 
 (defun resolve (&rest names)

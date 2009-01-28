@@ -1,3 +1,16 @@
+2008-08-03  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-srv.lisp (connection-receive-request): remove principal
+	from logging
+
+2008-08-02  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (orb-resolve): accept namestr=nil, to return
+	namecontext instead of resolving name.
+
+	* clorb-orb.lisp (corbaname-to-object): call orb-resolve with nil
+	name-part if name-part is missing.
+
 2008-07-25  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-request.lisp (request-send): also send locate-request if
