@@ -31,6 +31,10 @@
 	(create-request-noir): new func
 	(create-request-ir): new func
 
+2008-05-12  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-io.lisp (io-descriptor): add peer slot
+
 2008-05-09  Lennart Staflin  <lenst@lysator.liu.se>
 
 	Patch from Ilya Zvyagin:

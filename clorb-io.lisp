@@ -56,7 +56,7 @@
   error
   connection
   ;; -- internal --
-  stream
+  stream peer
   (read-buffer  nil :type (or null octets))
   (read-pos       0 :type buffer-index)
   (read-limit     0 :type buffer-index)
@@ -79,16 +79,12 @@
   (if (eql (io-descriptor-status desc) :broken)
       "BROKEN"
       (let ((stream (io-descriptor-stream desc)))
-        (flet ((describe-peer (stream)
-                 (multiple-value-bind (host port)
-                     (socket-peer stream)
-                   (format nil "~A:~A" host port))))
-          (typecase stream
-            (function "loopback")
-            (stream (if (open-stream-p stream)
-                        (describe-peer stream)
-                        "CLOSED"))
-            (t (describe-peer stream)))))))
+        (typecase stream
+          (function "loopback")
+          (stream (if (open-stream-p stream)
+                      (io-descriptor-peer desc)
+                      "CLOSED"))
+          (t (io-descriptor-peer desc))))))
 
 (defmethod print-object ((desc io-descriptor) stream)
   (print-unreadable-object (desc stream :type t)
@@ -97,16 +93,13 @@
             (io-descriptor-status desc))
     (when (io-descriptor-error desc)
       (format stream " error: ~s" (io-descriptor-error desc)))
-    (when (io-descriptor-shortcut-p desc)
-      (write-string " shortcut" stream))
     (format stream " R:~a/~a W:~a/~a"
             (io-descriptor-read-pos desc)
             (io-descriptor-read-limit desc)
             (io-descriptor-write-pos desc)
             (io-descriptor-write-limit desc))
-    (when (and (not (io-descriptor-shortcut-p desc))
-               (eql (io-descriptor-status desc) :connected))
-      (format stream " ep=~a" (io-describe-descriptor desc)))))
+    (when (eql (io-descriptor-status desc) :connected)
+      (format stream " ~a" (io-describe-descriptor desc)))))
 
 
 
@@ -344,6 +337,7 @@ port should use loopback." )
          (mess 3 "made shortcut connection"))
         (t
          (setf (io-descriptor-stream desc) (open-active-socket host port))
+         (setf (io-descriptor-peer desc) (list host port))
          (mess 3 "connect to ~A:~A = ~A" host port (io-descriptor-stream desc))))
   (setf (io-descriptor-status desc) :connected))
 
