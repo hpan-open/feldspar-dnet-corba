@@ -1,3 +1,9 @@
+2008-08-07  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-supp.lisp (*log-writer*): new var
+	(clorb-simple-log-writer): new fun
+	(mess): use *log-writer*
+
 2008-08-03  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-srv.lisp (connection-receive-request): remove principal

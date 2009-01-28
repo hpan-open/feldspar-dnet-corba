@@ -15,16 +15,21 @@
 
 (defvar *log-output* t)
 
+(defvar *log-writer* 'clorb-simple-log-writer)
+
+
 (defun mess (level fmt &rest args)
   (when (>= level *log-level*)
-    (apply #'cl:format *log-output*
-           (format nil "~~&~A ~A~~%" 
-                   (make-string level :initial-element #\;)
-                   fmt)
-           args)
-    #-clisp
-    (finish-output *log-output*)))
+    (apply *log-writer* level fmt args)))
 
+(defun clorb-simple-log-writer (level fmt &rest args)
+  (apply #'cl:format *log-output*
+         (format nil "~~&~A ~A~~%" 
+                 (make-string level :initial-element #\;)
+                 fmt)
+         args)
+  #-clisp
+  (finish-output *log-output*))
 
 
 (defun stroid (stream oid colon-p at-p)
