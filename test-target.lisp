@@ -3,13 +3,13 @@
 (in-package :clorb)
 
 (define-test-suite "Target Code generator"
-  
+
   (variables
    (repository (make-instance 'repository))
    (module (op:create_module repository "IDL:test/Mod:1.0" "Mod" "1.0"))
    (interface (op:create_interface module "IDL:test/Mod/Intf:1.0" "Intf" "1.0" nil)))
-  
-  
+
+
   (define-test "constant"
     (let ((const-def (op:create_constant repository "IDL:test/a:1.0" "a" "1.0"
                                          (op:get_primitive repository :pk_long)
@@ -17,7 +17,7 @@
                                                     :any-typecode CORBA:tc_long))))
       (ensure-pattern (target-code const-def (make-instance 'stub-target))
                       (sexp-pattern `(defconstant omg.org/root::a ,(eval-to 192))))))
-  
+
   (define-test "Fixed"
     (let ((fixed-def (op:create_fixed repository 10 2))
           (target (make-instance 'stub-target)))
@@ -39,11 +39,11 @@
                                        (:write :optional ) )))))
 
   (define-test "alias-def"
-    (let ((alias-def (op:create_alias repository "IDL:test/a:1.0" "a" "1.0" 
+    (let ((alias-def (op:create_alias repository "IDL:test/a:1.0" "a" "1.0"
                                       (op:get_primitive repository :pk_long))))
       (ensure-pattern (target-code alias-def (make-instance 'stub-target))
-                      (sexp-pattern `(define-alias omg.org/root::a 
-                                       &key 
+                      (sexp-pattern `(define-alias omg.org/root::a
+                                       &key
                                        (:id :required "IDL:test/a:1.0")
                                        (:name :required "a")
                                        (:type :required CORBA:Long)
@@ -51,12 +51,25 @@
       (setf (op:original_type_def alias-def) interface)
       (ensure-pattern (target-code alias-def (make-instance 'stub-target))
                       (let ((intf-symbol (intern "INTF" "MOD")))
-                        (sexp-pattern `(define-alias omg.org/root::a 
-                                           &key 
+                        (sexp-pattern `(define-alias omg.org/root::a
+                                           &key
                                          (:id :required "IDL:test/a:1.0")
                                          (:name :required "a")
                                          (:type :required ,intf-symbol)
                                          (:typecode :required (symbol-typecode ',intf-symbol))))))))
+
+  (define-test "array-def"
+    (let ((array-def (op:create_array repository 2
+                                      (op:create_array repository 3
+                                                       (op:get_primitive repository :pk_long)))))
+      (ensure-pattern (target-type array-def (make-instance 'stub-target))
+                      (sexp-pattern '(array t (2 3))))
+      (ensure-pattern* (eval (target-typecode array-def (make-instance 'stub-target)))
+                       'op:kind :tk_array 'op:length 2
+                       'op:content_type
+                       (pattern 'op:kind :tk_array 'op:length 3
+                                'op:content_type (pattern 'op:kind :tk_long)))))
+
 
   (define-test "exception"
     (let* ((members (list (CORBA:StructMember :name "a"
@@ -82,7 +95,7 @@
            (static (make-instance 'static-stub-target)))
       (ensure-pattern
        (target-code intf stub-target)
-       (sexp-pattern 
+       (sexp-pattern
         '(progn
            (define-interface omg.org/root::if1 (CORBA:Object) &key
              (:id :required "IDL:if1:1.0")
@@ -93,19 +106,19 @@
            &any-rest)))
       (ensure-pattern
        (target-code op1 static)
-       (sexp-pattern 
+       (sexp-pattern
         `(progn
            (define-operation OMG.ORG/ROOT::IF1/OP1
-             :ID "IDL:if1/op1:1.0" :NAME "op1" 
-             :DEFINED_IN OMG.ORG/ROOT::IF1 :VERSION "1.0" 
-             :RESULT OMG.ORG/CORBA:TC_STRING 
+             :ID "IDL:if1/op1:1.0" :NAME "op1"
+             :DEFINED_IN OMG.ORG/ROOT::IF1 :VERSION "1.0"
+             :RESULT OMG.ORG/CORBA:TC_STRING
              :MODE :OP_NORMAL :CONTEXTS NIL :PARAMETERS NIL :EXCEPTIONS NIL )
            (define-method "OP1" ((&any omg.org/root::if1-proxy)) &any-rest))))
       (ensure-pattern
        (target-code at1 static)
-       (sexp-pattern 
+       (sexp-pattern
         `(progn
-           (DEFINE-ATTRIBUTE OMG.ORG/ROOT::IF1/AT1 :ID "IDL:if1/at1:1.0" :NAME "at1" 
+           (DEFINE-ATTRIBUTE OMG.ORG/ROOT::IF1/AT1 :ID "IDL:if1/at1:1.0" :NAME "at1"
              :VERSION "1.0" :DEFINED_IN OMG.ORG/ROOT::IF1 :MODE :ATTR_NORMAL
              :TYPE OMG.ORG/CORBA:TC_STRING)
            (define-method (SETF "AT1") (&any (&any OMG.ORG/ROOT::IF1-PROXY)) &any-rest)
@@ -125,7 +138,7 @@
                               v corba:public_member)
       (ensure-pattern
        (target-code abv target)
-       (sexp-pattern 
+       (sexp-pattern
         `(progn (define-value omg.org/root::abv &key
                   (:id :required "IDL:abv:1.0")
                   (:name :required "abv")

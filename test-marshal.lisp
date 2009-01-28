@@ -5,13 +5,13 @@
                `(let ((buffer (get-work-buffer *the-orb*)))
                   ,@body
                   (ensure-equalp (buffer-octets buffer) ,res))))
-    
+
     (define-test "Ushort 1"
       (marshal-res #(88 1) (marshal-ushort 344 buffer) ))
-    
+
     (define-test "short 2"
       (marshal-res #(168 254) (marshal-short -344 buffer)))
-    
+
     (define-test "Float 1"
       (let ((test-data '((1.25d0 #16R3fa00000 #16R3ff4000000000000)
                          (12.5d0 #16R41480000 #16R4029000000000000)
@@ -47,11 +47,11 @@
                    (let ((result (unmarshal typecode buffer)))
                      (ensure-equalp result (coerce float type))))))
           (dolist (float test-data)
-            (test-roundtrip (float float 1f0) 
+            (test-roundtrip (float float 1f0)
                             'CORBA:float CORBA:tc_float)
             (test-roundtrip float 'CORBA:double CORBA:tc_double)
             (test-roundtrip float 'CORBA:longdouble CORBA:tc_longdouble)))))
-    
+
     (define-test "Fixed"
       (let ((f10-2-tc (create-fixed-tc 10 2))
             (f3--4-tc (create-fixed-tc 3 -4)))
@@ -70,11 +70,28 @@
       (marshal-res
        #( #x07 #x8C )
        (marshal 78/10 (create-fixed-tc 2 1) buffer)))
-    
+
+
+    (define-test "array"
+      (let ((tc (create-array-tc 2 (create-array-tc 3 corba:tc_octet)))
+            (a #2A((1 2 3)
+                   (4 5 6))))
+        (marshal-res #(1 2 3 4 5 6)
+                     (marshal a tc buffer))
+        (let ((buffer (get-work-buffer *the-orb*)))
+          (setf (buffer-octets buffer) (coerce #(1 2 3 4 5 6) 'octets))
+          (let ((ua (unmarshal tc buffer)))
+            (ensure-equalp ua a))))
+      
+      (let ((tc (create-array-tc 2 (create-array-tc 2 (create-array-tc 3 corba:tc_octet))))
+            (a #3A(((1 2 3) (1 2 4))
+                   ((4 5 6) (4 5 7)))))
+        (marshal-res #(1 2 3 1 2 4 4 5 6 4 5 7)
+                     (marshal a tc buffer))))
 
 
     (define-test "encapsulation"
-      (marshal-res 
+      (marshal-res
        #(28 0 0 0                     ; encaps size
          1                            ; byte order
          0 0 0                        ; align
@@ -90,13 +107,13 @@
        (marshal-add-encapsulation
         (lambda (buffer)
           (marshal-string "Hej!" buffer)
-          (marshal-add-encapsulation 
-           (lambda (b) 
+          (marshal-add-encapsulation
+           (lambda (b)
              (marshal-octet 22 b)
              (marshal-ulong 44 b))
            buffer))
         buffer)))
-    
+
     (define-test "Struct"
       ;; Generic struct
       (let* ((tc (create-struct-tc
@@ -133,7 +150,7 @@
         (setf (buffer-in-pos buffer) 0)
         (let ((new-tc (unmarshal-typecode buffer)))
           (ensure-typecode new-tc tc))))
-    
+
     (define-test "Typecode Union"
       (let* ((buffer (get-work-buffer *the-orb*))
              (members (list (list t "on" corba:tc_long)
@@ -143,7 +160,7 @@
         (let ((tc2 (unmarshal corba:tc_typecode buffer)))
           (ensure-eql (op:member_count tc2) (op:member_count tc))
           (ensure (op:equal tc2 tc)))))
-    
+
     (define-test "any"
       (let* ((buffer (get-work-buffer *the-orb*)))
         (marshal-any (CORBA:Any :any-typecode CORBA:tc_null) buffer)
@@ -155,7 +172,7 @@
         (let ((any (unmarshal-any buffer)))
           (ensure-typecode (corba:any-typecode any) :tk_long)
           (ensure-eql (corba:any-value any) -999))))
-    
+
     (define-test "RecursiveTypecode"
       (let* ((struct-filter
               (create-struct-tc "IDL:LDAP/Filter:1.0"
@@ -175,7 +192,7 @@
       (let ((obj1 nil)
             (obj2 (make-instance 'CORBA:Proxy :id "Hello World"
                                  :the-orb *the-orb*
-                                 :profiles (list (make-iiop-profile 
+                                 :profiles (list (make-iiop-profile
                                                   :version (make-iiop-version 1 1)
                                                   :host "h1"
                                                   :port 12
@@ -199,4 +216,5 @@
               (ensure-eql (object-component obj iop:tag_orb_type) 4711))))))
 
 t))
+
 

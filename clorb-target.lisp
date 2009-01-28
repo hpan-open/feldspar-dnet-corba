@@ -185,10 +185,15 @@
   (declare (ignore target))
   `sequence)
 
+
+(defmethod target-dim ((obj CORBA:ArrayDef))
+  (cons (op:length obj) (target-dim (op:element_type_def obj))))
+(defmethod target-dim ((obj t))
+  nil)
+
 (defmethod target-type ((obj CORBA:ArrayDef) target)
   (declare (ignore target))
-  ;;FIXME: handle multi dim arrays
-  `(array t (,(op:length obj))))
+  `(array t ,(target-dim obj)))
 
 (defmethod target-type ((obj CORBA:StringDef) target)
   (declare (ignore target))

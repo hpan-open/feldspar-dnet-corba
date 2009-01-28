@@ -257,27 +257,78 @@
   :params (content_type length))
 
 
+(defun array-tc-dimensions (tc)
+  (cons (op:length tc)
+        (let ((ct (op:content_type tc)))
+          (if (eq :tk_array (typecode-kind ct))
+              (array-tc-dimensions ct)
+              nil))))
+
+(defun array-tc-element-tc (tc)
+  (let ((ct (op:content_type tc)))
+    (if (eq :tk_array (typecode-kind ct))
+        (array-tc-element-tc ct)
+        ct)))
+
+
 (defmethod compute-marshal-function ((tc array-typecode))
-  (let ((max-length (op:length tc))
-        (element-marshal (marshal-function (op:content_type tc))))
-    (lambda (arg buffer)
-      (let ((length (length arg)))
-        (unless (= length max-length)
-          (raise-system-exception 'CORBA:MARSHAL))
-        (map nil element-marshal arg (repeated buffer))))))
+  (let ((dim (array-tc-dimensions tc))
+        (element-marshal (marshal-function (array-tc-element-tc tc))))
+    (cond ((= (length dim) 1)
+           (let ((max-length (car dim)))
+             (lambda (arg buffer)
+               (let ((length (length arg)))
+                 (unless (= length max-length)
+                   (raise-system-exception 'CORBA:MARSHAL))
+                 (map nil element-marshal arg (repeated buffer))))))
+          ((= (length dim) 2)
+           (lambda (arg buffer)
+             (unless (equal (array-dimensions arg) dim)
+               (raise-system-exception 'CORBA:MARSHAL))
+             (dotimes (i (elt dim 0))
+               (dotimes (j (elt dim 1))
+                 (funcall element-marshal (aref arg i j) buffer)))))
+          (t
+           (lambda (arg buffer)
+             (unless (equal (array-dimensions arg) dim)
+               (raise-system-exception 'CORBA:MARSHAL))
+             (let ((indexes (make-list (length dim))))
+               (labels ((marshal-dim (dim ipos)
+                          (if (null dim)
+                              (funcall element-marshal (apply #'aref arg indexes) buffer)
+                              (dotimes (i (car dim))
+                                (setf (car ipos) i)
+                                (marshal-dim (cdr dim) (cdr ipos))))))
+                 (marshal-dim dim indexes))))))))
+
+
 
 (defmethod compute-unmarshal-function ((tc array-typecode))
-  (let ((eltype (op:content_type tc))
-        (len (op:length tc)))
-    (let ((unmarshal-function (unmarshal-function eltype)))
-      (lambda (buffer)
-        (let ((arr (make-array len)))
-          (dotimes (i len)
-            (setf (aref arr i) (funcall unmarshal-function buffer)))
-          arr)))))
+  (let ((unmarshal-function (unmarshal-function (array-tc-element-tc tc)))
+        (dim (array-tc-dimensions tc)))
+    (case (length dim)
+      ((1)
+       (let ((len (car dim)))
+         (lambda (buffer)
+           (let ((arr (make-array len)))
+             (dotimes (i len)
+               (setf (aref arr i) (funcall unmarshal-function buffer)))
+             arr))))
+      (otherwise
+       (lambda (buffer)
+         (let ((a (make-array dim))
+               (indexes (make-list (length dim))))
+           (labels ((unmarshal-dim (dim ipos)
+                      (if (null dim)
+                          (setf (apply #'aref a indexes) (funcall unmarshal-function buffer))
+                          (dotimes (i (car dim))
+                            (setf (car ipos) i)
+                            (unmarshal-dim (cdr dim) (cdr ipos))))))
+             (unmarshal-dim dim indexes)
+             a)))))))
 
 
-
+
 ;;;; Objref
 
 (define-typecode objref-typecode
