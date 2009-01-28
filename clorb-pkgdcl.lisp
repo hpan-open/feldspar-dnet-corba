@@ -338,5 +338,8 @@
   (:nicknames "PERSISTENT-NAMING")
   (:use "COMMON-LISP")
   (:import-from "CORBA" "DEFINE-METHOD")
-  (:export "*NAMING-IOR-FILE*" "*NAMING-BASE-PATH*" "*NAMING-POA*"
-           "SETUP-PNS" "SETUP-NAMING-POA"))
+  (:export "CREATE-PNS"
+           ;; Options
+           "*NAMING-IOR-FILE*" "*NAMING-BASE-PATH*" "*POA-NAME*" "*BOOT-NAME*"
+           ;; Setup Global Instance
+           "SETUP-PNS"))

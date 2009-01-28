@@ -1,13 +1,8 @@
-;;;; NameService v2.1
-;;; rewrite to use real (static) skeleton classes
+;;;; pns-server.lisp -- Persistent NameService v2.1
+
 
 (in-package "NET.CDDR.CLORB.PERSISTENT-NAMING")
 
-
-(defvar *naming-ior-file*  nil)
-(defvar *naming-base-path* (merge-pathnames
-                            (make-pathname :type "obj" :directory '(:relative "naming"))
-                            clorb::*clorb-pathname-defaults*))
 
 
 ;;;; Generating ID
@@ -19,6 +14,7 @@
 
 (defun generate-id ()
   (format nil "~A-~A" *naming-start-time* (incf *naming-seqno*)))
+
 
 
 ;;;; Naming Context Implementation
@@ -33,14 +29,16 @@
 ;; NameComponents are translated to file names by escaping any but
 ;; safe characters and concatenating the id and kind by an ampersand.
 
-(defvar *naming-poa* nil)
 
 (defclass NAMING-CONTEXT (cosnaming:namingcontextext-servant)
   ((base :initarg :base :accessor nc-base)
-   (local-id :initarg :local-id :accessor local-id)))
+   (local-id :initarg :local-id :accessor local-id)
+   (poa :initarg :poa   :accessor poa-of
+        :initform (error "Missing :poa argument"))))
+
 
 (define-method _default_POA ((servant naming-context))
-  *naming-poa*)
+  (poa-of servant))
 
 
 (defmethod stored-string-id ((obj CORBA:Proxy))
@@ -172,6 +170,10 @@
     (funcall local)
     (multiple-value-bind (next name)
                          (pns-step self n)
+      (unless (typep next 'CosNaming:NamingContext)
+        (setq next 
+              (or (op:narrow 'CosNaming:NamingContextExt next :no-error)
+                  (op:narrow 'CosNaming:NamingContext next))))
       (funcall remote next name))))
 
 
@@ -334,64 +336,121 @@
          (oid (op:get_object_id current)))
     (op:deactivate_object poa oid)))
 
+
 
-;;;; Setup the naming POA
+;;;; Naming POA
+
 
 (defclass NAMING-MANAGER (portableserver:servantactivator)
-  ())
+  ((base-path   :initarg :base-path     :accessor base-path-of)))
 
 
 (define-method incarnate ((m naming-manager) oid adapter)
-  (declare (ignore adapter))
   (let ((local-id (portableserver:oid-to-string oid)))
     (make-instance 'naming-context 
+                   :poa adapter
                    :local-id local-id
                    :base (merge-pathnames
                           (make-pathname :directory `(:relative ,local-id))
-                          *naming-base-path*))))
+                          (base-path-of m)))))
 
 
-(defun setup-naming-poa ()
-  (let* ((orb (CORBA:ORB_init))
-         (rootpoa (op:resolve_initial_references orb "RootPOA"))
-         (policies
-          (list (op:create_lifespan_policy rootPOA :persistent)
-                (op:create_servant_retention_policy rootPOA :retain)
-                (op:create_id_assignment_policy rootPOA :user_id)
-                (op:create_request_processing_policy rootPOA :use_servant_manager))))
-    (setq *naming-poa*
-          (op:create_POA rootPOA "Naming" (op:the_poamanager rootPOA) policies))
-    (op:set_servant_manager *naming-poa* (make-instance 'naming-manager))))
+(defun create-naming-poa (orb root-poa base-path poa-name)
+  (declare (ignore orb))
+  (let ((policies
+         (list (op:create_lifespan_policy root-poa :persistent)
+               (op:create_servant_retention_policy root-poa :retain)
+               (op:create_id_assignment_policy root-poa :user_id)
+               (op:create_request_processing_policy root-poa :use_servant_manager))))
+    (let ((naming-poa
+           (op:create_poa root-poa poa-name (op:the_poamanager root-poa) policies)))
+      (setq base-path (make-pathname :type "obj" :defaults base-path))
+      (op:set_servant_manager naming-poa
+                              (make-instance 'naming-manager
+                                             :base-path base-path))
+      naming-poa)))
+
+
+
+;;;; Create Naming Service Instance
+
+
+(defun create-root-context (poa)
+  (op:create_reference_with_id
+   poa
+   (portableserver:string-to-oid "root")
+   (op:id cosnaming::_tc_namingcontextext)))
+
+
+(defun create-pns (&key base-path poa-name orb
+                   (root-poa (op:resolve_initial_references orb "RootPOA")))
+  "Create an instance of the Persistent Naming Service.
+  :orb       -- ORB Instance,
+  :base-path -- Pathname of directory where names are stored,
+  :poa-name  -- Name of POA used,
+  :boot-name -- (optional) name for bootstrap reference,
+  :root-poa  -- (optional) Parent POA to use [default RootPOA]."
+  (setq base-path (pathname base-path))
+  (check-type poa-name string)
+  (check-type orb CORBA:ORB)
+  (check-type root-poa PortableServer:POA)
+
+  (create-root-context
+   (create-naming-poa orb root-poa base-path poa-name)))
+
+
+
+;;;; Global Instance
+
+;;; Options
+
+(defvar *naming-base-path* (merge-pathnames
+                            (make-pathname :type "obj" :directory '(:relative "naming"))
+                            clorb::*clorb-pathname-defaults*))
+
+(defvar *poa-name* "Naming")
+
+(defvar *boot-name* "NameService")
+
+(defvar *naming-ior-file*  nil)
+
+
+;;; Global Instance
 
 (defvar *root-context* nil)
 
-(defun setup-pns (&key export)
-  (let ((orb (CORBA:ORB_init)))
-    (unless *naming-poa*
-      (setup-naming-poa))
-    (unless *root-context*
-      (setq *root-context*
-            (op:create_reference_with_id
-             *naming-poa*
-             (portableserver:string-to-oid "root")
-             (clorb::symbol-ifr-id 'cosnaming:namingcontextext))))
-    (when export
-      (clorb:set-boot-object orb "NameService" *root-context*))
-    (when *naming-ior-file*
+
+;;; Setup Code
+
+(defun setup-pns (&key (orb (CORBA:ORB_init))
+                  export
+                  (base-path *naming-base-path*)
+                  (poa-name *poa-name*)
+                  (boot-name *boot-name*))
+  (check-type poa-name string)
+  (check-type boot-name (or null string))
+  (unless *root-context*
+    (setq *root-context*
+          (create-pns :orb orb :poa-name poa-name :base-path base-path )))
+  (when export
+    (clorb:set-boot-object orb boot-name *root-context*))
+  (when *naming-ior-file*
       (with-open-file (out *naming-ior-file*
                            :direction :output :if-exists :supersede)
         (princ (op:object_to_string orb *root-context*) out)))
-    *root-context*))
+
+  *root-context*)
+
 
 ;;(defmethod initialize-instance :after ((self naming-context) &key)
 ;;  (clorb::mess 3 "Naming Context base=~A" (nc-base self)))
 
 
 (defun pns-initial-ref (orb)
-  (net.cddr.clorb::set-initial-reference orb "CLORB-PNS"
-                                         (lambda (orb)
-                                           (declare (ignore orb))
-                                           (setup-pns))))
+  (when *naming-base-path*
+    (net.cddr.clorb::set-initial-reference orb "CLORB-PNS"
+                                           (lambda (orb)
+                                             (setup-pns :orb orb)))))
 
 
 (pushnew 'pns-initial-ref net.cddr.clorb::*orb-initializers*)

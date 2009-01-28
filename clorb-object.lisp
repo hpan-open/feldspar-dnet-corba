@@ -374,8 +374,8 @@ Might destructivley change the original object."
 
 ;; Compatibility with LW CORBA
 
-(define-method op::narrow ((class-symbol symbol) proxy)
-  (object-narrow proxy class-symbol))
+(define-method op::narrow ((class-symbol symbol) proxy &optional no-error)
+  (object-narrow proxy class-symbol no-error))
 
 
 
