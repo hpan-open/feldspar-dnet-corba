@@ -1,0 +1,30 @@
+// cddr-01-sexp.idl -- 
+
+#ifndef _CDDR_01_SEXP_IDL_
+#define _CDDR_01_SEXP_IDL_
+
+
+module CDDR_01 {
+
+  union Sexp;
+
+  typedef sequence<Sexp> List;
+
+  union Sexp switch(short) {
+    // 0-9 Compound / specials
+  case 0: any any_val;
+  case 1: List list_val;
+  case 2: string symbol_val;
+
+    // 10-19 Primitives
+  case 10: long long_val;
+  case 11: double double_val;
+  case 12: string string_val;
+  case 13: Object object_val;
+  };
+
+};
+
+#endif // _CDDR_01_SEXP_IDL_
+
+// cddr-01-sexp.idl ends here

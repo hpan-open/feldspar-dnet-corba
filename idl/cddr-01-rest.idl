@@ -1,0 +1,35 @@
+// cddr-01-rest.idl
+
+#ifndef _CDDR_01_REST_IDL_
+#define _CDDR_01_REST_IDL_
+
+#include "cddr-01-sexp.idl"
+
+
+module CDDR_01 {
+
+ interface RestSexp {
+    Sexp get ();
+    Sexp getq (in Sexp q);
+    void put (in Sexp s);
+    void delete ();
+    Sexp insert (in Sexp s);
+  };
+
+  interface RestAny {
+    any get ();
+    any getq (in any q);
+    void put (in any s);
+    void delete ();
+    any insert (in any s);
+    // Recommended any values:
+    // 1. primitives like string and numeric types
+    // 2. Object
+    // 3. sequence<any>
+  };
+
+};
+
+#endif // _CDDR_01_REST_IDL_
+
+// cddr-01-rest.idl ends here
