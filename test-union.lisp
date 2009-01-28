@@ -66,10 +66,10 @@
       ;; field creators
       (ensure (functionp (symbol-function field1)))
       (let ((x (funcall field1 18)))
-        (ensure-eql (union-discriminator x) 0))
+        (ensure-eql (op:union-discriminator x) 0))
       (ensure (functionp (symbol-function field2)))
       (let ((x (funcall field2 "hej")))
-        (ensure-eql (union-discriminator x) 1))
+        (ensure-eql (op:union-discriminator x) 1))
       ;; created typecode
       (let ((tc (symbol-typecode type-sym)))
         (ensure-typep tc 'corba:typecode)
@@ -97,10 +97,10 @@
         (let ((u (unmarshal (symbol-typecode type-sym) buffer)))
           (ensure-pattern* u
                           'op::a 12 
-                          'union-discriminator 0))
+                          'op:union-discriminator 0))
         (let ((u (unmarshal (symbol-typecode type-sym) buffer)))
           (ensure-pattern* u
-                          'union-discriminator 1
+                          'op:union-discriminator 1
                           'op::b "hello")))))
   
 )

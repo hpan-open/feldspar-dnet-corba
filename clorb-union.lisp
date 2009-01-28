@@ -5,10 +5,10 @@
 (defclass CORBA:UNION () 
   ((discriminator 
     :initarg :discriminator
-    :accessor union-discriminator)
+    :accessor op:union-discriminator)
    (value
     :initarg :value
-    :accessor union-value )))
+    :accessor op:union-value )))
 
 
 (define-typecode union-typecode
@@ -59,9 +59,9 @@ where label = symbol clorb:default or value"
           :discriminator union-discriminator
           :value union-value)))))
 
-(define-method default ((obj corba:union)) (union-value obj))
+(define-method default ((obj corba:union)) (op:union-value obj))
 (define-method (setf default) (value (obj corba:union)) 
-  (setf (union-value obj) value))
+  (setf (op:union-value obj) value))
 
 
 (defun typecode-values-do (function typecode) 
@@ -103,8 +103,8 @@ where label = symbol clorb:default or value"
          (default-used (op:default_index tc))
          (members (tc-members tc)))
     (lambda (union buffer)
-      (let* ((discriminant (union-discriminator union))
-             (value (union-value union))
+      (let* ((discriminant (op:union-discriminator union))
+             (value (op:union-value union))
              (member (find discriminant members :key #'car)))
         (when (and (null member)
                    (>= default-used 0))

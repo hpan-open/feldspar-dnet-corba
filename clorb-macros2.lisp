@@ -112,10 +112,16 @@
           (push name used-names)
           (push `(progn
                    (define-method ,accessor ((obj ,symbol))
-                     (union-value obj))
+                     (assert (member (op:union-discriminator obj)
+                                     ',(loop for m in members
+                                            for mname = (getf (cddr m) :name)
+                                            for label = (car m)
+                                            when (equal mname name)
+                                            collect label)))
+                     (op:union-value obj))
                    (define-method (setf ,accessor) (value (obj ,symbol))
-                     (setf (union-discriminator obj) ,label)
-                     (setf (union-value obj) value))
+                     (setf (op:union-discriminator obj) ,label)
+                     (setf (op:union-value obj) value))
                    ,(if creator
                       `(defun ,creator (value)
                          (,symbol :union-value value :union-discriminator ,label))))
@@ -124,8 +130,8 @@
             (push `(progn
                      (define-method default ((obj ,symbol)) (union-value obj))
                      (define-method (setf default) (value (obj ,symbol))
-                       (setf (union-discriminator obj) ,label)
-                       (setf (union-value obj) value))) code)))))
+                       (setf (op:union-discriminator obj) ,label)
+                       (setf (op:union-value obj) value))) code)))))
 
     `(progn
        (defclass ,SYMBOL (corba:union) ())
