@@ -96,7 +96,7 @@
 (defmethod print-object ((conn connection) stream)
   (print-unreadable-object (conn stream :identity t :type t)
     (let ((desc (connection-io-descriptor conn)))
-      (when desc (write-string (io-describe-descriptor desc) stream)))))
+      (when desc (princ (io-describe-descriptor desc) stream)))))
 
 
 

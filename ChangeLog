@@ -1,3 +1,7 @@
+2008-09-15  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-conn.lisp (print-object): fix bug in printing connections.
+
 2008-08-07  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-supp.lisp (*log-writer*): new var
