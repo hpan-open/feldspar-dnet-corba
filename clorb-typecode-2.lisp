@@ -170,6 +170,7 @@
       (let ((n 0))
         (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
           (with-in-buffer (buffer)
+            (align 0)
             (loop
                (let ((octet (get-octet)))
                  (accumulate (ash octet -4))

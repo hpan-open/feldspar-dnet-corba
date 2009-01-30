@@ -38,6 +38,14 @@
   :is_truncatable t
   :members (("next" corba:tc_valuebase 0)))
 
+(define-value test-value-4
+  :id "IDL:test/value4:1.0"
+  :name "value2"
+  :base_value test-value-1
+  :is_truncatable t
+  :members (("aval" (symbol-typecode 'test-value-1) 0)
+            ("vv" (create-fixed-tc 2 0) 0) ))
+
 
 (define-value-box test-box-1 
   :id "IDL:test/box1:1.0"
@@ -226,6 +234,13 @@
         (ensure-pattern* obj 
                          'identity (isa 'test-value-1)
                          'op:name "hx"))))
+
+  (define-test "embeded value chunking"
+    ;; v1 should be marshalled in a separated nested embeded chunk
+    (let ((v4 (make-instance 'test-value-4 :name "v4" :aval v1 :vv 20)))
+      (marshal v4 _tc_test-value-1 buffer)
+      (ensure-pattern* (unmarshal _tc_test-value-1 buffer)
+                       'op:vv 20 )))
 
   (define-test "any"
     (let ((v3 (make-instance 'test-value-3 :name "foo" 
