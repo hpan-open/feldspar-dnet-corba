@@ -6,10 +6,73 @@
   (pushnew 'more-safe *features*))
 
 
+
+;;;; Basic Macros
+
+
+(defmacro %%marshal-number (n size)
+  (let ((nvar '#:nvar)
+        (nnvar '#:nnvar))
+    `(let* (,@(if (> size 3) 
+                  `((,nnvar ,n) 
+                    (,nvar (logand ,nnvar #xFFFFFF)))
+                  `((,nvar ,n))))
+       (declare (type (integer #x-FFFFFF #xFFFFFF) ,nvar))
+       (put-octet (logand #xFF ,nvar))
+       ,@(loop for p from 8 by 8
+            for c from 1 below size
+            collect `(put-octet (ldb (byte 8 ,p) 
+                                     ,(if (>= c 3) nnvar nvar)))))))
+
+
+
+;;;; Writing to Buffer
+
+
+;;(defun %put-long (n buffer)
+;;  (%%marshal-number n 4))
+
+(defmacro with-out-buffer ((buffer &key (resize 400)) &body body)
+  "Execute BODY with access to internals of buffer.
+In body: 
+- buffer     the buffer,
+- octets     the octet vector,
+- start-pos  start pos in octets for this work,
+- pos        current pos in octets (setf-able),
+- (align n)  align output to n octets (n must be litteral),
+- (put-octet n)  output octet n. "
+  `(let* ((buffer ,buffer)
+          (start-pos (buffer-start-pos buffer))
+          (octets (buffer-octets buffer)))
+     (declare (ignorable start-pos octets)
+              (type buffer-index start-pos))
+     (macrolet ((put-octet (n)
+                  `(vector-push-extend ,n octets ,',resize))
+                (align (n)
+                  `(let ((skip (- ,n (logand (the buffer-index (- (fill-pointer octets) start-pos))
+                                             (- ,n 1)))))
+                     (declare (fixnum skip))
+                     (when (< skip ,n)
+                       (dotimes (x skip)
+                         (declare (fixnum x))
+                         (vector-push-extend 0 octets ,',resize))))))
+       (symbol-macrolet ((pos (fill-pointer octets)))
+         ,@body))))
+
+
+(defmacro %marshal-number (n size buffer &optional (align size))
+  `(with-out-buffer (,buffer)
+     (align ,align)
+     (%%marshal-number ,n ,size)))
+
+
+
+;;;; Primitive Types
+
+
 (defun marshal-void (x buffer)
   (declare (ignore x buffer))
   nil)
-
 
 (defun marshal-octet (n buffer)
   (declare (type buffer buffer)
@@ -18,24 +81,6 @@
 
 (defun marshal-bool (s buffer)
   (marshal-octet (if s 1 0) buffer))
-
-
-(defmacro %marshal-number (n size buffer &optional (align size))
-  (let ((nvar '#:nvar)
-        (nnvar '#:nnvar))
-    `(with-out-buffer (,buffer)
-       (let* (,@(if (> size 3) 
-                  `((,nnvar ,n) 
-                    (,nvar (logand ,nnvar #xFFFFFF)))
-                  `((,nvar ,n))))
-         (declare (type (integer #x-FFFFFF #xFFFFFF) ,nvar))
-         (align ,align)
-         (put-octet (logand #xFF ,nvar))
-         ,@(loop for p from 8 by 8
-                 for c from 1 below size
-                 collect `(put-octet (ldb (byte 8 ,p) 
-                                          ,(if (>= c 3) nnvar nvar))))))))
-
 
 (defun marshal-short (n buffer)
   (declare (type CORBA:short n)
@@ -260,6 +305,58 @@
 
 (defmethod marshal-object ((object t) buffer)
   (marshal-object (op:_this object) buffer))
+
+
+
+;;;; Chunking Support
+
+
+(defvar *chunk-start* nil)
+
+(defun start-chunk (buffer)
+  (with-out-buffer (buffer)
+    (align 4)
+    (setq *chunk-start* pos)
+    (incf pos 4)))
+
+(defun end-chunk (buffer)
+  (when *chunk-start*
+    (with-out-buffer (buffer)
+      (if (= *chunk-start* (- pos 4))
+        (incf pos -4)                   ; empty chunk, remove
+        (let ((old-pos pos))
+          (setf pos *chunk-start*)
+          (marshal-long (- old-pos pos 4) buffer)
+          (setf pos old-pos))))
+    (setf *chunk-start* nil)))
+
+
+
+;;;; GIOP Support
+
+
+(defconstant +giop-header-size+ 12)
+
+
+(defun marshal-giop-header-raw (buffer major minor fragmented typenum)
+  (with-out-buffer (buffer)
+    #.(cons 'progn (loop for c across "GIOP"
+                      collect `(put-octet ,(char-code c))))
+    (put-octet major)
+    (put-octet minor)
+    (put-octet (logior 1 		;byte-order
+                       (if fragmented 2 0)))
+    (put-octet typenum)
+    ;; Place for message length to be patched in later
+    (incf pos 4)))
+
+
+(defun marshal-giop-set-message-length (buffer)
+  (with-out-buffer (buffer)
+    (let ((len pos))
+      (setf pos 8)
+      (marshal-ulong (- len +giop-header-size+) buffer)
+      (setf pos len))))
 
 
 

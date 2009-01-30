@@ -218,6 +218,8 @@
         (ensure-pattern* obj 'op:name "foo")
         (ensure-eql (unmarshal tc1 buffer) obj))))
 
+#+(or)                                  ; this is not valid as far as I can tell
+                                        ; see CORBA 2.6 section 15.3.4
   (define-test "mid state chunking"
     (flet ((l (x) (marshal-long x buffer))
            (o (x) (marshal-octet x buffer))

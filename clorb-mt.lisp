@@ -76,6 +76,11 @@ Should me called with object lock held."
                (return (deqf (queue q))))))))
 
 
+(defmethod emptyp ((q shared-queue))
+  (with-synchronization q
+    (queue-empty-p (queue q))))
+
+
 
 ;;;; Execution Queue
 

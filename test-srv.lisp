@@ -3,11 +3,13 @@
 (in-package :clorb)
 
 
-(ignore-errors
+(handler-case
   (op:activate_object_with_id
    (boot-poa-of (adapter (CORBA:ORB_init)))
    (string-to-oid "_TEST_")
-   (make-instance 'null-servant)))
+   (make-instance 'null-servant))
+  (omg.org/portableserver:poa/objectalreadyactive ()))
+
 
 
 (define-test-suite "Server Request Processing"
@@ -31,7 +33,7 @@
      :message (list (giop:cancelrequestheader :request_id 2)))
     
     ;; Let the server code process the CancelRequest
-    (orb-work *the-orb* nil t)
+    (test-work *the-orb*)
     
     ;; Check result
     (ensure-equalp 
@@ -144,7 +146,7 @@
      :message-type :fragment
      :giop-version giop-1-1
      :message (list "IDL:omg.org/CORBA/Object:1.0"))
-    (orb-work *the-orb* nil t)
+    (test-work *the-orb*)
     (test-read-response 
      :message (list :message-type :reply
                     'giop:replyheader
@@ -174,7 +176,7 @@
                                :any-value "_non_existent")
                     (CORBA:Any :any-typecode (SYMBOL-TYPECODE 'OMG.ORG/GIOP:PRINCIPAL)
                                :any-value ())))
-    (orb-work *the-orb* nil t)
+    (test-work *the-orb*)
     (test-read-response 
      :message (list :message-type :reply
                     'giop:replyheader

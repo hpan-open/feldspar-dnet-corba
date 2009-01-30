@@ -50,6 +50,7 @@
     "clorb-basetypes"
     "clorb-typecode-1"
     ("clorb-buffer" t)
+    "clorb-buffer-fns"
     "clorb-marshal"
     "clorb-unmarshal"
     "clorb-typecode-2"

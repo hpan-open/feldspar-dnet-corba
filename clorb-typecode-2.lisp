@@ -167,19 +167,7 @@
   (let* ((scale  (op:fixed_scale tc))
          (multiplier (expt 10 scale)))
     (lambda (buffer)
-      (let ((n 0))
-        (macrolet ((accumulate (digit) `(setf n (+ (* n 10) ,digit))))
-          (with-in-buffer (buffer)
-            (align 0)
-            (loop
-               (let ((octet (get-octet)))
-                 (accumulate (ash octet -4))
-                 (let ((digit (logand octet #xF)))
-                   (if (< digit 10) 
-                       (accumulate digit)
-                       (progn (when (= digit #xD) (setf n (- n)))
-                              (return))))))))
-        (/ n multiplier)))))
+      (unmarshal-fixed multiplier buffer))))
 
 
 
@@ -219,8 +207,7 @@
       (t
        (let ((member-unmarshal (unmarshal-function member-tc))) 
          (lambda (buffer)
-           (unmarshal-sequence-m (buffer) 
-             (funcall member-unmarshal buffer))))))))
+           (unmarshal-sequence member-unmarshal buffer)))))))
 
 
 

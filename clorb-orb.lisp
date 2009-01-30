@@ -275,7 +275,7 @@
 (defun bg-run ()
   "Setup the ORB for background processing.
 This is a replacement for op:run. It will return directly and the
-ORB will coninue processing in the background.
+ORB will continue processing in the background.
 Requires that a multi-threaded IO-system is configured."
   (assert (typep *io-system* 'io-system-mt-base))
   (setq *running-orb* nil)

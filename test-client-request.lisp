@@ -70,7 +70,7 @@
          :request-keys '((:response 1) (:operation "op") (:object-key #(17)))
          :args (list a1))
         (test-write-response :request req  :message '(224412))
-        (orb-work orb nil t)
+        (test-work orb)
         (assert (op:poll_response req) () "should have gotten the response")
         (op:get_response req)
         (ensure-eql (corba:any-value (op:return_value req)) 224412))))
@@ -141,11 +141,11 @@
         (let ((octets (buffer-octets buffer)))
           (io-descriptor-set-write *test-response-desc* octets 0
                                    (length octets))))
-      (orb-work orb nil t)
+      (test-work orb)
       (test-write-response :orb orb
                            :message-type :fragment :giop-version giop-1-1
                            :message '(1 "hello") )
-      (orb-work orb nil t)
+      (test-work orb)
       (ensure-pattern* req
                        'request-status :no_exception
                        'request-buffer (pattern 'unmarshal-short 1
@@ -164,7 +164,7 @@
         (test-read-request
          :request-keys '((:response 1) (:operation "op") (:object-key #(17))))
         (test-write-response :orb orb :message-type :closeconnection)
-        (orb-work orb nil t)
+        (test-work orb)
 
         ;; hmm. this is very internal ..
         (ensure-eql (request-status req) :error)

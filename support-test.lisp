@@ -100,6 +100,19 @@
 
 ;;;; Request / Connection testing
 
+
+(defun test-work (&optional (orb *the-orb*))
+  ;; Let the orb process pending requests etc.
+  (let ((adapter (adapter orb)))
+    (cond ((and adapter (dispatch-process-of adapter))
+           (process-wait-with-timeout "" 60
+                                      #'emptyp (dispatch-queue-of adapter))
+           (sleep 0.05))
+          (t
+           (orb-work orb nil t)))))
+
+
+
 ;;; Output, sending requests
 
 (defvar *test-sink-stream*)
@@ -340,7 +353,7 @@ Requests sent to this object will end up in *test-sink-stream*."
            giop-1-0)))
     (test-write-request :orb orb :message request :message-type request-type
                         :giop-version request-version)
-    (orb-work orb nil t)
+    (test-work orb)
     (test-read-response :orb orb :message response)))
 
 

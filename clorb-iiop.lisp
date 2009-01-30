@@ -138,30 +138,31 @@
               :CLOSECONNECTION :MESSAGEERROR :FRAGMENT))
 
 
+(defun unmarshal-giop-header (buffer)
+  ;; Returns: msgtype# ? version
+  (multiple-value-bind (msgtype fragmentedp major minor)
+      (unmarshal-giop-header-raw buffer)
+    (if (eql msgtype :unknown)
+        msgtype
+        (values (if (> msgtype (length message-types))
+                    :unknown
+                    (aref message-types msgtype))
+                fragmentedp
+                (make-giop-version major minor)))))
+
+
 (defun marshal-giop-header (type buffer &optional (version giop-1-0) fragmented)
-  (with-out-buffer (buffer)
-    #.(cons 'progn (loop for c across "GIOP"
-                      collect `(put-octet ,(char-code c))))
-    (put-octet (giop-version-major version))
-    (put-octet (giop-version-minor version))
-    (put-octet (logior 1 		;byte-order
-                       (if fragmented 2 0)))
-    (put-octet (cond ((numberp type) type)
-                     ((eq type 'request) 0)
-                     ((eq type 'reply) 1)
-                     (t
-                      (let ((n (position type message-types)))
-                        (or n (error "Message type ~S" type))))))
-    ;; Place for message length to be patched in later
-    (incf pos 4)))
-
-
-(defun marshal-giop-set-message-length (buffer)
-  (with-out-buffer (buffer)
-    (let ((len pos))
-      (setf pos 8)
-      (marshal-ulong (- len +iiop-header-size+) buffer)
-      (setf pos len))))
+  (marshal-giop-header-raw
+   buffer
+   (giop-version-major version)
+   (giop-version-minor version)
+   fragmented
+   (cond ((numberp type) type)
+         ((eq type 'request) 0)
+         ((eq type 'reply) 1)
+         (t
+          (let ((n (position type message-types)))
+            (or n (error "Message type ~S" type)))))))
 
 
 (defun marshal-service-context (ctx buffer)
@@ -171,10 +172,13 @@
                       (marshal-osequence (op:context_data service-context) buffer))
                     buffer))
 
+
 (defun unmarshal-service-context (buffer)
-  (unmarshal-sequence-m (buffer)
-    (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
-	                :context_data (unmarshal-osequence buffer))))
+  (unmarshal-sequence
+   (lambda (buffer)
+     (IOP:ServiceContext :context_id (unmarshal-ulong buffer)
+                         :context_data (unmarshal-osequence buffer)))
+   buffer))
 
 
 
@@ -207,6 +211,7 @@
 
 ;;;; Version
 
+
 (defun make-iiop-version (major minor)
   (or (if (eql major 1)
         (case minor
@@ -215,7 +220,6 @@
 
 (defun iiop-version-major (version) (car version))
 (defun iiop-version-minor (version) (cdr version))
-
 
 
 
@@ -262,7 +266,7 @@
     (loop repeat len collect
           (let ((tag (unmarshal-ulong buffer)))
             (cond ((= tag IOP:TAG_ORB_TYPE)
-                   (cons tag (with-encapsulation buffer (unmarshal-ulong buffer))))
+                   (cons tag (unmarshal-encapsulation buffer #'unmarshal-ulong)))
                   (t
                    (cons tag (unmarshal-osequence buffer))))))))
 
@@ -422,24 +426,6 @@
 ;;;; IIOP - Response handling
 
 
-(defun unmarshal-giop-header (buffer)
-  (with-in-buffer (buffer)
-    (if (loop for c in '#.(mapcar #'char-code '(#\G #\I #\O #\P))
-		  always (eql c (get-octet)))
-      (let ((major (get-octet))
-            (minor (get-octet))
-            (flags (get-octet))
-            (msgtype (get-octet)))
-        (setf (buffer-byte-order buffer) (logand flags 1))
-        (values (if (> msgtype (length message-types))
-                  :unknown
-                  (aref message-types msgtype))
-                (if (> minor 0)
-                  (logbitp 1 flags))
-                (make-giop-version major minor)))
-      (progn (warn "Not a GIOP message: ~/net.cddr.clorb::stroid/..." 
-                   (subseq octets 0 (min 10 (length octets))))
-             (values :unknown)))))
 
 
 

@@ -25,6 +25,7 @@
    (:file "clorb-basetypes")
    (:file "clorb-typecode-1")
    (:file "clorb-buffer")
+   (:file "clorb-buffer-fns")
    (:file "clorb-marshal")
    (:file "clorb-unmarshal")
    (:file "clorb-typecode-2")

@@ -114,6 +114,15 @@
            buffer))
         buffer)))
 
+    (define-test "encapsulation alignment"
+      (let ((buffer (get-work-buffer *the-orb*))
+            (bignum (+ (expt 2 40) 2)))
+        (marshal-add-encapsulation
+         (lambda (buffer) (marshal-longlong bignum buffer))
+         buffer)
+        (with-encapsulation buffer
+          (ensure-equalp (unmarshal-longlong buffer) bignum))))
+
     (define-test "Struct"
       ;; Generic struct
       (let* ((tc (create-struct-tc

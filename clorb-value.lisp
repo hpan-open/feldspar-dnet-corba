@@ -195,26 +195,6 @@
 
 (defvar *chunk-tail* nil)
 
-(defvar *chunk-start* nil)
-
-(defun start-chunk (buffer)
-  (with-out-buffer (buffer)
-    (align 4)
-    (setq *chunk-start* pos)
-    (incf pos 4)))
-
-(defun end-chunk (buffer)
-  (when *chunk-start*
-    (with-out-buffer (buffer)
-      (if (= *chunk-start* (- pos 4))
-        (incf pos -4)                   ; empty chunk, remove
-        (let ((old-pos pos))
-          (setf pos *chunk-start*)
-          (marshal-long (- old-pos pos 4) buffer)
-          (setf pos old-pos))))
-    (setf *chunk-start* nil)))
-
-
 
 (defun marshal-value-header (repoid chunking buffer)
   ;; Write the value header with chunking flag if indicated and
@@ -366,7 +346,7 @@ a repository ID.")
 
 (defun unmarshal-value-state (chunked truncate keys types buffer)
   (labels
-    ((read-tag () (unmarshal-long buffer))
+    ((read-tag () (without-chunking (buffer) (unmarshal-long buffer)))
      (rewind-tag () (incf (buffer-in-pos buffer) -4))
      (truncating ()
        (unless truncate
@@ -381,7 +361,7 @@ a repository ID.")
      (find-end-of-value ()
        (loop
          (or (truncate-chunk)
-             (let ((tag (without-chunking (buffer) (read-tag))))
+             (let ((tag (read-tag)))
                (cond ((eql tag (- *chunking-level*))
                       (return))
                      ((< (- *chunking-level*) tag 0)
