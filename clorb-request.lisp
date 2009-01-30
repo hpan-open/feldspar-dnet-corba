@@ -135,10 +135,11 @@ been decoded."
         ((slot-boundp req 'params)
          (let ((args (request-args req)))
            (loop for (nil mode tc) in (request-params req)
-                 collect (cons (CORBA:Any :any-value (if (not (eql mode :param_out))
-                                                       (pop args))
-                                          :any-typecode tc)
-                               mode))))
+              collect (cons (CORBA:Any
+                             :any-value (if (not (eql mode :param_out))
+                                            (pop args))
+                             :any-typecode tc)
+                            mode))))
         (t (raise-system-exception 'CORBA:no_resources))))
 
 
@@ -188,8 +189,9 @@ been decoded."
    (the-orb obj)
    :target obj
    :operation operation
-   :paramlist (list (CORBA:NamedValue :arg_modes ARG_OUT
-                                      :argument (CORBA:Any :any-typecode result-type)))))
+   :paramlist (list (CORBA:NamedValue
+                     :arg_modes ARG_OUT
+                     :argument (CORBA:Any :any-typecode result-type)))))
 
 
 ;;;; Sending requests
@@ -443,11 +445,11 @@ Returns: connection, request-id, buffer"
 
 ;;; boolean poll_response ();
 ;;
-;; poll_response determines whether the request has completed. A TRUE return indicates
-;; that it has; FALSE indicates it has not.
+;; poll_response determines whether the request has completed.
+;; A TRUE return indicates that it has; FALSE indicates it has not.
 ;;
-;; Return is immediate, whether the response has completed or not. Values in the request are
-;; not changed.
+;; Return is immediate, whether the response has completed or not.
+;; Values in the request are not changed.
 
 ;; Exception BAD_INV_ORDER with minor
 ;;  * 11 - request not sendt
@@ -457,10 +459,14 @@ Returns: connection, request-id, buffer"
 (define-method poll_response ((req client-request))
   ;; FIXME: 13
   (case (request-poll req)
-    ((:initial) (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
-    ((:returned) (raise-system-exception 'CORBA:BAD_INV_ORDER 12 :completed_yes))
-    ((nil) nil)
-    (otherwise t)))
+    ((:initial)
+     (raise-system-exception 'CORBA:BAD_INV_ORDER 11 :completed_no))
+    ((:returned)
+     (raise-system-exception 'CORBA:BAD_INV_ORDER 12 :completed_yes))
+    ((nil)
+     nil)
+    (otherwise
+     t)))
 
 
 ;;; void invoke ()
@@ -532,23 +538,26 @@ Returns: connection, request-id, buffer"
     (lambda (obj &rest args)
       (unless input-func
         (multiple-value-bind (name result params mode exc-syms)
-                             (symbol-op-info sym)
+            (symbol-op-info sym)
           (setq params-list params)
           (setq input-func
                 (let ((ufuns (loop for (nil pmode tc) in params
-                                   unless (eql pmode :param_in) collect (unmarshal-function tc))))
+                                unless (eql pmode :param_in)
+                                collect (unmarshal-function tc))))
                   (typecase result
                     (void-typecode)
                     (t (push (unmarshal-function result) ufuns)))
                   (lambda (req buffer)
                     (declare (ignore req))
-                    (values-list (loop for u in ufuns collect (funcall u buffer))))))
+                    (values-list (loop for u in ufuns
+                                    collect (funcall u buffer))))))
           (setq output-func
                 (let ((mfuns (loop for (nil pmode tc) in params
-                                   unless (eql pmode :param_out) collect (marshal-function tc))))
+                                unless (eql pmode :param_out)
+                                collect (marshal-function tc))))
                   (lambda (req buffer)
                     (loop for a in (request-args req)
-                          for m in mfuns do (funcall m a buffer)))))
+                       for m in mfuns do (funcall m a buffer)))))
           (setq exceptions (mapcar #'symbol-typecode exc-syms))
           (setq op name)
           (setq response-expected (eq mode :op_normal))))
