@@ -18,6 +18,13 @@
   "Where current chunk is ending in the buffer. If nil, not in a chunk.")
 
 
+(defun align-pos (pos n)
+  (if (zerop n)
+      pos
+      (let ((d (logand pos (1- n))))
+        (if (zerop d) pos (+ pos (- n d))))))
+
+
 (defstruct buffer
   (giop-version :giop-1-0 :type symbol)
   (orb          nil)
@@ -138,11 +145,42 @@ In body:
        (symbol-macrolet ((pos (fill-pointer octets)))
          ,@body))))
 
+
+;;;; Reading from Buffer
+
 
 (defun start-in-chunk (buffer)
   (let ((size (without-chunking (buffer) (unmarshal-long buffer))))
-    (assert (< 0 size #x7FFFFFFF))
+    (assert (< 0 size #x7FFFFF00))
     (setf *chunk-end* (+ (buffer-in-pos buffer) size))))
+
+
+(defun %long (buffer)
+  (without-chunking (buffer) (unmarshal-long buffer)))
+
+
+(defun begin-in-buffer (buffer n)
+  ;; Start reading a primitive CDR encoded value
+  ;; - align to n if needed
+  ;; - start chunk
+  (symbol-macrolet ((pos (buffer-in-pos buffer)))
+    (let ((apos (align-pos pos n)))
+      (cond ((and chunking-p (or (null *chunk-end*) (>= apos *chunk-end*)))
+             ;; Need to start new chunk
+             (let ((chunk-pos (if *chunk-end*
+                                  (align-pos *chunk-end* 4)
+                                  (align-pos pos 4))))
+               (setf pos chunk-pos)
+               (setf *chunk-end* nil)
+               (let ((chunk-size (%long buffer)))
+                 (cond ((< 0 chunk-size #x7FFFFF00) ; limits for chunk size
+                        (setf *chunk-end* (+ pos chunk-size))
+                        (setf pos (align-pos pos n)))
+                       (t               ; not a chunk start, unmarshal normally
+                        (setf pos apos))))))
+            (t                          ; normal
+             (setf pos apos))))))
+
 
 (defmacro with-in-buffer ((buffer &key (check nil)) &body body)
   `(progn
@@ -152,30 +190,13 @@ In body:
        (let ((octets (buffer-octets buffer)))
          (declare (type octets octets))
          (symbol-macrolet ((pos (buffer-in-pos buffer)))
-           (macrolet 
-             ((get-octet () 
+           (macrolet
+             ((get-octet ()
                 `(the CORBA:Octet
                    (prog1 (aref octets pos)
                      (setf pos (the buffer-index (1+ pos))))))
-              
               (align (n)
-                `(progn
-                   (when (and chunking-p
-                              (or (null *chunk-end*)
-                                  (>= (buffer-in-pos buffer) (the fixnum *chunk-end*))))
-                     (start-in-chunk buffer))
-                   ,(unless (zerop (the fixnum n))
-                      `(setf pos
-                             (the buffer-index
-                               (+ pos (the fixnum (logand (- ,n (the (integer 0 ,n)
-                                                                  (logand (the buffer-index (buffer-rel-pos buffer))
-                                                                          (- ,n 1))))
-                                                          (- ,n 1))))))))))
-             (multiple-value-prog1
-               (progn ,@body)
-               (when (and chunking-p *chunk-end*
-                          (>= (buffer-in-pos buffer) (the fixnum *chunk-end*)))
-                 (assert (eql *chunk-end* pos))
-                 (setq *chunk-end* nil)))))))))
+                `(begin-in-buffer buffer ,n)))
+             (progn ,@body)))))))
 
 

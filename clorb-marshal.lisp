@@ -146,7 +146,8 @@
   (with-out-buffer (buffer)
     (loop for c across s
           do (put-octet (char-code c)))
-    (put-octet 0)))
+    (put-octet 0))
+  buffer)
 
 
 (defun marshal-osequence (s buffer)

@@ -1,3 +1,9 @@
+2008-12-25  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-buffer.lisp (align-pos): new func
+	(begin-in-buffer): new func
+	(with-in-buffer): use begin-in-buffer for align - handle padded chunks
+
 2008-10-04  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-poa.lisp (poa-dispatch): new minor code to CORBA:OBJECT_NOT_EXIST

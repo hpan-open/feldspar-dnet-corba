@@ -387,7 +387,7 @@ a repository ID.")
          (raise-system-exception 'CORBA:MARSHAL)))
      (truncate-chunk ()
        (when *chunk-end*
-         (truncating)
+         ;;(truncating)
          (setf (buffer-in-pos buffer) *chunk-end*)
          (setf *chunk-end* nil)
          t))

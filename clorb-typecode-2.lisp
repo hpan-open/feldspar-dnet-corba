@@ -243,7 +243,7 @@
 (defmethod compute-marshal-function ((tc string-typecode))
   (let ((max-length (op:length tc)))
     (if (zerop max-length)
-      #'marshal-string
+      'marshal-string
       (lambda (string buffer)
         (when (> (length string) max-length)
           (error 'CORBA:MARSHAL))
