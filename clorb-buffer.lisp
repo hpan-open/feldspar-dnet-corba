@@ -149,12 +149,6 @@ In body:
 ;;;; Reading from Buffer
 
 
-(defun start-in-chunk (buffer)
-  (let ((size (without-chunking (buffer) (unmarshal-long buffer))))
-    (assert (< 0 size #x7FFFFF00))
-    (setf *chunk-end* (+ (buffer-in-pos buffer) size))))
-
-
 (defun %long (buffer)
   (without-chunking (buffer) (unmarshal-long buffer)))
 

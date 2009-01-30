@@ -1,5 +1,6 @@
 *.fas
 *.fasl
 *.lib
+loadup.lisp
 orig
 tests.lisp

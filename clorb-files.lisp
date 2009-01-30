@@ -78,7 +78,7 @@
 
 (defparameter *server-files*
   '("clorb-objkey"
-    "clorb-servant"
+    ("clorb-servant" t)
     "clorb-trie"
     "clorb-aom"
     "clorb-poa-base"

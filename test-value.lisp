@@ -195,6 +195,7 @@
                        'op:next (pattern 'identity (isa 'test-value-3)
                                          'op:name "bar"
                                          'op:next nil))))
+
   (define-test "chunked box"
     (let ((v (make-instance 'test-box-in-value :name "foo" 
                              :box (make-instance 'test-box-1 :data 989))))

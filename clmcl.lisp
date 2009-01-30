@@ -3,7 +3,7 @@
 (defun clean-fasl ()
   (mapc #'delete-file (directory "clorb:fasl;**;*.cfsl")))
 
-(load "clorb:src;devel")
+(load "clorb:devel")
 
 #|
 (net.cddr.clorb.system:set-load-opts
@@ -26,6 +26,8 @@
 ;;(clorb::io-system-switch 'clorb::io-system-multiprocess)
 (persistent-naming:setup-pns :export t)
 
+(defun use-local-ns ()
+  (CORBA:ORB_init '("-ORBInitRef NameService=corbaloc:rir:/CLORB-PNS")))
 
 (defun use-pentax-ifr ()
   (CORBA:ORB_init '("-ORBInitRef InterfaceRepository=http://10.0.1.251/InterfaceRepository")))
@@ -97,19 +99,6 @@
 
 |#
 
-(defvar *export-ifr* nil)
-
-(defun export-iors ()
-  (with-open-file (out "SaturnX:private:tmp:NameService" 
-                       :direction :output :if-exists :supersede)
-    (princ (op:object_to_string *the-orb* (clorb::get-ns)) out))
-  (unless *export-ifr*
-    (setq *export-ifr* (corba:idl "clorb:idl;CosNaming.idl" :eval nil))
-    (corba:idl "clorb:idl;interface-repository.idl" :repository *export-ifr* :eval nil)
-    (corba:idl "clorb:examples;hello;hello.idl" :repository *export-ifr* :eval nil))
-  (with-open-file (out "SaturnX:private:tmp:InterfaceRepository"
-                       :direction :output :if-exists :supersede)
-    (princ (op:object_to_string *the-orb* *export-ifr*) out)))
 
 (defun home-volume-pathname ()
     (let ((home (user-homedir-pathname)))

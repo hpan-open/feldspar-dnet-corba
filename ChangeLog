@@ -1,3 +1,9 @@
+2008-12-26  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-value.lisp (unmarshal-value-tag): renamed from
+	unmarshal-chunk-tag, and :chunk-tag renamed to :value-tag
+	(marshal-record): avoid padding current chunk when starting new value
+
 2008-12-25  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-ifr.lisp (idltype-tc): union-def labels any-value, not anys

@@ -112,15 +112,13 @@
 (defun marshal-record (obj func buffer)
   (cond ((null obj) (marshal-long 0 buffer))
         (t
-         (with-out-buffer (buffer)
-           (align 4)
-           (let ((old (gethash obj (buffer-record buffer))))
-             (cond (old
-                    (marshal-long -1 buffer)
-                    (marshal-long (- old pos) buffer))
-                   (t
-                    (setf (gethash obj (buffer-record buffer)) pos)
-                    (funcall func obj buffer))))))))
+         (let ((old (gethash obj (buffer-record buffer))))
+           (cond (old
+                  (marshal-long -1 buffer)
+                  (marshal-long (- old (buffer-out-pos buffer)) buffer))
+                 (t
+                  (setf (gethash obj (buffer-record buffer)) (align-pos (buffer-out-pos buffer) 4))
+                  (funcall func obj buffer)))) )))
 
 
 (defun marshal-string-record (string buffer)
@@ -139,15 +137,10 @@
   (funcall *unmarshal-record-register* obj))
 
 
-(defun unmarshal-chunk-tag (buffer)
-  (when chunking-p
-    (unless *chunk-end*
-      (let ((tag (without-chunking (buffer) (unmarshal-long buffer))))
-        (cond ((< 0 tag min-value-tag)
-               (setf *chunk-end* (+ tag (buffer-in-pos buffer)))
-               nil)
-              (t
-               tag))))))
+(defun unmarshal-value-tag (buffer)
+  ;; Tag beginning a value, a value-tag, indirection tag or null tag
+  (unmarshal-long buffer))
+
 
 (defconstant signed-indirection-tag -1)
 (defconstant unsigned-indirection-tag #xFFFFFFFF)
@@ -156,14 +149,8 @@
   ;; Unmarshal with support for indirection and NULL values
   (let ((tag (ecase tag-type
                (:unsigned (unmarshal-ulong buffer))
-               (:chunk-tag (unmarshal-chunk-tag buffer))
+               (:value-tag (unmarshal-value-tag buffer))
                ((:signed nil) (unmarshal-long buffer)))))
-    (when (eql tag-type :chunk-tag)
-      (cond ((null tag)
-             (setq tag (unmarshal-long buffer)))
-            ((< tag min-value-tag)
-             (mess 5 "Non value-tag")
-             (raise-system-exception 'CORBA:MARSHAL))))
     (cond ((zerop tag) nil)
           ((if (eql tag-type :unsigned)
              (= tag unsigned-indirection-tag)
@@ -423,7 +410,7 @@ a repository ID.")
 
 
 (defun unmarshal-value (buffer &optional expected-id)
-  (unmarshal-record #'unmarshal-value-1 buffer :chunk-tag
+  (unmarshal-record #'unmarshal-value-1 buffer :value-tag
                     buffer expected-id))
 
 
