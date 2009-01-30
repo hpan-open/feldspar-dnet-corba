@@ -943,7 +943,7 @@ of contained."))
                      (map 'list (lambda (m)
                                   (list (if (default-label-p (op:label m))
                                           'default
-                                          (op:label m))
+                                         (any-value (op:label m)))
                                         (op:name m)
                                         (op:type m)))
                           (op:members obj)))))

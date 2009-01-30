@@ -1,5 +1,7 @@
 2008-12-25  Lennart Staflin  <lenst@lysator.liu.se>
 
+	* clorb-ifr.lisp (idltype-tc): union-def labels any-value, not anys
+
 	* clorb-buffer.lisp (align-pos): new func
 	(begin-in-buffer): new func
 	(with-in-buffer): use begin-in-buffer for align - handle padded chunks
