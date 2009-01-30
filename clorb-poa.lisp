@@ -836,8 +836,7 @@ individual call (some callers may choose to block, while others may not).
            (cond ((eql next-poa :wait)
                   (values poa poa-spec))
                  ((null next-poa)
-                  (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 2
-                                          :completed_no))
+                  nil)
                  (t
                   (poa-locate root-adapter next-poa (cdr poa-spec))))))))
 
@@ -851,7 +850,7 @@ individual call (some callers may choose to block, while others may not).
             (poa-locate root-adapter poa poa-spec)))
         (setf (poa-spec req) poa-spec))
       (unless poa
-        (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 0 :completed_no))
+        (raise-system-exception 'CORBA:OBJECT_NOT_EXIST 2 :completed_no))
       (let ((state (poa-effective-state poa)))
         (cond ((or (eql state :holding) poa-spec)
                (enqf (poa-request-queue poa) req))

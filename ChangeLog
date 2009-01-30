@@ -1,3 +1,8 @@
+2008-10-04  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-poa.lisp (poa-dispatch): new minor code to CORBA:OBJECT_NOT_EXIST
+	(poa-locate): return nil if poa not found
+
 2008-09-15  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-conn.lisp (print-object): fix bug in printing connections.
