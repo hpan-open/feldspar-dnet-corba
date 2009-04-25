@@ -170,9 +170,6 @@
 (defun unmarshal-longlong (buffer) 
   (%unmarshal-number 8 t buffer))
 
-(defun unmarshal-ulonglong (buffer)
-  (%unmarshal-number 8 nil buffer))
-
 
 (defun ieee-integer-to-float (raw float-type-zero sign-bit expn-bits fraction-bits bias)
   (if (zerop raw)
