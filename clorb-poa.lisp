@@ -667,7 +667,10 @@ individual call (some callers may choose to block, while others may not).
 (define-method reference_to_id ((poa PortableServer:POA) reference)
   (check-live-poa poa)
   (let ((profiles (object-profiles reference)))
-    (unless profiles
+    (unless (member (orb-host (the-orb poa)) profiles
+                    :key (lambda (p) (and (iiop-profile-p p)
+                                          (iiop-profile-host p)))
+                    :test #'equal)
       (error 'PortableServer:poa/wrongadapter))
     (multiple-value-bind (ref-type poa-spec oid)
                          (decode-object-key (iiop-profile-key (first profiles)))
