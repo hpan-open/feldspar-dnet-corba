@@ -1,3 +1,9 @@
+2009-11-15  Lennart Staflin  <lenst@lysator.liu.se>
+
+	* clorb-util.lisp (print-escape-name): new fun
+	(to-string): new fun
+	(rebind): added simple restart to retry binding
+
 2008-12-26  Lennart Staflin  <lenst@lysator.liu.se>
 
 	* clorb-value.lisp (unmarshal-value-tag): renamed from

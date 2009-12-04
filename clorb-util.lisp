@@ -419,8 +419,31 @@ args: (result-type operation object {:in type value | :inout type value | :out t
 (define-method op:resolve ((name string))
   (resolve name))
 
+(defun print-escape-name (string)
+  (loop for c across string
+        do (case c
+             ((#\/ #\. #\\)
+              (princ #\\)))
+        (princ c)))
+
+(defun to-string (n)
+  (with-output-to-string (*standard-output*) 
+    (let ((first t))
+      (map nil (lambda (nc)
+                 (unless first (princ "/"))
+                 (print-escape-name (op:id nc))
+                 (princ ".")
+                 (print-escape-name (op:kind nc))
+                 (setq first nil))
+           n))))
+
 (defun rebind (objref &rest names)
-  (op:rebind (get-ns) (ns-name* names) objref))
+  (let ((name (ns-name* names)))
+    (loop
+       (with-simple-restart
+           (retry "Retry binding '~a'" (to-string name))
+         (op:rebind (get-ns) name objref)
+         (return nil)))))
 
 (define-method op:bind ((name string) objref)
   (op:bind (get-ns) (ns-name name) objref))
